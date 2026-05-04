@@ -20,7 +20,7 @@ packages/ui/src/
 
 - **Always** put auth-gated pages under `app/(app)/` so the group layout can guard them in one place.
 - **Always** put reusable UI primitives in `packages/ui/src/components/`. App-specific composites (forms, headers wired to project state) live in `apps/web/src/components/`.
-- **Never** create a new primitive in `apps/web/src/components/` — extend or compose the one in `@boilerplate/ui/components/`*.
+- **Never** create a new primitive in `apps/web/src/components/` — extend or compose the one in `@boilerplate/ui/components/`\*.
 
 ## Routing — Next.js 16 App Router
 
@@ -32,7 +32,7 @@ packages/ui/src/
 ## Server vs client components
 
 - **Server components are the default** — a file with no `"use client"` directive runs on the server. Use them when it's straightforward (e.g. a `page.tsx` that needs to read the session or fetch something on the server before rendering).
-- `**"use client"` is fine** — reach for it whenever a page needs hooks, browser APIs, or interactivity. Don't contort the file structure just to keep the boundary "as deep as possible." A whole-page client component is acceptable.
+- `**"use client"` is fine\*\* — reach for it whenever a page needs hooks, browser APIs, or interactivity. Don't contort the file structure just to keep the boundary "as deep as possible." A whole-page client component is acceptable.
 - **Always** mark client components with `"use client"` at the top of the file.
 - **Never** import `next/navigation`'s `useRouter`/`usePathname`, `useState`, `useEffect`, or any browser-only API in a file that doesn't have `"use client"`.
 
@@ -80,19 +80,21 @@ How to make new UI feel native to this codebase, not just "shadcn with a coat of
 - **Never** use `slate`, `gray`, `zinc`, or `stone`. They drift from the project's tonal range and clash with the semantic tokens. `neutral` is the only generic grayscale palette allowed.
 - **Never** hardcode a hex / `rgb()` / `oklch()` color in `className` or `style`. If a value isn't in the theme, add a token to `globals.css` first.
 - **Always** keep spacing on Tailwind's scale (`gap-2`, `p-4`, `space-y-6`). No `p-[13px]` arbitrary values unless there's a specific reason — and if there is, leave a one-line comment.
+- **Always** use `cursor-pointer` for clickable items.
+- **If applicable** add icons along the text in the Badges.
 
 ## Styling — Tailwind v4
 
 - **Always** style with Tailwind utility classes. Tokens (colors, radii, shadows, fonts) are defined in `packages/ui/src/styles/globals.css` via `@theme` and `@custom-variant dark`.
 - **Always** use the custom shadow tokens for elevation and separation: `shadow-(--custom-shadow)` and its color variants. These are the project's "border" — they replace it everywhere.
 - **Always** merge classes with `cn()` from `@boilerplate/ui/lib/utils`.
-- **Never** use `border`, `border-`*, or `divide-*` for visual separation. Use a shadow token instead.
+- **Never** use `border`, `border-`_, or `divide-_` for visual separation. Use a shadow token instead.
 - **Never** add raw CSS files for component styling. Add a token to `globals.css` if a value needs to be reused.
 - **Never** inline `style={{ ... }}` for values that have a Tailwind utility.
 
 ## Animations
 
-- **Default** to `tw-animate-css` utility classes (`animate-in`, `fade-in`, `slide-in-from-`*, `animate-spin`, etc.) for transitions and entrances.
+- **Default** to `tw-animate-css` utility classes (`animate-in`, `fade-in`, `slide-in-from-`\*, `animate-spin`, etc.) for transitions and entrances.
 - **Never** add `motion/react` (Framer Motion) unless the user explicitly asks for it. It's heavier than what most UI work needs.
 
 ## UI primitives — `@boilerplate/ui`
@@ -118,7 +120,7 @@ How to make new UI feel native to this codebase, not just "shadcn with a coat of
 
 - **Always** import icons from `@tabler/icons-react` (e.g. `IconLoader2`, `IconChevronDown`).
 - **Always** size icons with Tailwind: `size-3.5` is the default. Use `size-3` for compact contexts (badges, dense table cells) and `size-4` for medium emphasis (page headers, primary actions).
-- **Never** add `mr-2` (or any margin) to an icon inside a `<Button>`. The button already spaces children with `gap-`*.
+- **Never** add `mr-2` (or any margin) to an icon inside a `<Button>`. The button already spaces children with `gap-`\*.
 - **Never** mix icon libraries. No `lucide-react`, `react-icons`, etc.
 
 ## Loading / empty states
@@ -200,5 +202,4 @@ The Better Auth instance lives on `apps/server/` (Hono), not in the web app. Web
 - **Always** read the session in server components via `await authClient.getSession({ fetchOptions: { headers: await headers() } })` — `headers()` from `next/headers` forwards the cookie to the server.
 - **Always** gate auth-required routes in `app/(app)/layout.tsx` — call `authClient.getSession` and `redirect("/login")` on miss. Pages inside `(app)/` then assume the session exists.
 - **Never** import `@boilerplate/auth` from web code. It pulls in the DB + server env and only works inside `apps/server/`.
-- **Never** call `fetch("/api/auth/...")` directly from a component. Use `authClient.signIn.`* / `authClient.signOut()`.
-
+- **Never** call `fetch("/api/auth/...")` directly from a component. Use `authClient.signIn.`\* / `authClient.signOut()`.

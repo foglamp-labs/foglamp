@@ -14,7 +14,7 @@ packages/env/       # Zod-validated env vars (server + web)
 
 - **Always** put HTTP-shaped code (Hono routes, middlewares, queue handlers) in `apps/server/`.
 - **Always** put business logic, tRPC routers, AI agents, queue publishers in `packages/api/`.
-- **Never** import from `apps/server/`* inside `packages/api/`* — packages are dependencies of the server, not vice versa.
+- **Never** import from `apps/server/`_ inside `packages/api/`_ — packages are dependencies of the server, not vice versa.
 
 ## Server framework — Hono on Bun
 
@@ -45,7 +45,9 @@ export const postRouter = router({
   list: protectedProcedure.query(({ ctx }) => listPosts(ctx.db, ctx.userId)),
   create: protectedProcedure
     .input(z.object({ title: z.string().min(1) }))
-    .mutation(({ ctx, input }) => createPost(ctx.db, ctx.log, ctx.userId, input)),
+    .mutation(({ ctx, input }) =>
+      createPost(ctx.db, ctx.log, ctx.userId, input)
+    ),
 });
 ```
 
@@ -59,7 +61,9 @@ export const postRouter = router({
 ```ts
 await db.transaction(async (tx) => {
   await tx.update(posts).set({ status: "published" }).where(eq(posts.id, id));
-  await tx.insert(postActivity).values({ postId: id, kind: "publish", actorId });
+  await tx
+    .insert(postActivity)
+    .values({ postId: id, kind: "publish", actorId });
 });
 ```
 
@@ -75,7 +79,9 @@ await db.transaction(async (tx) => {
 import { uuidv7 } from "uuidv7";
 
 export const post = pgTable("post", {
-  id: text("id").primaryKey().$defaultFn(() => uuidv7()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => uuidv7()),
   // ...
 });
 ```
@@ -149,7 +155,7 @@ bun run --filter @boilerplate/db db:migrate   # manual, against prod, after depl
 - **Always** put non-trivial query logic and any logic shared across routers in `packages/api/src/services/<entity>.ts`.
 - **Always** make services pure functions taking `(db, log, ...args)` — no module-level state, no implicit `db`.
 - **Always** type the `db` param as `typeof db` (or import a `Database` alias from `@boilerplate/db`) so transactions (`tx`) are accepted too.
-- **Never** call `auth.api.`* from a service — auth resolution happens in `createContext` / `evlog`. Services receive a resolved `userId`.
+- **Never** call `auth.api.`\* from a service — auth resolution happens in `createContext` / `evlog`. Services receive a resolved `userId`.
 - **Never** import services from another service circularly; if two services need each other, extract the shared helper.
 
 ```ts
@@ -161,10 +167,13 @@ export async function createPost(
   db: Database,
   log: RequestLogger,
   userId: string,
-  input: { title: string },
+  input: { title: string }
 ) {
   log.set({ op: "post.create", userId });
-  const [row] = await db.insert(posts).values({ ...input, authorId: userId }).returning();
+  const [row] = await db
+    .insert(posts)
+    .values({ ...input, authorId: userId })
+    .returning();
   return row;
 }
 ```
@@ -174,7 +183,7 @@ export async function createPost(
 - **Always** export the configured instance from `@boilerplate/auth`. Never construct `betterAuth(...)` outside that package.
 - **Always** resolve the session via `auth.api.getSession({ headers })` inside `createContext`.
 - **Never** call `auth.api.getSession` from a router or service — read `ctx.session` / `ctx.userId` instead.
-- **Never** mount the auth handler under a custom path — it must be `/api/auth/`*.
+- **Never** mount the auth handler under a custom path — it must be `/api/auth/`\*.
 
 ## Validation — Zod
 
@@ -183,7 +192,7 @@ export async function createPost(
 - **Always** define agent output schemas next to the agent (`agents/<name>/agent.ts`).
 - **Never** validate the same shape in two places — export the schema and reuse it.
 
-## Env vars — `@t3-oss/env-`*
+## Env vars — `@t3-oss/env-`\*
 
 - **Always** declare server vars in `packages/env/src/server.ts` (`@t3-oss/env-core`) and web vars in `packages/env/src/web.ts` (`@t3-oss/env-nextjs`).
 - **Always** set `emptyStringAsUndefined: true`.
@@ -273,7 +282,7 @@ export async function publishGeneratePost(data: GeneratePostJob) {
 
 - **QStash**: verify with `Receiver({ currentSigningKey, nextSigningKey }).verify(...)`.
 - **Vercel cron**: verify `Authorization: Bearer ${env.CRON_SECRET}`.
-- **Never** trust `X-Forwarded-`* headers for auth.
+- **Never** trust `X-Forwarded-`\* headers for auth.
 
 ## Error handling
 
@@ -287,4 +296,3 @@ export async function publishGeneratePost(data: GeneratePostJob) {
 - **Always** colocate tests as `*.test.ts` next to the file under test. Never use a separate `__tests__/` directory.
 - **Always** import from `"bun:test"` (`describe`, `test`, `expect`).
 - **Always** test services (pure `(db, log, args)` functions) directly, not through the tRPC router.
-
