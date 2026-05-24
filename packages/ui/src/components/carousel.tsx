@@ -5,8 +5,8 @@ import useEmblaCarousel, {
   type UseEmblaCarouselType,
 } from "embla-carousel-react";
 
-import { cn } from "@boilerplate/ui/lib/utils";
-import { Button } from "@boilerplate/ui/components/button";
+import { cn } from "@watchtower/ui/lib/utils";
+import { Button } from "@watchtower/ui/components/button";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 
 type CarouselApi = UseEmblaCarouselType[1];

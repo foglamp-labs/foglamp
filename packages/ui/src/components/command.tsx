@@ -3,18 +3,18 @@
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
 
-import { cn } from "@boilerplate/ui/lib/utils";
+import { cn } from "@watchtower/ui/lib/utils";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@boilerplate/ui/components/dialog";
+} from "@watchtower/ui/components/dialog";
 import {
   InputGroup,
   InputGroupAddon,
-} from "@boilerplate/ui/components/input-group";
+} from "@watchtower/ui/components/input-group";
 import { IconSearch, IconCheck } from "@tabler/icons-react";
 
 function Command({

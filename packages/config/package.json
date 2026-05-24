@@ -1,5 +1,6 @@
 {
-  "name": "@boilerplate/config",
+  "name": "@watchtower/config",
+  "license": "Elastic-2.0",
   "version": "0.0.0",
   "private": true
 }

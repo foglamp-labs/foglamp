@@ -8,8 +8,8 @@ import {
   type Locale,
 } from "react-day-picker";
 
-import { cn } from "@boilerplate/ui/lib/utils";
-import { Button, buttonVariants } from "@boilerplate/ui/components/button";
+import { cn } from "@watchtower/ui/lib/utils";
+import { Button, buttonVariants } from "@watchtower/ui/components/button";
 import {
   IconChevronLeft,
   IconChevronRight,

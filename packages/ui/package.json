@@ -1,5 +1,6 @@
 {
-  "name": "@boilerplate/ui",
+  "name": "@watchtower/ui",
+  "license": "Elastic-2.0",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -35,7 +36,7 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
-    "@boilerplate/config": "workspace:*",
+    "@watchtower/config": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",

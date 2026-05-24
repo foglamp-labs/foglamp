@@ -1,5 +1,6 @@
 {
-  "name": "@boilerplate/auth",
+  "name": "@watchtower/auth",
+  "license": "Elastic-2.0",
   "type": "module",
   "exports": {
     ".": {
@@ -11,8 +12,8 @@
   },
   "scripts": {},
   "dependencies": {
-    "@boilerplate/db": "workspace:*",
-    "@boilerplate/env": "workspace:*",
+    "@watchtower/db": "workspace:*",
+    "@watchtower/env": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "evlog": "^2.13.0",
@@ -20,7 +21,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@boilerplate/config": "workspace:*",
+    "@watchtower/config": "workspace:*",
     "typescript": "^5"
   }
 }

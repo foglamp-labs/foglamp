@@ -1,5 +1,6 @@
 {
   "name": "server",
+  "license": "Elastic-2.0",
   "type": "module",
   "main": "dist/main.mjs",
   "scripts": {
@@ -7,23 +8,26 @@
     "check-types": "tsc -b",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/main.ts --outfile server",
     "dev": "bun run --hot src/main.ts",
+    "db:seed": "bun run scripts/seed.ts",
     "start": "bun run dist/main.mjs"
   },
   "dependencies": {
     "@hono/trpc-server": "^0.4.0",
-    "@boilerplate/api": "workspace:*",
-    "@boilerplate/auth": "workspace:*",
-    "@boilerplate/db": "workspace:*",
-    "@boilerplate/env": "workspace:*",
+    "@watchtower/api": "workspace:*",
+    "@watchtower/auth": "workspace:*",
+    "@watchtower/db": "workspace:*",
+    "@watchtower/env": "workspace:*",
     "@trpc/server": "catalog:",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
+    "drizzle-orm": "^0.45.1",
     "evlog": "^2.13.0",
     "hono": "catalog:",
+    "uuidv7": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@boilerplate/config": "workspace:*",
+    "@watchtower/config": "workspace:*",
     "@types/bun": "catalog:",
     "tsdown": "^0.16.5",
     "typescript": "^5"

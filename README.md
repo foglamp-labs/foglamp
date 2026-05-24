@@ -1,11 +1,341 @@
-# Boilerplate
+# Watchtower
 
-Steps to make this run:
+**The missing observability layer for the Vercel AI SDK.**
 
-- `bun i`
-- Update the project and package.json' from "boilerplate" to the name of the project (ctrl+f boilerplate and change what's needed)
-- Add the necessary envs
-- `bun run db:push`
-- Set up auth based on the requirements (e.g. orgs, oauth, roles, etc...)
-- Remove boilerplate stuff (e.g. design system, showcases, etc)
-- Instruct AI to do everything
+Two lines of code and an API key give you unified observability for your AI
+agents — **costs, latency, token usage, distributed traces, and prompt/response
+logs** — across every `generateText` / `streamText` call in your app.
+
+Watchtower is **source-available** and self-hostable. Bring your own ClickHouse +
+Postgres with `docker compose up`, or point the SDK at the hosted endpoint. (See
+[License](#license) — free to self-host, including commercially; offering it as a
+hosted service to others needs a commercial license.)
+
+```ts
+import { registerTelemetry } from "ai";
+import { watchtower } from "@watchtower/sdk";
+
+registerTelemetry(watchtower()); // that's it — every AI SDK call is now traced
+```
+
+---
+
+## Why
+
+The Vercel AI SDK gives you `generateText`, `streamText`, tools, and multi-step
+agents — but no first-class answer to *"what did that agent cost, how slow was
+it, and what did it actually send the model?"* Watchtower fills that gap:
+
+- **Cost** — computed at ingest from OpenRouter pricing, per token dimension
+  (prompt, completion, cached, reasoning, images, web search, …). Unknown model
+  → cost shows `—`, never a misleading `$0`. Per-project custom price overrides.
+- **Latency & TTFT** — p50 / p95 / p99 per model, agent, and over time. Time to
+  first token is read from the SDK's own step timing, not hand-rolled.
+- **Tokens** — input/output/total, with cost coverage so you know what fraction
+  of spans were actually priced.
+- **Distributed traces** — a trace is one top-level call; steps and tool calls
+  are spans. Waterfall view with the exact prompt and response on every span.
+- **Workflows, agents, sessions** — `agentName`, `workflowName`,
+  `workflowRunId`, and `sessionId` are first-class, indexed fields. Everything
+  else is free-form `metadata`.
+- **Alerts** — threshold rules on cost, latency, error rate, TTFT, tokens, or
+  request count, evaluated every minute, with email notifications.
+
+Scope: **TypeScript + Vercel AI SDK v7 only.** (OTLP ingest is a planned
+follow-up; see [Deferred](#deferred).)
+
+---
+
+## Quickstart
+
+### 1. Install the SDK
+
+```bash
+npm i @watchtower/sdk     # ai@7 is a peer dependency
+```
+
+### 2. Set your API key
+
+```bash
+export WATCHTOWER_API_KEY=wt_…
+# Self-hosting? Also point the SDK at your own ingest endpoint:
+export WATCHTOWER_INGEST_URL=http://localhost:4000/ingest
+```
+
+Get the key from the dashboard (**Settings → API keys**), or — when
+self-hosting — from the `migrate` service logs on first `docker compose up`.
+
+### 3. Instrument your code
+
+**Global** — instruments every AI SDK call in the process:
+
+```ts
+import { registerTelemetry } from "ai";
+import { watchtower } from "@watchtower/sdk";
+
+registerTelemetry(watchtower());
+```
+
+**Per-call** — typed, wins over the global integration, and attaches
+first-class context:
+
+```ts
+import { watchtower } from "@watchtower/sdk";
+import { generateText } from "ai";
+
+const wt = watchtower();
+
+const { text } = await generateText({
+  model,
+  prompt: "What is Watchtower?",
+  telemetry: {
+    integrations: [
+      wt.integration({
+        agentName: "support-bot",
+        workflowName: "ticket-triage",
+        workflowRunId: run.id,
+        sessionId: user.sessionId,
+        metadata: { tenant: "acme", plan: "pro" },
+      }),
+    ],
+  },
+});
+```
+
+If `WATCHTOWER_API_KEY` is unset, the SDK is a **silent no-op** — it never
+throws and never adds latency. A complete, offline-runnable example lives in
+[`examples/basic`](./examples/basic).
+
+---
+
+## SDK reference
+
+### `watchtower(config?) → Collector`
+
+Creates a collector that is both an AI SDK `Telemetry` integration (pass to
+`registerTelemetry`) and a factory for per-call integrations.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `apiKey` | `process.env.WATCHTOWER_API_KEY` | API key. Unset ⇒ no-op. |
+| `endpoint` | `process.env.WATCHTOWER_INGEST_URL` → hosted | Ingest URL. Self-hosters point this at their `apps/ingest`. |
+| `flushIntervalMs` | `5000` | Flush cadence for long-running runtimes. |
+| `maxBatchTraces` | `50` | Flush early once this many traces are buffered. |
+| `maxBatchSpans` | `500` | Flush early once this many spans are buffered. |
+| `maxPayloadChars` | `100_000` | Per-blob cap for serialized input/output (hard contract max 1 MB). |
+| `recordInputs` | `true` | Capture prompt/messages as span `input`. |
+| `recordOutputs` | `true` | Capture model/tool results as span `output`. |
+| `waitUntil` | — | Serverless keep-alive (e.g. Vercel/CF `waitUntil`). Enables flush-per-call. |
+| `fetch` | global `fetch` | Override the `fetch` used to POST batches. |
+| `debug` | `false` | Log internal warnings/errors to the console. |
+| `onError` | — | Called for transport errors. Telemetry never throws into your app. |
+
+### `Collector` methods
+
+- **`wt.integration(ctx?)`** — a per-call integration bound to
+  `{ agentName, workflowName, workflowRunId, sessionId, metadata }`.
+- **`wt.flush()`** — flush buffered traces now. `await` it before a short-lived
+  process exits.
+- **`wt.shutdown()`** — stop the flush timer and drain.
+
+### Runtimes & flushing
+
+- **Long-running (Node/Bun servers):** batches on a timer; nothing to do.
+- **Vercel / AWS Lambda:** auto-detected — flushes per call via `waitUntil`.
+- **Cloudflare Workers / other serverless:** pass `waitUntil: ctx.waitUntil`
+  (or call `await wt.flush()` before returning) so a fire-and-forget flush
+  isn't frozen with the response.
+
+---
+
+## Data model
+
+| Concept | What it is |
+| --- | --- |
+| **Trace** | One top-level `generateText` / `streamText` call. |
+| **Span** | A unit of work within a trace: an `llm` step or a `tool` execution. |
+| **`agentName`** | Which agent produced the call. First-class, indexed. |
+| **`workflowName`** | A named pipeline the call belongs to. First-class, indexed. |
+| **`workflowRunId`** | A single execution of a workflow; renamable in the UI. |
+| **`sessionId`** | Groups traces for one user/conversation. First-class, indexed. |
+| **`metadata`** | Free-form `Record<string, string>` — anything else you want to slice by. |
+
+Spans are stored in **ClickHouse**; org/project/key/pricing/alert state in
+**Postgres**. Costs are computed once at ingest and stored per dimension.
+
+---
+
+## Self-hosting
+
+Everything you need is in [`docker-compose.yml`](./docker-compose.yml): plain
+Postgres + ClickHouse, the ingest API, the dashboard API, and the web app. No
+Redis, no queue, no Supabase.
+
+```bash
+docker compose up --build
+```
+
+This will:
+
+1. Start Postgres and ClickHouse.
+2. Run the one-shot **`migrate`** service — Postgres migrations, ClickHouse DDL,
+   the spans retention TTL, and an idempotent **seed** (admin user → org →
+   project → API key).
+3. Start the **server** (`:3000`), **ingest** (`:4000`), and **web** (`:3001`).
+
+Then:
+
+- Open the dashboard at **http://localhost:3001**.
+- Log in with the admin credentials printed once by the `migrate` service
+  (search its logs for *"Save these now"*).
+- Point your SDK at `WATCHTOWER_INGEST_URL=http://localhost:4000/ingest` with
+  the seeded API key.
+
+**Email is optional.** Leave `RESEND_API_KEY` unset and you still log in via the
+seeded email + password admin; magic-link and alert emails simply stay off.
+
+> **Production note:** set a real `BETTER_AUTH_SECRET` (the compose default is
+> dev-only) and `ADMIN_PASSWORD`. The browser-facing `NEXT_PUBLIC_*` URLs are
+> baked into the web image at build time — rebuild the `web` target if you serve
+> it from a domain other than `localhost`.
+
+---
+
+## Environment variables
+
+Backend (`apps/server`, `apps/ingest`) — see [`apps/server/.env.example`](./apps/server/.env.example):
+
+| Var | Default | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | — | Postgres connection string. |
+| `BETTER_AUTH_SECRET` | — | Auth signing secret (≥ 32 chars). |
+| `BETTER_AUTH_URL` | — | Public URL of the server. |
+| `CORS_ORIGIN` | — | Web app origin (also the alert email deep-link base). |
+| `CLICKHOUSE_URL` / `_USER` / `_PASSWORD` / `_DATABASE` | `localhost:8123` / `default` / — / `watchtower` | ClickHouse connection. |
+| `OPENROUTER_MODELS_URL` | OpenRouter models API | Pricing source (cached, 24h refresh). |
+| `WATCHTOWER_PRICING_FILE` | — | Local pricing JSON for air-gapped deploys. |
+| `WATCHTOWER_SPANS_RETENTION_DAYS` | `30` | Spans TTL; applied via `ALTER … MODIFY TTL` on boot. |
+| `INGEST_PORT` / `INGEST_FLUSH_INTERVAL_MS` / `INGEST_FLUSH_MAX_ROWS` / `INGEST_RATE_LIMIT_RPS` | `4000` / `1000` / `1000` / `100` | Ingest tuning. |
+| `API_KEY_CACHE_TTL_MS` | `60000` | In-memory API-key cache TTL. |
+| `ALERT_EVAL_INTERVAL_MS` / `ALERT_RENOTIFY_MS` | `60000` / `3600000` | Alert evaluator cadence + re-notify cooldown. |
+| `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | — | Email (magic-link, alerts). Optional. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | — | Optional Google OAuth. |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Seed bootstrap; random password printed once if unset. |
+
+Web (`apps/web`) — see [`apps/web/.env.example`](./apps/web/.env.example):
+
+| Var | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SERVER_URL` | Browser-facing server URL (baked at build time). |
+| `NEXT_PUBLIC_APP_URL` | Browser-facing web URL. |
+| `INTERNAL_SERVER_URL` | SSR-only: how the web container reaches the server over the internal network. |
+
+SDK:
+
+| Var | Purpose |
+| --- | --- |
+| `WATCHTOWER_API_KEY` | Project API key. Unset ⇒ SDK is a no-op. |
+| `WATCHTOWER_INGEST_URL` | Ingest endpoint. Defaults to the hosted endpoint. |
+
+---
+
+## Architecture
+
+```
+@watchtower/sdk  ──POST /ingest──▶  apps/ingest  ──bulk insert──▶  ClickHouse
+ (Telemetry impl)                   (auth, rate-limit,            (spans + MVs:
+                                     cost-at-ingest, buffer)       trace / run /
+                                                                   per-minute)
+                                                                       │
+ apps/web (Next.js)  ──tRPC──▶  apps/server  ──reads──────────────────┘
+ (dashboard)                    (tRPC API, better-auth,
+                                 alert evaluator cron)  ──▶  Postgres
+                                                            (orgs, projects,
+                                                             keys, pricing,
+                                                             alerts)
+```
+
+Three deployables scale independently: **ingest** is write-heavy, **server** is
+read-heavy + runs the alert cron, **web** is the dashboard.
+
+### Monorepo layout
+
+Bun workspaces + Turborepo.
+
+| Path | Description |
+| --- | --- |
+| `apps/ingest` | Hono span-ingestion API (API-key auth, cost-at-ingest, write buffer). |
+| `apps/server` | Hono + tRPC dashboard API, better-auth, alert evaluator. |
+| `apps/web` | Next.js dashboard. |
+| `packages/sdk` | Published `@watchtower/sdk` — zero workspace runtime deps, `ai@7` peer. |
+| `packages/contracts` | Zod wire contract shared by SDK ↔ ingest ↔ API. |
+| `packages/cost` | OpenRouter pricing fetch + model normalization + cost computation. |
+| `packages/clickhouse` | Client, DDL migrations + runner, query builders, bulk insert. |
+| `packages/db` | Drizzle schema + migrations (Postgres). |
+| `packages/api` | tRPC routers + services. |
+| `packages/auth` | better-auth config + email. |
+| `packages/env` | Validated env (`@t3-oss/env`). |
+| `packages/ui` | shadcn UI (Tailwind v4, Base UI). |
+
+---
+
+## Development
+
+```bash
+bun install
+bun run check-types        # type-check the whole workspace
+bun run dev                # run apps in watch mode (needs Postgres + ClickHouse)
+```
+
+Local Postgres + ClickHouse come up with `docker compose up postgres clickhouse`,
+or use the full stack above. The data model migrations:
+
+```bash
+bun run db:generate        # generate a Drizzle migration after a schema change
+bun run db:migrate         # apply Postgres migrations
+# ClickHouse DDL applies automatically on ingest boot and in the migrate service
+```
+
+## Contributing
+
+Contributions welcome — especially **model aliases** in `@watchtower/cost` (so
+more providers/models resolve to a price) and provider coverage. Please:
+
+1. Keep `@watchtower/sdk` dependency-free at runtime (zero workspace deps,
+   `ai` stays a peer dep, don't force consumers to install `zod`).
+2. Run `bun run check-types` before opening a PR.
+3. Remember the storage invariants: API keys are stored as sha256 hashes only;
+   unknown models price to `null`, never `$0`; in ClickHouse only `ORDER BY` /
+   `PARTITION BY` are irreversible — everything else is an online `ALTER`.
+4. Sign the [CLA](./CLA.md) — the bot prompts you automatically on your first PR.
+
+## Deferred
+
+OTLP `/v1/traces` ingest (stubbed), AI SDK v5/v6 compatibility (planned via
+OTLP), Redis/queue, ClickHouse tiered storage, and the cloud billing layer are
+intentionally out of this build.
+
+## License
+
+Watchtower uses a split license:
+
+- **The platform** — `apps/*` (ingest, server, web) and the server-side packages
+  (`api`, `db`, `auth`, `clickhouse`, `cost`, `env`, `ui`) — is licensed under the
+  [**Elastic License 2.0**](./LICENSE) (ELv2). In plain terms: you may freely use,
+  modify, and self-host it — **including for commercial/internal use** — but you
+  **may not offer it to third parties as a hosted or managed service** without a
+  commercial license. Contact us for commercial/hosting licensing.
+- **The SDK** — [`@watchtower/sdk`](./packages/sdk) and the bundled
+  [`@watchtower/contracts`](./packages/contracts) — is licensed under
+  [**Apache-2.0**](./packages/sdk/LICENSE) so you can embed the client anywhere
+  with no restrictions, including in commercial and hosted products.
+
+ELv2 is *source-available*, not OSI "open source." Each package's `license` field
+reflects which license applies.
+
+### Contributing & the CLA
+
+Contributions require signing the [Contributor License Agreement](./CLA.md). It's
+automated — the CLA Assistant bot will prompt you on your first PR. The CLA lets
+the project offer Watchtower under both ELv2 and commercial licenses; you retain
+ownership of your contributions.

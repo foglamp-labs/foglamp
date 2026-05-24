@@ -1,4 +1,4 @@
-import { cn } from "@boilerplate/ui/lib/utils";
+import { cn } from "@watchtower/ui/lib/utils";
 
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (

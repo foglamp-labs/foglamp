@@ -1,0 +1,142 @@
+# Watchtower self-host stack — from zero to instrumented with one command:
+#
+#   docker compose up --build
+#
+# Then open the dashboard at http://localhost:3001 and log in with the admin
+# credentials printed once by the `migrate` service (search its logs for
+# "Save these now"). Point the SDK at the ingest API on http://localhost:4000.
+#
+# Plain Postgres + ClickHouse — no Supabase, no Redis, no queue. Email is
+# optional: leave RESEND_API_KEY unset and you still log in via the seeded
+# email+password admin.
+#
+# Override secrets/URLs with a local `.env` next to this file, e.g.
+#   BETTER_AUTH_SECRET=...   (REQUIRED in production; the default is dev-only)
+#   RESEND_API_KEY=...       (enables magic-link + alert emails)
+#   ADMIN_EMAIL=... ADMIN_PASSWORD=...   (otherwise a random password is printed)
+
+# Shared environment for the backend tiers (server, ingest, migrate). Service
+# DNS names (postgres, clickhouse, server) resolve on the default compose
+# network; the published ports are what the host browser / SDK use.
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgres://watchtower:watchtower@postgres:5432/watchtower
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev_only_secret_change_me_0123456789abcd}
+  BETTER_AUTH_URL: http://localhost:3000
+  CORS_ORIGIN: http://localhost:3001
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_USER: default
+  CLICKHOUSE_PASSWORD: ""
+  CLICKHOUSE_DATABASE: watchtower
+  OPENROUTER_MODELS_URL: https://openrouter.ai/api/v1/models
+  WATCHTOWER_SPANS_RETENTION_DAYS: ${WATCHTOWER_SPANS_RETENTION_DAYS:-30}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: watchtower
+      POSTGRES_PASSWORD: watchtower
+      POSTGRES_DB: watchtower
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U watchtower -d watchtower"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    environment:
+      CLICKHOUSE_DB: watchtower
+    volumes:
+      - ch_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # One-shot: Postgres migrate + ClickHouse DDL + retention + seed, then exits.
+  # The app tiers wait for it to complete successfully.
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    restart: "no"
+
+  server:
+    build:
+      context: .
+      target: server
+    environment:
+      <<: *app-env
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  ingest:
+    build:
+      context: .
+      target: ingest
+    environment:
+      <<: *app-env
+      INGEST_PORT: "4000"
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+        NEXT_PUBLIC_APP_URL: http://localhost:3001
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      # Baked into the client bundle (browser-facing); kept here for parity.
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3001
+      # SSR session gate reaches the server over the internal network.
+      INTERNAL_SERVER_URL: http://server:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      server:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pg_data:
+  ch_data:

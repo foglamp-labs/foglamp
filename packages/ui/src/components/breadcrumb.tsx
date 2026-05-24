@@ -2,7 +2,7 @@ import * as React from "react";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 
-import { cn } from "@boilerplate/ui/lib/utils";
+import { cn } from "@watchtower/ui/lib/utils";
 import { IconChevronRight, IconDots } from "@tabler/icons-react";
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {

@@ -4,35 +4,58 @@
     "": {
       "name": "boilerplate",
       "dependencies": {
-        "@boilerplate/env": "workspace:*",
+        "@watchtower/env": "workspace:*",
         "dotenv": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@boilerplate/config": "workspace:*",
         "@types/bun": "catalog:",
+        "@watchtower/config": "workspace:*",
         "turbo": "^2.8.12",
+        "typescript": "^5",
+      },
+    },
+    "apps/ingest": {
+      "name": "ingest",
+      "dependencies": {
+        "@watchtower/clickhouse": "workspace:*",
+        "@watchtower/contracts": "workspace:*",
+        "@watchtower/cost": "workspace:*",
+        "@watchtower/db": "workspace:*",
+        "@watchtower/env": "workspace:*",
+        "dotenv": "catalog:",
+        "drizzle-orm": "^0.45.1",
+        "evlog": "^2.13.0",
+        "hono": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "catalog:",
+        "@watchtower/config": "workspace:*",
+        "tsdown": "^0.16.5",
         "typescript": "^5",
       },
     },
     "apps/server": {
       "name": "server",
       "dependencies": {
-        "@boilerplate/api": "workspace:*",
-        "@boilerplate/auth": "workspace:*",
-        "@boilerplate/db": "workspace:*",
-        "@boilerplate/env": "workspace:*",
         "@hono/trpc-server": "^0.4.0",
         "@trpc/server": "catalog:",
+        "@watchtower/api": "workspace:*",
+        "@watchtower/auth": "workspace:*",
+        "@watchtower/db": "workspace:*",
+        "@watchtower/env": "workspace:*",
         "better-auth": "catalog:",
         "dotenv": "catalog:",
+        "drizzle-orm": "^0.45.1",
         "evlog": "^2.13.0",
         "hono": "catalog:",
+        "uuidv7": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@boilerplate/config": "workspace:*",
         "@types/bun": "catalog:",
+        "@watchtower/config": "workspace:*",
         "tsdown": "^0.16.5",
         "typescript": "^5",
       },
@@ -41,16 +64,16 @@
       "name": "web",
       "version": "0.1.0",
       "dependencies": {
-        "@boilerplate/api": "workspace:*",
-        "@boilerplate/auth": "workspace:*",
-        "@boilerplate/env": "workspace:*",
-        "@boilerplate/ui": "workspace:*",
         "@tabler/icons-react": "^3.41.1",
         "@tanstack/react-form": "^1.28.0",
         "@tanstack/react-query": "^5.90.12",
         "@trpc/client": "catalog:",
         "@trpc/server": "catalog:",
         "@trpc/tanstack-react-query": "^11.13.4",
+        "@watchtower/api": "workspace:*",
+        "@watchtower/auth": "workspace:*",
+        "@watchtower/env": "workspace:*",
+        "@watchtower/ui": "workspace:*",
         "babel-plugin-react-compiler": "^1.0.0",
         "better-auth": "catalog:",
         "date-fns": "^4.1.0",
@@ -63,39 +86,54 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@boilerplate/config": "workspace:*",
         "@tailwindcss/postcss": "^4.1.18",
         "@tanstack/react-query-devtools": "^5.91.1",
         "@types/node": "^20",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
+        "@watchtower/config": "workspace:*",
         "tailwindcss": "catalog:",
         "typescript": "^5",
       },
     },
-    "packages/api": {
-      "name": "@boilerplate/api",
+    "examples/basic": {
+      "name": "watchtower-example-basic",
       "dependencies": {
-        "@boilerplate/auth": "workspace:*",
-        "@boilerplate/db": "workspace:*",
-        "@boilerplate/env": "workspace:*",
+        "@ai-sdk/openai": "catalog:",
+        "@watchtower/sdk": "workspace:*",
+        "ai": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "catalog:",
+        "@watchtower/config": "workspace:*",
+        "typescript": "^5",
+      },
+    },
+    "packages/api": {
+      "name": "@watchtower/api",
+      "dependencies": {
         "@trpc/client": "catalog:",
         "@trpc/server": "catalog:",
+        "@watchtower/auth": "workspace:*",
+        "@watchtower/clickhouse": "workspace:*",
+        "@watchtower/db": "workspace:*",
+        "@watchtower/env": "workspace:*",
         "dotenv": "catalog:",
+        "drizzle-orm": "^0.45.1",
         "evlog": "^2.13.0",
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@boilerplate/config": "workspace:*",
+        "@watchtower/config": "workspace:*",
         "hono": "catalog:",
         "typescript": "^5",
       },
     },
     "packages/auth": {
-      "name": "@boilerplate/auth",
+      "name": "@watchtower/auth",
       "dependencies": {
-        "@boilerplate/db": "workspace:*",
-        "@boilerplate/env": "workspace:*",
+        "@watchtower/db": "workspace:*",
+        "@watchtower/env": "workspace:*",
         "better-auth": "catalog:",
         "dotenv": "catalog:",
         "evlog": "^2.13.0",
@@ -103,18 +141,58 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@boilerplate/config": "workspace:*",
+        "@watchtower/config": "workspace:*",
+        "typescript": "^5",
+      },
+    },
+    "packages/clickhouse": {
+      "name": "@watchtower/clickhouse",
+      "version": "0.0.0",
+      "dependencies": {
+        "@clickhouse/client": "catalog:",
+        "@watchtower/contracts": "workspace:*",
+        "@watchtower/env": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "catalog:",
+        "@watchtower/config": "workspace:*",
         "typescript": "^5",
       },
     },
     "packages/config": {
-      "name": "@boilerplate/config",
+      "name": "@watchtower/config",
       "version": "0.0.0",
     },
-    "packages/db": {
-      "name": "@boilerplate/db",
+    "packages/contracts": {
+      "name": "@watchtower/contracts",
+      "version": "0.0.0",
       "dependencies": {
-        "@boilerplate/env": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "catalog:",
+        "@watchtower/config": "workspace:*",
+        "typescript": "^5",
+      },
+    },
+    "packages/cost": {
+      "name": "@watchtower/cost",
+      "version": "0.0.0",
+      "dependencies": {
+        "@watchtower/contracts": "workspace:*",
+        "@watchtower/env": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "catalog:",
+        "@watchtower/config": "workspace:*",
+        "typescript": "^5",
+      },
+    },
+    "packages/db": {
+      "name": "@watchtower/db",
+      "dependencies": {
+        "@watchtower/env": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "^0.45.1",
         "pg": "^8.17.1",
@@ -122,14 +200,14 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@boilerplate/config": "workspace:*",
         "@types/pg": "^8.16.0",
+        "@watchtower/config": "workspace:*",
         "drizzle-kit": "^0.31.8",
         "typescript": "^5",
       },
     },
     "packages/env": {
-      "name": "@boilerplate/env",
+      "name": "@watchtower/env",
       "version": "0.0.0",
       "dependencies": {
         "@t3-oss/env-core": "^0.13.1",
@@ -138,13 +216,37 @@
         "zod": "catalog:",
       },
       "devDependencies": {
-        "@boilerplate/config": "workspace:*",
         "@types/bun": "catalog:",
+        "@watchtower/config": "workspace:*",
         "typescript": "^5",
       },
     },
+    "packages/sdk": {
+      "name": "@watchtower/sdk",
+      "version": "0.0.1",
+      "dependencies": {
+        "uuidv7": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "catalog:",
+        "@vercel/functions": "catalog:",
+        "@watchtower/config": "workspace:*",
+        "@watchtower/contracts": "workspace:*",
+        "ai": "catalog:",
+        "tsdown": "^0.16.5",
+        "typescript": "^5",
+        "zod": "catalog:",
+      },
+      "peerDependencies": {
+        "@vercel/functions": "^3.0.0",
+        "ai": "^7.0.0-beta.1",
+      },
+      "optionalPeers": [
+        "@vercel/functions",
+      ],
+    },
     "packages/ui": {
-      "name": "@boilerplate/ui",
+      "name": "@watchtower/ui",
       "version": "0.0.0",
       "dependencies": {
         "@base-ui/react": "^1.4.0",
@@ -168,20 +270,24 @@
         "vaul": "^1.1.2",
       },
       "devDependencies": {
-        "@boilerplate/config": "workspace:*",
         "@types/react": "catalog:",
         "@types/react-dom": "catalog:",
+        "@watchtower/config": "workspace:*",
         "tailwindcss": "catalog:",
         "typescript": "^5.9.3",
       },
     },
   },
   "catalog": {
+    "@ai-sdk/openai": "4.0.0-beta.44",
+    "@clickhouse/client": "^1.18.5",
     "@trpc/client": "^11.13.4",
     "@trpc/server": "^11.13.4",
     "@types/bun": "^1.3.4",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
+    "@vercel/functions": "^3.6.0",
+    "ai": "7.0.0-beta.116",
     "better-auth": "1.5.5",
     "dotenv": "^17.2.2",
     "hono": "^4.8.2",
@@ -190,9 +296,18 @@
     "react-dom": "^19.2.3",
     "sonner": "^2.0.5",
     "tailwindcss": "^4.1.18",
+    "uuidv7": "^1.2.1",
     "zod": "^4.1.13",
   },
   "packages": {
+    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.0-beta.67", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.14", "@ai-sdk/provider-utils": "5.0.0-beta.30", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-qG1a0wwjLL+oVI1LOdpEs74PRl3yNPF5i0CgiuXTbU0Bb+JyUFuSwCJiQvlsIylu/mNpav3Mb+ODj15EF6/NZA=="],
+
+    "@ai-sdk/openai": ["@ai-sdk/openai@4.0.0-beta.44", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.14", "@ai-sdk/provider-utils": "5.0.0-beta.30" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-kXdGA6vyh9SwL/B11UhODjbw0koFkDA/yD7hacBxMHSZx6l3T9hZLECEwOkn6OZDrQR+vno5Ka/pUyXrG82BkQ=="],
+
+    "@ai-sdk/provider": ["@ai-sdk/provider@4.0.0-beta.14", "", { "dependencies": { "json-schema": "^0.4.0" } }, "sha512-SMijtjVHs38n0dMkTcNuGrnStiF76OhAqS0R+ZX4iXUnuPPyTxQoVcF8Xuf2AoBB5rqndTId5FVT05bgqD5KsA=="],
+
+    "@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@5.0.0-beta.30", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.14", "@standard-schema/spec": "^1.1.0", "@workflow/serde": "4.1.0", "eventsource-parser": "^3.0.8" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-X3AxTsFJZr9Mw32SncWJA4/ShU8NA/XjhoallCYdcdQZ2gZZ/cIDyJJ6pNh1aBhicRNHv2ndgI6w/H2NGNIjOA=="],
+
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw=="],
@@ -275,17 +390,9 @@
 
     "@better-fetch/fetch": ["@better-fetch/fetch@1.1.21", "", {}, "sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A=="],
 
-    "@boilerplate/api": ["@boilerplate/api@workspace:packages/api"],
+    "@clickhouse/client": ["@clickhouse/client@1.18.5", "", { "dependencies": { "@clickhouse/client-common": "1.18.5" } }, "sha512-4FfoyMkFWhsdNMuXsoEL6l3c12svA63BBJBtDo9SrxRZ14RdmN6jLr/rF3f84BK8cFoxETZCSeKlsbk6NNYebw=="],
 
-    "@boilerplate/auth": ["@boilerplate/auth@workspace:packages/auth"],
-
-    "@boilerplate/config": ["@boilerplate/config@workspace:packages/config"],
-
-    "@boilerplate/db": ["@boilerplate/db@workspace:packages/db"],
-
-    "@boilerplate/env": ["@boilerplate/env@workspace:packages/env"],
-
-    "@boilerplate/ui": ["@boilerplate/ui@workspace:packages/ui"],
+    "@clickhouse/client-common": ["@clickhouse/client-common@1.18.5", "", {}, "sha512-g9LwcS1dvkatKDsIjT1PwUHldsiYzwdKAB0nXfd9APLd+t4PrNJa+my+dXcqJdmcWyhWjKLP/2/ztBwgxp+sbQ=="],
 
     "@date-fns/tz": ["@date-fns/tz@1.4.1", "", {}, "sha512-P5LUNhtbj6YfI3iJjw5EL9eUAG6OitD0W3fWQcpQjDRc/QIsL0tRNuO1PcDvPccWL1fSTXXdE1ds+l95DV/OFA=="],
 
@@ -693,9 +800,37 @@
 
     "@types/whatwg-url": ["@types/whatwg-url@13.0.0", "", { "dependencies": { "@types/webidl-conversions": "*" } }, "sha512-N8WXpbE6Wgri7KUSvrmQcqrMllKZ9uxkYWMt+mCSGwNc0Hsw9VQTW7ApqI4XNrx6/SaM2QQJCzMPDEXE058s+Q=="],
 
+    "@vercel/functions": ["@vercel/functions@3.6.0", "", { "dependencies": { "@vercel/oidc": "3.4.1" }, "peerDependencies": { "@aws-sdk/credential-provider-web-identity": "*" }, "optionalPeers": ["@aws-sdk/credential-provider-web-identity"] }, "sha512-Xj68JYqqJwtqFWJN7EWmFN7MOiUjv5whjw48UEKqQbg8r7hRkhuJhncTU0ba3jJCh/wxEuLWckrtsKcrHQraxw=="],
+
+    "@vercel/oidc": ["@vercel/oidc@3.4.1", "", {}, "sha512-H6B+/ig/GoahccL3WZjiHayHw1H5KhvTJNceqYulwfK9kkz5iul2hTmYzcJ7tTCQzyd0dutuL9xYFZCyLUqsog=="],
+
+    "@watchtower/api": ["@watchtower/api@workspace:packages/api"],
+
+    "@watchtower/auth": ["@watchtower/auth@workspace:packages/auth"],
+
+    "@watchtower/clickhouse": ["@watchtower/clickhouse@workspace:packages/clickhouse"],
+
+    "@watchtower/config": ["@watchtower/config@workspace:packages/config"],
+
+    "@watchtower/contracts": ["@watchtower/contracts@workspace:packages/contracts"],
+
+    "@watchtower/cost": ["@watchtower/cost@workspace:packages/cost"],
+
+    "@watchtower/db": ["@watchtower/db@workspace:packages/db"],
+
+    "@watchtower/env": ["@watchtower/env@workspace:packages/env"],
+
+    "@watchtower/sdk": ["@watchtower/sdk@workspace:packages/sdk"],
+
+    "@watchtower/ui": ["@watchtower/ui@workspace:packages/ui"],
+
+    "@workflow/serde": ["@workflow/serde@4.1.0", "", {}, "sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ=="],
+
     "accepts": ["accepts@2.0.0", "", { "dependencies": { "mime-types": "^3.0.0", "negotiator": "^1.0.0" } }, "sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng=="],
 
     "agent-base": ["agent-base@7.1.4", "", {}, "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="],
+
+    "ai": ["ai@7.0.0-beta.116", "", { "dependencies": { "@ai-sdk/gateway": "4.0.0-beta.67", "@ai-sdk/provider": "4.0.0-beta.14", "@ai-sdk/provider-utils": "5.0.0-beta.30" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-xLVY+YU0sKmQ7zVU6y/6vCFn7o8HHNNgGTK789rqxxmcwSIau/RsmoCzXp/1c6sppA+PU6i4Uh5aCwFAQmjwEA=="],
 
     "ajv": ["ajv@8.20.0", "", { "dependencies": { "fast-deep-equal": "^3.1.3", "fast-uri": "^3.0.1", "json-schema-traverse": "^1.0.0", "require-from-string": "^2.0.2" } }, "sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA=="],
 
@@ -1023,6 +1158,8 @@
 
     "import-fresh": ["import-fresh@3.3.1", "", { "dependencies": { "parent-module": "^1.0.0", "resolve-from": "^4.0.0" } }, "sha512-TR3KfrTZTYLPB6jUjfx6MF9WcWrHL9su5TObK4ZkYgBdWKPOFoSoQIdEuTuR82pmtxH2spWG9h6etwfr1pLBqQ=="],
 
+    "ingest": ["ingest@workspace:apps/ingest"],
+
     "inherits": ["inherits@2.0.4", "", {}, "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ=="],
 
     "input-otp": ["input-otp@1.4.2", "", { "peerDependencies": { "react": "^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc", "react-dom": "^16.8 || ^17.0 || ^18.0 || ^19.0.0 || ^19.0.0-rc" } }, "sha512-l3jWwYNvrEa6NTCt7BECfCm48GvwuZzkoeG3gBL2w4CHeOXW3eKFmf9UNYkNfYc3mxMrthMnxjIE07MT0zLBQA=="],
@@ -1080,6 +1217,8 @@
     "jsesc": ["jsesc@3.1.0", "", { "bin": { "jsesc": "bin/jsesc" } }, "sha512-/sM3dO2FOzXjKQhJuo0Q173wf2KOo8t4I8vHy6lF9poUp7bKT0/NHE8fPX23PwfhnykfqnC2xRxOnVw5XuGIaA=="],
 
     "json-parse-even-better-errors": ["json-parse-even-better-errors@2.3.1", "", {}, "sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w=="],
+
+    "json-schema": ["json-schema@0.4.0", "", {}, "sha512-es94M3nTIfsEPisRafak+HDLfHXnKBhV3vU5eqPcS3flIWqcxJWgXHXiey3YrpaNsanY5ei1VoYEbOzijuq9BA=="],
 
     "json-schema-traverse": ["json-schema-traverse@1.0.0", "", {}, "sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug=="],
 
@@ -1487,6 +1626,8 @@
 
     "victory-vendor": ["victory-vendor@37.3.6", "", { "dependencies": { "@types/d3-array": "^3.0.3", "@types/d3-ease": "^3.0.0", "@types/d3-interpolate": "^3.0.1", "@types/d3-scale": "^4.0.2", "@types/d3-shape": "^3.1.0", "@types/d3-time": "^3.0.0", "@types/d3-timer": "^3.0.0", "d3-array": "^3.1.6", "d3-ease": "^3.0.1", "d3-interpolate": "^3.0.1", "d3-scale": "^4.0.2", "d3-shape": "^3.1.0", "d3-time": "^3.0.0", "d3-timer": "^3.0.1" } }, "sha512-SbPDPdDBYp+5MJHhBCAyI7wKM3d5ivekigc2Dk2s7pgbZ9wIgIBYGVw4zGHBml/qTFbexrofXW6Gu4noGxrOwQ=="],
 
+    "watchtower-example-basic": ["watchtower-example-basic@workspace:examples/basic"],
+
     "web": ["web@workspace:apps/web"],
 
     "web-streams-polyfill": ["web-streams-polyfill@3.3.3", "", {}, "sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw=="],
@@ -1520,6 +1661,8 @@
     "zod": ["zod@4.3.6", "", {}, "sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg=="],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, "sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA=="],
+
+    "@ai-sdk/gateway/@vercel/oidc": ["@vercel/oidc@3.2.0", "", {}, "sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug=="],
 
     "@babel/core/semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 

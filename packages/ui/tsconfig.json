@@ -1,11 +1,11 @@
 {
-  "extends": "@boilerplate/config/tsconfig.base.json",
+  "extends": "@watchtower/config/tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
     "jsx": "react-jsx",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "paths": {
-      "@boilerplate/ui/*": ["./src/*"]
+      "@watchtower/ui/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

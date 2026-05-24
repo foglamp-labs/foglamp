@@ -1,12 +1,12 @@
 "use client";
 
-import { Button } from "@boilerplate/ui/components/button";
+import { Button } from "@watchtower/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@boilerplate/ui/components/dropdown-menu";
+} from "@watchtower/ui/components/dropdown-menu";
 import { IconMoon, IconSun } from "@tabler/icons-react";
 import { useTheme } from "next-themes";
 

@@ -1,5 +1,6 @@
 {
   "name": "web",
+  "license": "Elastic-2.0",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,10 +9,10 @@
     "start": "next start"
   },
   "dependencies": {
-    "@boilerplate/api": "workspace:*",
-    "@boilerplate/auth": "workspace:*",
-    "@boilerplate/env": "workspace:*",
-    "@boilerplate/ui": "workspace:*",
+    "@watchtower/api": "workspace:*",
+    "@watchtower/auth": "workspace:*",
+    "@watchtower/env": "workspace:*",
+    "@watchtower/ui": "workspace:*",
     "@tabler/icons-react": "^3.41.1",
     "@tanstack/react-form": "^1.28.0",
     "@tanstack/react-query": "^5.90.12",
@@ -30,7 +31,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@boilerplate/config": "workspace:*",
+    "@watchtower/config": "workspace:*",
     "@tailwindcss/postcss": "^4.1.18",
     "@tanstack/react-query-devtools": "^5.91.1",
     "@types/node": "^20",

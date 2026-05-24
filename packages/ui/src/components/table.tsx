@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { cn } from "@boilerplate/ui/lib/utils";
+import { cn } from "@watchtower/ui/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (

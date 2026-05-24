@@ -1,0 +1,28 @@
+{
+  "name": "@watchtower/clickhouse",
+  "license": "Elastic-2.0",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@watchtower/contracts": "workspace:*",
+    "@watchtower/env": "workspace:*",
+    "@clickhouse/client": "catalog:"
+  },
+  "devDependencies": {
+    "@watchtower/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "^5"
+  }
+}

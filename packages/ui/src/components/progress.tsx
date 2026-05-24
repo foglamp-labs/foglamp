@@ -2,7 +2,7 @@
 
 import { Progress as ProgressPrimitive } from "@base-ui/react/progress";
 
-import { cn } from "@boilerplate/ui/lib/utils";
+import { cn } from "@watchtower/ui/lib/utils";
 
 function Progress({
   className,

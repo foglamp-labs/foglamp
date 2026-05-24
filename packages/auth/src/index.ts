@@ -1,9 +1,9 @@
-import { createDb } from "@boilerplate/db";
-import * as schema from "@boilerplate/db/schema/auth";
-import { env, getTrustedAppOrigins } from "@boilerplate/env/server";
-import { betterAuth } from "better-auth";
+import { createDb } from "@watchtower/db";
+import * as schema from "@watchtower/db/schema/auth";
+import { env, getTrustedAppOrigins } from "@watchtower/env/server";
+import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { magicLink } from "better-auth/plugins";
+import { magicLink, organization } from "better-auth/plugins";
 import { sendMagicLinkEmail } from "./email";
 
 function getSharedCookieDomain(appUrl: string) {
@@ -24,6 +24,25 @@ function getSharedCookieDomain(appUrl: string) {
 export function createAuth() {
   const db = createDb();
 
+  // Email+password is the always-on floor so a self-host works without any
+  // third-party setup. Magic-link and Google layer on only when configured.
+  const emailEnabled = Boolean(env.RESEND_API_KEY);
+  const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+
+  // The organization plugin owns organization/member/invitation (roles +
+  // invites). Magic-link is added only when email is configured.
+  const plugins: BetterAuthPlugin[] = [organization()];
+  if (emailEnabled) {
+    plugins.push(
+      magicLink({
+        expiresIn: 60 * 15,
+        sendMagicLink: async ({ email, url }) => {
+          await sendMagicLinkEmail({ to: email, url });
+        },
+      }),
+    );
+  }
+
   return betterAuth({
     database: drizzleAdapter(db, {
       provider: "pg",
@@ -34,8 +53,16 @@ export function createAuth() {
       env.CORS_EXTRA_ORIGINS
     ),
     emailAndPassword: {
-      enabled: false,
+      enabled: true,
     },
+    socialProviders: googleEnabled
+      ? {
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID as string,
+            clientSecret: env.GOOGLE_CLIENT_SECRET as string,
+          },
+        }
+      : undefined,
     session: {
       // Signed short-lived cookie so getSession avoids a DB round-trip on
       // most requests. Revocation lags by at most maxAge.
@@ -63,14 +90,7 @@ export function createAuth() {
         httpOnly: true,
       },
     },
-    plugins: [
-      magicLink({
-        expiresIn: 60 * 15,
-        sendMagicLink: async ({ email, url }) => {
-          await sendMagicLinkEmail({ to: email, url });
-        },
-      }),
-    ],
+    plugins,
   });
 }
 

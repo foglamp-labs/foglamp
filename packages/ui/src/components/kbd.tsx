@@ -1,4 +1,4 @@
-import { cn } from "@boilerplate/ui/lib/utils";
+import { cn } from "@watchtower/ui/lib/utils";
 
 function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
   return (

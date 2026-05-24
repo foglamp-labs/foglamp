@@ -1,7 +1,9 @@
-import { auth } from "@boilerplate/auth";
-import { db } from "@boilerplate/db";
+import { auth } from "@watchtower/auth";
+import { db } from "@watchtower/db";
 import { createLogger, type RequestLogger } from "evlog";
 import type { Context as HonoContext } from "hono";
+
+import { ch } from "./clickhouse";
 
 type SessionResult = Awaited<ReturnType<typeof auth.api.getSession>>;
 
@@ -23,6 +25,7 @@ export async function createContext({ context }: CreateContextOptions) {
     (context.get("log") as RequestLogger | undefined) ?? createLogger();
   return {
     db,
+    ch,
     session,
     log,
   };

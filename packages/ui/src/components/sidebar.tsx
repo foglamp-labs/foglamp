@@ -5,24 +5,24 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 
-import { useIsMobile } from "@boilerplate/ui/hooks/use-mobile";
-import { cn } from "@boilerplate/ui/lib/utils";
-import { Button } from "@boilerplate/ui/components/button";
-import { Input } from "@boilerplate/ui/components/input";
-import { Separator } from "@boilerplate/ui/components/separator";
+import { useIsMobile } from "@watchtower/ui/hooks/use-mobile";
+import { cn } from "@watchtower/ui/lib/utils";
+import { Button } from "@watchtower/ui/components/button";
+import { Input } from "@watchtower/ui/components/input";
+import { Separator } from "@watchtower/ui/components/separator";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@boilerplate/ui/components/sheet";
-import { Skeleton } from "@boilerplate/ui/components/skeleton";
+} from "@watchtower/ui/components/sheet";
+import { Skeleton } from "@watchtower/ui/components/skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@boilerplate/ui/components/tooltip";
+} from "@watchtower/ui/components/tooltip";
 import { IconLayoutSidebar } from "@tabler/icons-react";
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";

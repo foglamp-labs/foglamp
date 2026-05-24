@@ -37,12 +37,12 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@boilerplate/ui/components/accordion";
+} from "@watchtower/ui/components/accordion";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from "@boilerplate/ui/components/alert";
+} from "@watchtower/ui/components/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,15 +53,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@boilerplate/ui/components/alert-dialog";
-import { AspectRatio } from "@boilerplate/ui/components/aspect-ratio";
+} from "@watchtower/ui/components/alert-dialog";
+import { AspectRatio } from "@watchtower/ui/components/aspect-ratio";
 import {
   Avatar,
   AvatarBadge,
   AvatarFallback,
   AvatarGroup,
-} from "@boilerplate/ui/components/avatar";
-import { Badge } from "@boilerplate/ui/components/badge";
+} from "@watchtower/ui/components/avatar";
+import { Badge } from "@watchtower/ui/components/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -69,36 +69,36 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@boilerplate/ui/components/breadcrumb";
-import { Button } from "@boilerplate/ui/components/button";
-import { ButtonGroup } from "@boilerplate/ui/components/button-group";
-import { Calendar } from "@boilerplate/ui/components/calendar";
+} from "@watchtower/ui/components/breadcrumb";
+import { Button } from "@watchtower/ui/components/button";
+import { ButtonGroup } from "@watchtower/ui/components/button-group";
+import { Calendar } from "@watchtower/ui/components/calendar";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@boilerplate/ui/components/carousel";
+} from "@watchtower/ui/components/carousel";
 import {
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@boilerplate/ui/components/chart";
+} from "@watchtower/ui/components/chart";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@boilerplate/ui/components/card";
-import { Checkbox } from "@boilerplate/ui/components/checkbox";
+} from "@watchtower/ui/components/card";
+import { Checkbox } from "@watchtower/ui/components/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@boilerplate/ui/components/collapsible";
+} from "@watchtower/ui/components/collapsible";
 import {
   Combobox,
   ComboboxContent,
@@ -106,7 +106,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
-} from "@boilerplate/ui/components/combobox";
+} from "@watchtower/ui/components/combobox";
 import {
   Command,
   CommandEmpty,
@@ -116,7 +116,7 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from "@boilerplate/ui/components/command";
+} from "@watchtower/ui/components/command";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -124,7 +124,7 @@ import {
   ContextMenuSeparator,
   ContextMenuShortcut,
   ContextMenuTrigger,
-} from "@boilerplate/ui/components/context-menu";
+} from "@watchtower/ui/components/context-menu";
 import {
   Dialog,
   DialogContent,
@@ -133,7 +133,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@boilerplate/ui/components/dialog";
+} from "@watchtower/ui/components/dialog";
 import {
   Drawer,
   DrawerContent,
@@ -142,7 +142,7 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "@boilerplate/ui/components/drawer";
+} from "@watchtower/ui/components/drawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -150,7 +150,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@boilerplate/ui/components/dropdown-menu";
+} from "@watchtower/ui/components/dropdown-menu";
 import {
   Empty,
   EmptyContent,
@@ -158,38 +158,38 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@boilerplate/ui/components/empty";
+} from "@watchtower/ui/components/empty";
 import {
   Field,
   FieldDescription,
   FieldLabel,
-} from "@boilerplate/ui/components/field";
+} from "@watchtower/ui/components/field";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "@boilerplate/ui/components/hover-card";
-import { Input } from "@boilerplate/ui/components/input";
+} from "@watchtower/ui/components/hover-card";
+import { Input } from "@watchtower/ui/components/input";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from "@boilerplate/ui/components/input-group";
+} from "@watchtower/ui/components/input-group";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSeparator,
   InputOTPSlot,
-} from "@boilerplate/ui/components/input-otp";
+} from "@watchtower/ui/components/input-otp";
 import {
   Item,
   ItemContent,
   ItemDescription,
   ItemMedia,
   ItemTitle,
-} from "@boilerplate/ui/components/item";
-import { Kbd, KbdGroup } from "@boilerplate/ui/components/kbd";
-import { Label } from "@boilerplate/ui/components/label";
+} from "@watchtower/ui/components/item";
+import { Kbd, KbdGroup } from "@watchtower/ui/components/kbd";
+import { Label } from "@watchtower/ui/components/label";
 import {
   Menubar,
   MenubarContent,
@@ -198,11 +198,11 @@ import {
   MenubarSeparator,
   MenubarShortcut,
   MenubarTrigger,
-} from "@boilerplate/ui/components/menubar";
+} from "@watchtower/ui/components/menubar";
 import {
   NativeSelect,
   NativeSelectOption,
-} from "@boilerplate/ui/components/native-select";
+} from "@watchtower/ui/components/native-select";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -210,7 +210,7 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-} from "@boilerplate/ui/components/navigation-menu";
+} from "@watchtower/ui/components/navigation-menu";
 import {
   Pagination,
   PaginationContent,
@@ -219,31 +219,31 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@boilerplate/ui/components/pagination";
+} from "@watchtower/ui/components/pagination";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@boilerplate/ui/components/popover";
-import { Progress } from "@boilerplate/ui/components/progress";
+} from "@watchtower/ui/components/popover";
+import { Progress } from "@watchtower/ui/components/progress";
 import {
   RadioGroup,
   RadioGroupItem,
-} from "@boilerplate/ui/components/radio-group";
+} from "@watchtower/ui/components/radio-group";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@boilerplate/ui/components/resizable";
-import { ScrollArea } from "@boilerplate/ui/components/scroll-area";
+} from "@watchtower/ui/components/resizable";
+import { ScrollArea } from "@watchtower/ui/components/scroll-area";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@boilerplate/ui/components/select";
-import { Separator } from "@boilerplate/ui/components/separator";
+} from "@watchtower/ui/components/select";
+import { Separator } from "@watchtower/ui/components/separator";
 import {
   Sheet,
   SheetContent,
@@ -251,11 +251,11 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@boilerplate/ui/components/sheet";
-import { Skeleton } from "@boilerplate/ui/components/skeleton";
-import { Slider } from "@boilerplate/ui/components/slider";
-import { Spinner } from "@boilerplate/ui/components/spinner";
-import { Switch } from "@boilerplate/ui/components/switch";
+} from "@watchtower/ui/components/sheet";
+import { Skeleton } from "@watchtower/ui/components/skeleton";
+import { Slider } from "@watchtower/ui/components/slider";
+import { Spinner } from "@watchtower/ui/components/spinner";
+import { Switch } from "@watchtower/ui/components/switch";
 import {
   Table,
   TableBody,
@@ -265,25 +265,25 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@boilerplate/ui/components/table";
+} from "@watchtower/ui/components/table";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@boilerplate/ui/components/tabs";
-import { Textarea } from "@boilerplate/ui/components/textarea";
-import { Toggle } from "@boilerplate/ui/components/toggle";
+} from "@watchtower/ui/components/tabs";
+import { Textarea } from "@watchtower/ui/components/textarea";
+import { Toggle } from "@watchtower/ui/components/toggle";
 import {
   ToggleGroup,
   ToggleGroupItem,
-} from "@boilerplate/ui/components/toggle-group";
+} from "@watchtower/ui/components/toggle-group";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@boilerplate/ui/components/tooltip";
+} from "@watchtower/ui/components/tooltip";
 
 import { ComponentSection, SizeRow, VariantColumn } from "./showcase-shell";
 

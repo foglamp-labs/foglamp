@@ -22,7 +22,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@boilerplate/ui/*": ["../../packages/ui/src/*"]
+      "@watchtower/ui/*": ["../../packages/ui/src/*"]
     }
   },
   "include": [

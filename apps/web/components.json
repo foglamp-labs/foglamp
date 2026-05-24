@@ -13,8 +13,8 @@
   "iconLibrary": "tabler",
   "aliases": {
     "components": "@/components",
-    "utils": "@boilerplate/ui/lib/utils",
-    "ui": "@boilerplate/ui/components",
+    "utils": "@watchtower/ui/lib/utils",
+    "ui": "@watchtower/ui/components",
     "lib": "@/lib",
     "hooks": "@/hooks"
   },

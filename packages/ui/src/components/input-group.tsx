@@ -3,10 +3,10 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@boilerplate/ui/lib/utils";
-import { Button } from "@boilerplate/ui/components/button";
-import { Input } from "@boilerplate/ui/components/input";
-import { Textarea } from "@boilerplate/ui/components/textarea";
+import { cn } from "@watchtower/ui/lib/utils";
+import { Button } from "@watchtower/ui/components/button";
+import { Input } from "@watchtower/ui/components/input";
+import { Textarea } from "@watchtower/ui/components/textarea";
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (

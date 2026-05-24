@@ -1,4 +1,4 @@
-import { auth } from "@boilerplate/auth";
+import { auth } from "@watchtower/auth";
 import { createRequestLogger } from "evlog";
 import { maskEmail } from "evlog/better-auth";
 import type { EvlogVariables } from "evlog/hono";

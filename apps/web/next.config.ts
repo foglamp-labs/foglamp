@@ -1,4 +1,4 @@
-import "@boilerplate/env/web";
+import "@watchtower/env/web";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {

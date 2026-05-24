@@ -1,5 +1,6 @@
 {
-  "name": "@boilerplate/api",
+  "name": "@watchtower/api",
+  "license": "Elastic-2.0",
   "type": "module",
   "exports": {
     ".": {
@@ -11,17 +12,19 @@
   },
   "scripts": {},
   "dependencies": {
-    "@boilerplate/auth": "workspace:*",
-    "@boilerplate/db": "workspace:*",
-    "@boilerplate/env": "workspace:*",
+    "@watchtower/auth": "workspace:*",
+    "@watchtower/clickhouse": "workspace:*",
+    "@watchtower/db": "workspace:*",
+    "@watchtower/env": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "dotenv": "catalog:",
+    "drizzle-orm": "^0.45.1",
     "evlog": "^2.13.0",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@boilerplate/config": "workspace:*",
+    "@watchtower/config": "workspace:*",
     "hono": "catalog:",
     "typescript": "^5"
   }

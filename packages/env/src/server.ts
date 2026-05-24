@@ -8,11 +8,48 @@ const serverSchema = {
   BETTER_AUTH_URL: z.url(),
   CORS_ORIGIN: z.url(),
   CORS_EXTRA_ORIGINS: z.string().optional(),
-  RESEND_API_KEY: z.string().min(1),
+  // Optional: email (magic-link, alert notifications) is enabled only when set.
+  // An email-less self-host logs in via the seeded email+password admin.
+  RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
 
   // Injected by the host (Cloud Run, Railway, Fly.io, …); 3000 for local dev.
   PORT: z.coerce.number().default(3000),
+
+  // --- ClickHouse (span store) ---
+  CLICKHOUSE_URL: z.string().min(1).default("http://localhost:8123"),
+  CLICKHOUSE_USER: z.string().default("default"),
+  CLICKHOUSE_PASSWORD: z.string().default(""),
+  CLICKHOUSE_DATABASE: z.string().default("watchtower"),
+
+  // --- Cost / pricing (@watchtower/cost) ---
+  OPENROUTER_MODELS_URL: z.url().default("https://openrouter.ai/api/v1/models"),
+  // Optional local pricing JSON for air-gapped deployments.
+  WATCHTOWER_PRICING_FILE: z.string().optional(),
+
+  // --- apps/ingest ---
+  INGEST_PORT: z.coerce.number().default(4000),
+  INGEST_FLUSH_INTERVAL_MS: z.coerce.number().default(1000),
+  INGEST_FLUSH_MAX_ROWS: z.coerce.number().default(1000),
+  INGEST_RATE_LIMIT_RPS: z.coerce.number().default(100),
+  API_KEY_CACHE_TTL_MS: z.coerce.number().default(60_000),
+
+  // Span retention; applied via ALTER TABLE … MODIFY TTL on boot.
+  WATCHTOWER_SPANS_RETENTION_DAYS: z.coerce.number().default(30),
+
+  // --- Alerts (evaluator cron in apps/server) ---
+  // How often the evaluator sweeps enabled rules; default every 60s.
+  ALERT_EVAL_INTERVAL_MS: z.coerce.number().default(60_000),
+  // Re-notify cooldown while a rule stays firing; default 1h.
+  ALERT_RENOTIFY_MS: z.coerce.number().default(3_600_000),
+
+  // --- Optional Google OAuth (enabled only when both are present) ---
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+
+  // --- Seed script bootstrap (no static defaults; random if unset) ---
+  ADMIN_EMAIL: z.string().optional(),
+  ADMIN_PASSWORD: z.string().optional(),
 
   // # If using QStash
   // QSTASH_URL: z.string().min(1),

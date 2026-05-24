@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { trpc } from "@/utils/trpc";
 import Header from "@/components/header";
-import { Item } from "@boilerplate/ui/components/item";
-import { Card, CardContent } from "@boilerplate/ui/components/card";
+import { Item } from "@watchtower/ui/components/item";
+import { Card, CardContent } from "@watchtower/ui/components/card";
 
 export default function Home() {
   const healthCheck = useQuery(trpc.healthCheck.queryOptions());

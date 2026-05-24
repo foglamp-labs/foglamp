@@ -1,4 +1,4 @@
-import { Button } from "@boilerplate/ui/components/button";
+import { Button } from "@watchtower/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,8 +7,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@boilerplate/ui/components/dropdown-menu";
-import { Skeleton } from "@boilerplate/ui/components/skeleton";
+} from "@watchtower/ui/components/dropdown-menu";
+import { Skeleton } from "@watchtower/ui/components/skeleton";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 

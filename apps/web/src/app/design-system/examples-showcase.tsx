@@ -12,40 +12,40 @@ import {
   IconX,
 } from "@tabler/icons-react";
 
-import { Avatar, AvatarFallback } from "@boilerplate/ui/components/avatar";
-import { Badge } from "@boilerplate/ui/components/badge";
-import { Button } from "@boilerplate/ui/components/button";
+import { Avatar, AvatarFallback } from "@watchtower/ui/components/avatar";
+import { Badge } from "@watchtower/ui/components/badge";
+import { Button } from "@watchtower/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@boilerplate/ui/components/card";
+} from "@watchtower/ui/components/card";
 import {
   Field,
   FieldDescription,
   FieldLabel,
-} from "@boilerplate/ui/components/field";
-import { Input } from "@boilerplate/ui/components/input";
+} from "@watchtower/ui/components/field";
+import { Input } from "@watchtower/ui/components/input";
 import {
   Item,
   ItemContent,
   ItemDescription,
   ItemMedia,
   ItemTitle,
-} from "@boilerplate/ui/components/item";
-import { Progress } from "@boilerplate/ui/components/progress";
+} from "@watchtower/ui/components/item";
+import { Progress } from "@watchtower/ui/components/progress";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@boilerplate/ui/components/select";
-import { Separator } from "@boilerplate/ui/components/separator";
-import { Slider } from "@boilerplate/ui/components/slider";
-import { Textarea } from "@boilerplate/ui/components/textarea";
+} from "@watchtower/ui/components/select";
+import { Separator } from "@watchtower/ui/components/separator";
+import { Slider } from "@watchtower/ui/components/slider";
+import { Textarea } from "@watchtower/ui/components/textarea";
 
 const months = [
   { label: "Dec", value: 60 },

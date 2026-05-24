@@ -1,10 +1,12 @@
 {
-  "name": "boilerplate",
+  "name": "watchtower",
+  "license": "Elastic-2.0",
   "private": true,
   "workspaces": {
     "packages": [
       "apps/*",
-      "packages/*"
+      "packages/*",
+      "examples/*"
     ],
     "catalog": {
       "dotenv": "^17.2.2",
@@ -20,7 +22,12 @@
       "@trpc/client": "^11.13.4",
       "@types/react": "^19.2.10",
       "@types/react-dom": "^19.2.3",
-      "tailwindcss": "^4.1.18"
+      "tailwindcss": "^4.1.18",
+      "ai": "7.0.0-beta.116",
+      "@ai-sdk/openai": "4.0.0-beta.44",
+      "@clickhouse/client": "^1.18.5",
+      "@vercel/functions": "^3.6.0",
+      "uuidv7": "^1.2.1"
     }
   },
   "type": "module",
@@ -30,18 +37,19 @@
     "check-types": "turbo check-types",
     "dev:web": "turbo -F web dev",
     "dev:server": "turbo -F server dev",
-    "db:push": "turbo -F @boilerplate/db db:push",
-    "db:studio": "turbo -F @boilerplate/db db:studio",
-    "db:generate": "turbo -F @boilerplate/db db:generate",
-    "db:migrate": "turbo -F @boilerplate/db db:migrate"
+    "db:push": "turbo -F @watchtower/db db:push",
+    "db:studio": "turbo -F @watchtower/db db:studio",
+    "db:generate": "turbo -F @watchtower/db db:generate",
+    "db:migrate": "turbo -F @watchtower/db db:migrate",
+    "db:seed": "turbo -F server db:seed"
   },
   "dependencies": {
-    "@boilerplate/env": "workspace:*",
+    "@watchtower/env": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@boilerplate/config": "workspace:*",
+    "@watchtower/config": "workspace:*",
     "@types/bun": "catalog:",
     "turbo": "^2.8.12",
     "typescript": "^5"

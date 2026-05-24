@@ -1,0 +1,83 @@
+import { TRPCError } from "@trpc/server";
+import { member, organization } from "@watchtower/db/schema/organization";
+import { project } from "@watchtower/db/schema/project";
+import { and, eq } from "drizzle-orm";
+
+import type { Db } from "../types";
+
+export type AccessibleProject = {
+  id: string;
+  name: string;
+  slug: string;
+  orgId: string;
+};
+
+/**
+ * Resolve a project the user may read, or throw. Access = the user is a member
+ * of the project's organization. Every data query funnels through this so a
+ * caller can never read another org's spans.
+ */
+export async function requireProjectAccess(
+  db: Db,
+  userId: string,
+  projectId: string,
+): Promise<AccessibleProject> {
+  const rows = await db
+    .select({
+      id: project.id,
+      name: project.name,
+      slug: project.slug,
+      orgId: project.orgId,
+    })
+    .from(project)
+    .innerJoin(member, eq(member.organizationId, project.orgId))
+    .where(and(eq(project.id, projectId), eq(member.userId, userId)))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Project not found or not accessible",
+    });
+  }
+  return row;
+}
+
+/** Throw unless the user is a member of the organization. */
+export async function requireOrgAccess(
+  db: Db,
+  userId: string,
+  orgId: string,
+): Promise<void> {
+  const rows = await db
+    .select({ id: member.id })
+    .from(member)
+    .where(and(eq(member.organizationId, orgId), eq(member.userId, userId)))
+    .limit(1);
+  if (!rows[0]) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Organization not found or not accessible",
+    });
+  }
+}
+
+/** Every project across the organizations the user belongs to. */
+export async function listAccessibleProjects(db: Db, userId: string) {
+  return db
+    .select({
+      id: project.id,
+      name: project.name,
+      slug: project.slug,
+      orgId: project.orgId,
+      orgName: organization.name,
+      orgSlug: organization.slug,
+      createdAt: project.createdAt,
+    })
+    .from(project)
+    .innerJoin(member, eq(member.organizationId, project.orgId))
+    .innerJoin(organization, eq(organization.id, project.orgId))
+    .where(eq(member.userId, userId))
+    .orderBy(project.createdAt);
+}

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 
-import { cn } from "@boilerplate/ui/lib/utils";
+import { cn } from "@watchtower/ui/lib/utils";
 import {
   IconSelector,
   IconCheck,

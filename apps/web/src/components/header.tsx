@@ -1,14 +1,14 @@
 "use client";
 import Link from "next/link";
 
-import { Button } from "@boilerplate/ui/components/button";
+import { Button } from "@watchtower/ui/components/button";
 import { ThemeSwitcher } from "./theme-switcher";
 import UserMenu from "./user-menu";
 
 export default function Header() {
   const links = [
     { to: "/", label: "Home" },
-    { to: "/dashboard", label: "Dashboard" },
+    { to: "/overview", label: "Dashboard" },
     { to: "/design-system", label: "Design system" },
   ] as const;
 

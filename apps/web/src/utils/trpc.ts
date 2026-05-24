@@ -1,5 +1,5 @@
-import type { AppRouter } from "@boilerplate/api/routers/index";
-import { env } from "@boilerplate/env/web";
+import type { AppRouter } from "@watchtower/api/routers/index";
+import { env } from "@watchtower/env/web";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";

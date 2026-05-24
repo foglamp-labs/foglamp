@@ -1,0 +1,31 @@
+{
+  "name": "ingest",
+  "license": "Elastic-2.0",
+  "type": "module",
+  "main": "dist/main.mjs",
+  "scripts": {
+    "build": "tsdown",
+    "check-types": "tsc -b",
+    "compile": "bun build --compile --minify --sourcemap --bytecode ./src/main.ts --outfile ingest",
+    "dev": "bun run --hot src/main.ts",
+    "start": "bun run dist/main.mjs"
+  },
+  "dependencies": {
+    "@watchtower/clickhouse": "workspace:*",
+    "@watchtower/contracts": "workspace:*",
+    "@watchtower/cost": "workspace:*",
+    "@watchtower/db": "workspace:*",
+    "@watchtower/env": "workspace:*",
+    "dotenv": "catalog:",
+    "drizzle-orm": "^0.45.1",
+    "evlog": "^2.13.0",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@watchtower/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "tsdown": "^0.16.5",
+    "typescript": "^5"
+  }
+}

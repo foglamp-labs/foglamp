@@ -15,7 +15,25 @@
         "RESEND_FROM_EMAIL",
         "NEXT_PUBLIC_SERVER_URL",
         "NEXT_PUBLIC_APP_URL",
-        "NODE_ENV"
+        "NODE_ENV",
+        "CLICKHOUSE_URL",
+        "CLICKHOUSE_USER",
+        "CLICKHOUSE_PASSWORD",
+        "CLICKHOUSE_DATABASE",
+        "OPENROUTER_MODELS_URL",
+        "WATCHTOWER_PRICING_FILE",
+        "INGEST_PORT",
+        "INGEST_FLUSH_INTERVAL_MS",
+        "INGEST_FLUSH_MAX_ROWS",
+        "INGEST_RATE_LIMIT_RPS",
+        "API_KEY_CACHE_TTL_MS",
+        "WATCHTOWER_SPANS_RETENTION_DAYS",
+        "ALERT_EVAL_INTERVAL_MS",
+        "ALERT_RENOTIFY_MS",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "ADMIN_EMAIL",
+        "ADMIN_PASSWORD"
       ],
       "outputs": ["dist/**", ".next/**"]
     },
@@ -34,6 +52,10 @@
     },
     "db:generate": {
       "cache": false
+    },
+    "db:seed": {
+      "cache": false,
+      "env": ["DATABASE_URL", "ADMIN_EMAIL", "ADMIN_PASSWORD", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL"]
     },
     "db:migrate": {
       "cache": false,

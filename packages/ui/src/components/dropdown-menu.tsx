@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 
-import { cn } from "@boilerplate/ui/lib/utils";
+import { cn } from "@watchtower/ui/lib/utils";
 import { IconChevronRight, IconCheck } from "@tabler/icons-react";
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {

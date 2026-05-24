@@ -23,22 +23,22 @@ import {
 } from "@tabler/icons-react";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 
-import { Avatar, AvatarFallback } from "@boilerplate/ui/components/avatar";
-import { Badge } from "@boilerplate/ui/components/badge";
-import { Button } from "@boilerplate/ui/components/button";
+import { Avatar, AvatarFallback } from "@watchtower/ui/components/avatar";
+import { Badge } from "@watchtower/ui/components/badge";
+import { Button } from "@watchtower/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@boilerplate/ui/components/card";
+} from "@watchtower/ui/components/card";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from "@boilerplate/ui/components/chart";
+} from "@watchtower/ui/components/chart";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,12 +46,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@boilerplate/ui/components/dropdown-menu";
+} from "@watchtower/ui/components/dropdown-menu";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from "@boilerplate/ui/components/input-group";
+} from "@watchtower/ui/components/input-group";
 import {
   Sidebar,
   SidebarContent,
@@ -67,7 +67,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-} from "@boilerplate/ui/components/sidebar";
+} from "@watchtower/ui/components/sidebar";
 import {
   Table,
   TableBody,
@@ -75,7 +75,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@boilerplate/ui/components/table";
+} from "@watchtower/ui/components/table";
 
 type Org = { id: string; name: string; plan: string };
 

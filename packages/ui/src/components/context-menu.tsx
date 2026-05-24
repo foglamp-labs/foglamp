@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 
-import { cn } from "@boilerplate/ui/lib/utils";
+import { cn } from "@watchtower/ui/lib/utils";
 import { IconChevronRight, IconCheck } from "@tabler/icons-react";
 
 function ContextMenu({ ...props }: ContextMenuPrimitive.Root.Props) {

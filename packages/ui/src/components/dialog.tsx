@@ -3,8 +3,8 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 
-import { cn } from "@boilerplate/ui/lib/utils";
-import { Button } from "@boilerplate/ui/components/button";
+import { cn } from "@watchtower/ui/lib/utils";
+import { Button } from "@watchtower/ui/components/button";
 import { IconX } from "@tabler/icons-react";
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {

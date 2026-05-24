@@ -1,0 +1,19 @@
+{
+  "name": "watchtower-example-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "catalog:",
+    "@watchtower/sdk": "workspace:*",
+    "ai": "catalog:"
+  },
+  "devDependencies": {
+    "@watchtower/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "^5"
+  }
+}

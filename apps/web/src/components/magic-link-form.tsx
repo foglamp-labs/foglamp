@@ -1,9 +1,9 @@
 "use client";
 
-import { env } from "@boilerplate/env/web";
-import { Button } from "@boilerplate/ui/components/button";
-import { Input } from "@boilerplate/ui/components/input";
-import { Label } from "@boilerplate/ui/components/label";
+import { env } from "@watchtower/env/web";
+import { Button } from "@watchtower/ui/components/button";
+import { Input } from "@watchtower/ui/components/input";
+import { Label } from "@watchtower/ui/components/label";
 import { useForm } from "@tanstack/react-form";
 import Image from "next/image";
 import { useState } from "react";
@@ -22,7 +22,7 @@ export default function MagicLinkForm() {
       email: "",
     },
     onSubmit: async ({ value }) => {
-      const callbackURL = `${env.NEXT_PUBLIC_APP_URL}/dashboard`;
+      const callbackURL = `${env.NEXT_PUBLIC_APP_URL}/overview`;
       const { error } = await authClient.signIn.magicLink({
         email: value.email,
         callbackURL,
