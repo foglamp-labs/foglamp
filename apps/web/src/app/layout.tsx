@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import Providers from "@/components/providers";
 import { cn } from "@foglamp/ui/lib/utils";
@@ -32,6 +33,7 @@ export default function RootLayout({
         <Providers>
           <div className="grid grid-rows-[auto_1fr] h-svh">{children}</div>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
