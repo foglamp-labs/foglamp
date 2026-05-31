@@ -9,18 +9,25 @@ concepts cover everything you see in the dashboard.
 ## Trace
 
 A **trace** is one top-level model call — a single `generateText` or
-`streamText` invocation. It carries the call's identity (agent, workflow, run,
-session), free-form metadata, and a list of spans.
+`streamText` invocation. It carries the call's identity (name, agent, workflow,
+run, session), free-form metadata, and a list of spans.
 
 | Field | Type | Notes |
 | --- | --- | --- |
 | `traceId` | string | 1–128 chars, unique per call |
+| `traceName` | string? | up to 256 chars — required if `agentName` is absent |
 | `agentName` | string? | up to 256 chars |
 | `workflowName` | string? | up to 256 chars |
 | `workflowRunId` | string? | up to 128 chars — groups traces into one run |
 | `sessionId` | string? | up to 128 chars |
 | `metadata` | map | string → string |
 | `spans` | span[] | 1–2000 spans |
+
+<Note>
+  Two rules are enforced at compile time (SDK) and at ingest:
+  - Every trace must set **`traceName` or `agentName`** (both is fine — see [Trace name](#trace-name)).
+  - **`workflowName` and `workflowRunId` go together** — pass both or neither.
+</Note>
 
 ## Span
 
@@ -70,6 +77,17 @@ stitches them into a single timeline.
 
 Run names are editable in the dashboard — a friendly label is stored against the
 `workflowRunId` so a run reads as "Nightly digest · May 24" instead of a UUID.
+
+## Trace name
+
+A **trace name** (`traceName`) is the call's human label. Use it for a one-off
+call that isn't an agent — `fog.integration({ traceName: "classify-email" })` —
+so it's identifiable and groupable in the dashboard instead of landing in an
+unnamed bucket.
+
+The effective label a trace displays as is `traceName ?? agentName`: if you set
+only `agentName`, that's the label; if you set both, the call is attributed to
+the agent and shows the `traceName`. Every trace must set one of the two.
 
 ## Agent
 

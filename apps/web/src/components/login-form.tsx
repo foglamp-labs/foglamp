@@ -55,7 +55,7 @@ export default function LoginForm() {
       if (error) {
         toast.error(
           error.message ??
-            "Magic-link sign-in isn't enabled on this instance. Use email and password.",
+            "Magic-link sign-in isn't enabled on this instance. Use email and password."
         );
         return;
       }
@@ -174,7 +174,7 @@ export default function LoginForm() {
             {({ canSubmit, isSubmitting }) => (
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full mt-2"
                 disabled={!canSubmit || isSubmitting}
               >
                 {isSubmitting ? "Signing in…" : "Sign in"}

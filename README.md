@@ -35,9 +35,10 @@ it, and what did it actually send the model?"* Foglamp fills that gap:
   of spans were actually priced.
 - **Distributed traces** — a trace is one top-level call; steps and tool calls
   are spans. Waterfall view with the exact prompt and response on every span.
-- **Workflows, agents, sessions** — `agentName`, `workflowName`,
-  `workflowRunId`, and `sessionId` are first-class, indexed fields. Everything
-  else is free-form `metadata`.
+- **Names, agents, workflows, sessions** — every call is identified by a
+  `traceName` or an `agentName`; `workflowName` + `workflowRunId` and `sessionId`
+  group calls further. All first-class, indexed fields. Everything else is
+  free-form `metadata`.
 - **Alerts** — threshold rules on cost, latency, error rate, TTFT, tokens, or
   request count, evaluated every minute, with email notifications.
 
@@ -83,14 +84,14 @@ first-class context:
 import { foglamp } from "foglamp";
 import { generateText } from "ai";
 
-const wt = foglamp();
+const fog = foglamp();
 
 const { text } = await generateText({
   model,
   prompt: "What is Foglamp?",
   telemetry: {
     integrations: [
-      wt.integration({
+      fog.integration({
         agentName: "support-bot",
         workflowName: "ticket-triage",
         workflowRunId: run.id,
@@ -101,6 +102,12 @@ const { text } = await generateText({
   },
 });
 ```
+
+Every call must set **`traceName` or `agentName`** — use `traceName` for a
+one-off call (e.g. `fog.integration({ traceName: "classify-email" })`) and
+`agentName` to group it under an agent. `workflowName` and `workflowRunId` are
+passed together (both or neither). This is enforced at compile time and at
+ingest.
 
 If `FOGLAMP_API_KEY` is unset, the SDK is a **silent no-op** — it never
 throws and never adds latency. A complete, offline-runnable example lives in
@@ -132,18 +139,19 @@ Creates a collector that is both an AI SDK `Telemetry` integration (pass to
 
 ### `Collector` methods
 
-- **`wt.integration(ctx?)`** — a per-call integration bound to
-  `{ agentName, workflowName, workflowRunId, sessionId, metadata }`.
-- **`wt.flush()`** — flush buffered traces now. `await` it before a short-lived
+- **`fog.integration(ctx)`** — a per-call integration bound to
+  `{ traceName, agentName, workflowName, workflowRunId, sessionId, metadata }`.
+  Requires `traceName` or `agentName`.
+- **`fog.flush()`** — flush buffered traces now. `await` it before a short-lived
   process exits.
-- **`wt.shutdown()`** — stop the flush timer and drain.
+- **`fog.shutdown()`** — stop the flush timer and drain.
 
 ### Runtimes & flushing
 
 - **Long-running (Node/Bun servers):** batches on a timer; nothing to do.
 - **Vercel / AWS Lambda:** auto-detected — flushes per call via `waitUntil`.
 - **Cloudflare Workers / other serverless:** pass `waitUntil: ctx.waitUntil`
-  (or call `await wt.flush()` before returning) so a fire-and-forget flush
+  (or call `await fog.flush()` before returning) so a fire-and-forget flush
   isn't frozen with the response.
 
 ---
@@ -153,7 +161,8 @@ Creates a collector that is both an AI SDK `Telemetry` integration (pass to
 | Concept | What it is |
 | --- | --- |
 | **Trace** | One top-level `generateText` / `streamText` call. |
-| **Span** | A unit of work within a trace: an `llm` step or a `tool` execution. |
+| **Span** | A unit of work within a trace: an `llm` step, a `tool` call, or an `embedding`. |
+| **`traceName`** | A label for the call. Required when `agentName` is absent (a one-off named call). First-class, indexed. |
 | **`agentName`** | Which agent produced the call. First-class, indexed. |
 | **`workflowName`** | A named pipeline the call belongs to. First-class, indexed. |
 | **`workflowRunId`** | A single execution of a workflow; renamable in the UI. |

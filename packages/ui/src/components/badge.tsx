@@ -30,8 +30,8 @@ const badgeVariants = cva(
           "shadow-(--custom-shadow) text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
       },
       size: {
-        md: "h-5 rounded-sm px-2 py-0.5 gap-[5px] text-xs has-[>svg:first-child]:pl-1.5 has-[>svg:last-child]:pr-1.5 [&>svg]:size-[11px]!",
-        lg: "h-6 rounded-sm px-2.5 py-1 gap-1.5 text-sm has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2 [&>svg]:size-3.5!",
+        md: "h-5 rounded-full px-2 py-0.5 gap-[4px] text-xs has-[>svg:first-child]:pl-1.5 has-[>svg:last-child]:pr-1.5 [&>svg]:size-3!",
+        lg: "h-6 rounded-full px-2.5 py-1 gap-1.5 text-sm has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2 [&>svg]:size-3.5!",
       },
     },
     defaultVariants: {

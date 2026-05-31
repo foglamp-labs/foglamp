@@ -12,9 +12,13 @@
   },
   "scripts": {},
   "dependencies": {
+    "@foglamp/billing": "workspace:*",
+    "@foglamp/clickhouse": "workspace:*",
     "@foglamp/db": "workspace:*",
     "@foglamp/env": "workspace:*",
+    "@better-auth/stripe": "catalog:",
     "better-auth": "catalog:",
+    "stripe": "catalog:",
     "dotenv": "catalog:",
     "evlog": "^2.13.0",
     "resend": "^4.0.0",

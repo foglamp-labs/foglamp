@@ -1,6 +1,8 @@
 "use client";
 
+import { IconPlayerPlayFilled } from "@tabler/icons-react";
 import { Badge } from "@foglamp/ui/components/badge";
+import { Button } from "@foglamp/ui/components/button";
 
 import { cn } from "@/lib/utils";
 import { formatDateTime, formatDuration } from "@/lib/format";
@@ -26,14 +28,17 @@ export type FlowNode = {
  * A horizontal flow of nodes — icon boxes joined by lines, with a status-coloured
  * pill and timestamp under each. Used for a workflow run's agent steps and an
  * agent trace's LLM/tool steps. Scrolls horizontally when it overflows. When
- * `onNodeClick` is given, each column is a button.
+ * `onNodeClick` is given, the icon/label area is a button; `onNodeReplay` adds a
+ * separate ▶ control under each node (kept a sibling so buttons never nest).
  */
 export function NodeFlow({
   nodes,
   onNodeClick,
+  onNodeReplay,
 }: {
   nodes: FlowNode[];
   onNodeClick?: (id: string) => void;
+  onNodeReplay?: (id: string) => void;
 }) {
   if (nodes.length === 0) return null;
   return (
@@ -80,18 +85,31 @@ export function NodeFlow({
           );
 
           const base = "flex w-32 shrink-0 flex-col items-center gap-2 px-1";
-          return onNodeClick ? (
-            <button
-              key={node.id}
-              type="button"
-              onClick={() => onNodeClick(node.id)}
-              className={cn(base, "rounded-lg py-1 hover:bg-accent/50")}
-            >
-              {column}
-            </button>
-          ) : (
+          const inner = "flex w-full flex-col items-center gap-2";
+          return (
             <div key={node.id} className={base}>
-              {column}
+              {onNodeClick ? (
+                <button
+                  type="button"
+                  onClick={() => onNodeClick(node.id)}
+                  className={cn(inner, "rounded-lg py-1 hover:bg-accent/50")}
+                >
+                  {column}
+                </button>
+              ) : (
+                <div className={inner}>{column}</div>
+              )}
+              {onNodeReplay && (
+                <Button
+                  type="button"
+                  size="icon-xs"
+                  variant="ghost"
+                  aria-label="Replay trace"
+                  onClick={() => onNodeReplay(node.id)}
+                >
+                  <IconPlayerPlayFilled />
+                </Button>
+              )}
             </div>
           );
         })}

@@ -6,7 +6,7 @@ description: "Every option accepted by foglamp()."
 `foglamp(config?)` accepts the following options. Every field is optional.
 
 ```ts
-const wt = foglamp({
+const fog = foglamp({
   apiKey: process.env.FOGLAMP_API_KEY,
   endpoint: process.env.FOGLAMP_INGEST_URL,
   flushIntervalMs: 5000,
@@ -49,7 +49,7 @@ To record traces, costs, and latency without ever sending prompt or completion
 text, disable capture:
 
 ```ts
-const wt = foglamp({
+const fog = foglamp({
   recordInputs: false,
   recordOutputs: false,
 });
@@ -65,7 +65,7 @@ serialization failures are routed to `onError` (if provided) or swallowed.
 Enable `debug` to trace batching and flush behavior during development.
 
 ```ts
-const wt = foglamp({
+const fog = foglamp({
   debug: process.env.NODE_ENV !== "production",
   onError: (err) => reportToSentry(err),
 });

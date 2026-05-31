@@ -13,7 +13,7 @@ can freeze or terminate before a batch is sent. The rule:
 </Note>
 
 The collector auto-detects its runtime and picks a flush strategy. You can
-always override with `wt.flush()` or by passing a `waitUntil` hook.
+always override with `fog.flush()` or by passing a `waitUntil` hook.
 
 ## Long-running (Node, Bun)
 
@@ -21,8 +21,8 @@ Nothing to do. The collector flushes every `flushIntervalMs` (default 5s) and on
 early batch limits. For clean shutdown, drain the buffer on exit:
 
 ```ts
-process.on("SIGTERM", () => wt.shutdown());
-process.on("SIGINT", () => wt.shutdown());
+process.on("SIGTERM", () => fog.shutdown());
+process.on("SIGINT", () => fog.shutdown());
 ```
 
 ## Vercel functions
@@ -33,7 +33,7 @@ alive until the flush completes. If detection doesn't fire, pass it explicitly:
 ```ts
 import { waitUntil } from "@vercel/functions";
 
-const wt = foglamp({ waitUntil });
+const fog = foglamp({ waitUntil });
 ```
 
 ## Cloudflare Workers
@@ -44,12 +44,15 @@ it through so the flush survives the response:
 ```ts
 export default {
   async fetch(req, env, ctx) {
-    const wt = foglamp({ waitUntil: ctx.waitUntil.bind(ctx) });
+    const fog = foglamp({ waitUntil: ctx.waitUntil.bind(ctx) });
 
     const result = await generateText({
       model: openai("gpt-4o"),
       prompt: "…",
-      experimental_telemetry: { isEnabled: true, integrations: [wt.integration()] },
+      experimental_telemetry: {
+        isEnabled: true,
+        integrations: [fog.integration({ traceName: "worker-handler" })],
+      },
     });
 
     return Response.json(result);
@@ -66,17 +69,17 @@ rely on `process.on("beforeExit")`, which won't fire.
 ```ts
 export const handler = async (event) => {
   const result = await generateText({ /* … */ });
-  await wt.flush();
+  await fog.flush();
   return result;
 };
 ```
 
 ## Manual flush anywhere
 
-`wt.flush()` works in every runtime and resolves when the request completes.
+`fog.flush()` works in every runtime and resolves when the request completes.
 It's safe to call when the collector is disabled (it resolves immediately), so
 you can leave it in unconditionally.
 
 ```ts
-await wt.flush();
+await fog.flush();
 ```

@@ -1,5 +1,5 @@
 import { sendAlertEmail, type AlertEmailKind } from "@foglamp/auth/email";
-import { queryAlertWindow } from "@foglamp/clickhouse";
+import { queryAlertWindow, queryScoreAlertWindow } from "@foglamp/clickhouse";
 import {
   alertEvent,
   alertRule,
@@ -12,7 +12,9 @@ import { eq } from "drizzle-orm";
 import { num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db, Log } from "../types";
 
-type Metric =
+// Span-metrics read the metrics_by_minute rollup; eval-metrics read the
+// score rollup for a specific eval (rule.evalId).
+type SpanMetric =
   | "cost"
   | "latency_p50"
   | "latency_p95"
@@ -21,6 +23,8 @@ type Metric =
   | "error_rate"
   | "token_usage"
   | "request_count";
+type EvalMetric = "eval_avg_score" | "eval_pass_rate";
+type Metric = SpanMetric | EvalMetric;
 
 type Comparison = "gt" | "gte" | "lt" | "lte";
 
@@ -33,6 +37,8 @@ const METRIC_LABELS: Record<Metric, string> = {
   error_rate: "Error rate",
   token_usage: "Token usage",
   request_count: "Request count",
+  eval_avg_score: "Avg eval score",
+  eval_pass_rate: "Eval pass rate",
 };
 
 const COMPARISON_SYMBOLS: Record<Comparison, string> = {
@@ -42,9 +48,9 @@ const COMPARISON_SYMBOLS: Record<Comparison, string> = {
   lte: "≤",
 };
 
-/** Pull the rule's metric value out of the single-window CH rollup. */
+/** Pull a span-metric value out of the single-window CH rollup. */
 function deriveValue(
-  metric: Metric,
+  metric: SpanMetric,
   row: Awaited<ReturnType<typeof queryAlertWindow>>,
 ): number {
   const spanCount = num(row.span_count);
@@ -100,6 +106,10 @@ function formatMetricValue(metric: Metric, n: number): string {
     case "token_usage":
     case "request_count":
       return n.toLocaleString("en-US");
+    case "eval_avg_score":
+      return n.toFixed(2);
+    case "eval_pass_rate":
+      return `${(n * 100).toFixed(1)}%`;
   }
 }
 
@@ -131,18 +141,40 @@ export async function evaluateAlerts(db: Db, ch: Ch, log: Log): Promise<void> {
   for (const { rule, state, projectName } of rows) {
     try {
       const from = new Date(now.getTime() - rule.windowSeconds * 1000);
-      const window = await queryAlertWindow(ch, {
-        projectId: rule.projectId,
-        from: toClickHouseDateTime(from),
-        to: toClickHouseDateTime(now),
-        modelId: rule.filters?.modelId,
-        agentName: rule.filters?.agentName,
-      });
-
       const metric = rule.metric as Metric;
       const comparison = rule.comparison as Comparison;
       const threshold = Number(rule.threshold);
-      const value = deriveValue(metric, window);
+
+      let value: number;
+      if (metric === "eval_avg_score" || metric === "eval_pass_rate") {
+        // Eval-score alert: aggregate this eval's score rollup over the window.
+        if (!rule.evalId) {
+          log.error("alert.eval_metric_without_eval", { ruleId: rule.id });
+          continue;
+        }
+        const sw = await queryScoreAlertWindow(ch, {
+          projectId: rule.projectId,
+          evalId: rule.evalId,
+          from: toClickHouseDateTime(from),
+          to: toClickHouseDateTime(now),
+        });
+        const count = num(sw.score_count);
+        value =
+          count === 0
+            ? 0
+            : metric === "eval_avg_score"
+              ? num(sw.score_sum) / count
+              : num(sw.pass_count) / count;
+      } else {
+        const window = await queryAlertWindow(ch, {
+          projectId: rule.projectId,
+          from: toClickHouseDateTime(from),
+          to: toClickHouseDateTime(now),
+          modelId: rule.filters?.modelId,
+          agentName: rule.filters?.agentName,
+        });
+        value = deriveValue(metric, window);
+      }
       const breached = isBreached(value, comparison, threshold);
       const newStatus = breached ? "firing" : "ok";
       const prevStatus = state?.status ?? "ok";

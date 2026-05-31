@@ -25,6 +25,12 @@ export function formatTokens(value: number): string {
   return compact.format(value);
 }
 
+/** Tokens/sec; `null`/`undefined` → em dash (no measurable rate). */
+export function formatTps(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  return `${value >= 1000 ? compact.format(value) : Math.round(value)} tok/s`;
+}
+
 /** Milliseconds → human duration (µs/ms/s/m). */
 export function formatDuration(ms: number): string {
   if (!Number.isFinite(ms)) return "—";
@@ -67,4 +73,31 @@ export function formatRelative(value: string | Date | null | undefined): string 
   const hr = Math.round(min / 60);
   if (hr < 24) return `${hr}h ago`;
   return `${Math.round(hr / 24)}d ago`;
+}
+
+export type Delta = { pct: number; dir: "up" | "down" | "flat" };
+
+/**
+ * Period-over-period change as a fraction + direction. `null` when there's no
+ * baseline to compare against (previous is null/zero) — the caller renders "—".
+ */
+export function formatDelta(
+  current: number | null | undefined,
+  previous: number | null | undefined,
+): Delta | null {
+  if (current === null || current === undefined) return null;
+  if (previous === null || previous === undefined || previous === 0) return null;
+  const pct = (current - previous) / previous;
+  const dir = Math.abs(pct) < 0.0001 ? "flat" : pct > 0 ? "up" : "down";
+  return { pct, dir };
+}
+
+/** Extrapolate a window's cost to a 30-day run-rate. `null` when cost is unknown. */
+export function projectMonthlyCost(
+  cost: number | null | undefined,
+  windowMs: number,
+): number | null {
+  if (cost === null || cost === undefined || windowMs <= 0) return null;
+  const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+  return (cost / windowMs) * THIRTY_DAYS;
 }

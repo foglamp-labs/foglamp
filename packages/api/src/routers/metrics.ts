@@ -3,6 +3,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../index";
 import { resolveRange } from "../lib/util";
 import {
+  getCostTimeseriesByModel,
   getModelBreakdown,
   getSummary,
   getTimeseries,
@@ -52,4 +53,14 @@ export const metricsRouter = router({
       to,
     });
   }),
+
+  costByModel: protectedProcedure.input(rangeInput).query(({ ctx, input }) => {
+    const { from, to } = resolveRange(input.from, input.to);
+    return getCostTimeseriesByModel(ctx.db, ctx.ch, ctx.session.user.id, {
+      projectId: input.projectId,
+      from,
+      to,
+    });
+  }),
+
 });

@@ -39,6 +39,10 @@ export interface Span {
   modelId?: string;
   usage?: Usage;
   ttftMs?: number;
+  /** Intra-stream samples (streaming llm spans). ms from step start, parallel to chunkTokens. */
+  chunkOffsets?: number[];
+  /** Cumulative output tokens at each chunkOffsets entry. */
+  chunkTokens?: number[];
   input?: string;
   output?: string;
   metadata?: Metadata;
@@ -46,6 +50,7 @@ export interface Span {
 
 export interface Trace {
   traceId: string;
+  traceName?: string;
   agentName?: string;
   workflowName?: string;
   workflowRunId?: string;

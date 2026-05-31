@@ -1,7 +1,8 @@
 "use client";
 
-import { IconChartArea } from "@tabler/icons-react";
+import { IconActivity, IconChartAreaFilled } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@foglamp/ui/components/badge";
 import {
   Card,
   CardContent,
@@ -10,12 +11,6 @@ import {
   CardTitle,
 } from "@foglamp/ui/components/card";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@foglamp/ui/components/chart";
-import {
   Table,
   TableBody,
   TableCell,
@@ -23,36 +18,58 @@ import {
   TableHeader,
   TableRow,
 } from "@foglamp/ui/components/table";
-import { useMemo, useState } from "react";
-import { Area, AreaChart, CartesianGrid, Line, LineChart, XAxis } from "recharts";
+import { useMemo } from "react";
 
+import * as AreaChart from "@/components/evilcharts/charts/area-chart";
+import * as BarChart from "@/components/evilcharts/charts/bar-chart";
+import * as LineChart from "@/components/evilcharts/charts/line-chart";
+import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import { useProject } from "@/components/app/project-context";
+import { OnboardingPanel } from "@/components/app/onboarding-panel";
 import {
   CardsSkeleton,
   EmptyState,
   NoProject,
   PageHeader,
   StatCard,
+  TableSkeleton,
 } from "@/components/app/page-parts";
 import { RangePicker } from "@/components/app/range-picker";
 import {
   formatCost,
   formatCount,
+  formatDelta,
   formatDuration,
   formatPercent,
+  formatRelative,
   formatTokens,
+  projectMonthlyCost,
 } from "@/lib/format";
-import { resolveRange, type RangeKey } from "@/lib/range";
+import { useRange } from "@/components/app/range-context";
 import { trpc } from "@/utils/trpc";
+import { useRouter } from "next/navigation";
 
-const costConfig = {
-  totalCost: { label: "Cost", color: "var(--chart-1)" },
-} satisfies ChartConfig;
+const MODEL_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
+
+// Evil Charts wants `colors: { light: [...], dark: [...] }`. Our --chart-* vars
+// already adapt to the theme, so the same value works for both.
+const themed = (color: string) => ({ light: [color], dark: [color] });
 
 const latencyConfig = {
-  p50: { label: "p50", color: "var(--chart-2)" },
-  p95: { label: "p95", color: "var(--chart-1)" },
-  p99: { label: "p99", color: "var(--chart-3)" },
+  p50: { label: "p50", colors: themed("var(--chart-2)") },
+  p95: { label: "p95", colors: themed("var(--chart-1)") },
+  p99: { label: "p99", colors: themed("var(--chart-3)") },
+} satisfies ChartConfig;
+
+const volumeConfig = {
+  requests: { label: "Requests", colors: themed("var(--chart-2)") },
+  errors: { label: "Errors", colors: themed("var(--destructive)") },
 } satisfies ChartConfig;
 
 function bucketLabel(bucket: string) {
@@ -64,8 +81,13 @@ function bucketLabel(bucket: string) {
 
 export function OverviewClient() {
   const { projectId } = useProject();
-  const [range, setRange] = useState<RangeKey>("24h");
-  const { from, to } = useMemo(() => resolveRange(range), [range]);
+  const { range, setRange } = useRange();
+  const router = useRouter();
+  const { from, to } = useMemo(
+    () => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
+    [range],
+  );
+  const windowMs = range.to.getTime() - range.from.getTime();
   const enabled = !!projectId;
   const args = { projectId: projectId!, from, to };
 
@@ -81,18 +103,62 @@ export function OverviewClient() {
     ...trpc.metrics.models.queryOptions(args),
     enabled,
   });
+  const costByModel = useQuery({
+    ...trpc.metrics.costByModel.queryOptions(args),
+    enabled,
+  });
+  const agents = useQuery({ ...trpc.agents.list.queryOptions(args), enabled });
+  // Latest traces, polled for a live feel (independent of the range filter).
+  const liveFeed = useQuery({
+    ...trpc.traces.list.queryOptions({ projectId: projectId!, limit: 8 }),
+    enabled,
+    refetchInterval: 5000,
+  });
 
-  const chartData = useMemo(
+  // p50/p95/p99 latency + TTFT and requests/errors per bucket.
+  const seriesData = useMemo(
     () =>
       (timeseries.data ?? []).map((r) => ({
         label: bucketLabel(r.bucket),
-        totalCost: r.totalCost ?? 0,
         p50: r.latencyMs.p50,
         p95: r.latencyMs.p95,
         p99: r.latencyMs.p99,
+        requests: r.spanCount,
+        errors: r.errorCount,
       })),
-    [timeseries.data],
+    [timeseries.data]
   );
+
+  // Top-5 models become stacked series (safe keys, since model ids contain
+  // "/" and "."); everything else rolls into "Other".
+  const { costData, costConfig } = useMemo(() => {
+    const top = (models.data ?? []).slice(0, 5).map((m) => m.modelId);
+    const keyOf = new Map(top.map((id, i) => [id, `m${i}`]));
+    const config: ChartConfig = {};
+    top.forEach((id, i) => {
+      config[`m${i}`] = { label: id, colors: themed(MODEL_COLORS[i]!) };
+    });
+    let sawOther = false;
+    const byBucket = new Map<string, Record<string, number>>();
+    for (const r of costByModel.data ?? []) {
+      const key = keyOf.get(r.modelId) ?? "other";
+      if (key === "other") sawOther = true;
+      const row = byBucket.get(r.bucket) ?? {};
+      row[key] = (row[key] ?? 0) + (r.totalCost ?? 0);
+      byBucket.set(r.bucket, row);
+    }
+    if (sawOther)
+      config.other = {
+        label: "Other",
+        colors: themed("var(--muted-foreground)"),
+      };
+    // Typed with a string index so Evil Charts' ValidateConfigKeys accepts the
+    // dynamic model keys (m0…/other) on the config.
+    const data: Record<string, string | number>[] = [...byBucket.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([bucket, costs]) => ({ label: bucketLabel(bucket), ...costs }));
+    return { costData: data, costConfig: config };
+  }, [costByModel.data, models.data]);
 
   if (!projectId) {
     return (
@@ -103,168 +169,354 @@ export function OverviewClient() {
     );
   }
 
-  const s = summary.data;
+  const cur = summary.data?.current;
+  const prev = summary.data?.previous;
+  const costSeriesKeys = Object.keys(costConfig);
+  const modelRows = models.data ?? [];
+  const agentRows = agents.data ?? [];
+  // Charts render their own shimmer via the `isLoading` prop instead of a skeleton.
+  const costLoading = costByModel.isLoading || models.isLoading;
+  const seriesLoading = timeseries.isLoading;
 
   return (
     <>
       <PageHeader
         title="Overview"
-        description="Cost, latency, and token usage across this project."
+        description="Cost, reliability, latency, and usage across this project."
         actions={<RangePicker value={range} onChange={setRange} />}
       />
 
+      {/* Onboarding — shown until this project has ever received a trace.
+          liveFeed is range-independent, so empty == never received one; it
+          flips to non-empty on the first span and this unmounts. */}
+      {!liveFeed.isLoading && (liveFeed.data ?? []).length === 0 && (
+        <OnboardingPanel />
+      )}
+
+      {/* KPIs */}
       {summary.isLoading ? (
-        <CardsSkeleton />
+        <CardsSkeleton count={6} />
       ) : (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
           <StatCard
             label="Total cost"
-            value={formatCost(s?.totalCost)}
-            hint={`Coverage ${formatPercent(s?.costCoverage)} of LLM spans priced`}
+            value={formatCost(cur?.totalCost)}
+            delta={formatDelta(cur?.totalCost, prev?.totalCost)}
+            deltaInverted
+            hint={`~${formatCost(projectMonthlyCost(cur?.totalCost ?? null, windowMs))}/mo · ${formatPercent(cur?.costCoverage)} priced`}
           />
           <StatCard
-            label="Requests"
-            value={formatCount(s?.spanCount ?? 0)}
-            hint={`${formatCount(s?.llmSpanCount ?? 0)} LLM · ${formatCount(
-              s?.errorCount ?? 0,
-            )} errors`}
+            label="Error rate"
+            value={formatPercent(cur?.errorRate)}
+            delta={formatDelta(cur?.errorRate, prev?.errorRate)}
+            deltaInverted
+            hint={`${formatCount(cur?.errorCount ?? 0)} of ${formatCount(cur?.spanCount ?? 0)} spans`}
+          />
+          <StatCard
+            label="Eval pass rate"
+            value={formatPercent(cur?.passRate)}
+            delta={formatDelta(cur?.passRate, prev?.passRate)}
+            hint={
+              cur?.checkCount
+                ? `${formatCount(cur.checkCount)} checks · scored traffic`
+                : "No checks scored yet"
+            }
           />
           <StatCard
             label="Latency p95"
-            value={formatDuration(s?.latencyMs.p95 ?? 0)}
-            hint={`p50 ${formatDuration(s?.latencyMs.p50 ?? 0)} · p99 ${formatDuration(
-              s?.latencyMs.p99 ?? 0,
-            )}`}
+            value={formatDuration(cur?.latencyMs.p95 ?? 0)}
+            delta={formatDelta(cur?.latencyMs.p95, prev?.latencyMs.p95)}
+            deltaInverted
+            hint={`p50 ${formatDuration(cur?.latencyMs.p50 ?? 0)} · TTFT p95 ${formatDuration(cur?.ttftMs.p95 ?? 0)}`}
+          />
+          <StatCard
+            label="Requests"
+            value={formatCount(cur?.spanCount ?? 0)}
+            delta={formatDelta(cur?.spanCount, prev?.spanCount)}
+            hint={`${formatCount(cur?.llmSpanCount ?? 0)} LLM spans`}
           />
           <StatCard
             label="Tokens"
-            value={formatTokens(s?.totalTokens ?? 0)}
-            hint={`TTFT p95 ${formatDuration(s?.ttftMs.p95 ?? 0)}`}
+            value={formatTokens(cur?.totalTokens ?? 0)}
+            delta={formatDelta(cur?.totalTokens, prev?.totalTokens)}
+            hint={`${formatTokens(cur?.inputTokens ?? 0)} in · ${formatTokens(cur?.outputTokens ?? 0)} out`}
           />
         </section>
       )}
 
+      {/* Cost over time, stacked by model */}
       <Card>
         <CardHeader>
           <CardTitle>Cost over time</CardTitle>
-          <CardDescription>Spend per minute bucket.</CardDescription>
+          <CardDescription>Spend per minute, stacked by model.</CardDescription>
         </CardHeader>
         <CardContent>
-          {chartData.length === 0 ? (
+          {!costLoading && costData.length === 0 ? (
             <EmptyState
-              icon={IconChartArea}
+              icon={IconChartAreaFilled}
               title="No data in this range"
               description="Instrument a call with the SDK to populate this chart."
             />
           ) : (
-            <ChartContainer
+            <AreaChart.EvilAreaChart
               config={costConfig}
-              className="aspect-auto h-[260px] w-full"
+              data={costData}
+              isLoading={costLoading}
+              xDataKey="label"
+              stackType="stacked"
+              curveType="monotone"
+              className="h-[260px] w-full"
             >
-              <AreaChart data={chartData} margin={{ left: 0, right: 0, top: 8 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  minTickGap={32}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent
-                      indicator="dot"
-                      formatter={(value) => formatCost(Number(value))}
-                    />
-                  }
-                />
-                <Area
-                  dataKey="totalCost"
-                  type="monotone"
-                  fill="var(--color-totalCost)"
-                  fillOpacity={0.15}
-                  stroke="var(--color-totalCost)"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ChartContainer>
+              <AreaChart.Grid />
+              <AreaChart.XAxis dataKey="label" />
+              <AreaChart.Tooltip />
+              {costSeriesKeys.map((k) => (
+                <AreaChart.Area key={k} dataKey={k} />
+              ))}
+              <AreaChart.Legend />
+            </AreaChart.EvilAreaChart>
           )}
         </CardContent>
       </Card>
 
+      {/* Volume + errors and latency, side by side */}
+      <section className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Requests & errors</CardTitle>
+            <CardDescription>
+              Spans per minute; errors overlaid.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!seriesLoading && seriesData.length === 0 ? (
+              <EmptyState
+                icon={IconChartAreaFilled}
+                title="No data in this range"
+              />
+            ) : (
+              <BarChart.EvilBarChart
+                config={volumeConfig}
+                data={seriesData}
+                isLoading={seriesLoading}
+                xDataKey="label"
+                className="h-[260px] w-full"
+              >
+                <BarChart.Grid />
+                <BarChart.XAxis dataKey="label" />
+                <BarChart.Tooltip />
+                <BarChart.Bar dataKey="requests" />
+                <BarChart.Bar dataKey="errors" />
+              </BarChart.EvilBarChart>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Latency</CardTitle>
+            <CardDescription>p50 / p95 / p99 per minute (ms).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!seriesLoading && seriesData.length === 0 ? (
+              <EmptyState
+                icon={IconChartAreaFilled}
+                title="No data in this range"
+              />
+            ) : (
+              <LineChart.EvilLineChart
+                config={latencyConfig}
+                data={seriesData}
+                isLoading={seriesLoading}
+                xDataKey="label"
+                className="h-[260px] w-full"
+              >
+                <LineChart.Grid />
+                <LineChart.XAxis dataKey="label" />
+                <LineChart.Tooltip />
+                <LineChart.Line dataKey="p50" />
+                <LineChart.Line dataKey="p95" />
+                <LineChart.Line dataKey="p99" />
+              </LineChart.EvilLineChart>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* By model + by agent, side by side */}
+      <section className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>By model</CardTitle>
+            <CardDescription>
+              Spend, usage, and latency per model.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {models.isLoading ? (
+              <TableSkeleton />
+            ) : modelRows.length === 0 ? (
+              <EmptyState
+                icon={IconChartAreaFilled}
+                title="No model usage yet"
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Model</TableHead>
+                    <TableHead className="text-right">Requests</TableHead>
+                    <TableHead className="text-right">Tokens</TableHead>
+                    <TableHead className="text-right">p95</TableHead>
+                    <TableHead className="text-right">Cost</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {modelRows.map((m) => (
+                    <TableRow key={m.modelId}>
+                      <TableCell className="font-mono text-xs">
+                        {m.modelId}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCount(m.spanCount)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatTokens(m.totalTokens)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatDuration(m.latencyMs.p95)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCost(m.totalCost)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>By agent</CardTitle>
+            <CardDescription>
+              Spend, errors, and latency per agent.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {agents.isLoading ? (
+              <TableSkeleton />
+            ) : agentRows.length === 0 ? (
+              <EmptyState
+                icon={IconChartAreaFilled}
+                title="No agent activity yet"
+                description="Set agentName on a call to group it under an agent."
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Agent</TableHead>
+                    <TableHead className="text-right">Requests</TableHead>
+                    <TableHead className="text-right">Errors</TableHead>
+                    <TableHead className="text-right">p95</TableHead>
+                    <TableHead className="text-right">Cost</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {agentRows.map((a) => (
+                    <TableRow key={a.agentName}>
+                      <TableCell className="truncate font-medium">
+                        {a.agentName}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCount(a.spanCount)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCount(a.errorCount)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatDuration(a.latencyMs.p95)}
+                      </TableCell>
+                      <TableCell className="text-right font-medium tabular-nums">
+                        {formatCost(a.totalCost)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Live feed — latest traces, auto-refreshed */}
       <Card>
         <CardHeader>
-          <CardTitle>Latency</CardTitle>
-          <CardDescription>p50 / p95 / p99 per bucket (ms).</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+            </span>
+            Live feed
+          </CardTitle>
+          <CardDescription>
+            The latest traces, refreshed automatically.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {chartData.length === 0 ? (
+          {liveFeed.isLoading ? (
+            <TableSkeleton rows={4} />
+          ) : (liveFeed.data ?? []).length === 0 ? (
             <EmptyState
-              icon={IconChartArea}
-              title="No data in this range"
+              icon={IconActivity}
+              title="No traces yet"
+              description="Instrument a call with the SDK to see it appear here."
             />
-          ) : (
-            <ChartContainer
-              config={latencyConfig}
-              className="aspect-auto h-[260px] w-full"
-            >
-              <LineChart data={chartData} margin={{ left: 0, right: 0, top: 8 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  minTickGap={32}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value, name) => `${name}: ${formatDuration(Number(value))}`}
-                    />
-                  }
-                />
-                <Line dataKey="p50" stroke="var(--color-p50)" dot={false} strokeWidth={2} />
-                <Line dataKey="p95" stroke="var(--color-p95)" dot={false} strokeWidth={2} />
-                <Line dataKey="p99" stroke="var(--color-p99)" dot={false} strokeWidth={2} />
-              </LineChart>
-            </ChartContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>By model</CardTitle>
-          <CardDescription>Spend and usage per model.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {(models.data ?? []).length === 0 ? (
-            <EmptyState icon={IconChartArea} title="No model usage yet" />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Model</TableHead>
-                  <TableHead className="text-right">Requests</TableHead>
+                  <TableHead>Trace</TableHead>
+                  <TableHead className="text-right">Spans</TableHead>
                   <TableHead className="text-right">Tokens</TableHead>
                   <TableHead className="text-right">Cost</TableHead>
+                  <TableHead className="text-right">When</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(models.data ?? []).map((m) => (
-                  <TableRow key={m.modelId}>
-                    <TableCell className="font-mono text-xs">{m.modelId}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatCount(m.spanCount)}
+                {(liveFeed.data ?? []).map((t) => (
+                  <TableRow
+                    key={t.traceId}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      router.push(`/traces/${encodeURIComponent(t.traceId)}`)
+                    }
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="truncate">
+                          {t.traceName ??
+                            t.agentName ??
+                            `${t.traceId.slice(0, 12)}…`}
+                        </span>
+                        {t.errorCount > 0 && (
+                          <Badge variant="rose">{t.errorCount} err</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatTokens(m.totalTokens)}
+                      {formatCount(t.spanCount)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums font-medium">
-                      {formatCost(m.totalCost)}
+                    <TableCell className="text-right tabular-nums">
+                      {formatTokens(t.totalTokens)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {formatCost(t.totalCost)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {formatRelative(t.startTime)}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -5,14 +5,14 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@foglamp/ui/lib/utils";
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-[1.5px] focus-visible:ring-ring/50 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-[1.5px] aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-[1.5px] focus-visible:ring-ring/50 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-[1.5px] aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
   {
     variants: {
       variant: {
         default:
-          "bg-primary shadow-[var(--custom-shadow-primary)] text-primary-foreground hover:bg-primary/80",
+          "bg-neutral-800 dark:bg-neutral-200 shadow-[var(--custom-shadow-primary)] text-primary-foreground hover:bg-primary/80",
         outline:
-          "shadow-(--custom-shadow) bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-input/30 dark:hover:bg-input/50",
+          "shadow-(--custom-shadow) bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-input/20 dark:hover:bg-input/50",
         secondary:
           "bg-secondary shadow-[var(--custom-shadow-secondary)] text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
@@ -23,15 +23,15 @@ const buttonVariants = cva(
       },
       size: {
         default:
-          "h-8 gap-1.5 px-2.5 in-data-[slot=button-group]:rounded-md has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2",
-        xs: "h-6 gap-[4px] rounded-[min(var(--radius-md),6px)] px-2 text-xs in-data-[slot=button-group]:rounded-md has-[>svg:first-child]:pl-1.5 has-[>svg:last-child]:pr-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-[5px] rounded-[min(var(--radius-md),10px)] px-2.5 in-data-[slot=button-group]:rounded-md has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2",
+          "h-8 gap-1.5 px-3 in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2",
+        xs: "h-6 gap-[4px] rounded-full px-2.5 text-xs in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-1.5 has-[>svg:last-child]:pr-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-[5px] rounded-full px-3 in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2",
         lg: "h-9 gap-1.5 px-3 has-[>svg:first-child]:pl-2.5 has-[>svg:last-child]:pr-2.5",
         icon: "size-9",
         "icon-xs":
-          "size-6 rounded-[min(var(--radius-md),6px)] in-data-[slot=button-group]:rounded-md [&_svg:not([class*='size-'])]:size-3",
+          "size-6 rounded-full in-data-[slot=button-group]:rounded-full [&_svg:not([class*='size-'])]:size-3",
         "icon-sm":
-          "size-8 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-md",
+          "size-8 rounded-full in-data-[slot=button-group]:rounded-full",
         "icon-lg": "size-10",
       },
     },

@@ -8,12 +8,12 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto rounded-xl shadow-(--custom-shadow) dark:shadow-(--custom-shadow)"
+      className="relative w-full overflow-x-auto rounded-3xl corner-squircle shadow-(--custom-shadow) dark:shadow-(--custom-shadow)"
     >
       <table
         data-slot="table"
         className={cn(
-          "w-full caption-bottom text-sm shadow-(--custom-shadow) rounded-xl bg-card dark:shadow-(--custom-shadow)",
+          "w-full caption-bottom text-sm shadow-(--custom-shadow) rounded-3xl corner-squircle bg-card/40 dark:shadow-(--custom-shadow)",
           className
         )}
         {...props}
@@ -47,7 +47,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
     <tfoot
       data-slot="table-footer"
       className={cn(
-        "border-t dark:border-[#2A2A2A] border-[#EBEBEB] bg-muted/50 font-medium [&>tr]:last:border-b-0",
+        "border-t dark:border-[#1E1E1E] border-[#EBEBEB] bg-muted/50 font-medium [&>tr]:last:border-b-0",
         className
       )}
       {...props}
@@ -60,7 +60,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b transition-colors dark:border-[#2A2A2A] border-[#EBEBEB] has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+        "border-b transition-colors dark:border-[#1E1E1E] border-[#EBEBEB] has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
         className
       )}
       {...props}

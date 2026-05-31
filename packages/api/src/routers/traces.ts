@@ -8,6 +8,9 @@ export const tracesRouter = router({
     .input(
       z.object({
         projectId: z.string(),
+        // Optional time window — omitted by the live feed (latest, unfiltered).
+        from: z.coerce.date().optional(),
+        to: z.coerce.date().optional(),
         limit: z.number().int().min(1).max(200).optional(),
         offset: z.number().int().min(0).optional(),
       }),

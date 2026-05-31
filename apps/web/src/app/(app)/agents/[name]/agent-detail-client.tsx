@@ -3,6 +3,7 @@
 import {
   IconArrowLeft,
   IconCpu,
+  IconPlayerPlayFilled,
   IconRobot,
   IconTool,
 } from "@tabler/icons-react";
@@ -25,7 +26,7 @@ import {
 } from "@foglamp/ui/components/table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { NodeFlow, type FlowNode } from "@/components/app/node-flow";
 import {
@@ -45,7 +46,7 @@ import {
   formatRelative,
   formatTokens,
 } from "@/lib/format";
-import { resolveRange, type RangeKey } from "@/lib/range";
+import { useRange } from "@/components/app/range-context";
 import { trpc } from "@/utils/trpc";
 
 function stepIcon(spanType: string, modelId: string | null) {
@@ -59,8 +60,11 @@ function stepIcon(spanType: string, modelId: string | null) {
 export function AgentDetailClient({ agentName }: { agentName: string }) {
   const { projectId } = useProject();
   const router = useRouter();
-  const [range, setRange] = useState<RangeKey>("24h");
-  const { from, to } = useMemo(() => resolveRange(range), [range]);
+  const { range, setRange } = useRange();
+  const { from, to } = useMemo(
+    () => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
+    [range],
+  );
 
   const detail = useQuery({
     ...trpc.agents.get.queryOptions({
@@ -203,6 +207,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                       <TableHead className="text-right">Duration</TableHead>
                       <TableHead className="text-right">Cost</TableHead>
                       <TableHead className="text-right">When</TableHead>
+                      <TableHead className="w-10" aria-label="Replay" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -247,6 +252,22 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {formatRelative(t.startTime)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            size="icon-xs"
+                            variant="ghost"
+                            aria-label="Replay trace"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(
+                                `/traces/${encodeURIComponent(t.traceId)}?replay=1`,
+                              );
+                            }}
+                          >
+                            <IconPlayerPlayFilled />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

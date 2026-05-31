@@ -3,8 +3,8 @@ import { cn } from "@foglamp/ui/lib/utils";
 import type { SVGProps } from "react";
 
 import {
-  AnthropicLogo,
   AWSLogo,
+  ClaudeLogo,
   CohereLogo,
   DeepSeekLogo,
   GeminiLogo,
@@ -27,8 +27,8 @@ type Logo = (props: SVGProps<SVGSVGElement>) => React.ReactElement;
 const LOGOS: Record<string, Logo> = {
   openai: OpenAILogo,
   azure: OpenAILogo,
-  anthropic: AnthropicLogo,
-  claude: AnthropicLogo,
+  anthropic: ClaudeLogo,
+  claude: ClaudeLogo,
   google: GeminiLogo,
   "google-vertex": GeminiLogo,
   "google-generative-ai": GeminiLogo,
@@ -57,6 +57,23 @@ const LOGOS: Record<string, Logo> = {
   ollama: OllamaLogo,
 };
 
+// Bare model ids (no "vendor/" prefix) → vendor, matched by well-known name
+// patterns. Lets us resolve a logo from just `gemini-3.1-flash-lite`,
+// `claude-sonnet-4-6`, `gpt-4o`, etc. when no provider is available.
+const MODEL_ID_HINTS: [RegExp, string][] = [
+  [/^(gpt|o[1-4]\b|o[1-4]-|chatgpt|text-|davinci)/, "openai"],
+  [/^claude/, "claude"],
+  [/^(gemini|gemma|palm|bison)/, "google"],
+  [/^(mistral|mixtral|magistral|codestral|ministral|pixtral)/, "mistral"],
+  [/^(llama|meta-llama)/, "meta"],
+  [/^grok/, "xai"],
+  [/^deepseek/, "deepseek"],
+  [/^qwen/, "qwen"],
+  [/^command/, "cohere"],
+  [/^phi/, "microsoft"],
+  [/^sonar/, "perplexity"],
+];
+
 /** Resolve the brand logo for a (provider, modelId) pair, or null if unknown. */
 export function resolveModelLogo(
   provider?: string | null,
@@ -69,6 +86,13 @@ export function resolveModelLogo(
   const fromProvider = provider?.split(".")[0]?.toLowerCase();
   for (const key of [fromId, fromProvider]) {
     if (key && LOGOS[key]) return LOGOS[key]!;
+  }
+  // Fall back to the model id's own name (e.g. a bare "gemini-3.1-flash-lite").
+  const id = modelId?.toLowerCase();
+  if (id) {
+    for (const [pattern, vendor] of MODEL_ID_HINTS) {
+      if (pattern.test(id) && LOGOS[vendor]) return LOGOS[vendor]!;
+    }
   }
   return null;
 }

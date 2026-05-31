@@ -1,24 +1,21 @@
 "use client";
 
 import {
-  IconCopy,
-  IconKey,
-  IconPencil,
-  IconPlus,
-  IconTrash,
-} from "@tabler/icons-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@foglamp/ui/components/alert-dialog";
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@foglamp/ui/components/card";
-import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -39,389 +36,298 @@ import {
   TableHeader,
   TableRow,
 } from "@foglamp/ui/components/table";
-import { useState } from "react";
+import {
+  IconCheckFilled,
+  IconCircleCheckFilled,
+  IconCircleXFilled,
+  IconCopyFilled,
+  IconKeyFilled,
+  IconPlusFilled,
+  IconTrashFilled,
+} from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { EmptyState, PageHeader, TableSkeleton } from "@/components/app/page-parts";
+import {
+  EmptyState,
+  PageHeader,
+  TableSkeleton,
+} from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
-import { formatRelative } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 
 export function SettingsClient() {
-  const { projectId, project, projects, setProjectId } = useProject();
+  const { projectId } = useProject();
   const qc = useQueryClient();
-
-  // Projects dialog state
-  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
-  const [projectName, setProjectName] = useState("");
-  const [projectUrl, setProjectUrl] = useState("");
-  // Edit-project dialog state (name + url).
-  const [editing, setEditing] = useState<{
-    id: string;
-    name: string;
-    url: string;
-  } | null>(null);
 
   // API keys dialog state
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
   const [keyName, setKeyName] = useState("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  // Key pending revocation (drives the confirm dialog).
+  const [revokeTarget, setRevokeTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  // Remembers the name while the confirm dialog animates closed, so the
+  // description doesn't flicker to empty before the exit animation finishes.
+  const lastRevokeName = useRef("");
 
   const keys = useQuery({
     ...trpc.projects.keys.list.queryOptions({ projectId: projectId! }),
     enabled: !!projectId,
   });
 
-  const createProject = useMutation(
-    trpc.projects.create.mutationOptions({
-      onSuccess: () => {
-        qc.invalidateQueries({ queryKey: trpc.projects.list.queryKey() });
-        setProjectDialogOpen(false);
-        setProjectName("");
-        setProjectUrl("");
-        toast.success("Project created");
-      },
-      onError: (e) => toast.error(e.message),
-    }),
-  );
-
-  const updateProject = useMutation(
-    trpc.projects.update.mutationOptions({
-      onSuccess: () => {
-        qc.invalidateQueries({ queryKey: trpc.projects.list.queryKey() });
-        setEditing(null);
-        toast.success("Project updated");
-      },
-      onError: (e) => toast.error(e.message),
-    }),
-  );
-
   const createKey = useMutation(
     trpc.projects.keys.create.mutationOptions({
       onSuccess: (data) => {
         qc.invalidateQueries({ queryKey: trpc.projects.keys.list.queryKey() });
-        setKeyDialogOpen(false);
         setKeyName("");
         setRevealedKey(data.key);
-        toast.success("API key created");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   const revoke = useMutation(
     trpc.projects.keys.revoke.mutationOptions({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: trpc.projects.keys.list.queryKey() });
+        setRevokeTarget(null);
         toast.success("API key revoked");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
-  const keyRows = keys.data ?? [];
+  // Active keys first, then newest-created first within each group.
+  const keyRows = useMemo(
+    () =>
+      [...(keys.data ?? [])].sort((a, b) => {
+        const aRevoked = a.revokedAt ? 1 : 0;
+        const bRevoked = b.revokedAt ? 1 : 0;
+        if (aRevoked !== bRevoked) return aRevoked - bRevoked;
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      }),
+    [keys.data]
+  );
 
   return (
     <>
       <PageHeader
-        title="Settings"
-        description="Manage projects and API keys."
-      />
-
-      {/* Projects card */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Projects</CardTitle>
-          <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
-            <DialogTrigger render={<Button size="sm" />}>
-              <IconPlus /> New project
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>New project</DialogTitle>
-              </DialogHeader>
-              <Field>
-                <FieldLabel>Name</FieldLabel>
-                <Input
-                  autoFocus
-                  placeholder="My project"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel>URL (optional)</FieldLabel>
-                <Input
-                  placeholder="example.com"
-                  value={projectUrl}
-                  onChange={(e) => setProjectUrl(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Used to show a favicon next to the project.
-                </p>
-              </Field>
-              <DialogFooter>
-                <Button
-                  disabled={
-                    !projectName.trim() ||
-                    !project?.orgId ||
-                    createProject.isPending
-                  }
-                  onClick={() => {
-                    if (!projectName.trim() || !project?.orgId) return;
-                    createProject.mutate({
-                      orgId: project.orgId,
-                      name: projectName.trim(),
-                      url: projectUrl.trim() || undefined,
-                    });
-                  }}
-                >
-                  Create
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Org</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {projects.map((p) => (
-                <TableRow
-                  key={p.id}
-                  className="cursor-pointer"
-                  onClick={() => setProjectId(p.id)}
-                >
-                  <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {p.orgName}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="font-mono">
-                      {p.slug}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {p.id === projectId && (
-                      <Badge variant="emerald">active</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditing({ id: p.id, name: p.name, url: p.url ?? "" });
-                      }}
-                    >
-                      <IconPencil />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          {/* Edit project (name + url) */}
-          <Dialog
-            open={editing !== null}
-            onOpenChange={(open) => !open && setEditing(null)}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Edit project</DialogTitle>
-              </DialogHeader>
-              <Field>
-                <FieldLabel>Name</FieldLabel>
-                <Input
-                  autoFocus
-                  value={editing?.name ?? ""}
-                  onChange={(e) =>
-                    setEditing((s) => (s ? { ...s, name: e.target.value } : s))
-                  }
-                />
-              </Field>
-              <Field>
-                <FieldLabel>URL (optional)</FieldLabel>
-                <Input
-                  placeholder="example.com"
-                  value={editing?.url ?? ""}
-                  onChange={(e) =>
-                    setEditing((s) => (s ? { ...s, url: e.target.value } : s))
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Used to show a favicon next to the project. Leave blank to clear.
-                </p>
-              </Field>
-              <DialogFooter>
-                <Button
-                  disabled={
-                    !editing?.name.trim() || updateProject.isPending
-                  }
-                  onClick={() => {
-                    if (!editing?.name.trim()) return;
-                    updateProject.mutate({
-                      projectId: editing.id,
-                      name: editing.name.trim(),
-                      url: editing.url.trim(),
-                    });
-                  }}
-                >
-                  Save
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </CardContent>
-      </Card>
-
-      {/* API keys card */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>API keys</CardTitle>
-          {projectId && (
-            <Dialog open={keyDialogOpen} onOpenChange={setKeyDialogOpen}>
+        title="API Keys"
+        description="Manage your keys."
+        actions={
+          projectId && (
+            <Dialog
+              open={keyDialogOpen}
+              onOpenChange={(open) => {
+                setKeyDialogOpen(open);
+                if (!open) {
+                  setKeyName("");
+                  setRevealedKey(null);
+                  setCopied(false);
+                }
+              }}
+            >
               <DialogTrigger render={<Button size="sm" />}>
-                <IconPlus /> Create key
+                <IconPlusFilled /> Create key
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create API key</DialogTitle>
+                  <DialogTitle>
+                    {revealedKey ? "API key created" : "Create API key"}
+                  </DialogTitle>
+
+                  <DialogDescription>
+                    {revealedKey
+                      ? "Copy your key now, it won't be shown again."
+                      : "Give it a cool name."}
+                  </DialogDescription>
                 </DialogHeader>
-                <Field>
-                  <FieldLabel>Name</FieldLabel>
-                  <Input
-                    autoFocus
-                    placeholder="Production key"
-                    value={keyName}
-                    onChange={(e) => setKeyName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        if (!keyName.trim()) return;
-                        createKey.mutate({ projectId, name: keyName.trim() });
-                      }
-                    }}
-                  />
-                </Field>
-                <DialogFooter>
-                  <Button
-                    disabled={!keyName.trim() || createKey.isPending}
-                    onClick={() => {
-                      if (!keyName.trim()) return;
-                      createKey.mutate({ projectId, name: keyName.trim() });
-                    }}
-                  >
-                    Create
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {!projectId ? (
-            <p className="text-sm text-muted-foreground">
-              Select a project first.
-            </p>
-          ) : (
-            <>
-              {revealedKey && (
-                <div className="flex flex-col gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                    Copy your key now — it won't be shown again.
-                  </p>
-                  <InputGroup>
-                    <InputGroupInput
-                      readOnly
-                      value={revealedKey}
-                      className="font-mono text-xs"
-                    />
-                    <InputGroupAddon>
+                {revealedKey ? (
+                  <>
+                    <Field>
+                      <FieldLabel>API Key:</FieldLabel>
+                      <InputGroup>
+                        <InputGroupInput
+                          readOnly
+                          value={revealedKey}
+                          className="font-mono text-xs"
+                        />
+                        <InputGroupAddon align="inline-end">
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(revealedKey);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            }}
+                          >
+                            {copied ? (
+                              <IconCircleCheckFilled />
+                            ) : (
+                              <IconCopyFilled />
+                            )}
+                          </Button>
+                        </InputGroupAddon>
+                      </InputGroup>
+                    </Field>
+                    <DialogFooter>
                       <Button
-                        size="icon-sm"
-                        variant="ghost"
                         onClick={() => {
-                          void navigator.clipboard.writeText(revealedKey);
-                          toast.success("Copied");
+                          setKeyDialogOpen(false);
+                          setRevealedKey(null);
+                          setKeyName("");
+                          setCopied(false);
                         }}
                       >
-                        <IconCopy />
+                        Done
                       </Button>
-                    </InputGroupAddon>
-                  </InputGroup>
-                </div>
-              )}
-              {keys.isLoading ? (
-                <TableSkeleton />
-              ) : keyRows.length === 0 ? (
-                <EmptyState
-                  icon={IconKey}
-                  title="No API keys"
-                  description="Create a key to authenticate SDK requests."
-                />
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Prefix</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {keyRows.map((k) => (
-                      <TableRow key={k.id}>
-                        <TableCell className="font-medium">{k.name}</TableCell>
-                        <TableCell>
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {k.keyPrefix}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatRelative(k.createdAt)}
-                        </TableCell>
-                        <TableCell>
-                          {k.revokedAt ? (
-                            <Badge variant="rose">revoked</Badge>
-                          ) : (
-                            <Badge variant="emerald">active</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {!k.revokedAt && (
-                            <Button
-                              size="icon-sm"
-                              variant="ghost"
-                              disabled={revoke.isPending}
-                              onClick={() =>
-                                revoke.mutate({ projectId, keyId: k.id })
-                              }
-                            >
-                              <IconTrash />
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </>
+                    </DialogFooter>
+                  </>
+                ) : (
+                  <>
+                    <Field>
+                      <FieldLabel>Name</FieldLabel>
+                      <Input
+                        autoFocus
+                        placeholder="Production key"
+                        value={keyName}
+                        onChange={(e) => setKeyName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            if (!keyName.trim()) return;
+                            createKey.mutate({
+                              projectId,
+                              name: keyName.trim(),
+                            });
+                          }
+                        }}
+                      />
+                    </Field>
+                    <DialogFooter>
+                      <Button
+                        disabled={!keyName.trim() || createKey.isPending}
+                        onClick={() => {
+                          if (!keyName.trim()) return;
+                          createKey.mutate({ projectId, name: keyName.trim() });
+                        }}
+                      >
+                        Create
+                      </Button>
+                    </DialogFooter>
+                  </>
+                )}
+              </DialogContent>
+            </Dialog>
+          )
+        }
+      />
+      {!projectId ? (
+        <p className="text-sm text-muted-foreground">Select a project first.</p>
+      ) : (
+        <>
+          {keys.isLoading ? (
+            <TableSkeleton />
+          ) : keyRows.length === 0 ? (
+            <EmptyState
+              icon={IconKeyFilled}
+              title="No API keys"
+              description="Create a key to authenticate SDK requests."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Prefix</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {keyRows.map((k) => (
+                  <TableRow key={k.id} className="h-13">
+                    <TableCell className="font-medium">{k.name}</TableCell>
+                    <TableCell>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {k.keyPrefix}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {k.revokedAt ? (
+                        <Badge variant="rose">
+                          <IconCircleXFilled className="mb-px" />
+                          revoked
+                        </Badge>
+                      ) : (
+                        <Badge variant="emerald">
+                          <IconCircleCheckFilled className="mb-px" />
+                          active
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDistanceToNow(new Date(k.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {!k.revokedAt && (
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          onClick={() => {
+                            lastRevokeName.current = k.name;
+                            setRevokeTarget({ id: k.id, name: k.name });
+                          }}
+                        >
+                          <IconTrashFilled />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </CardContent>
-      </Card>
+
+          <AlertDialog
+            open={revokeTarget !== null}
+            onOpenChange={(open) => !open && setRevokeTarget(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Revoke API key?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {`"${revokeTarget?.name ?? lastRevokeName.current}" will stop working immediately. This can't be undone.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  disabled={revoke.isPending}
+                  onClick={() => {
+                    if (!revokeTarget) return;
+                    revoke.mutate({ projectId, keyId: revokeTarget.id });
+                  }}
+                >
+                  Revoke
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </>
   );
 }

@@ -1,5 +1,7 @@
 import { trpcServer } from "@hono/trpc-server";
 import { startAlertEvaluator } from "@foglamp/api/alertCron";
+import { startQuotaWarnSweep } from "@foglamp/api/quotaCron";
+import { startScoringWorker } from "@foglamp/api/scoringCron";
 import { createContext } from "@foglamp/api/context";
 import { appRouter } from "@foglamp/api/routers/index";
 import { auth } from "@foglamp/auth";
@@ -8,6 +10,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import { evlog, type AppEnv } from "./evlog";
+import { handleFoggy } from "./foggy";
 
 const app = new Hono<AppEnv>();
 const trustedAppOrigins = getTrustedAppOrigins(
@@ -38,6 +41,10 @@ app.use(
   })
 );
 
+// Foggy — in-app AI assistant. Streams a UI message response; auth + project
+// access + rate limiting are enforced inside the handler.
+app.post("/foggy", handleFoggy);
+
 app.get("/", (c) => {
   return c.text("OK");
 });
@@ -45,8 +52,17 @@ app.get("/", (c) => {
 // Alert evaluator: sweep enabled rules on an interval, transition state, and
 // email on fired/resolved. apps/server is the long-running tier that owns it.
 const stopAlertEvaluator = startAlertEvaluator();
+// Eval scoring worker: score new traces/spans against enabled evals on an
+// interval (BYOK judges + code scorers), writing to the scores table.
+const stopScoringWorker = startScoringWorker();
+// Quota warning sweep: email owners/admins when an org nears its span quota.
+const stopQuotaWarnSweep = startQuotaWarnSweep();
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
-  process.on(signal, () => stopAlertEvaluator());
+  process.on(signal, () => {
+    stopAlertEvaluator();
+    stopScoringWorker();
+    stopQuotaWarnSweep();
+  });
 }
 
 // Bun serves a default export with `{ port, fetch }`. The host (Cloud Run,

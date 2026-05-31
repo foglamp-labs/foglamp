@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { getOrgPlan } from "@foglamp/billing";
 import {
   alertEvent,
   alertRule,
@@ -6,7 +7,8 @@ import {
   type AlertChannel,
   type AlertFilters,
 } from "@foglamp/db/schema/alert";
-import { desc, eq } from "drizzle-orm";
+import { project } from "@foglamp/db/schema/project";
+import { count, desc, eq } from "drizzle-orm";
 
 import { decimalOrNull } from "../lib/util";
 import type { Db } from "../types";
@@ -20,13 +22,16 @@ export type AlertMetric =
   | "ttft_p95"
   | "error_rate"
   | "token_usage"
-  | "request_count";
+  | "request_count"
+  | "eval_avg_score"
+  | "eval_pass_rate";
 export type AlertComparison = "gt" | "gte" | "lt" | "lte";
 
 export type AlertRuleInput = {
   projectId: string;
   name: string;
   metric: AlertMetric;
+  evalId?: string;
   filters?: AlertFilters;
   windowSeconds: number;
   threshold: number;
@@ -65,6 +70,7 @@ export async function listAlerts(db: Db, userId: string, projectId: string) {
     id: rule.id,
     name: rule.name,
     metric: rule.metric,
+    evalId: rule.evalId ?? null,
     filters: rule.filters ?? null,
     windowSeconds: rule.windowSeconds,
     threshold: decimalOrNull(rule.threshold),
@@ -80,13 +86,31 @@ export async function listAlerts(db: Db, userId: string, projectId: string) {
 }
 
 export async function createAlert(db: Db, userId: string, input: AlertRuleInput) {
-  await requireProjectAccess(db, userId, input.projectId);
+  const proj = await requireProjectAccess(db, userId, input.projectId);
+
+  // Plan limit: cap alerts per org, counted across all its projects.
+  const { limits } = await getOrgPlan(proj.orgId);
+  if (limits.alerts !== null) {
+    const rows = await db
+      .select({ n: count() })
+      .from(alertRule)
+      .innerJoin(project, eq(project.id, alertRule.projectId))
+      .where(eq(project.orgId, proj.orgId));
+    if ((rows[0]?.n ?? 0) >= limits.alerts) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Your plan allows ${limits.alerts} alert${limits.alerts === 1 ? "" : "s"}. Upgrade to add more.`,
+      });
+    }
+  }
+
   const rows = await db
     .insert(alertRule)
     .values({
       projectId: input.projectId,
       name: input.name,
       metric: input.metric,
+      evalId: input.evalId,
       filters: input.filters,
       windowSeconds: input.windowSeconds,
       threshold: String(input.threshold),
@@ -112,6 +136,7 @@ export async function updateAlert(
     .set({
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.metric !== undefined ? { metric: input.metric } : {}),
+      ...(input.evalId !== undefined ? { evalId: input.evalId } : {}),
       ...(input.filters !== undefined ? { filters: input.filters } : {}),
       ...(input.windowSeconds !== undefined
         ? { windowSeconds: input.windowSeconds }

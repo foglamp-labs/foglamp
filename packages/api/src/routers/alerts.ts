@@ -18,6 +18,8 @@ const metricEnum = z.enum([
   "error_rate",
   "token_usage",
   "request_count",
+  "eval_avg_score",
+  "eval_pass_rate",
 ]);
 const comparisonEnum = z.enum(["gt", "gte", "lt", "lte"]);
 
@@ -47,6 +49,7 @@ export const alertsRouter = router({
         projectId: z.string(),
         name: z.string().min(1).max(200),
         metric: metricEnum,
+        evalId: z.string().optional(),
         filters: filtersSchema,
         windowSeconds: z.number().int().min(60).max(86_400),
         threshold: z.number(),
@@ -65,6 +68,7 @@ export const alertsRouter = router({
         ruleId: z.string(),
         name: z.string().min(1).max(200).optional(),
         metric: metricEnum.optional(),
+        evalId: z.string().optional(),
         filters: filtersSchema,
         windowSeconds: z.number().int().min(60).max(86_400).optional(),
         threshold: z.number().optional(),

@@ -6,13 +6,10 @@
 # them pass automatically.
 #
 # SETUP (one-time, before going public):
-#   1. Update `path-to-document` below to point at CLA.md in the FINAL public
-#      repo (the current git remote is option-ai/boilerplate — change the slug
-#      once the public repo exists).
-#   2. Create a repo/org secret `CLA_SIGNATURES_TOKEN`: a Personal Access Token
+#   1. Create a repo/org secret `CLA_SIGNATURES_TOKEN`: a Personal Access Token
 #      with `repo` scope, used to write the signatures file. (GITHUB_TOKEN can't
 #      push to the signatures branch on its own in all setups.)
-#   3. Add maintainers/bots that should bypass the CLA to `allowlist`.
+#   2. Add maintainers/bots that should bypass the CLA to `allowlist`.
 name: CLA Assistant
 
 on:
@@ -42,9 +39,9 @@ jobs:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_SIGNATURES_TOKEN }}
         with:
           path-to-signatures: signatures/cla.json
-          path-to-document: https://github.com/option-ai/watchtower/blob/master/CLA.md
+          path-to-document: https://github.com/foglamp-labs/foglamp/blob/master/CLA.md
           branch: cla-signatures
-          custom-notsigned-pryou: "Thanks for your PR! Before we can merge it, please sign the Watchtower CLA by posting the comment below."
+          custom-notsigned-pryou: "Thanks for your PR! Before we can merge it, please sign the Foglamp CLA by posting the comment below."
           custom-pr-sign-comment: "I have read the CLA Document and I hereby sign the CLA"
           custom-allsigned-prcomment: "All contributors have signed the CLA. ✅"
           allowlist: dependabot[bot],github-actions[bot]

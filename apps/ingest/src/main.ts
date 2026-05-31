@@ -14,6 +14,7 @@ import { resolveApiKey } from "./apiKey";
 import { WriteBuffer } from "./buffer";
 import { getProjectPricing } from "./customPricing";
 import { evlog, type AppEnv } from "./evlog";
+import { checkOrgQuota, pruneOrgLimits } from "./orgLimits";
 import { checkRateLimit, pruneRateLimits } from "./rateLimit";
 import { buildSpanRows } from "./transform";
 
@@ -50,8 +51,11 @@ const buffer = new WriteBuffer(client, {
 });
 buffer.start();
 
-// Periodically shed idle rate-limit buckets (in-memory, per-instance).
-const pruneTimer = setInterval(pruneRateLimits, 60_000);
+// Periodically shed idle rate-limit + org-limit cache entries (in-memory).
+const pruneTimer = setInterval(() => {
+  pruneRateLimits();
+  pruneOrgLimits();
+}, 60_000);
 pruneTimer.unref?.();
 
 // --- HTTP -----------------------------------------------------------------
@@ -100,7 +104,19 @@ app.post("/ingest", async (c) => {
     );
   }
 
-  // 4. Price + flatten to span rows, then enqueue.
+  // 4. Plan quota: reject over the hard cap (110%); also gives the per-org
+  // retention to stamp. Warn (90%) is surfaced in-app via the usage endpoint.
+  const incoming = parsed.data.traces.reduce((n, t) => n + t.spans.length, 0);
+  const quota = await checkOrgQuota(client, resolved.orgId, incoming);
+  if (quota.reject) {
+    log.set({ quotaUsed: quota.used, quotaLimit: quota.limit });
+    return c.json(
+      { error: "Monthly span quota exceeded — upgrade your plan to keep ingesting." },
+      429,
+    );
+  }
+
+  // 5. Price + flatten to span rows (stamped with org + retention), then enqueue.
   const [table, rules] = await Promise.all([
     getPricingTable(),
     getProjectPricing(resolved.projectId),
@@ -108,6 +124,8 @@ app.post("/ingest", async (c) => {
   const rows = buildSpanRows({
     payload: parsed.data,
     projectId: resolved.projectId,
+    orgId: resolved.orgId,
+    retentionDays: quota.retentionDays,
     table,
     rules,
     now: Date.now(),

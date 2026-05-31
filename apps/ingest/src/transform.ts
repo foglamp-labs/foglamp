@@ -24,11 +24,13 @@ const PRICED_SPAN_TYPES = new Set(["llm", "embedding"]);
 export function buildSpanRows(args: {
   payload: IngestPayload;
   projectId: string;
+  orgId: string;
+  retentionDays: number;
   table: PricingTable;
   rules: Rule[];
   now: number;
 }): SpanRow[] {
-  const { payload, projectId, table, rules, now } = args;
+  const { payload, projectId, orgId, retentionDays, table, rules, now } = args;
   const rows: SpanRow[] = [];
 
   for (const trace of payload.traces) {
@@ -50,6 +52,8 @@ export function buildSpanRows(args: {
 
       rows.push({
         project_id: projectId,
+        org_id: orgId,
+        retention_days: retentionDays,
         trace_id: trace.traceId,
         span_id: span.spanId,
         parent_span_id: span.parentSpanId ?? "",
@@ -75,6 +79,8 @@ export function buildSpanRows(args: {
         // the stored count agree with computeCost's `requestCount ?? 1`.
         request_count: usage?.requestCount ?? (isPriced ? 1 : 0),
         ttft_ms: span.ttftMs == null ? null : Math.round(span.ttftMs),
+        chunk_offsets: span.chunkOffsets ?? [],
+        chunk_tokens: span.chunkTokens ?? [],
         prompt_cost: costs.promptCost,
         completion_cost: costs.completionCost,
         request_cost: costs.requestCost,
@@ -87,6 +93,7 @@ export function buildSpanRows(args: {
         pricing_source: priced?.source ?? "",
         // Only stamp a priced_at when a price actually resolved.
         priced_at: priced?.source ? now : null,
+        trace_name: trace.traceName ?? "",
         agent_name: trace.agentName ?? "",
         workflow_name: trace.workflowName ?? "",
         workflow_run_id: trace.workflowRunId ?? "",

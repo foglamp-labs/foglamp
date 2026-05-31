@@ -2,7 +2,10 @@ import { publicProcedure, router } from "../index";
 import { adminRouter } from "./admin";
 import { agentsRouter } from "./agents";
 import { alertsRouter } from "./alerts";
+import { evalsRouter } from "./evals";
 import { metricsRouter } from "./metrics";
+import { orgsRouter } from "./orgs";
+import { providerKeysRouter } from "./providerKeys";
 import { pricingRouter } from "./pricing";
 import { projectsRouter } from "./projects";
 import { tracesRouter } from "./traces";
@@ -20,6 +23,9 @@ export const appRouter = router({
   agents: agentsRouter,
   metrics: metricsRouter,
   alerts: alertsRouter,
+  evals: evalsRouter,
+  orgs: orgsRouter,
+  providerKeys: providerKeysRouter,
   pricing: pricingRouter,
   admin: adminRouter,
 });

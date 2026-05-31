@@ -11,6 +11,8 @@ export const workflowsRouter = router({
     .input(
       z.object({
         projectId: z.string(),
+        from: z.coerce.date().optional(),
+        to: z.coerce.date().optional(),
         limit: z.number().int().min(1).max(200).optional(),
         offset: z.number().int().min(0).optional(),
       }),

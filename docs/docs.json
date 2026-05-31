@@ -20,7 +20,7 @@
         "groups": [
           {
             "group": "Get started",
-            "pages": ["introduction", "quickstart"]
+            "pages": ["introduction", "quickstart", "ai-instrument"]
           },
           {
             "group": "Core concepts",

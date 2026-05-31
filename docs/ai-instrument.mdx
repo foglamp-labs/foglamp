@@ -1,0 +1,95 @@
+---
+title: Instrument with an AI agent
+description: "Instructions for a coding agent to add Foglamp tracing to an app."
+---
+
+<Note>
+  This page is written for an **AI coding agent** (Claude Code, Cursor, …) asked
+  to add Foglamp tracing to a codebase. If you're a human, the
+  [Quickstart](/quickstart) is friendlier.
+</Note>
+
+You are instrumenting a **Vercel AI SDK** app so its runs appear in Foglamp.
+Foglamp captures model/tool/step boundaries from the AI SDK and renders them as
+traces (with cost, tokens, latency). Make the **smallest safe change** that gets
+one real run flowing, then enrich.
+
+## Rules
+
+- **Requires AI SDK v7** (`ai@7`). Foglamp builds on v7's telemetry interface and
+  does not support v5/v6. If the repo is on v5/v6, stop and tell the user.
+- Prefer the installed package's types/README over memory. Don't invent SDK APIs
+  or hand-wire ingest endpoints — only use `foglamp`'s public API below.
+- The SDK is a **silent no-op without `FOGLAMP_API_KEY`** — safe to add in every
+  environment. Nothing throws and no spans are sent until the key is set.
+- Instrument **one real entry point first**, verify a trace appears, then expand.
+
+## 1. Install & configure
+
+```bash
+npm i foglamp
+```
+
+```bash .env
+FOGLAMP_API_KEY=fl_your_key_here
+# Hosted ingest is the default. Only set this when self-hosting:
+# FOGLAMP_INGEST_URL=http://localhost:4000/ingest
+```
+
+## 2. Wrap the AI SDK calls (per-call, recommended)
+
+Attach the integration to each `generateText` / `streamText` call via
+`experimental_telemetry`. Every call needs a `traceName` **or** an `agentName`.
+
+```ts
+import { foglamp } from "foglamp";
+import { generateText } from "ai";
+
+const fog = foglamp();
+
+await generateText({
+  model,
+  prompt,
+  experimental_telemetry: {
+    isEnabled: true,
+    integrations: [fog.integration({ agentName: "summarizer" })],
+  },
+});
+```
+
+## 3. Map the codebase to Foglamp's model
+
+Inspect the app and apply these — this is what makes the dashboard useful:
+
+- **Each agent** (a named, reusable LLM behavior) → set `agentName` on its calls.
+- **Multi-step pipelines** (a request that fans out across several calls/agents)
+  → give every call in one run a shared `workflowName` **and** the same
+  `workflowRunId` (e.g. the job/request id), so they line up on the Workflows
+  timeline. `workflowName` and `workflowRunId` are passed together.
+- **One-off calls** that aren't an agent → just give them a `traceName`.
+
+```ts
+fog.integration({
+  agentName: "retriever",
+  workflowName: "support-ticket",
+  workflowRunId: ticket.id,
+});
+```
+
+## 4. Flush in serverless
+
+Long-running servers (Node, Bun) flush on an interval automatically. In
+serverless handlers, ensure the batch is sent before the function returns:
+
+```ts
+await fog.flush();
+```
+
+## 5. Verify
+
+Run the app so it makes at least one model call, then confirm a trace appears in
+the dashboard (Overview / Traces). Success = a real run is visible with its
+spans, tokens, and cost — not just that the package installed.
+
+See the [SDK reference](/sdk/overview) and [data model](/concepts/data-model)
+for every option.

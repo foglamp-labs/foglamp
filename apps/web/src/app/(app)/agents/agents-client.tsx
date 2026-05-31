@@ -1,6 +1,6 @@
 "use client";
 
-import { IconRobot } from "@tabler/icons-react";
+import { IconGhostFilled, IconRobot } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@foglamp/ui/components/badge";
 import {
@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@foglamp/ui/components/card";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import {
   CardsSkeleton,
@@ -26,14 +26,17 @@ import {
   formatDuration,
   formatTokens,
 } from "@/lib/format";
-import { resolveRange, type RangeKey } from "@/lib/range";
+import { useRange } from "@/components/app/range-context";
 import { trpc } from "@/utils/trpc";
 
 export function AgentsClient() {
   const { projectId } = useProject();
   const router = useRouter();
-  const [range, setRange] = useState<RangeKey>("24h");
-  const { from, to } = useMemo(() => resolveRange(range), [range]);
+  const { range, setRange } = useRange();
+  const { from, to } = useMemo(
+    () => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
+    [range]
+  );
 
   const agents = useQuery({
     ...trpc.agents.list.queryOptions({ projectId: projectId!, from, to }),
@@ -62,7 +65,7 @@ export function AgentsClient() {
         <CardsSkeleton count={6} />
       ) : rows.length === 0 ? (
         <EmptyState
-          icon={IconRobot}
+          icon={IconGhostFilled}
           title="No agent activity"
           description="Set agentName on the SDK integration to break down by agent."
         />
@@ -91,7 +94,7 @@ export function AgentsClient() {
                 <Stat
                   label="Spans"
                   value={`${formatCount(a.spanCount)} · ${formatCount(
-                    a.llmSpanCount,
+                    a.llmSpanCount
                   )} LLM`}
                 />
                 <Stat label="Tokens" value={formatTokens(a.totalTokens)} />

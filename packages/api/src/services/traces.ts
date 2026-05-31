@@ -1,19 +1,46 @@
 import { getTraceSpans, listTraces } from "@foglamp/clickhouse";
 
-import { decimalOrNull, num } from "../lib/util";
+import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
+
+// Generation tokens/sec: output tokens over the active streaming window
+// (duration minus time-to-first-token). Returns null when no positive window
+// exists (non-streaming, zero-duration, or no output).
+function generationTps(
+  outputTokens: number,
+  durationMs: number,
+  ttftMs: number | null,
+): number | null {
+  if (outputTokens <= 0) return null;
+  const windowMs = durationMs - (ttftMs ?? 0);
+  if (windowMs <= 0) return null;
+  return outputTokens / (windowMs / 1000);
+}
 
 export async function getTraceList(
   db: Db,
   ch: Ch,
   userId: string,
-  input: { projectId: string; limit?: number; offset?: number },
+  input: {
+    projectId: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    offset?: number;
+  },
 ) {
   await requireProjectAccess(db, userId, input.projectId);
-  const rows = await listTraces(ch, input);
+  const rows = await listTraces(ch, {
+    projectId: input.projectId,
+    from: input.from ? toClickHouseDateTime(input.from) : undefined,
+    to: input.to ? toClickHouseDateTime(input.to) : undefined,
+    limit: input.limit,
+    offset: input.offset,
+  });
   return rows.map((r) => ({
     traceId: r.trace_id,
+    traceName: r.trace_name || null,
     agentName: r.agent_name || null,
     workflowName: r.workflow_name || null,
     workflowRunId: r.workflow_run_id || null,
@@ -54,6 +81,11 @@ export async function getTraceDetail(
     outputTokens: num(s.output_tokens),
     totalTokens: num(s.total_tokens),
     ttftMs: s.ttft_ms === null ? null : num(s.ttft_ms),
+    chunkOffsets: (s.chunk_offsets ?? []).map(num),
+    chunkTokens: (s.chunk_tokens ?? []).map(num),
+    // Generation throughput: output tokens over the streaming window, excluding
+    // the time-to-first-token wait. Null when there's no measurable window.
+    tps: generationTps(num(s.output_tokens), num(s.duration_ms), s.ttft_ms),
     totalCost: decimalOrNull(s.total_cost),
     pricingSource: s.pricing_source || null,
     metadata: s.metadata ?? {},

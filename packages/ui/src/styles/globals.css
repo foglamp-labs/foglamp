@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@toolwind/corner-shape";
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
@@ -15,7 +16,7 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
+  --secondary: oklch(0.95 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
@@ -35,38 +36,49 @@
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent: oklch(0.95 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --custom-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.06),
-    0px 1px 2px -1px rgba(0, 0, 0, 0.06), 0px 2px 4px 0px rgba(0, 0, 0, 0.04);
-  --custom-shadow-primary: 0px 0px 0px 1px rgba(0, 0, 0, 0.6),
-    0px 1px 2px -1px rgba(0, 0, 0, 0.4), 0px 2px 4px 0px rgba(0, 0, 0, 0.18);
-  --custom-shadow-destructive: 0px 0px 0px 1px rgba(244, 63, 94, 0.25),
+  --custom-shadow:
+    0px 0px 0px 1px rgba(0, 0, 0, 0.06), 0px 1px 2px -1px rgba(0, 0, 0, 0.06),
+    0px 2px 4px 0px rgba(0, 0, 0, 0.04);
+  --custom-shadow-primary:
+    0px 0px 0px 1px rgba(0, 0, 0, 0.6), 0px 1px 2px -1px rgba(0, 0, 0, 0.4),
+    0px 2px 4px 0px rgba(0, 0, 0, 0.18);
+  --custom-shadow-destructive:
+    0px 0px 0px 1px rgba(244, 63, 94, 0.25),
     0px 1px 2px -1px rgba(244, 63, 94, 0.18),
     0px 2px 4px 0px rgba(244, 63, 94, 0.12);
-  --custom-shadow-secondary: 0px 0px 0px 1px rgba(0, 0, 0, 0.08),
-    0px 1px 2px -1px rgba(0, 0, 0, 0.08), 0px 2px 4px 0px rgba(0, 0, 0, 0.05);
-  --custom-shadow-green: 0px 0px 0px 1px rgba(34, 197, 94, 0.25),
+  --custom-shadow-secondary:
+    0px 0px 0px 1px rgba(0, 0, 0, 0.08), 0px 1px 2px -1px rgba(0, 0, 0, 0.08),
+    0px 2px 4px 0px rgba(0, 0, 0, 0.05);
+  --custom-shadow-green:
+    0px 0px 0px 1px rgba(34, 197, 94, 0.25),
     0px 1px 2px -1px rgba(34, 197, 94, 0.18),
     0px 2px 4px 0px rgba(34, 197, 94, 0.12);
-  --custom-shadow-blue: 0px 0px 0px 1px rgba(59, 130, 246, 0.25),
+  --custom-shadow-blue:
+    0px 0px 0px 1px rgba(59, 130, 246, 0.25),
     0px 1px 2px -1px rgba(59, 130, 246, 0.18),
     0px 2px 4px 0px rgba(59, 130, 246, 0.12);
-  --custom-shadow-amber: 0px 0px 0px 1px rgba(245, 158, 11, 0.25),
+  --custom-shadow-amber:
+    0px 0px 0px 1px rgba(245, 158, 11, 0.25),
     0px 1px 2px -1px rgba(245, 158, 11, 0.18),
     0px 2px 4px 0px rgba(245, 158, 11, 0.12);
-  --custom-shadow-emerald: 0px 0px 0px 1px rgba(16, 185, 129, 0.25),
+  --custom-shadow-emerald:
+    0px 0px 0px 1px rgba(16, 185, 129, 0.25),
     0px 1px 2px -1px rgba(16, 185, 129, 0.18),
     0px 2px 4px 0px rgba(16, 185, 129, 0.12);
-  --custom-shadow-rose: 0px 0px 0px 1px rgba(244, 63, 94, 0.25),
+  --custom-shadow-rose:
+    0px 0px 0px 1px rgba(244, 63, 94, 0.25),
     0px 1px 2px -1px rgba(244, 63, 94, 0.18),
     0px 2px 4px 0px rgba(244, 63, 94, 0.12);
-  --custom-shadow-slate: 0px 0px 0px 1px rgba(100, 116, 139, 0.25),
+  --custom-shadow-slate:
+    0px 0px 0px 1px rgba(100, 116, 139, 0.25),
     0px 1px 2px -1px rgba(100, 116, 139, 0.18),
     0px 2px 4px 0px rgba(100, 116, 139, 0.12);
-  --custom-shadow-violet: 0px 0px 0px 1px rgba(139, 92, 246, 0.25),
+  --custom-shadow-violet:
+    0px 0px 0px 1px rgba(139, 92, 246, 0.25),
     0px 1px 2px -1px rgba(139, 92, 246, 0.18),
     0px 2px 4px 0px rgba(139, 92, 246, 0.12);
 }
@@ -103,29 +115,40 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
-  --custom-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03),
+  --custom-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.03),
     inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.1),
     0 2px 2px 0 rgba(0, 0, 0, 0.1), 0 4px 4px 0 rgba(0, 0, 0, 0.1),
     0 8px 8px 0 rgba(0, 0, 0, 0.1);
-  --custom-shadow-primary: inset 0 1px 0 0 rgba(255, 255, 255, 0.45),
+  --custom-shadow-primary:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.45),
     0 0 0 1px rgba(255, 255, 255, 0.55), 0 1px 2px 0 rgba(0, 0, 0, 0.5);
-  --custom-shadow-destructive: inset 0 1px 0 0 rgba(244, 63, 94, 0.03),
-    0 0 0 1px rgba(244, 63, 94, 0.18), 0 1px 2px 0 rgba(244, 63, 94, 0.1);
-  --custom-shadow-secondary: inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+  --custom-shadow-destructive:
+    inset 0 1px 0 0 rgba(244, 63, 94, 0.03), 0 0 0 1px rgba(244, 63, 94, 0.18),
+    0 1px 2px 0 rgba(244, 63, 94, 0.1);
+  --custom-shadow-secondary:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
     0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.25);
-  --custom-shadow-green: inset 0 1px 0 0 rgba(34, 197, 94, 0.03),
-    0 0 0 1px rgba(34, 197, 94, 0.18), 0 1px 2px 0 rgba(34, 197, 94, 0.1);
-  --custom-shadow-blue: inset 0 1px 0 0 rgba(59, 130, 246, 0.03),
+  --custom-shadow-green:
+    inset 0 1px 0 0 rgba(34, 197, 94, 0.03), 0 0 0 1px rgba(34, 197, 94, 0.18),
+    0 1px 2px 0 rgba(34, 197, 94, 0.1);
+  --custom-shadow-blue:
+    inset 0 1px 0 0 rgba(59, 130, 246, 0.03),
     0 0 0 1px rgba(59, 130, 246, 0.18), 0 1px 2px 0 rgba(59, 130, 246, 0.1);
-  --custom-shadow-amber: inset 0 1px 0 0 rgba(245, 158, 11, 0.03),
+  --custom-shadow-amber:
+    inset 0 1px 0 0 rgba(245, 158, 11, 0.03),
     0 0 0 1px rgba(245, 158, 11, 0.18), 0 1px 2px 0 rgba(245, 158, 11, 0.1);
-  --custom-shadow-emerald: inset 0 1px 0 0 rgba(16, 185, 129, 0.03),
+  --custom-shadow-emerald:
+    inset 0 1px 0 0 rgba(16, 185, 129, 0.03),
     0 0 0 1px rgba(16, 185, 129, 0.18), 0 1px 2px 0 rgba(16, 185, 129, 0.1);
-  --custom-shadow-rose: inset 0 1px 0 0 rgba(244, 63, 94, 0.03),
-    0 0 0 1px rgba(244, 63, 94, 0.18), 0 1px 2px 0 rgba(244, 63, 94, 0.1);
-  --custom-shadow-slate: inset 0 1px 0 0 rgba(100, 116, 139, 0.03),
+  --custom-shadow-rose:
+    inset 0 1px 0 0 rgba(244, 63, 94, 0.03), 0 0 0 1px rgba(244, 63, 94, 0.18),
+    0 1px 2px 0 rgba(244, 63, 94, 0.1);
+  --custom-shadow-slate:
+    inset 0 1px 0 0 rgba(100, 116, 139, 0.03),
     0 0 0 1px rgba(100, 116, 139, 0.18), 0 1px 2px 0 rgba(100, 116, 139, 0.1);
-  --custom-shadow-violet: inset 0 1px 0 0 rgba(139, 92, 246, 0.03),
+  --custom-shadow-violet:
+    inset 0 1px 0 0 rgba(139, 92, 246, 0.03),
     0 0 0 1px rgba(139, 92, 246, 0.18), 0 1px 2px 0 rgba(139, 92, 246, 0.1);
 }
 
@@ -170,6 +193,17 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
   --font-heading: var(--font-sans);
+  /* prompt-kit text-shimmer loader */
+  --animate-shimmer: shimmer 4s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
 }
 
 @layer base {
@@ -183,5 +217,30 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /* Kill the browser autofill background (Chrome/Safari paint a pale blue/yellow
+     fill that overrides our transparent inputs). There is no way to set the
+     background directly — WebKit wins — so we (a) keep the autofill background
+     painting off-screen forever via an absurdly long transition delay, which
+     leaves the input's own bg showing, and (b) force the text/caret back to the
+     theme foreground. Covers inputs, textareas, and selects in every state.
+
+     `transition` is !important because our Input ships a `transition-[color,
+     box-shadow]` utility, and Tailwind's utilities layer outranks @layer base —
+     without !important the element's own transition wins and the trick no-ops. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+    transition: background-color 999999s ease-in-out 0s !important;
   }
 }

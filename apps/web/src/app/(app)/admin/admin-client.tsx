@@ -48,32 +48,35 @@ const TESTS: {
 }[] = [
   {
     kind: "bare",
-    label: "Bare call",
-    description: "One generateText call: an agent span + a single LLM step.",
+    label: "Named call",
+    description:
+      "A one-off call named via traceName (no agent) — a single LLM step.",
     icon: IconSparkles,
   },
   {
     kind: "agent",
-    label: "Agent",
-    description: "A named agent (support-bot) with two LLM steps.",
+    label: "Agent (RAG)",
+    description: "A named agent: retrieval embedding → 2 LLM steps with a tool.",
     icon: IconRobot,
   },
   {
     kind: "workflow",
     label: "Workflow run",
-    description: "A 3-step run (retriever → summarizer → writer), one run id.",
+    description:
+      "One run grouping 3 agents (one errors) + 2 named one-off traces.",
     icon: IconTimeline,
   },
   {
     kind: "tool",
-    label: "Tool / complex",
-    description: "An agent that calls web_search between two LLM steps.",
+    label: "Tool-heavy agent",
+    description: "An agentic loop: an embedding + 6 tool calls across 3 steps.",
     icon: IconTool,
   },
   {
     kind: "full",
     label: "Full dataset",
-    description: "~18 mixed traces over 30 min — fills every chart.",
+    description:
+      "~42 traces over 60 min — agents, one-offs, tool loops, embeddings, errors, multiple runs.",
     icon: IconDatabase,
   },
 ];

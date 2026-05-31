@@ -1,5 +1,5 @@
 // Integration check for the ingest write path against the local test
-// ClickHouse (wt-ch-test, port 18123). Bypasses HTTP/auth and drives the core
+// ClickHouse (foglamp-ch-test, port 18123). Bypasses HTTP/auth and drives the core
 // pipeline directly: a wire payload → buildSpanRows (cost-at-ingest) → the
 // WriteBuffer → ClickHouse → MV rollups. Proves cost math, id denormalization,
 // metadata merge, and the flush path. Run manually during Phase 5 verification.
@@ -44,6 +44,7 @@ const payload: IngestPayload = {
   traces: [
     {
       traceId: "t_ingest_1",
+      traceName: "support-ticket",
       agentName: "support",
       workflowName: "ticket-flow",
       workflowRunId: "run_ingest_1",
@@ -69,6 +70,8 @@ const payload: IngestPayload = {
           provider: "openai",
           modelId: "gpt-4o",
           ttftMs: 120,
+          chunkOffsets: [120, 260, 400],
+          chunkTokens: [125, 310, 500],
           usage: {
             inputTokens: 1000,
             outputTokens: 500,
@@ -96,7 +99,7 @@ const payload: IngestPayload = {
 
 // --- Pure transform assertions -------------------------------------------
 console.log("buildSpanRows (cost-at-ingest):");
-const rows = buildSpanRows({ payload, projectId: PID, table, rules: [], now: base });
+const rows = buildSpanRows({ payload, projectId: PID, orgId: "org_ingest", retentionDays: 14, table, rules: [], now: base });
 assert(rows.length === 3, "three rows built");
 
 const root = rows.find((r) => r.span_id === "s_root")!;
@@ -113,6 +116,15 @@ assert(llm.priced_model_id === "openai/gpt-4o", `priced_model_id = ${llm.priced_
 assert(llm.pricing_source === "openrouter", `pricing_source = ${llm.pricing_source}`);
 assert(llm.duration_ms === 490, `llm duration_ms = ${llm.duration_ms}`);
 assert(llm.ttft_ms === 120, `ttft preserved = ${llm.ttft_ms}`);
+assert(
+  JSON.stringify(llm.chunk_offsets) === "[120,260,400]" &&
+    JSON.stringify(llm.chunk_tokens) === "[125,310,500]",
+  "chunk samples pass through buildSpanRows",
+);
+assert(
+  root.chunk_offsets.length === 0 && tool.chunk_tokens.length === 0,
+  "non-llm spans get empty chunk arrays",
+);
 assert(llm.metadata.tier === "pro", "span metadata overrides trace metadata");
 assert(llm.metadata.env === "prod", "trace metadata inherited onto span");
 assert(llm.agent_name === "support", "agent_name denormalized onto span");

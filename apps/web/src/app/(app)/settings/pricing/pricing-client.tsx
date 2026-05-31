@@ -1,6 +1,11 @@
 "use client";
 
-import { IconCoin, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+  IconCoin,
+  IconCoinFilled,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
@@ -60,7 +65,7 @@ export function PricingClient() {
         toast.success("Pricing override added");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   const del = useMutation(
@@ -70,7 +75,7 @@ export function PricingClient() {
         toast.success("Pricing override removed");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   if (!projectId) {
@@ -156,7 +161,7 @@ export function PricingClient() {
         <TableSkeleton />
       ) : rows.length === 0 ? (
         <EmptyState
-          icon={IconCoin}
+          icon={IconCoinFilled}
           title="No custom pricing"
           description="Add an override to price models OpenRouter doesn't cover."
         />

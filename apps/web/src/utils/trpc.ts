@@ -3,7 +3,11 @@ import { env } from "@foglamp/env/web";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
+import type { inferRouterOutputs } from "@trpc/server";
 import { toast } from "sonner";
+
+/** Inferred procedure return types, e.g. RouterOutputs["traces"]["get"]. */
+export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({

@@ -63,6 +63,33 @@ export async function requireOrgAccess(
   }
 }
 
+export type OrgRole = "owner" | "admin" | "member";
+
+/**
+ * Throw unless the user holds one of `roles` in the organization. Reads only
+ * need `requireProjectAccess`/`requireOrgAccess`; sensitive writes (API keys,
+ * project create/delete, billing) gate on this.
+ */
+export async function requireOrgRole(
+  db: Db,
+  userId: string,
+  orgId: string,
+  roles: OrgRole[],
+): Promise<void> {
+  const rows = await db
+    .select({ role: member.role })
+    .from(member)
+    .where(and(eq(member.organizationId, orgId), eq(member.userId, userId)))
+    .limit(1);
+  const role = rows[0]?.role as OrgRole | undefined;
+  if (!role || !roles.includes(role)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `Requires ${roles.join(" or ")} role`,
+    });
+  }
+}
+
 /** Every project across the organizations the user belongs to. */
 export async function listAccessibleProjects(db: Db, userId: string) {
   return db

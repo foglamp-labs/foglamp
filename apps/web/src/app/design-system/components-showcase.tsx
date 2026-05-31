@@ -226,10 +226,7 @@ import {
   PopoverTrigger,
 } from "@foglamp/ui/components/popover";
 import { Progress } from "@foglamp/ui/components/progress";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@foglamp/ui/components/radio-group";
+import { RadioGroup, RadioGroupItem } from "@foglamp/ui/components/radio-group";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -829,7 +826,7 @@ export function ComponentsShowcase() {
               <SheetTrigger render={<Button variant="outline" />}>
                 Open sheet
               </SheetTrigger>
-              <SheetContent>
+              <SheetContent variant="floating">
                 <SheetHeader>
                   <SheetTitle>Settings</SheetTitle>
                   <SheetDescription>Configure preferences.</SheetDescription>

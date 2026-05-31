@@ -51,6 +51,12 @@ export async function runMigrations(client: ClickHouseClient): Promise<string[]>
 }
 
 /**
+ * Reassert the per-row spans TTL on boot. Retention is now plan-driven via the
+ * `retention_days` column (stamped at ingest from the org's plan), so the TTL
+ * is a column expression rather than a fixed global window. The `days` argument
+ * is kept for the call-site signature but only matters as a fallback: <= 0
+ * removes the TTL entirely (self-host opting out of retention).
+ *
  * Set the spans retention window via ALTER … MODIFY TTL (mutable, online).
  * Called on boot with FOGLAMP_SPANS_RETENTION_DAYS. A value <= 0 removes
  * the TTL (keep forever).
@@ -63,7 +69,8 @@ export async function applySpansRetention(
     await client.command({ query: `ALTER TABLE spans REMOVE TTL` });
     return;
   }
+  // Per-row, plan-driven TTL (matches migration 0008). Ignores the fixed `days`.
   await client.command({
-    query: `ALTER TABLE spans MODIFY TTL toDateTime(start_time) + INTERVAL ${Math.floor(days)} DAY`,
+    query: `ALTER TABLE spans MODIFY TTL toDateTime(start_time) + toIntervalDay(retention_days)`,
   });
 }

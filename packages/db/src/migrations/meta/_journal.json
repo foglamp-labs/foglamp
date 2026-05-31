@@ -15,6 +15,20 @@
       "when": 1779663996957,
       "tag": "0001_slippery_typhoid_mary",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780175546049,
+      "tag": "0002_brave_shotgun",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780202913025,
+      "tag": "0003_smiling_venus",
+      "breakpoints": true
     }
   ]
 }

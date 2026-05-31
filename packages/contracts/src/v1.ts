@@ -79,6 +79,12 @@ export const spanSchema = z
     // Time-to-first-token, read from the AI SDK step performance object.
     ttftMs: z.number().nonnegative().optional(),
 
+    // Intra-stream sampling (streaming llm spans only). Two parallel arrays:
+    // chunkOffsets[i] is ms from step start, chunkTokens[i] is cumulative output
+    // tokens at that moment. Downsampled by the SDK; empty/omitted otherwise.
+    chunkOffsets: z.array(z.number().int().nonnegative()).max(200).optional(),
+    chunkTokens: z.array(z.number().int().nonnegative()).max(200).optional(),
+
     // Optional, possibly-large payloads (JSON-encoded by the SDK).
     input: z.string().max(MAX_PAYLOAD_CHARS).optional(),
     output: z.string().max(MAX_PAYLOAD_CHARS).optional(),
@@ -102,6 +108,7 @@ export const traceSchema = z
   .object({
     traceId: z.string().min(1).max(128),
 
+    traceName: z.string().max(256).optional(),
     agentName: z.string().max(256).optional(),
     workflowName: z.string().max(256).optional(),
     workflowRunId: z.string().max(128).optional(),
@@ -111,7 +118,28 @@ export const traceSchema = z
 
     spans: z.array(spanSchema).min(1).max(2000),
   })
-  .strict();
+  .strict()
+  .superRefine((t, ctx) => {
+    // Every trace must be identifiable: a plain named trace (traceName) or a
+    // trace classified under an agent (agentName). The effective display label
+    // downstream is `traceName ?? agentName`.
+    if (!t.traceName && !t.agentName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Either traceName or agentName must be provided",
+        path: ["traceName"],
+      });
+    }
+    // Workflow grouping is all-or-nothing: a run id without a name (or vice
+    // versa) can't be attributed to a workflow.
+    if (Boolean(t.workflowName) !== Boolean(t.workflowRunId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "workflowName and workflowRunId must be provided together",
+        path: ["workflowRunId"],
+      });
+    }
+  });
 export type Trace = z.infer<typeof traceSchema>;
 
 export const INGEST_VERSION = "v1" as const;

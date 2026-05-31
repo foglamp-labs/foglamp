@@ -50,16 +50,35 @@ export interface FoglampConfig {
 
 
 /**
- * Per-call context bound via `wt.integration(ctx)`. These become first-class,
+ * Per-call context bound via `fog.integration(ctx)`. These become first-class,
  * indexed trace fields; everything else goes in `metadata`.
  */
 export interface IntegrationContext {
+  traceName?: string;
   agentName?: string;
   workflowName?: string;
   workflowRunId?: string;
   sessionId?: string;
   metadata?: MetadataInput;
 }
+
+/**
+ * Public parameter type for `fog.integration(ctx)`. Every trace must be
+ * identifiable, so exactly one of `traceName` / `agentName` is required at the
+ * type level (both may be passed). The `workflowName`/`workflowRunId` both-or-
+ * neither rule is enforced at runtime — encoding it in the type produces
+ * confusing errors.
+ */
+export type IntegrationInput =
+  | ({ traceName: string; agentName?: string } & IntegrationContextExtras)
+  | ({ traceName?: string; agentName: string } & IntegrationContextExtras);
+
+type IntegrationContextExtras = {
+  workflowName?: string;
+  workflowRunId?: string;
+  sessionId?: string;
+  metadata?: MetadataInput;
+};
 
 /** Fully-resolved config used internally (no optionals). */
 export interface ResolvedConfig {

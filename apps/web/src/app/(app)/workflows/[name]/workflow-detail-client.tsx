@@ -113,7 +113,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   const nodes: FlowNode[] = (runDetail.data?.traces ?? []).map((t) => ({
     id: t.traceId,
     icon: <IconRobot className="size-5 text-muted-foreground" />,
-    label: t.agentName ?? "trace",
+    label: t.traceName ?? t.agentName ?? "trace",
     status: t.errorCount > 0 ? "error" : "ok",
     timestamp: t.startTime,
     durationMs: t.durationMs,
@@ -170,6 +170,9 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                   nodes={nodes}
                   onNodeClick={(id) =>
                     router.push(`/traces/${encodeURIComponent(id)}`)
+                  }
+                  onNodeReplay={(id) =>
+                    router.push(`/traces/${encodeURIComponent(id)}?replay=1`)
                   }
                 />
               )}

@@ -1,3 +1,4 @@
+import { stripeClient } from "@better-auth/stripe/client";
 import { env } from "@foglamp/env/web";
 import { createAuthClient } from "better-auth/react";
 import { magicLinkClient, organizationClient } from "better-auth/client/plugins";
@@ -17,5 +18,11 @@ export const authClient = createAuthClient({
   // magicLinkClient just exposes signIn.magicLink; harmless if the server has
   // email disabled (the call simply won't be reachable). organizationClient
   // adds org/member/invitation methods used by Settings.
-  plugins: [magicLinkClient(), organizationClient()],
+  // stripeClient adds subscription methods (upgrade/list/billingPortal) used by
+  // the Billing tab; harmless when the server has billing disabled.
+  plugins: [
+    magicLinkClient(),
+    organizationClient(),
+    stripeClient({ subscription: true }),
+  ],
 });

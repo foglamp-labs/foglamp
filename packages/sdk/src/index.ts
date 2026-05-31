@@ -8,16 +8,16 @@
 //
 // Per-call (typed, wins over global; attaches first-class context):
 //
-//   const wt = foglamp();
+//   const fog = foglamp();
 //   await generateText({
 //     model, prompt,
-//     telemetry: { integrations: [wt.integration({ agentName: "support" })] },
+//     telemetry: { integrations: [fog.integration({ agentName: "support" })] },
 //   });
 //
 // Silent no-op when FOGLAMP_API_KEY is unset; never throws, never adds
 // latency. On Vercel/Lambda it flushes per-call via waitUntil; elsewhere it
-// batches on a timer — call `await wt.flush()` before a short-lived process
-// exits, or `wt.shutdown()` to stop and drain.
+// batches on a timer — call `await fog.flush()` before a short-lived process
+// exits, or `fog.shutdown()` to stop and drain.
 
 import { Collector } from "./collector";
 import { resolveConfig } from "./config";
@@ -38,6 +38,7 @@ export function foglamp(config: FoglampConfig = {}): Collector {
 export { Collector } from "./collector";
 export type {
   IntegrationContext,
+  IntegrationInput,
   MetadataInput,
   WaitUntil,
   FoglampConfig,

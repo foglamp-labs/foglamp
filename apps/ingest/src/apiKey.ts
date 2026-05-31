@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { db } from "@foglamp/db";
 import { apiKey } from "@foglamp/db/schema/apiKey";
+import { project } from "@foglamp/db/schema/project";
 import { env } from "@foglamp/env/server";
 import { eq } from "drizzle-orm";
 
@@ -13,7 +14,7 @@ import { eq } from "drizzle-orm";
 // This cache is per-instance (no Redis) — acceptable because it only adds up to
 // `API_KEY_CACHE_TTL_MS` of staleness to a revoke, and the key store is small.
 
-export type ResolvedKey = { apiKeyId: string; projectId: string };
+export type ResolvedKey = { apiKeyId: string; projectId: string; orgId: string };
 
 type CacheEntry = { value: ResolvedKey | null; expiresAt: number };
 
@@ -47,16 +48,18 @@ export async function resolveApiKey(key: string): Promise<ResolvedKey | null> {
     .select({
       id: apiKey.id,
       projectId: apiKey.projectId,
+      orgId: project.orgId,
       revokedAt: apiKey.revokedAt,
     })
     .from(apiKey)
+    .innerJoin(project, eq(project.id, apiKey.projectId))
     .where(eq(apiKey.keyHash, hash))
     .limit(1);
 
   const row = rows[0];
   const value: ResolvedKey | null =
     row && !row.revokedAt
-      ? { apiKeyId: row.id, projectId: row.projectId }
+      ? { apiKeyId: row.id, projectId: row.projectId, orgId: row.orgId }
       : null;
 
   cache.set(hash, {

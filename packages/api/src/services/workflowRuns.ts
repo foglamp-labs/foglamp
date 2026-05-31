@@ -6,7 +6,7 @@ import {
 import { workflowRunName } from "@foglamp/db/schema/workflowRun";
 import { and, eq, inArray } from "drizzle-orm";
 
-import { decimalOrNull, num } from "../lib/util";
+import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
 
@@ -18,10 +18,22 @@ export async function getWorkflowList(
   db: Db,
   ch: Ch,
   userId: string,
-  input: { projectId: string; limit?: number; offset?: number },
+  input: {
+    projectId: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+    offset?: number;
+  },
 ) {
   await requireProjectAccess(db, userId, input.projectId);
-  const rows = await listWorkflows(ch, input);
+  const rows = await listWorkflows(ch, {
+    projectId: input.projectId,
+    from: input.from ? toClickHouseDateTime(input.from) : undefined,
+    to: input.to ? toClickHouseDateTime(input.to) : undefined,
+    limit: input.limit,
+    offset: input.offset,
+  });
   return rows.map((r) => ({
     workflowName: r.workflow_name || null,
     runCount: num(r.run_count),
@@ -133,6 +145,7 @@ export async function getWorkflowRunDetail(
     displayName: nameRows[0]?.name ?? null,
     traces: traces.map((r) => ({
       traceId: r.trace_id,
+      traceName: r.trace_name || null,
       agentName: r.agent_name || null,
       workflowName: r.workflow_name || null,
       startTime: r.trace_start,

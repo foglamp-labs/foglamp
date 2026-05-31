@@ -61,14 +61,16 @@ You have two ways to wire Foglamp in. Pick whichever fits your app.
 <Tabs>
   <Tab title="Per-call (recommended)">
     Attach the integration to individual `generateText`/`streamText` calls. This
-    is fully typed and lets you label each call with an agent, workflow, and run.
+    is fully typed and lets you label each call with a name or agent, plus an
+    optional workflow and run. Every call needs a `traceName` **or** an
+    `agentName`; `workflowName` and `workflowRunId` are passed together.
 
     ```ts
     import { foglamp } from "foglamp";
     import { generateText } from "ai";
     import { openai } from "@ai-sdk/openai";
 
-    const wt = foglamp();
+    const fog = foglamp();
 
     const result = await generateText({
       model: openai("gpt-4o"),
@@ -76,7 +78,7 @@ You have two ways to wire Foglamp in. Pick whichever fits your app.
       experimental_telemetry: {
         isEnabled: true,
         integrations: [
-          wt.integration({
+          fog.integration({
             agentName: "summarizer",
             workflowName: "deploy-digest",
             workflowRunId: run.id,
@@ -84,6 +86,9 @@ You have two ways to wire Foglamp in. Pick whichever fits your app.
         ],
       },
     });
+
+    // Or, for a one-off call that isn't an agent, just name it:
+    // fog.integration({ traceName: "summarize-deploy" })
     ```
   </Tab>
   <Tab title="Global">
@@ -106,7 +111,7 @@ automatically. In serverless runtimes you must ensure the batch is sent before
 the function returns — see [Runtimes & flushing](/sdk/runtimes).
 
 ```ts
-await wt.flush();
+await fog.flush();
 ```
 
 ## 5. See it in the dashboard

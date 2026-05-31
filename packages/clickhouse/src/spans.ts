@@ -5,6 +5,8 @@ import type { ClickHouseClient } from "@clickhouse/client";
 // breakdown; datetime fields are epoch milliseconds and converted on insert.
 export type SpanRow = {
   project_id: string;
+  org_id: string; // denormalized at ingest (key → project → org); drives usage
+  retention_days: number; // per-row TTL window, from the org's plan
   trace_id: string;
   span_id: string;
   parent_span_id: string;
@@ -28,6 +30,8 @@ export type SpanRow = {
   web_search_count: number;
   request_count: number;
   ttft_ms: number | null;
+  chunk_offsets: number[]; // ms from step start, parallel to chunk_tokens
+  chunk_tokens: number[]; // cumulative output tokens at each offset
   prompt_cost: string | null;
   completion_cost: string | null;
   request_cost: string | null;
@@ -39,6 +43,7 @@ export type SpanRow = {
   total_cost: string | null;
   pricing_source: string;
   priced_at: number | null; // epoch ms
+  trace_name: string;
   agent_name: string;
   workflow_name: string;
   workflow_run_id: string;
@@ -65,6 +70,24 @@ function toInsertRow(row: SpanRow): Record<string, unknown> {
     end_time: toClickHouseDateTime64(row.end_time),
     priced_at: row.priced_at == null ? null : toClickHouseDateTime64(row.priced_at),
   };
+}
+
+/**
+ * Extend retention for an org's still-alive spans to at least `retentionDays`
+ * (used on plan upgrade). `greatest(...)` means it only ever lengthens the TTL,
+ * never shortens — so a later downgrade leaves existing data untouched (new
+ * spans simply get the lower value at ingest). Async background mutation; rows
+ * already past their old TTL may already be gone.
+ */
+export async function updateOrgRetention(
+  client: ClickHouseClient,
+  orgId: string,
+  retentionDays: number,
+): Promise<void> {
+  await client.command({
+    query: `ALTER TABLE spans UPDATE retention_days = greatest(retention_days, {days:UInt16}) WHERE org_id = {orgId:String}`,
+    query_params: { days: retentionDays, orgId },
+  });
 }
 
 /** Bulk-insert spans. The write buffer in ingest calls this on each flush. */

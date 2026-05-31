@@ -183,7 +183,7 @@
       },
       "Trace": {
         "type": "object",
-        "description": "One top-level model call (e.g. a single generateText/streamText) and its spans.",
+        "description": "One top-level model call (e.g. a single generateText/streamText) and its spans. Validation rules (rejected with 400 otherwise): (1) at least one of `traceName` or `agentName` must be present; (2) `workflowName` and `workflowRunId` must be provided together (both or neither).",
         "required": ["traceId", "spans"],
         "additionalProperties": false,
         "properties": {
@@ -193,6 +193,7 @@
             "maxLength": 128,
             "example": "0192f1c0-1a2b-7c3d-8e4f-1a2b3c4d5e6f"
           },
+          "traceName": { "type": "string", "maxLength": 256, "example": "classify-email" },
           "agentName": { "type": "string", "maxLength": 256, "example": "summarizer" },
           "workflowName": { "type": "string", "maxLength": 256, "example": "deploy-digest" },
           "workflowRunId": { "type": "string", "maxLength": 128, "example": "run_2024_05_24" },

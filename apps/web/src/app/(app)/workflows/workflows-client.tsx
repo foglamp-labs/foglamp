@@ -1,6 +1,10 @@
 "use client";
 
-import { IconAlertTriangle, IconTimeline } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconSitemapFilled,
+  IconTimeline,
+} from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@foglamp/ui/components/badge";
 import {
@@ -18,6 +22,8 @@ import {
   PageHeader,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
+import { useRange } from "@/components/app/range-context";
+import { RangePicker } from "@/components/app/range-picker";
 import {
   formatCost,
   formatCount,
@@ -32,10 +38,16 @@ export const UNGROUPED = "~ungrouped";
 
 export function WorkflowsClient() {
   const { projectId } = useProject();
+  const { range, setRange } = useRange();
   const router = useRouter();
 
   const workflows = useQuery({
-    ...trpc.workflows.list.queryOptions({ projectId: projectId!, limit: 100 }),
+    ...trpc.workflows.list.queryOptions({
+      projectId: projectId!,
+      from: range.from.toISOString(),
+      to: range.to.toISOString(),
+      limit: 100,
+    }),
     enabled: !!projectId,
   });
 
@@ -55,12 +67,13 @@ export function WorkflowsClient() {
       <PageHeader
         title="Workflows"
         description="Grouped runs by workflow. Open one to see its runs and step flow."
+        actions={<RangePicker value={range} onChange={setRange} />}
       />
       {workflows.isLoading ? (
         <CardsSkeleton count={6} />
       ) : rows.length === 0 ? (
         <EmptyState
-          icon={IconTimeline}
+          icon={IconSitemapFilled}
           title="No workflows yet"
           description="Pass a workflowName via the SDK integration to group runs."
         />
@@ -93,11 +106,7 @@ export function WorkflowsClient() {
                   <Stat label="Runs" value={formatCount(w.runCount)} />
                   <Stat label="Traces" value={formatCount(w.traceCount)} />
                   <Stat label="Tokens" value={formatTokens(w.totalTokens)} />
-                  <Stat
-                    label="Cost"
-                    value={formatCost(w.totalCost)}
-                    emphasis
-                  />
+                  <Stat label="Cost" value={formatCost(w.totalCost)} emphasis />
                   <Stat
                     className="col-span-2"
                     label="Last run"
@@ -127,9 +136,7 @@ function Stat({
   return (
     <div className={`flex flex-col gap-0.5 ${className ?? ""}`}>
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span
-        className={`tabular-nums ${emphasis ? "font-medium" : ""}`}
-      >
+      <span className={`tabular-nums ${emphasis ? "font-medium" : ""}`}>
         {value}
       </span>
     </div>

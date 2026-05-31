@@ -47,17 +47,21 @@ const model = process.env.OPENAI_API_KEY
 
 // 1. Create the collector. Reads FOGLAMP_API_KEY / FOGLAMP_INGEST_URL from
 //    the environment. A no-op if no API key is set.
-const wt = foglamp();
+const fog = foglamp();
 
-// 2. Attach it to the call with first-class context (agent/workflow/session).
+// 2. Attach it to the call with first-class context. Every call needs a
+//    `traceName` or an `agentName`; `workflowName` + `workflowRunId` go together.
+//    (For a one-off call that isn't an agent, just pass
+//    `fog.integration({ traceName: "summarize-deploy" })`.)
 const { text } = await generateText({
   model,
   prompt: PROMPT,
   telemetry: {
     integrations: [
-      wt.integration({
+      fog.integration({
         agentName: "support-bot",
         workflowName: "demo",
+        workflowRunId: "run_demo_1",
         sessionId: "sess_demo_1",
         metadata: { example: "basic", env: "local" },
       }),
@@ -70,9 +74,9 @@ console.log(`< ${text}`);
 
 // Short-lived process: flush before exiting so the trace is sent. (Long-running
 // servers flush on a timer; serverless flushes per-call via waitUntil.)
-await wt.flush();
+await fog.flush();
 console.log(
-  wt.pending === 0
+  fog.pending === 0
     ? "✓ flushed trace to Foglamp"
-    : `⚠ ${wt.pending} traces still pending`
+    : `⚠ ${fog.pending} traces still pending`
 );

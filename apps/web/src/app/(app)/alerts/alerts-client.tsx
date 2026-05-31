@@ -1,6 +1,11 @@
 "use client";
 
-import { IconAlertTriangle, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconAlertTriangleFilled,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
@@ -49,7 +54,9 @@ type Metric =
   | "ttft_p95"
   | "error_rate"
   | "token_usage"
-  | "request_count";
+  | "request_count"
+  | "eval_avg_score"
+  | "eval_pass_rate";
 
 type Comparison = "gt" | "gte" | "lt" | "lte";
 
@@ -62,7 +69,12 @@ const METRIC_LABELS: Record<Metric, string> = {
   error_rate: "Error rate",
   token_usage: "Token usage",
   request_count: "Request count",
+  eval_avg_score: "Avg eval score",
+  eval_pass_rate: "Eval pass rate",
 };
+
+const isEvalMetric = (m: Metric) =>
+  m === "eval_avg_score" || m === "eval_pass_rate";
 
 const COMPARISON_SYMBOLS: Record<Comparison, string> = {
   gt: ">",
@@ -81,6 +93,7 @@ const WINDOW_PRESETS = [
 const DEFAULT_FORM = {
   name: "",
   metric: "cost" as Metric,
+  evalId: "",
   comparison: "gt" as Comparison,
   threshold: "",
   windowSeconds: "3600",
@@ -98,6 +111,10 @@ export function AlertsClient() {
     ...trpc.alerts.list.queryOptions({ projectId: projectId! }),
     enabled: !!projectId,
   });
+  const evals = useQuery({
+    ...trpc.evals.list.queryOptions({ projectId: projectId! }),
+    enabled: !!projectId,
+  });
 
   const create = useMutation(
     trpc.alerts.create.mutationOptions({
@@ -108,7 +125,7 @@ export function AlertsClient() {
         toast.success("Alert created");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   const update = useMutation(
@@ -117,7 +134,7 @@ export function AlertsClient() {
         qc.invalidateQueries({ queryKey: trpc.alerts.list.queryKey() });
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   const deleteAlert = useMutation(
@@ -127,7 +144,7 @@ export function AlertsClient() {
         toast.success("Alert deleted");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   if (!projectId) {
@@ -143,10 +160,12 @@ export function AlertsClient() {
 
   const handleSubmit = () => {
     if (!form.name.trim() || !form.email.trim()) return;
+    if (isEvalMetric(form.metric) && !form.evalId) return;
     create.mutate({
       projectId: projectId!,
       name: form.name.trim(),
       metric: form.metric,
+      evalId: isEvalMetric(form.metric) ? form.evalId : undefined,
       comparison: form.comparison,
       threshold: Number(form.threshold),
       windowSeconds: Number(form.windowSeconds),
@@ -155,7 +174,10 @@ export function AlertsClient() {
   };
 
   const isSubmitDisabled =
-    create.isPending || !form.name.trim() || !form.email.trim();
+    create.isPending ||
+    !form.name.trim() ||
+    !form.email.trim() ||
+    (isEvalMetric(form.metric) && !form.evalId);
 
   return (
     <>
@@ -172,7 +194,8 @@ export function AlertsClient() {
               <DialogHeader>
                 <DialogTitle>New alert</DialogTitle>
                 <DialogDescription>
-                  Create a threshold rule to get notified when a metric crosses a value.
+                  Create a threshold rule to get notified when a metric crosses
+                  a value.
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col gap-4">
@@ -204,6 +227,24 @@ export function AlertsClient() {
                     ))}
                   </NativeSelect>
                 </Field>
+                {isEvalMetric(form.metric) && (
+                  <Field>
+                    <FieldLabel>Eval</FieldLabel>
+                    <NativeSelect
+                      value={form.evalId}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, evalId: e.target.value }))
+                      }
+                    >
+                      <NativeSelectOption value="">Select an eval…</NativeSelectOption>
+                      {(evals.data ?? []).map((ev) => (
+                        <NativeSelectOption key={ev.id} value={ev.id}>
+                          {ev.name}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                )}
                 <Field>
                   <FieldLabel>Comparison</FieldLabel>
                   <NativeSelect
@@ -268,10 +309,7 @@ export function AlertsClient() {
                 </Field>
               </div>
               <DialogFooter>
-                <Button
-                  disabled={isSubmitDisabled}
-                  onClick={handleSubmit}
-                >
+                <Button disabled={isSubmitDisabled} onClick={handleSubmit}>
                   Create alert
                 </Button>
               </DialogFooter>
@@ -283,7 +321,7 @@ export function AlertsClient() {
         <TableSkeleton />
       ) : rows.length === 0 ? (
         <EmptyState
-          icon={IconAlertTriangle}
+          icon={IconAlertTriangleFilled}
           title="No alerts yet"
           description="Create a rule to get notified when a metric crosses a threshold."
         />
@@ -310,7 +348,8 @@ export function AlertsClient() {
                   </Badge>
                 </TableCell>
                 <TableCell className="tabular-nums text-sm">
-                  {COMPARISON_SYMBOLS[r.comparison as Comparison] ?? r.comparison}{" "}
+                  {COMPARISON_SYMBOLS[r.comparison as Comparison] ??
+                    r.comparison}{" "}
                   {r.threshold ?? "—"}
                 </TableCell>
                 <TableCell className="tabular-nums text-muted-foreground">

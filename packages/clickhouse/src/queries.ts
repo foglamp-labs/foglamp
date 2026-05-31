@@ -18,6 +18,7 @@ async function rows<T>(
 
 export type TraceListRow = {
   trace_id: string;
+  trace_name: string;
   agent_name: string;
   workflow_name: string;
   workflow_run_id: string;
@@ -38,20 +39,27 @@ export function listTraces(
   params: {
     projectId: string;
     agentName?: string;
+    from?: string;
+    to?: string;
     limit?: number;
     offset?: number;
   },
 ): Promise<TraceListRow[]> {
-  // agent_name lives on the raw spans → it is an `any()` rollup per trace, not a
-  // grouping key, so filter it in a HAVING over the aggregate rather than WHERE.
-  const having =
-    params.agentName !== undefined
-      ? "HAVING agent_name = {agentName:String}"
-      : "";
+  // agent_name and trace_start are `any()`/`min()` rollups per trace (not grouping
+  // keys), so filter them in a HAVING over the aggregate rather than WHERE.
+  const conditions: string[] = [];
+  if (params.agentName !== undefined)
+    conditions.push("agent_name = {agentName:String}");
+  if (params.from !== undefined)
+    conditions.push("trace_start >= {from:DateTime64(3)}");
+  if (params.to !== undefined)
+    conditions.push("trace_start < {to:DateTime64(3)}");
+  const having = conditions.length ? `HAVING ${conditions.join(" AND ")}` : "";
   return rows<TraceListRow>(
     client,
     `SELECT
        trace_id,
+       any(trace_name) AS trace_name,
        any(agent_name) AS agent_name,
        any(workflow_name) AS workflow_name,
        any(workflow_run_id) AS workflow_run_id,
@@ -74,6 +82,8 @@ export function listTraces(
     {
       projectId: params.projectId,
       agentName: params.agentName,
+      from: params.from,
+      to: params.to,
       limit: params.limit ?? 50,
       offset: params.offset ?? 0,
     },
@@ -96,6 +106,8 @@ export type SpanDetailRow = {
   output_tokens: number;
   total_tokens: number;
   ttft_ms: number | null;
+  chunk_offsets: number[];
+  chunk_tokens: number[];
   total_cost: string | null;
   pricing_source: string;
   metadata: Record<string, string>;
@@ -115,6 +127,7 @@ export function getTraceSpans(
        start_time, end_time, duration_ms, status, error_message,
        provider, model_id,
        input_tokens, output_tokens, total_tokens, ttft_ms,
+       chunk_offsets, chunk_tokens,
        total_cost, pricing_source, metadata, input, output
      FROM spans FINAL
      WHERE project_id = {projectId:String} AND trace_id = {traceId:String}
@@ -202,8 +215,22 @@ export type WorkflowRow = {
  */
 export function listWorkflows(
   client: ClickHouseClient,
-  params: { projectId: string; limit?: number; offset?: number },
+  params: {
+    projectId: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  },
 ): Promise<WorkflowRow[]> {
+  // Keep workflows whose activity overlaps the window (first/last run are
+  // min/max aggregates, so filter in HAVING).
+  const conditions: string[] = [];
+  if (params.from !== undefined)
+    conditions.push("last_run >= {from:DateTime64(3)}");
+  if (params.to !== undefined)
+    conditions.push("first_run < {to:DateTime64(3)}");
+  const having = conditions.length ? `HAVING ${conditions.join(" AND ")}` : "";
   return rows<WorkflowRow>(
     client,
     `SELECT
@@ -220,10 +247,13 @@ export function listWorkflows(
      FROM workflow_run_summary
      WHERE project_id = {projectId:String}
      GROUP BY workflow_name
+     ${having}
      ORDER BY last_run DESC
      LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
     {
       projectId: params.projectId,
+      from: params.from,
+      to: params.to,
       limit: params.limit ?? 100,
       offset: params.offset ?? 0,
     },
@@ -237,6 +267,8 @@ export type MetricsBucketRow = {
   total_cost: string;
   priced_span_count: string;
   total_tokens: string;
+  input_tokens: string;
+  output_tokens: string;
   /** [p50, p95, p99] in milliseconds. */
   duration_quantiles: number[];
   ttft_quantiles: number[];
@@ -272,6 +304,8 @@ export function queryMetricsTimeseries(
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
        sum(total_tokens) AS total_tokens,
+       sum(input_tokens) AS input_tokens,
+       sum(output_tokens) AS output_tokens,
        quantilesTDigestMerge(0.5, 0.95, 0.99)(duration_quantiles) AS duration_quantiles,
        quantilesTDigestMerge(0.5, 0.95, 0.99)(ttft_quantiles) AS ttft_quantiles
      FROM metrics_by_minute
@@ -295,6 +329,10 @@ export type ModelBreakdownRow = {
   total_cost: string;
   priced_span_count: string;
   total_tokens: string;
+  input_tokens: string;
+  output_tokens: string;
+  /** [p50, p95, p99] llm latency in milliseconds. */
+  duration_quantiles: number[];
 };
 
 /** Per-model rollup over a window (for the Overview model breakdown). */
@@ -309,13 +347,47 @@ export function queryModelBreakdown(
        sum(span_count) AS span_count,
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
-       sum(total_tokens) AS total_tokens
+       sum(total_tokens) AS total_tokens,
+       sum(input_tokens) AS input_tokens,
+       sum(output_tokens) AS output_tokens,
+       quantilesTDigestMerge(0.5, 0.95, 0.99)(duration_quantiles) AS duration_quantiles
      FROM metrics_by_minute
      WHERE project_id = {projectId:String}
        AND span_type = 'llm'
        AND bucket >= {from:DateTime} AND bucket < {to:DateTime}
      GROUP BY model_id
      ORDER BY total_cost DESC`,
+    { projectId: params.projectId, from: params.from, to: params.to },
+  );
+}
+
+export type ModelTimeseriesRow = {
+  bucket: string;
+  model_id: string;
+  total_cost: string;
+  total_tokens: string;
+  span_count: string;
+};
+
+/** Per-minute cost/tokens per model (llm spans), for a stacked cost-over-time chart. */
+export function queryMetricsTimeseriesByModel(
+  client: ClickHouseClient,
+  params: { projectId: string; from: string; to: string },
+): Promise<ModelTimeseriesRow[]> {
+  return rows<ModelTimeseriesRow>(
+    client,
+    `SELECT
+       bucket,
+       model_id,
+       sum(total_cost) AS total_cost,
+       sum(total_tokens) AS total_tokens,
+       sum(span_count) AS span_count
+     FROM metrics_by_minute
+     WHERE project_id = {projectId:String}
+       AND span_type = 'llm'
+       AND bucket >= {from:DateTime} AND bucket < {to:DateTime}
+     GROUP BY bucket, model_id
+     ORDER BY bucket ASC`,
     { projectId: params.projectId, from: params.from, to: params.to },
   );
 }
@@ -436,6 +508,7 @@ export function listTracesByWorkflowRun(
     client,
     `SELECT
        trace_id,
+       any(trace_name) AS trace_name,
        any(agent_name) AS agent_name,
        any(workflow_name) AS workflow_name,
        any(workflow_run_id) AS workflow_run_id,
@@ -473,6 +546,8 @@ export type ProjectSummaryRow = {
   total_cost: string;
   priced_span_count: string;
   total_tokens: string;
+  input_tokens: string;
+  output_tokens: string;
   /** [p50, p95, p99] llm latency in milliseconds. */
   duration_quantiles: number[];
   ttft_quantiles: number[];
@@ -495,6 +570,8 @@ export async function queryProjectSummary(
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
        sum(total_tokens) AS total_tokens,
+       sum(input_tokens) AS input_tokens,
+       sum(output_tokens) AS output_tokens,
        quantilesTDigestMergeIf(0.5, 0.95, 0.99)(duration_quantiles, span_type = 'llm') AS duration_quantiles,
        quantilesTDigestMergeIf(0.5, 0.95, 0.99)(ttft_quantiles, span_type = 'llm') AS ttft_quantiles
      FROM metrics_by_minute
@@ -510,8 +587,324 @@ export async function queryProjectSummary(
       total_cost: "0",
       priced_span_count: "0",
       total_tokens: "0",
+      input_tokens: "0",
+      output_tokens: "0",
       duration_quantiles: [0, 0, 0],
       ttft_quantiles: [0, 0, 0],
+    }
+  );
+}
+
+// --- Eval scores -----------------------------------------------------------
+
+export type ScoreDetailRow = {
+  score_id: string;
+  eval_id: string;
+  target_type: string;
+  target_id: string;
+  trace_id: string;
+  scorer: string;
+  label: string;
+  score: number | null;
+  passed: number | null;
+  reason: string;
+  model_id: string;
+  cost: string | null;
+  scored_at: string;
+};
+
+/** All scores for one trace (and its spans), deduped — for trace detail. */
+export function getTraceScores(
+  client: ClickHouseClient,
+  params: { projectId: string; traceId: string },
+): Promise<ScoreDetailRow[]> {
+  return rows<ScoreDetailRow>(
+    client,
+    `SELECT
+       score_id, eval_id, target_type, target_id, trace_id,
+       scorer, label, score, passed, reason, model_id, cost, scored_at
+     FROM scores FINAL
+     WHERE project_id = {projectId:String} AND trace_id = {traceId:String}
+     ORDER BY scored_at ASC`,
+    { projectId: params.projectId, traceId: params.traceId },
+  );
+}
+
+/** Recent scored targets for one eval (the eval detail table). */
+export function listEvalScores(
+  client: ClickHouseClient,
+  params: { projectId: string; evalId: string; limit?: number },
+): Promise<ScoreDetailRow[]> {
+  return rows<ScoreDetailRow>(
+    client,
+    `SELECT
+       score_id, eval_id, target_type, target_id, trace_id,
+       scorer, label, score, passed, reason, model_id, cost, scored_at
+     FROM scores FINAL
+     WHERE project_id = {projectId:String} AND eval_id = {evalId:String}
+     ORDER BY scored_at DESC
+     LIMIT {limit:UInt32}`,
+    { projectId: params.projectId, evalId: params.evalId, limit: params.limit ?? 50 },
+  );
+}
+
+/**
+ * Total spans ingested for an org over a [from, to) day window — summed from
+ * the daily usage rollup (cheap; pre-aggregated). Powers the monthly span quota
+ * and the usage tab. `from`/`to` are 'YYYY-MM-DD' dates.
+ */
+export async function queryOrgSpanUsage(
+  client: ClickHouseClient,
+  params: { orgId: string; from: string; to: string },
+): Promise<number> {
+  const result = await rows<{ total: string }>(
+    client,
+    `SELECT sum(span_count) AS total
+     FROM usage_by_org_day
+     WHERE org_id = {orgId:String}
+       AND day >= {from:Date} AND day < {to:Date}`,
+    { orgId: params.orgId, from: params.from, to: params.to },
+  );
+  return Number(result[0]?.total ?? 0);
+}
+
+/** Distinct org ids with any span usage since `from` (YYYY-MM-DD) — bounds the
+ *  quota-warning sweep to orgs with recent traffic. */
+export async function queryRecentlyActiveOrgs(
+  client: ClickHouseClient,
+  from: string,
+): Promise<string[]> {
+  const result = await rows<{ org_id: string }>(
+    client,
+    `SELECT DISTINCT org_id FROM usage_by_org_day
+     WHERE day >= {from:Date} AND org_id != ''`,
+    { from },
+  );
+  return result.map((r) => r.org_id);
+}
+
+export type ScoreSummaryRow = { pass_count: string; fail_count: string };
+
+/**
+ * Project-wide pass/fail totals over a window, across all evals. Pass rate =
+ * pass / (pass + fail) — numeric-only judge scores (no verdict) are excluded,
+ * since they contribute to neither count.
+ */
+export async function queryProjectScoreSummary(
+  client: ClickHouseClient,
+  params: { projectId: string; from: string; to: string },
+): Promise<ScoreSummaryRow> {
+  const result = await rows<ScoreSummaryRow>(
+    client,
+    `SELECT sum(pass_count) AS pass_count, sum(fail_count) AS fail_count
+     FROM score_metrics_by_minute
+     WHERE project_id = {projectId:String}
+       AND bucket >= {from:DateTime} AND bucket < {to:DateTime}`,
+    { projectId: params.projectId, from: params.from, to: params.to },
+  );
+  return result[0] ?? { pass_count: "0", fail_count: "0" };
+}
+
+export type ScoreBucketRow = {
+  bucket: string;
+  score_count: string;
+  pass_count: string;
+  fail_count: string;
+  score_sum: string;
+  cost: string;
+  score_quantiles: number[];
+};
+
+/** Per-minute score rollup for one eval (the eval detail chart). */
+export function queryScoreTimeseries(
+  client: ClickHouseClient,
+  params: { projectId: string; evalId: string; from: string; to: string },
+): Promise<ScoreBucketRow[]> {
+  return rows<ScoreBucketRow>(
+    client,
+    `SELECT
+       bucket,
+       sum(score_count) AS score_count,
+       sum(pass_count) AS pass_count,
+       sum(fail_count) AS fail_count,
+       sum(score_sum) AS score_sum,
+       sum(cost) AS cost,
+       quantilesTDigestMerge(0.5, 0.95, 0.99)(score_quantiles) AS score_quantiles
+     FROM score_metrics_by_minute
+     WHERE project_id = {projectId:String} AND eval_id = {evalId:String}
+       AND bucket >= {from:DateTime} AND bucket < {to:DateTime}
+     GROUP BY bucket
+     ORDER BY bucket ASC`,
+    { projectId: params.projectId, evalId: params.evalId, from: params.from, to: params.to },
+  );
+}
+
+export type EvalFilterParams = {
+  agentName?: string;
+  workflowName?: string;
+  traceName?: string;
+  modelId?: string;
+  spanType?: string;
+  status?: string;
+  metadata?: Record<string, string>;
+};
+
+export type EvalCandidateRow = {
+  target_id: string;
+  trace_id: string;
+  span_type: string;
+  start_time_ms: number;
+  input: string;
+  output: string;
+  metadata: Record<string, string>;
+  ingested_at: string;
+};
+
+/**
+ * Candidate trace/span targets for one eval: matching the filters, ingested in
+ * (since, until], deterministically sampled by hashing the target id (so the
+ * same target always gets the same keep/skip decision). Trace-level targets are
+ * the root `agent` span (target_id = trace_id). Ordered by ingested_at so the
+ * worker can advance its watermark monotonically.
+ */
+export function queryEvalCandidates(
+  client: ClickHouseClient,
+  params: {
+    projectId: string;
+    level: "trace" | "span";
+    filters: EvalFilterParams;
+    since: string; // DateTime64(3) string
+    until: string;
+    sampleThousandths: number; // sampleRate * 1000
+    limit: number;
+  },
+): Promise<EvalCandidateRow[]> {
+  const { level, filters } = params;
+  const idCol = level === "trace" ? "trace_id" : "span_id";
+  const where: string[] = [
+    "project_id = {projectId:String}",
+    "ingested_at > {since:DateTime64(3)}",
+    "ingested_at <= {until:DateTime64(3)}",
+    `(cityHash64(${idCol}) % 1000) < {sampleThousandths:UInt32}`,
+  ];
+  if (level === "trace") where.push("span_type = 'agent'");
+  else if (filters.spanType) where.push("span_type = {spanType:String}");
+
+  const qp: Record<string, unknown> = {
+    projectId: params.projectId,
+    since: params.since,
+    until: params.until,
+    sampleThousandths: params.sampleThousandths,
+    limit: params.limit,
+  };
+  if (filters.agentName) {
+    where.push("agent_name = {agentName:String}");
+    qp.agentName = filters.agentName;
+  }
+  if (filters.workflowName) {
+    where.push("workflow_name = {workflowName:String}");
+    qp.workflowName = filters.workflowName;
+  }
+  if (filters.traceName) {
+    where.push("trace_name = {traceName:String}");
+    qp.traceName = filters.traceName;
+  }
+  if (filters.status) {
+    where.push("status = {status:String}");
+    qp.status = filters.status;
+  }
+  if (level === "span" && filters.modelId) {
+    where.push("model_id = {modelId:String}");
+    qp.modelId = filters.modelId;
+  }
+  // Metadata equality filters with safely-parameterized keys + values.
+  Object.entries(filters.metadata ?? {}).forEach(([k, v], i) => {
+    where.push(`metadata[{mk${i}:String}] = {mv${i}:String}`);
+    qp[`mk${i}`] = k;
+    qp[`mv${i}`] = v;
+  });
+
+  return rows<EvalCandidateRow>(
+    client,
+    `SELECT
+       ${idCol} AS target_id,
+       trace_id,
+       span_type,
+       toUnixTimestamp64Milli(start_time) AS start_time_ms,
+       input,
+       output,
+       metadata,
+       ingested_at
+     FROM spans
+     WHERE ${where.join(" AND ")}
+     ORDER BY ingested_at ASC, target_id ASC
+     LIMIT {limit:UInt32}`,
+    qp,
+  );
+}
+
+export type EvalSiblingRow = {
+  span_id: string;
+  span_type: string;
+  output: string;
+  start_time_ms: number;
+};
+
+/** Sibling spans of a trace (for RAG context extraction), ordered by start. */
+export function queryTraceSiblings(
+  client: ClickHouseClient,
+  params: { projectId: string; traceId: string },
+): Promise<EvalSiblingRow[]> {
+  return rows<EvalSiblingRow>(
+    client,
+    `SELECT
+       span_id,
+       span_type,
+       output,
+       toUnixTimestamp64Milli(start_time) AS start_time_ms
+     FROM spans
+     WHERE project_id = {projectId:String} AND trace_id = {traceId:String}
+     ORDER BY start_time ASC`,
+    { projectId: params.projectId, traceId: params.traceId },
+  );
+}
+
+export type ScoreAlertWindowRow = {
+  score_count: string;
+  pass_count: string;
+  fail_count: string;
+  score_sum: string;
+  score_quantiles: number[];
+};
+
+/**
+ * Single-row score rollup over an alert's window for one eval. The evaluator
+ * derives avg score (score_sum/score_count) or pass rate (pass/count) from it.
+ */
+export async function queryScoreAlertWindow(
+  client: ClickHouseClient,
+  params: { projectId: string; evalId: string; from: string; to: string },
+): Promise<ScoreAlertWindowRow> {
+  const result = await rows<ScoreAlertWindowRow>(
+    client,
+    `SELECT
+       sum(score_count) AS score_count,
+       sum(pass_count) AS pass_count,
+       sum(fail_count) AS fail_count,
+       sum(score_sum) AS score_sum,
+       quantilesTDigestMerge(0.5, 0.95, 0.99)(score_quantiles) AS score_quantiles
+     FROM score_metrics_by_minute
+     WHERE project_id = {projectId:String} AND eval_id = {evalId:String}
+       AND bucket >= {from:DateTime} AND bucket < {to:DateTime}`,
+    { projectId: params.projectId, evalId: params.evalId, from: params.from, to: params.to },
+  );
+  return (
+    result[0] ?? {
+      score_count: "0",
+      pass_count: "0",
+      fail_count: "0",
+      score_sum: "0",
+      score_quantiles: [0, 0, 0],
     }
   );
 }

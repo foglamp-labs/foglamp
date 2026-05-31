@@ -40,14 +40,14 @@ const base = Date.now();
 // --- Happy path: generateText, 2 steps, 1 tool, streamed first chunk --------
 console.log("Telemetry lifecycle → IngestPayload:");
 const cap = makeCapture();
-const wt = foglamp({
+const fog = foglamp({
   apiKey: "fl_test_key",
   endpoint: "http://capture.local/ingest",
   fetch: cap.fetchImpl,
   flushIntervalMs: 10_000, // we flush explicitly
 });
 
-const integration = wt.integration({
+const integration = fog.integration({
   agentName: "support",
   workflowName: "ticket-flow",
   workflowRunId: "run_1",
@@ -64,8 +64,13 @@ integration.onStart({
   messages: [{ role: "user", content: "help me" }],
 });
 integration.onStepStart({ callId: CALL, stepNumber: 0, messages: [{ role: "user", content: "help me" }] });
-// First streamed chunk → TTFT for step 0.
+// First streamed chunk → TTFT for step 0, then text-deltas drive intra-stream
+// sampling. The deltas carry no callId/stepNumber, exercising the fallback that
+// routes them to the single streaming step.
 integration.onChunk({ chunk: { type: "ai.stream.firstChunk", callId: CALL, stepNumber: 0 } });
+integration.onChunk({ chunk: { type: "text-delta", text: "Hello, " } });
+integration.onChunk({ chunk: { type: "text-delta", text: "this is " } });
+integration.onChunk({ chunk: { type: "text-delta", text: "the answer." } });
 integration.onStepFinish({
   callId: CALL,
   stepNumber: 0,
@@ -100,7 +105,7 @@ integration.onStepFinish({
 });
 integration.onFinish({ callId: CALL, text: "Here is your answer." });
 
-await wt.flush();
+await fog.flush();
 
 assert(cap.calls === 1, "one POST issued on flush");
 const payload = cap.bodies[0]!;
@@ -133,6 +138,23 @@ assert(root.output === "Here is your answer.", "root output captured from onFini
 assert(step0.spanType === "llm" && step0.parentSpanId === `${CALL}:root`, "llm step parented to root");
 assert(step0.ttftMs !== undefined && step0.ttftMs >= 0, `TTFT captured for streamed step 0 (${step0.ttftMs}ms)`);
 assert(step1.ttftMs === undefined, "no TTFT for step without a first-chunk marker");
+assert(
+  Array.isArray(step0.chunkOffsets) && step0.chunkOffsets!.length >= 1,
+  `chunk samples captured for streamed step 0 (${step0.chunkOffsets?.length} samples)`,
+);
+assert(
+  step0.chunkOffsets!.length === step0.chunkTokens!.length,
+  "chunkOffsets and chunkTokens are parallel arrays",
+);
+// outputTokens 200 − reasoningTokens 40 = 160 visible tokens at the final sample.
+assert(
+  step0.chunkTokens![step0.chunkTokens!.length - 1] === 160,
+  `final cumulative tokens rescaled to output−reasoning (got ${step0.chunkTokens![step0.chunkTokens!.length - 1]})`,
+);
+assert(
+  step1.chunkOffsets === undefined && step1.chunkTokens === undefined,
+  "no chunk arrays for a non-streamed step",
+);
 assert(step0.usage?.inputTokens === 1000, "input tokens mapped");
 assert(step0.usage?.cachedInputTokens === 200, "cacheRead → cachedInputTokens");
 assert(step0.usage?.cacheWriteInputTokens === 50, "cacheWrite → cacheWriteInputTokens");
@@ -188,5 +210,39 @@ await wt4.flush();
 assert(cap4.calls === 0, "no network calls when disabled");
 assert(wt4.pending === 0, "nothing buffered when disabled");
 if (prev !== undefined) process.env.FOGLAMP_API_KEY = prev;
+
+// --- traceName propagation & fallback --------------------------------------
+console.log("traceName:");
+const capTN = makeCapture();
+const wtTN = foglamp({ apiKey: "fl_test", endpoint: "http://x.local/ingest", fetch: capTN.fetchImpl });
+const iTN = wtTN.integration({ traceName: "summarize", agentName: "support" }) as unknown as Hooks;
+iTN.onStart({ callId: "cTN", operationId: "ai.generateText", provider: "openai", modelId: "gpt-4o", messages: [] });
+iTN.onStepFinish({ callId: "cTN", stepNumber: 0, model: { provider: "openai", modelId: "gpt-4o" }, usage: { inputTokens: 5 }, text: "x", finishReason: "stop" });
+iTN.onFinish({ callId: "cTN", text: "x" });
+await wtTN.flush();
+const tTN = capTN.bodies[0]!.traces[0]!;
+assert(tTN.traceName === "summarize", "traceName flows onto the wire trace");
+assert(tTN.spans[0]!.name === "summarize", "root span name = traceName (wins over agentName)");
+
+// traceName only (one-off call, no agent) — must satisfy the contract.
+const capTN2 = makeCapture();
+const wtTN2 = foglamp({ apiKey: "fl_test", endpoint: "http://x.local/ingest", fetch: capTN2.fetchImpl });
+const iTN2 = wtTN2.integration({ traceName: "classify" }) as unknown as Hooks;
+iTN2.onStart({ callId: "cTN2", operationId: "ai.generateText", provider: "openai", modelId: "gpt-4o", messages: [] });
+iTN2.onStepFinish({ callId: "cTN2", stepNumber: 0, model: { provider: "openai", modelId: "gpt-4o" }, usage: { inputTokens: 3 }, text: "y", finishReason: "stop" });
+iTN2.onFinish({ callId: "cTN2", text: "y" });
+await wtTN2.flush();
+assert(capTN2.bodies[0]!.traces[0]!.agentName === undefined, "agentName absent for a named one-off");
+assert(ingestPayloadSchema.safeParse(capTN2.bodies[0]).success, "traceName-only payload validates against the contract");
+
+// --- integration() eager validation ----------------------------------------
+console.log("integration() validation:");
+const wtV = foglamp({ apiKey: "fl_test", endpoint: "http://x.local/ingest", fetch: makeCapture().fetchImpl });
+let threwName = false;
+try { wtV.integration({} as never); } catch { threwName = true; }
+assert(threwName, "integration({}) throws when neither traceName nor agentName given");
+let threwWf = false;
+try { wtV.integration({ agentName: "a", workflowName: "wf" } as never); } catch { threwWf = true; }
+assert(threwWf, "integration() throws when workflowName given without workflowRunId");
 
 console.log("\nALL SDK CHECKS PASSED ✅");

@@ -1,7 +1,15 @@
 import { relations } from "drizzle-orm";
-import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
+
+// Per-lever plan limits; `null` = unlimited. Used for the Enterprise override.
+export type LimitsOverride = {
+  spansPerMonth?: number | null;
+  retentionDays?: number | null;
+  alerts?: number | null;
+  projects?: number | null;
+};
 
 // Tables owned by the better-auth `organization` plugin. Property keys must
 // match the plugin's field names (id/name/slug/logo/metadata/organizationId/…);
@@ -15,6 +23,12 @@ export const organization = pgTable("organization", {
   logo: text("logo"),
   // JSON-encoded by better-auth.
   metadata: text("metadata"),
+  // Set by the @better-auth/stripe plugin (org = billing customer).
+  stripeCustomerId: text("stripe_customer_id"),
+  // Enterprise (sales-led) override: a plan name + custom limits set by us, no
+  // self-serve checkout. Takes precedence over any subscription in getOrgPlan.
+  planOverride: text("plan_override"),
+  limitsOverride: jsonb("limits_override").$type<LimitsOverride>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

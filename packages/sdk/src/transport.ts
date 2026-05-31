@@ -128,7 +128,7 @@ export class Transport {
           this.vercelWaitUntil = mod.waitUntil as WaitUntil;
         })
         .catch(() => {
-          /* not running on Vercel; rely on explicit wt.flush() */
+          /* not running on Vercel; rely on explicit fog.flush() */
         });
     }
     await this.vercelLoad;

@@ -21,5 +21,7 @@
   "menuColor": "default",
   "menuAccent": "subtle",
   "rtl": false,
-  "registries": {}
+  "registries": {
+    "@evilcharts": "https://evilcharts.com/r/{name}.json"
+  }
 }

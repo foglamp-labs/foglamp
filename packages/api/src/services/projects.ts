@@ -1,11 +1,16 @@
 import { TRPCError } from "@trpc/server";
+import { getOrgPlan } from "@foglamp/billing";
+import { deleteProjectData } from "@foglamp/clickhouse";
 import { apiKey } from "@foglamp/db/schema/apiKey";
 import { project } from "@foglamp/db/schema/project";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 
 import { generateApiKey, hashApiKey, keyPrefix, slugify } from "../lib/util";
-import type { Db } from "../types";
-import { requireOrgAccess, requireProjectAccess } from "./access";
+import type { Ch, Db } from "../types";
+import { requireOrgRole, requireProjectAccess } from "./access";
+
+// API keys + project create/delete require admin+ (reads need only membership).
+const ADMIN = ["owner", "admin"] as const;
 
 /** Create a project in an org the user belongs to, with a unique slug. */
 export async function createProject(
@@ -13,7 +18,22 @@ export async function createProject(
   userId: string,
   input: { orgId: string; name: string; url?: string | null },
 ) {
-  await requireOrgAccess(db, userId, input.orgId);
+  await requireOrgRole(db, userId, input.orgId, [...ADMIN]);
+
+  // Plan limit: cap projects per org (null = unlimited).
+  const { limits } = await getOrgPlan(input.orgId);
+  if (limits.projects !== null) {
+    const rows = await db
+      .select({ n: count() })
+      .from(project)
+      .where(eq(project.orgId, input.orgId));
+    if ((rows[0]?.n ?? 0) >= limits.projects) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Your plan allows ${limits.projects} project${limits.projects === 1 ? "" : "s"}. Upgrade to add more.`,
+      });
+    }
+  }
 
   const base = slugify(input.name);
   // Resolve a slug unique within the org (slug, slug-2, slug-3, …).
@@ -92,7 +112,8 @@ export async function createApiKey(
   userId: string,
   input: { projectId: string; name: string },
 ) {
-  await requireProjectAccess(db, userId, input.projectId);
+  const proj = await requireProjectAccess(db, userId, input.projectId);
+  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
 
   const key = generateApiKey();
   const rows = await db
@@ -115,7 +136,8 @@ export async function revokeApiKey(
   userId: string,
   input: { projectId: string; keyId: string },
 ) {
-  await requireProjectAccess(db, userId, input.projectId);
+  const proj = await requireProjectAccess(db, userId, input.projectId);
+  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
   const rows = await db
     .update(apiKey)
     .set({ revokedAt: new Date() })
@@ -125,4 +147,22 @@ export async function revokeApiKey(
     throw new TRPCError({ code: "NOT_FOUND", message: "API key not found" });
   }
   return { id: rows[0].id };
+}
+
+/**
+ * Delete a project: Postgres cascades remove its keys/alerts/evals/pricing/
+ * workflow-run-names; ClickHouse has no FKs so its spans/scores are purged
+ * explicitly. Admin+ only.
+ */
+export async function deleteProject(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: { projectId: string },
+) {
+  const proj = await requireProjectAccess(db, userId, input.projectId);
+  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  await db.delete(project).where(eq(project.id, input.projectId));
+  await deleteProjectData(ch, input.projectId); // async CH mutation
+  return { id: input.projectId };
 }

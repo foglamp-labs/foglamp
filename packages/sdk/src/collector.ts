@@ -2,7 +2,11 @@ import type { Telemetry } from "ai";
 
 import { coerceMetadata, serialize } from "./serialize";
 import { Transport } from "./transport";
-import type { IntegrationContext, ResolvedConfig } from "./types";
+import type {
+  IntegrationContext,
+  IntegrationInput,
+  ResolvedConfig,
+} from "./types";
 import { mapUsage } from "./usage";
 import type { Metadata, Span, Trace } from "./wire";
 
@@ -12,8 +16,8 @@ import type { Metadata, Span, Trace } from "./wire";
 //   llm    = one model step (from `onStepFinish`)   → `${callId}:step:${n}`
 //   tool   = one tool execution (from `onToolExecutionEnd`) → `${callId}:tool:${id}`
 //
-// One `Collector` is both the global integration (`registerTelemetry(wt)`) and a
-// factory for per-call ones (`wt.integration(ctx)`); they share a Transport. Cost
+// One `Collector` is both the global integration (`registerTelemetry(fog)`) and a
+// factory for per-call ones (`fog.integration(ctx)`); they share a Transport. Cost
 // is NOT computed here — it's added at ingest from the token dimensions we report.
 //
 // Every handler is wrapped so telemetry never throws into, or adds latency to,
@@ -38,7 +42,15 @@ interface StepStartView {
   messages?: unknown;
 }
 interface ChunkView {
-  chunk?: { type?: string; callId?: string; stepNumber?: number };
+  // Lifecycle markers (`ai.stream.firstChunk`) carry callId/stepNumber; the
+  // payload text-deltas carry the delta text but no routing ids (see onChunk).
+  chunk?: {
+    type?: string;
+    callId?: string;
+    stepNumber?: number;
+    text?: string;
+    textDelta?: string;
+  };
 }
 interface StepEndView {
   callId?: string;
@@ -81,11 +93,36 @@ interface TraceBuilder {
   stepInput: Map<number, string>;
   ttft: Map<number, number>;
   toolStart: Map<string, number>;
+  // Intra-stream sampling, keyed by stepNumber. chunkSamples holds
+  // [offsetMs, cumulativeTextLength] pairs (rescaled to tokens at step end);
+  // chunkTextLen is the running text length; streamingStep marks the step
+  // currently emitting text-deltas (used to route deltas that carry no callId).
+  chunkSamples: Map<number, Array<[number, number]>>;
+  chunkTextLen: Map<number, number>;
+  streamingStep: number | undefined;
 }
 
 // The wire contract caps spans per trace; keep the root + most recent under it.
 const MAX_SPANS_PER_TRACE = 2_000;
 const ERROR_MESSAGE_CAP = 8_192;
+// Intra-stream sampling: one sample per this many ms (keeps arrays small), and
+// a hard cap matching the wire contract's `.max(200)` on the chunk arrays.
+const CHUNK_SAMPLE_INTERVAL_MS = 100;
+const MAX_CHUNK_SAMPLES = 200;
+
+// Evenly thin samples to at most `max`, always keeping the last entry (it
+// anchors the cumulative text length used for the token rescale).
+function decimateSamples(
+  samples: ReadonlyArray<[number, number]>,
+  max: number,
+): ReadonlyArray<[number, number]> {
+  if (samples.length <= max) return samples;
+  const out: Array<[number, number]> = [];
+  const stride = samples.length / max;
+  for (let i = 0; i < max - 1; i++) out.push(samples[Math.floor(i * stride)]!);
+  out.push(samples[samples.length - 1]!);
+  return out;
+}
 
 export class Collector implements Telemetry {
   private readonly transport: Transport;
@@ -101,9 +138,23 @@ export class Collector implements Telemetry {
 
   /**
    * Bind per-call context and return a `Telemetry` that shares this transport.
-   * Pass to `telemetry: { integrations: [wt.integration({ agentName, … })] }`.
+   * Pass to `telemetry: { integrations: [fog.integration({ traceName, … })] }`.
+   * Requires `traceName` or `agentName`; `workflowName`/`workflowRunId` together.
    */
-  integration(context: IntegrationContext = {}): Collector {
+  integration(context: IntegrationInput): Collector {
+    // Eager validation — runs synchronously at setup (NOT inside a guarded
+    // lifecycle handler), so errors surface to the caller instead of being
+    // swallowed and routed to config.onError.
+    if (!context.traceName && !context.agentName) {
+      throw new Error(
+        "[foglamp] integration() requires `traceName` or `agentName` — this becomes the trace's label.",
+      );
+    }
+    if (Boolean(context.workflowName) !== Boolean(context.workflowRunId)) {
+      throw new Error(
+        "[foglamp] `workflowName` and `workflowRunId` must be passed together (both or neither).",
+      );
+    }
     return new Collector(this.transport, this.config, context);
   }
 
@@ -150,6 +201,9 @@ export class Collector implements Telemetry {
         stepInput: new Map(),
         ttft: new Map(),
         toolStart: new Map(),
+        chunkSamples: new Map(),
+        chunkTextLen: new Map(),
+        streamingStep: undefined,
       });
     });
   };
@@ -171,14 +225,73 @@ export class Collector implements Telemetry {
   onChunk: NonNullable<Telemetry["onChunk"]> = (event) => {
     this.guard(() => {
       const chunk = (event as ChunkView).chunk;
-      // TTFT lives only on the stream's first-chunk marker (text/stream path).
-      if (!chunk || chunk.type !== "ai.stream.firstChunk") return;
-      if (!chunk.callId || chunk.stepNumber === undefined) return;
-      const builder = this.builders.get(chunk.callId);
-      if (!builder || builder.ttft.has(chunk.stepNumber)) return;
-      const start = builder.stepStart.get(chunk.stepNumber) ?? builder.startTime;
-      builder.ttft.set(chunk.stepNumber, Math.max(0, Date.now() - start));
+      if (!chunk) return;
+
+      // The first-chunk marker carries callId/stepNumber: record TTFT and mark
+      // this step as the one currently streaming, so subsequent text-deltas
+      // (which carry no routing ids) can be attributed to it.
+      if (chunk.type === "ai.stream.firstChunk") {
+        if (!chunk.callId || chunk.stepNumber === undefined) return;
+        const builder = this.builders.get(chunk.callId);
+        if (!builder) return;
+        builder.streamingStep = chunk.stepNumber;
+        if (builder.ttft.has(chunk.stepNumber)) return;
+        const start = builder.stepStart.get(chunk.stepNumber) ?? builder.startTime;
+        builder.ttft.set(chunk.stepNumber, Math.max(0, Date.now() - start));
+        return;
+      }
+
+      // Text payloads drive the intra-stream samples. The delta text length is a
+      // cheap token proxy that we rescale to real tokens at onStepFinish.
+      if (chunk.type !== "text-delta") return;
+      const text = chunk.text ?? chunk.textDelta;
+      if (typeof text !== "string" || text.length === 0) return;
+
+      const target = this.resolveStreamingTarget(chunk.callId, chunk.stepNumber);
+      if (!target) return;
+      const { builder, step } = target;
+
+      const cumLen = (builder.chunkTextLen.get(step) ?? 0) + text.length;
+      builder.chunkTextLen.set(step, cumLen);
+
+      const stepStart = builder.stepStart.get(step) ?? builder.startTime;
+      const offsetMs = Math.max(0, Date.now() - stepStart);
+      const samples = builder.chunkSamples.get(step);
+      if (!samples) {
+        builder.chunkSamples.set(step, [[offsetMs, cumLen]]);
+        return;
+      }
+      const last = samples[samples.length - 1]!;
+      // New time bucket → new sample; otherwise fold the latest length into the
+      // current bucket so the final sample always anchors to the full text.
+      if (offsetMs - last[0] >= CHUNK_SAMPLE_INTERVAL_MS) {
+        samples.push([offsetMs, cumLen]);
+      } else {
+        last[1] = cumLen;
+      }
     });
+  };
+
+  // Attribute a text-delta to a builder/step. Markers give us callId/stepNumber
+  // directly; bare deltas fall back to the single builder currently streaming.
+  // If more than one stream is active (concurrent calls on a shared global
+  // collector), the delta is ambiguous and dropped — use fog.integration(...)
+  // per call for reliable sampling.
+  private resolveStreamingTarget(
+    callId: string | undefined,
+    stepNumber: number | undefined,
+  ): { builder: TraceBuilder; step: number } | undefined {
+    if (callId && stepNumber !== undefined) {
+      const builder = this.builders.get(callId);
+      return builder ? { builder, step: stepNumber } : undefined;
+    }
+    let found: { builder: TraceBuilder; step: number } | undefined;
+    for (const builder of this.builders.values()) {
+      if (builder.streamingStep === undefined) continue;
+      if (found) return undefined; // ambiguous: >1 active stream
+      found = { builder, step: builder.streamingStep };
+    }
+    return found;
   };
 
   onStepFinish: NonNullable<Telemetry["onStepFinish"]> = (event) => {
@@ -193,6 +306,13 @@ export class Collector implements Telemetry {
       const metadata: Metadata = { stepNumber: String(e.stepNumber) };
       if (e.finishReason) metadata.finishReason = e.finishReason;
 
+      const usage = mapUsage(e.usage);
+      const chunks = this.buildChunkArrays(builder, e.stepNumber, usage);
+      // This step is done streaming; drop its sampling scratch state.
+      builder.chunkSamples.delete(e.stepNumber);
+      builder.chunkTextLen.delete(e.stepNumber);
+      if (builder.streamingStep === e.stepNumber) builder.streamingStep = undefined;
+
       builder.spans.push({
         spanId: `${e.callId}:step:${e.stepNumber}`,
         parentSpanId: `${e.callId}:root`,
@@ -203,8 +323,10 @@ export class Collector implements Telemetry {
         status: e.finishReason === "error" ? "error" : "ok",
         provider: e.model?.provider ?? builder.provider,
         modelId: e.model?.modelId ?? builder.modelId,
-        usage: mapUsage(e.usage),
+        usage,
         ttftMs: builder.ttft.get(e.stepNumber),
+        chunkOffsets: chunks?.chunkOffsets,
+        chunkTokens: chunks?.chunkTokens,
         input: builder.recordInputs ? builder.stepInput.get(e.stepNumber) : undefined,
         output: builder.recordOutputs ? this.stepOutput(e) : undefined,
         metadata,
@@ -273,7 +395,7 @@ export class Collector implements Telemetry {
     // The error event carries no callId. The generation is aborted, so flush
     // every open trace on this integration with an error root. (For the global
     // path this may close unrelated concurrent calls — prefer per-call
-    // `wt.integration(...)` when running many in parallel.)
+    // `fog.integration(...)` when running many in parallel.)
     this.guard(() => {
       const message = serialize(error instanceof Error ? error.message : error, ERROR_MESSAGE_CAP);
       for (const [callId, builder] of [...this.builders]) {
@@ -301,14 +423,51 @@ export class Collector implements Telemetry {
     return serialize(e.content, this.config.maxPayloadChars);
   }
 
+  // Turn a step's [offsetMs, cumulativeTextLength] samples into parallel
+  // offset/token arrays. Text length is rescaled to the real visible-token
+  // count (outputTokens minus reasoningTokens, which stream separately and
+  // would otherwise inflate the curve). Returns undefined for non-streaming
+  // steps so the span omits the fields entirely.
+  private buildChunkArrays(
+    builder: TraceBuilder,
+    step: number,
+    usage: ReturnType<typeof mapUsage>,
+  ): { chunkOffsets: number[]; chunkTokens: number[] } | undefined {
+    const raw = builder.chunkSamples.get(step);
+    const finalTextLen = builder.chunkTextLen.get(step) ?? 0;
+    if (!usage || !raw || raw.length === 0 || finalTextLen <= 0) return undefined;
+
+    const scaleTokens = Math.max(0, (usage.outputTokens ?? 0) - (usage.reasoningTokens ?? 0));
+    if (scaleTokens === 0) return undefined;
+
+    const samples = decimateSamples(raw, MAX_CHUNK_SAMPLES);
+    const chunkOffsets = new Array<number>(samples.length);
+    const chunkTokens = new Array<number>(samples.length);
+    for (let i = 0; i < samples.length; i++) {
+      const sample = samples[i]!;
+      chunkOffsets[i] = sample[0];
+      chunkTokens[i] = Math.round((sample[1] / finalTextLen) * scaleTokens);
+    }
+    return { chunkOffsets, chunkTokens };
+  }
+
   private finalize(callId: string, builder: TraceBuilder): void {
     this.builders.delete(callId);
+
+    // Work on a copy so the fallback below doesn't mutate shared builder state.
+    const ctx = { ...builder.context };
+    // Safety net for the global registerTelemetry() path (context synthesized
+    // from functionId, never validated by integration()): a trace must always
+    // carry a name or ingest rejects it.
+    if (!ctx.traceName && !ctx.agentName) {
+      ctx.traceName = builder.operationId ?? callId;
+    }
 
     const endTime = Math.max(builder.endTime, builder.startTime);
     const root: Span = {
       spanId: `${callId}:root`,
       spanType: "agent",
-      name: builder.context.agentName ?? builder.operationId ?? "agent",
+      name: ctx.traceName ?? ctx.agentName ?? builder.operationId ?? "agent",
       startTime: builder.startTime,
       endTime,
       status: builder.error ? "error" : "ok",
@@ -325,9 +484,9 @@ export class Collector implements Telemetry {
       spans = [root, ...builder.spans.slice(-(MAX_SPANS_PER_TRACE - 1))];
     }
 
-    const ctx = builder.context;
     const trace: Trace = {
       traceId: callId,
+      traceName: ctx.traceName,
       agentName: ctx.agentName,
       workflowName: ctx.workflowName,
       workflowRunId: ctx.workflowRunId,

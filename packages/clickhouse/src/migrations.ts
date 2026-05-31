@@ -205,4 +205,138 @@ FROM spans
 GROUP BY project_id, bucket, span_type, model_id, agent_name`,
     ],
   },
+  {
+    // Names a trace independently of agent/workflow classification. Effective
+    // display label downstream is `trace_name || agent_name`. The MV's SELECT
+    // can't be ALTERed, so it's dropped and recreated with the new column.
+    id: "0005_trace_name",
+    statements: [
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS trace_name LowCardinality(String) DEFAULT ''`,
+      `ALTER TABLE spans ADD INDEX IF NOT EXISTS idx_trace_name trace_name TYPE bloom_filter GRANULARITY 1`,
+      `ALTER TABLE trace_summary ADD COLUMN IF NOT EXISTS trace_name SimpleAggregateFunction(any, String)`,
+      `DROP VIEW IF EXISTS trace_summary_mv`,
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS trace_summary_mv TO trace_summary AS
+SELECT
+  project_id,
+  trace_id,
+  CAST(any(agent_name) AS String) AS agent_name,
+  CAST(any(workflow_name) AS String) AS workflow_name,
+  CAST(any(trace_name) AS String) AS trace_name,
+  any(workflow_run_id) AS workflow_run_id,
+  any(session_id) AS session_id,
+  min(start_time) AS trace_start,
+  max(end_time) AS trace_end,
+  toUInt64(count()) AS span_count,
+  toUInt64(countIf(span_type = 'llm')) AS llm_span_count,
+  toUInt64(countIf(span_type = 'tool')) AS tool_span_count,
+  toUInt64(countIf(status = 'error')) AS error_count,
+  sum(ifNull(spans.total_cost, CAST(0 AS ${SUMMED_DECIMAL}))) AS total_cost,
+  toUInt64(countIf(span_type = 'llm' AND spans.total_cost IS NOT NULL)) AS priced_span_count,
+  toUInt64(sum(input_tokens)) AS input_tokens,
+  toUInt64(sum(output_tokens)) AS output_tokens,
+  toUInt64(sum(total_tokens)) AS total_tokens
+FROM spans
+GROUP BY project_id, trace_id`,
+    ],
+  },
+  {
+    // Intra-stream sampling for streaming llm spans. Two parallel arrays:
+    // chunk_offsets[i] is ms from step start, chunk_tokens[i] is cumulative
+    // output tokens at that moment. Empty for non-streaming / pre-feature rows,
+    // which the UI reads as "no streaming data". Aggregate MVs don't need them.
+    id: "0006_chunk_samples",
+    statements: [
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS chunk_offsets Array(UInt32) DEFAULT []`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS chunk_tokens Array(UInt32) DEFAULT []`,
+    ],
+  },
+  {
+    // Eval scores: one row per (eval, target) where target is a trace or span.
+    // The scoring worker writes here; score_id is deterministic (eval:target)
+    // so ReplacingMergeTree dedups re-runs. A per-minute rollup mirrors
+    // metrics_by_minute and feeds eval-score alerts.
+    id: "0007_scores",
+    statements: [
+      `CREATE TABLE IF NOT EXISTS scores
+(
+  project_id String,
+  eval_id String,
+  score_id String,
+  target_type LowCardinality(String),
+  target_id String,
+  trace_id String DEFAULT '',
+  scorer LowCardinality(String),
+  label LowCardinality(String) DEFAULT '',
+  score Nullable(Float64),
+  passed Nullable(UInt8),
+  reason String DEFAULT '' CODEC(ZSTD(3)),
+  model_id LowCardinality(String) DEFAULT '',
+  cost Nullable(${DECIMAL}),
+  scored_at DateTime64(3),
+  INDEX idx_scores_eval_id eval_id TYPE bloom_filter GRANULARITY 1,
+  INDEX idx_scores_target_id target_id TYPE bloom_filter GRANULARITY 1,
+  INDEX idx_scores_trace_id trace_id TYPE bloom_filter GRANULARITY 1
+)
+ENGINE = ReplacingMergeTree(scored_at)
+PARTITION BY toYYYYMM(scored_at)
+ORDER BY (project_id, eval_id, target_id, score_id)`,
+      `CREATE TABLE IF NOT EXISTS score_metrics_by_minute
+(
+  project_id String,
+  eval_id String,
+  label LowCardinality(String),
+  bucket DateTime,
+  score_count SimpleAggregateFunction(sum, UInt64),
+  pass_count SimpleAggregateFunction(sum, UInt64),
+  fail_count SimpleAggregateFunction(sum, UInt64),
+  score_sum SimpleAggregateFunction(sum, Float64),
+  cost SimpleAggregateFunction(sum, ${SUMMED_DECIMAL}),
+  score_quantiles AggregateFunction(quantilesTDigest(0.5, 0.95, 0.99), Float32)
+)
+ENGINE = AggregatingMergeTree
+ORDER BY (project_id, eval_id, label, bucket)`,
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS score_metrics_by_minute_mv TO score_metrics_by_minute AS
+SELECT
+  project_id,
+  eval_id,
+  label,
+  toStartOfMinute(scored_at) AS bucket,
+  toUInt64(count()) AS score_count,
+  toUInt64(countIf(passed = 1)) AS pass_count,
+  toUInt64(countIf(passed = 0)) AS fail_count,
+  sum(ifNull(score, 0)) AS score_sum,
+  sum(ifNull(scores.cost, CAST(0 AS ${SUMMED_DECIMAL}))) AS cost,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toFloat32(ifNull(score, 0)), isNotNull(score)) AS score_quantiles
+FROM scores
+GROUP BY project_id, eval_id, label, bucket`,
+    ],
+  },
+  {
+    // Per-org billing plumbing: org_id (denormalized at ingest from the key's
+    // project→org) drives a daily usage rollup for the monthly span quota, and
+    // retention_days makes data TTL plan-driven per row (replacing the global
+    // TTL). Default 30 grandfathers pre-plan rows so they aren't nuked early.
+    id: "0008_org_usage",
+    statements: [
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS org_id String DEFAULT ''`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS retention_days UInt16 DEFAULT 30`,
+      `ALTER TABLE spans MODIFY TTL toDateTime(start_time) + toIntervalDay(retention_days)`,
+      `CREATE TABLE IF NOT EXISTS usage_by_org_day
+(
+  org_id String,
+  day Date,
+  span_count SimpleAggregateFunction(sum, UInt64)
+)
+ENGINE = AggregatingMergeTree
+ORDER BY (org_id, day)`,
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS usage_by_org_day_mv TO usage_by_org_day AS
+SELECT
+  org_id,
+  toDate(start_time) AS day,
+  toUInt64(count()) AS span_count
+FROM spans
+WHERE org_id != ''
+GROUP BY org_id, day`,
+    ],
+  },
 ];

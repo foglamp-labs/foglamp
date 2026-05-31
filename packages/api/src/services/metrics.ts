@@ -1,6 +1,10 @@
 import {
+  type ProjectSummaryRow,
+  type ScoreSummaryRow,
   queryMetricsTimeseries,
+  queryMetricsTimeseriesByModel,
   queryModelBreakdown,
+  queryProjectScoreSummary,
   queryProjectSummary,
 } from "@foglamp/clickhouse";
 
@@ -43,6 +47,8 @@ export async function getTimeseries(
     totalCost: decimalOrNull(r.total_cost),
     pricedSpanCount: num(r.priced_span_count),
     totalTokens: num(r.total_tokens),
+    inputTokens: num(r.input_tokens),
+    outputTokens: num(r.output_tokens),
     latencyMs: quantiles(r.duration_quantiles),
     ttftMs: quantiles(r.ttft_quantiles),
   }));
@@ -66,9 +72,45 @@ export async function getModelBreakdown(
     totalCost: decimalOrNull(r.total_cost),
     pricedSpanCount: num(r.priced_span_count),
     totalTokens: num(r.total_tokens),
+    inputTokens: num(r.input_tokens),
+    outputTokens: num(r.output_tokens),
+    latencyMs: quantiles(r.duration_quantiles),
   }));
 }
 
+function mapSummary(s: ProjectSummaryRow, score?: ScoreSummaryRow) {
+  const llmSpans = num(s.llm_span_count);
+  const priced = num(s.priced_span_count);
+  const passes = num(score?.pass_count);
+  const checks = passes + num(score?.fail_count);
+  return {
+    // Pass rate over scored pass/fail checks (0..1); null when none were scored.
+    // Covers the sampled subset only, not all traffic.
+    passRate: checks > 0 ? passes / checks : null,
+    checkCount: checks,
+    spanCount: num(s.span_count),
+    llmSpanCount: llmSpans,
+    errorCount: num(s.error_count),
+    totalCost: decimalOrNull(s.total_cost),
+    pricedSpanCount: priced,
+    totalTokens: num(s.total_tokens),
+    inputTokens: num(s.input_tokens),
+    outputTokens: num(s.output_tokens),
+    // Fraction of llm spans that received a price (0..1); null when no llm spans.
+    costCoverage: llmSpans > 0 ? priced / llmSpans : null,
+    // Fraction of spans that errored (0..1); null when no spans.
+    errorRate: num(s.span_count) > 0 ? num(s.error_count) / num(s.span_count) : null,
+    latencyMs: quantiles(s.duration_quantiles),
+    ttftMs: quantiles(s.ttft_quantiles),
+  };
+}
+
+export type MetricsSummary = ReturnType<typeof mapSummary>;
+
+/**
+ * Window totals plus the equal-length window immediately before it, so the UI
+ * can show period-over-period deltas.
+ */
 export async function getSummary(
   db: Db,
   ch: Ch,
@@ -76,23 +118,54 @@ export async function getSummary(
   input: { projectId: string; from: Date; to: Date },
 ) {
   await requireProjectAccess(db, userId, input.projectId);
-  const s = await queryProjectSummary(ch, {
+  const windowMs = input.to.getTime() - input.from.getTime();
+  const prevFrom = new Date(input.from.getTime() - windowMs);
+  const [current, previous, curScore, prevScore] = await Promise.all([
+    queryProjectSummary(ch, {
+      projectId: input.projectId,
+      from: toClickHouseDateTime(input.from),
+      to: toClickHouseDateTime(input.to),
+    }),
+    queryProjectSummary(ch, {
+      projectId: input.projectId,
+      from: toClickHouseDateTime(prevFrom),
+      to: toClickHouseDateTime(input.from),
+    }),
+    queryProjectScoreSummary(ch, {
+      projectId: input.projectId,
+      from: toClickHouseDateTime(input.from),
+      to: toClickHouseDateTime(input.to),
+    }),
+    queryProjectScoreSummary(ch, {
+      projectId: input.projectId,
+      from: toClickHouseDateTime(prevFrom),
+      to: toClickHouseDateTime(input.from),
+    }),
+  ]);
+  return {
+    current: mapSummary(current, curScore),
+    previous: mapSummary(previous, prevScore),
+  };
+}
+
+export async function getCostTimeseriesByModel(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: { projectId: string; from: Date; to: Date },
+) {
+  await requireProjectAccess(db, userId, input.projectId);
+  const rows = await queryMetricsTimeseriesByModel(ch, {
     projectId: input.projectId,
     from: toClickHouseDateTime(input.from),
     to: toClickHouseDateTime(input.to),
   });
-  const llmSpans = num(s.llm_span_count);
-  const priced = num(s.priced_span_count);
-  return {
-    spanCount: num(s.span_count),
-    llmSpanCount: llmSpans,
-    errorCount: num(s.error_count),
-    totalCost: decimalOrNull(s.total_cost),
-    pricedSpanCount: priced,
-    totalTokens: num(s.total_tokens),
-    // Fraction of llm spans that received a price (0..1); null when no llm spans.
-    costCoverage: llmSpans > 0 ? priced / llmSpans : null,
-    latencyMs: quantiles(s.duration_quantiles),
-    ttftMs: quantiles(s.ttft_quantiles),
-  };
+  return rows.map((r) => ({
+    bucket: r.bucket,
+    modelId: r.model_id || "(unknown)",
+    totalCost: decimalOrNull(r.total_cost),
+    totalTokens: num(r.total_tokens),
+    spanCount: num(r.span_count),
+  }));
 }
+

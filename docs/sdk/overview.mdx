@@ -10,7 +10,7 @@ ingest endpoint, and produces telemetry integrations you attach to AI SDK calls.
 ```ts
 import { foglamp } from "foglamp";
 
-const wt = foglamp();
+const fog = foglamp();
 ```
 
 <Note>
@@ -26,7 +26,7 @@ missing credentials disable the collector silently. See
 [Configuration](/sdk/configuration) for the full option table.
 
 ```ts
-const wt = foglamp({
+const fog = foglamp({
   apiKey: process.env.FOGLAMP_API_KEY,
   endpoint: process.env.FOGLAMP_INGEST_URL,
   flushIntervalMs: 5000,
@@ -38,54 +38,64 @@ integrations become no-ops, nothing is sent, and nothing is thrown.
 
 ## Collector methods
 
-### `wt.integration(context?)`
+### `fog.integration(context?)`
 
 Returns a telemetry integration to pass into a call's
 `experimental_telemetry.integrations` array. The optional context labels every
 span the call produces.
 
 ```ts
-wt.integration({
+fog.integration({
   agentName: "summarizer",
   workflowName: "deploy-digest",
   workflowRunId: run.id,
   sessionId: user.threadId,
   metadata: { environment: "production", region: "us-east-1" },
 });
+
+// A one-off call that isn't an agent — name it instead:
+fog.integration({ traceName: "classify-email" });
 ```
 
 | Context field | Type | Notes |
 | --- | --- | --- |
-| `agentName` | string | the actor responsible for the call |
-| `workflowName` | string | the named process |
-| `workflowRunId` | string | groups traces into one run |
+| `traceName` | string | label for a one-off call; required if `agentName` is absent |
+| `agentName` | string | the actor responsible for the call; required if `traceName` is absent |
+| `workflowName` | string | the named process; pass with `workflowRunId` |
+| `workflowRunId` | string | groups traces into one run; pass with `workflowName` |
 | `sessionId` | string | ties traces to one conversation |
 | `metadata` | `Record<string, string \| number \| boolean>` | free-form labels |
 
-### `wt.flush()`
+<Note>
+  `traceName` **or** `agentName` is required (both is fine — the display label is
+  `traceName ?? agentName`). `workflowName` and `workflowRunId` must be passed
+  together. Both rules are enforced at compile time and rechecked at ingest.
+</Note>
+
+### `fog.flush()`
 
 Sends any buffered spans immediately and resolves when the request completes.
 Call this before a serverless function returns, or on shutdown. Safe to call
 when the collector is disabled (resolves immediately).
 
 ```ts
-await wt.flush();
+await fog.flush();
 ```
 
-### `wt.shutdown()`
+### `fog.shutdown()`
 
 Stops the flush timer and performs a final flush. Use on graceful process
 shutdown in long-running servers.
 
 ```ts
-process.on("SIGTERM", () => wt.shutdown());
+process.on("SIGTERM", () => fog.shutdown());
 ```
 
 ## Registration paths
 
 <CardGroup cols={2}>
   <Card title="Per-call" icon="crosshairs">
-    Pass `wt.integration(...)` into a single call's telemetry. Fully typed, and
+    Pass `fog.integration(...)` into a single call's telemetry. Fully typed, and
     wins over any global registration.
   </Card>
   <Card title="Global" icon="globe">

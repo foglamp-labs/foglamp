@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@foglamp/ui/components/card";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import {
@@ -27,30 +28,17 @@ import {
   formatDuration,
   formatTokens,
 } from "@/lib/format";
+import {
+  computeWindow,
+  orderSpans,
+  toMs,
+  type TraceSpan,
+} from "@/lib/trace-timeline";
 import { trpc } from "@/utils/trpc";
+import { TraceReplay } from "@/components/app/trace-replay";
+import { TpsHeadline } from "@/components/app/tps-headline";
 
-type Span = {
-  spanId: string;
-  parentSpanId: string | null;
-  spanType: string;
-  name: string;
-  startTime: string;
-  endTime: string;
-  durationMs: number;
-  status: string;
-  errorMessage: string | null;
-  provider: string | null;
-  modelId: string | null;
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-  ttftMs: number | null;
-  totalCost: number | null;
-  pricingSource: string | null;
-  metadata: Record<string, string>;
-  input: string | null;
-  output: string | null;
-};
+type Span = TraceSpan;
 
 const typeVariant: Record<string, "violet" | "blue" | "amber" | "secondary"> = {
   llm: "violet",
@@ -58,50 +46,23 @@ const typeVariant: Record<string, "violet" | "blue" | "amber" | "secondary"> = {
   agent: "amber",
 };
 
-function toMs(value: string) {
-  return new Date(`${value.replace(" ", "T")}Z`).getTime();
-}
-
-/** Order spans depth-first by parent so the waterfall reads top-to-bottom. */
-function orderSpans(spans: Span[]): { span: Span; depth: number }[] {
-  const children = new Map<string, Span[]>();
-  const roots: Span[] = [];
-  for (const s of spans) {
-    if (s.parentSpanId && spans.some((p) => p.spanId === s.parentSpanId)) {
-      const list = children.get(s.parentSpanId) ?? [];
-      list.push(s);
-      children.set(s.parentSpanId, list);
-    } else {
-      roots.push(s);
-    }
-  }
-  const byStart = (a: Span, b: Span) => toMs(a.startTime) - toMs(b.startTime);
-  const out: { span: Span; depth: number }[] = [];
-  const walk = (s: Span, depth: number) => {
-    out.push({ span: s, depth });
-    (children.get(s.spanId) ?? []).sort(byStart).forEach((c) => walk(c, depth + 1));
-  };
-  roots.sort(byStart).forEach((r) => walk(r, 0));
-  return out;
-}
-
 export function TraceDetailClient({ traceId }: { traceId: string }) {
   const { projectId } = useProject();
+  const searchParams = useSearchParams();
   const [selected, setSelected] = useState<string | null>(null);
 
   const detail = useQuery({
     ...trpc.traces.get.queryOptions({ projectId: projectId!, traceId }),
     enabled: !!projectId,
   });
+  const scores = useQuery({
+    ...trpc.evals.traceScores.queryOptions({ projectId: projectId!, traceId }),
+    enabled: !!projectId,
+  });
 
-  const spans = (detail.data?.spans ?? []) as Span[];
+  const spans = detail.data?.spans ?? [];
   const ordered = useMemo(() => orderSpans(spans), [spans]);
-  const window = useMemo(() => {
-    if (spans.length === 0) return { start: 0, span: 1 };
-    const start = Math.min(...spans.map((s) => toMs(s.startTime)));
-    const end = Math.max(...spans.map((s) => toMs(s.endTime)));
-    return { start, span: Math.max(end - start, 1) };
-  }, [spans]);
+  const window = useMemo(() => computeWindow(spans), [spans]);
 
   const active = spans.find((s) => s.spanId === selected) ?? null;
 
@@ -190,6 +151,37 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
         </Card>
       )}
 
+      {(scores.data ?? []).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Scores</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {(scores.data ?? []).map((s) => (
+              <Badge
+                key={s.scoreId}
+                variant={
+                  s.passed === false
+                    ? "rose"
+                    : s.passed === true
+                      ? "emerald"
+                      : "secondary"
+                }
+                title={s.reason}
+              >
+                {s.targetType === "span" ? "span · " : ""}
+                {s.evalId}:{" "}
+                {s.passed !== null ? (s.passed ? "pass" : "fail") : s.score}
+              </Badge>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {ordered.length > 0 && (
+        <TraceReplay spans={spans} autoPlay={searchParams.get("replay") === "1"} />
+      )}
+
       {active && <SpanDetail span={active} />}
     </>
   );
@@ -235,6 +227,10 @@ function SpanDetail({ span }: { span: Span }) {
           <Field label="Cost" value={formatCost(span.totalCost)} />
           <Field label="Pricing" value={span.pricingSource ?? "—"} />
         </div>
+
+        {span.spanType === "llm" && span.outputTokens > 0 && (
+          <TpsHeadline span={span} />
+        )}
 
         {span.errorMessage && (
           <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">

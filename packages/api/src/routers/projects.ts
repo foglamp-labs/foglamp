@@ -5,6 +5,7 @@ import { listAccessibleProjects } from "../services/access";
 import {
   createApiKey,
   createProject,
+  deleteProject,
   listApiKeys,
   revokeApiKey,
   updateProject,
@@ -44,6 +45,12 @@ export const projectsRouter = router({
     )
     .mutation(({ ctx, input }) =>
       updateProject(ctx.db, ctx.session.user.id, input),
+    ),
+
+  delete: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .mutation(({ ctx, input }) =>
+      deleteProject(ctx.db, ctx.ch, ctx.session.user.id, input),
     ),
 
   keys: router({

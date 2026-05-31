@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Boilerplate",
-  description: "This is a boilerplate",
+  title: "Foglamp",
+  description: "AI o11y",
 };
 
 export default function RootLayout({

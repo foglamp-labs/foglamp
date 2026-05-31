@@ -12,16 +12,20 @@
     "start": "bun run dist/main.mjs"
   },
   "dependencies": {
-    "@hono/trpc-server": "^0.4.0",
+    "@ai-sdk/google": "4.0.0-beta.49",
     "@foglamp/api": "workspace:*",
     "@foglamp/auth": "workspace:*",
     "@foglamp/db": "workspace:*",
     "@foglamp/env": "workspace:*",
+    "@hono/trpc-server": "^0.4.0",
     "@trpc/server": "catalog:",
+    "ai": "7.0.0-beta.116",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "evlog": "^2.13.0",
+    "exa-js": "^2.13.0",
+    "foglamp": "workspace:*",
     "hono": "catalog:",
     "uuidv7": "catalog:",
     "zod": "catalog:"

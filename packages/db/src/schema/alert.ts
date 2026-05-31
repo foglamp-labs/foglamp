@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 
+import { evalDefinition } from "./eval";
 import { project } from "./project";
 
 export const alertMetric = pgEnum("alert_metric", [
@@ -23,6 +24,9 @@ export const alertMetric = pgEnum("alert_metric", [
   "error_rate",
   "token_usage",
   "request_count",
+  // Eval-score metrics — scoped to a single eval via alertRule.evalId.
+  "eval_avg_score",
+  "eval_pass_rate",
 ]);
 
 export const alertComparison = pgEnum("alert_comparison", [
@@ -58,6 +62,11 @@ export const alertRule = pgTable(
       .references(() => project.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     metric: alertMetric("metric").notNull(),
+    // Set only for eval_avg_score / eval_pass_rate metrics; the alert then
+    // reads that eval's score rollup instead of the span metrics rollup.
+    evalId: text("eval_id").references(() => evalDefinition.id, {
+      onDelete: "cascade",
+    }),
     filters: jsonb("filters").$type<AlertFilters>(),
     windowSeconds: integer("window_seconds").notNull(),
     threshold: numeric("threshold", { precision: 24, scale: 10 }).notNull(),
