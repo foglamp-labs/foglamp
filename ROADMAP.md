@@ -48,6 +48,24 @@ spans by subject model. Listed on pricing; built on request.
 Add a delta/baseline comparison to alerts (e.g. pass-rate drops >10% vs prior
 window), instead of only fixed thresholds. Small tweak to the alert engine.
 
+## Control plane (runtime config)
+
+These serve config to the running app at request time, so the shared risk is
+**latency**: a naive per-call fetch adds a network hop before the LLM call. All
+need an SDK cache / edge delivery / build-time sync to stay off the hot path.
+
+### Manage prompts
+Store and version prompts in foglamp; the SDK pulls them at runtime so you can
+edit without a deploy. ⚠️ Latency: cache aggressively to avoid a per-call hop.
+
+### Manage models
+Pick an agent's model + params from the dashboard and swap without shipping code.
+⚠️ Latency: same runtime-config-fetch concern — share the prompt cache layer.
+
+### A/B tests
+Run prompt/model variants in production, assign traffic, compare quality × cost ×
+latency (the online counterpart to Experiments). ⚠️ Latency: cache variant assignment.
+
 ## Debugging & DX
 
 ### Trace diff
