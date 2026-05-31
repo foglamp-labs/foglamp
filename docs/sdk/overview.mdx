@@ -14,9 +14,10 @@ const fog = foglamp();
 ```
 
 <Note>
-  The SDK requires **AI SDK v7** and declares `ai@7` as a peer dependency. It
-  ships zero runtime dependencies of its own and never forces a particular
-  version of `zod` on your project.
+  The `foglamp()` collector uses the **AI SDK v7** telemetry-integrations API.
+  On **AI SDK v4/v5/v6**, use the [`foglamp/wrap`](/sdk/wrap) entry point instead —
+  same traces, same backend. Either way the SDK ships zero runtime dependencies
+  of its own and never forces a particular version of `zod` on your project.
 </Note>
 
 ## `foglamp(config?)`

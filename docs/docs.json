@@ -31,7 +31,8 @@
             "pages": [
               "sdk/overview",
               "sdk/configuration",
-              "sdk/runtimes"
+              "sdk/runtimes",
+              "sdk/wrap"
             ]
           }
         ]

@@ -1,7 +1,9 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: "./src/index.ts",
+  // Two entry points: the v7 native-telemetry path (root) and the v4+ wrapping
+  // path (`foglamp/wrap`). Output paths mirror the entry keys.
+  entry: { index: "./src/index.ts", "wrap/index": "./src/wrap/index.ts" },
   format: "esm",
   outDir: "./dist",
   dts: true,

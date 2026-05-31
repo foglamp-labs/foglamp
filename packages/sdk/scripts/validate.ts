@@ -6,6 +6,7 @@
 import { ingestPayloadSchema, type IngestPayload } from "@foglamp/contracts";
 
 import { foglamp } from "../src/index";
+import { wrap } from "../src/wrap/index";
 
 function assert(cond: unknown, msg: string): void {
   if (!cond) throw new Error(`ASSERT FAILED: ${msg}`);
@@ -244,5 +245,146 @@ assert(threwName, "integration({}) throws when neither traceName nor agentName g
 let threwWf = false;
 try { wtV.integration({ agentName: "a", workflowName: "wf" } as never); } catch { threwWf = true; }
 assert(threwWf, "integration() throws when workflowName given without workflowRunId");
+
+// ===========================================================================
+// foglamp/wrap — the v4+ wrapping adapter. Drives a FAKE `ai` module so we never
+// touch a real model: its functions invoke the composed callbacks / return
+// results with version-specific shapes, and a tool with a timed `execute`.
+// ===========================================================================
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// --- generateText: v4 usage shape (promptTokens), real tool timing ----------
+console.log("\nwrap() generateText (v4 usage shape + tool timing):");
+const capW = makeCapture();
+let userToolRan = false;
+const fakeAiGen = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  generateText: async (args: any) => {
+    // The wrapper has already replaced execute with a timed version.
+    if (args.tools?.search?.execute) {
+      await args.tools.search.execute({ q: "foglamp" }, { toolCallId: "tc_1" });
+    }
+    return {
+      text: "final answer",
+      // v4 field names — must still map to input/outputTokens.
+      usage: { promptTokens: 1000, completionTokens: 200, totalTokens: 1200 },
+      steps: [
+        { usage: { promptTokens: 1000, completionTokens: 200 }, text: "", finishReason: "tool-calls", response: { modelId: "gpt-4o" } },
+        { usage: { promptTokens: 1300, completionTokens: 80 }, text: "final answer", finishReason: "stop" },
+      ],
+    };
+  },
+  streamText: () => ({}),
+  generateObject: async () => ({}),
+  streamObject: () => ({}),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any;
+const wGen = wrap(fakeAiGen, {
+  apiKey: "fl_test",
+  endpoint: "http://capture.local/ingest",
+  fetch: capW.fetchImpl,
+  flushIntervalMs: 10_000,
+  context: { agentName: "support" },
+});
+const genResult = await (wGen.generateText as (a: unknown) => Promise<{ text: string }>)({
+  model: { provider: "openai", modelId: "gpt-4o" },
+  prompt: "help me",
+  tools: { search: { description: "search", execute: async () => { userToolRan = true; await sleep(12); return { hits: 3 }; } } },
+});
+await wGen.flush();
+
+assert(genResult.text === "final answer", "wrapped generateText returns the model result unchanged");
+assert(userToolRan, "the user's original tool execute still ran");
+assert(capW.calls === 1, "one POST issued on flush");
+const wPayload = capW.bodies[0]!;
+assert(ingestPayloadSchema.safeParse(wPayload).success, "wrap payload validates against the contract");
+const wTrace = wPayload.traces[0]!;
+assert(wTrace.agentName === "support", "wrap-time context applied");
+const wSpans = wTrace.spans;
+const wRoot = wSpans.find((s) => s.spanType === "agent")!;
+const wStep0 = wSpans.find((s) => s.spanId.endsWith(":step:0"))!;
+const wTool = wSpans.find((s) => s.spanType === "tool")!;
+assert(wStep0.usage?.inputTokens === 1000, "v4 promptTokens → inputTokens");
+assert(wStep0.usage?.outputTokens === 200, "v4 completionTokens → outputTokens");
+assert(wTool.name === "search" && wTool.status === "ok", "tool span captured from wrapped execute");
+assert(wTool.endTime - wTool.startTime >= 5, `tool span has a real measured duration (${wTool.endTime - wTool.startTime}ms, not estimated)`);
+assert(wTool.output === '{"hits":3}', "tool output serialized");
+assert(wRoot.output === "final answer", "root output from result text");
+assert(wRoot.startTime <= wTool.startTime && wTool.endTime <= wRoot.endTime, "root envelopes the tool span");
+
+// --- streamText: v5/v6 usage shape (inputTokens), TTFT + chunk curve --------
+console.log("wrap() streamText (v5/v6 usage shape + streaming curve + callback composition):");
+const capS = makeCapture();
+let userChunks = 0;
+let userSteps = 0;
+const fakeAiStream = {
+  generateText: async () => ({}),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  streamText: (args: any) => {
+    args.onChunk?.({ chunk: { type: "text-delta", text: "Hello, " } });
+    args.onChunk?.({ chunk: { type: "text-delta", text: "this is " } });
+    args.onChunk?.({ chunk: { type: "text-delta", text: "the answer." } });
+    args.onStepFinish?.({ usage: { inputTokens: 1000, outputTokens: 200, totalTokens: 1200, outputTokenDetails: { reasoningTokens: 40 } }, text: "the answer.", finishReason: "stop", response: { modelId: "gpt-4o" } });
+    args.onFinish?.({ text: "the answer." });
+    return { textStream: [] };
+  },
+  generateObject: async () => ({}),
+  streamObject: () => ({}),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any;
+const wStream = wrap(fakeAiStream, { apiKey: "fl_test", fetch: capS.fetchImpl, flushIntervalMs: 10_000 });
+(wStream.streamText as (a: unknown) => unknown)({
+  model: { provider: "openai", modelId: "gpt-4o" },
+  prompt: "help me",
+  foglamp: { traceName: "summarize" },
+  onChunk: () => { userChunks++; },
+  onStepFinish: () => { userSteps++; },
+});
+await wStream.flush();
+
+const sTrace = capS.bodies[0]!.traces[0]!;
+assert(ingestPayloadSchema.safeParse(capS.bodies[0]).success, "streamText wrap payload validates");
+assert(sTrace.traceName === "summarize", "per-call `foglamp:` override applied (call-time wins)");
+const sStep = sTrace.spans.find((s) => s.spanType === "llm")!;
+assert(sStep.usage?.inputTokens === 1000, "v5/v6 inputTokens mapped");
+assert(sStep.usage?.reasoningTokens === 40, "reasoning tokens from outputTokenDetails");
+assert(sStep.ttftMs !== undefined && sStep.ttftMs >= 0, `TTFT captured (${sStep.ttftMs}ms)`);
+assert(Array.isArray(sStep.chunkOffsets) && sStep.chunkOffsets!.length >= 1, "chunk samples captured");
+assert(sStep.chunkTokens![sStep.chunkTokens!.length - 1] === 160, `final tokens rescaled to output−reasoning (got ${sStep.chunkTokens![sStep.chunkTokens!.length - 1]})`);
+assert(userChunks === 3 && userSteps === 1, "user-supplied onChunk/onStepFinish still invoked (composition, not clobber)");
+
+// --- generateObject + streamObject -----------------------------------------
+console.log("wrap() generateObject + streamObject:");
+const capO = makeCapture();
+const fakeAiObj = {
+  generateText: async () => ({}),
+  streamText: () => ({}),
+  generateObject: async () => ({ object: { ok: true }, usage: { promptTokens: 50, completionTokens: 10 }, response: { modelId: "gpt-4o" } }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  streamObject: (args: any) => { args.onFinish?.({ usage: { inputTokens: 20, outputTokens: 5 }, object: { done: true } }); return { partialObjectStream: [] }; },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any;
+const wObj = wrap(fakeAiObj, { apiKey: "fl_test", fetch: capO.fetchImpl, flushIntervalMs: 10_000, context: { agentName: "classify" } });
+await (wObj.generateObject as (a: unknown) => Promise<unknown>)({ model: { provider: "openai", modelId: "gpt-4o" }, prompt: "p" });
+(wObj.streamObject as (a: unknown) => unknown)({ model: { provider: "openai", modelId: "gpt-4o" }, prompt: "p" });
+await wObj.flush();
+// Both object traces share one Transport, so a single flush POSTs them together.
+const objTraces = capO.bodies[0]!.traces;
+assert(objTraces.length === 2, `both object traces in one batch (got ${objTraces.length})`);
+assert(objTraces[0]!.spans.find((s) => s.spanType === "llm")?.usage?.inputTokens === 50, "generateObject usage mapped (promptTokens)");
+assert(objTraces[1]!.spans.find((s) => s.spanType === "llm")?.usage?.inputTokens === 20, "streamObject usage mapped from onFinish");
+
+// --- disabled no-op: passthrough, no capture --------------------------------
+console.log("wrap() disabled (no API key):");
+const prevW = process.env.FOGLAMP_API_KEY;
+delete process.env.FOGLAMP_API_KEY;
+const capD = makeCapture();
+const fakeAiD = { generateText: async () => ({ text: "ok" }), streamText: () => ({}), generateObject: async () => ({}), streamObject: () => ({}) } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+const wD = wrap(fakeAiD, { fetch: capD.fetchImpl });
+const dRes = await (wD.generateText as (a: unknown) => Promise<{ text: string }>)({ model: { modelId: "m" }, prompt: "p" });
+await wD.flush();
+assert(dRes.text === "ok", "disabled wrap still forwards to the real function");
+assert(capD.calls === 0, "no network calls when disabled");
+if (prevW !== undefined) process.env.FOGLAMP_API_KEY = prevW;
 
 console.log("\nALL SDK CHECKS PASSED ✅");

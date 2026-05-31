@@ -1,0 +1,99 @@
+---
+title: AI SDK v4–v6 (wrap)
+description: "Instrument older AI SDK versions by wrapping the module."
+---
+
+The `foglamp()` collector relies on the telemetry-integrations API introduced in
+**AI SDK v7** (`registerTelemetry` / `telemetry: { integrations }`). If you're on
+**AI SDK v4, v5, or v6**, use the `foglamp/wrap` entry point instead: it wraps the
+AI SDK functions and produces the **same traces** to the same ingest endpoint.
+
+```ts
+import * as ai from "ai";
+import { wrap } from "foglamp/wrap";
+
+const { generateText, streamText, generateObject, streamObject } = wrap(ai, {
+  context: { agentName: "support" }, // default trace context for every call
+});
+
+// Use exactly like the AI SDK — traces are captured automatically.
+const { text } = await generateText({
+  model: openai("gpt-4o"),
+  prompt: "Summarize this ticket.",
+});
+```
+
+<Note>
+  `wrap()` supports **AI SDK v4 and later**. On **v7**, prefer the native
+  [`foglamp()`](/sdk/overview) collector. The package declares
+  `ai@^4 || ^5 || ^6 || ^7` as a peer dependency.
+</Note>
+
+## What it captures
+
+Each wrapped call becomes one trace, with the same shape as the v7 path:
+
+- **`generateText` / `streamText`** — a root span plus one `llm` span per step and
+  one `tool` span per tool execution.
+- **`generateObject` / `streamObject`** — a root span plus a single `llm` span.
+- **Tool timing is exact.** `wrap()` times each tool's `execute` directly, so tool
+  spans carry a real measured duration (not an estimate).
+- **Streaming throughput.** For `streamText`, foglamp observes the stream via the
+  call's `onChunk` callback to record time-to-first-token and the intra-stream
+  token curve that powers tokens/sec and replay — **without** consuming or
+  altering your stream.
+
+## Per-call context
+
+Set defaults in `wrap(ai, { context })`, and override them on any individual call
+with a `foglamp` option. Call-time values win; it is stripped before the args
+reach the AI SDK.
+
+```ts
+await generateText({
+  model,
+  prompt,
+  foglamp: {
+    traceName: "classify-email",
+    sessionId: user.threadId,
+    metadata: { environment: "production" },
+  },
+});
+```
+
+The context fields are identical to [`fog.integration(context)`](/sdk/overview):
+`traceName`, `agentName`, `workflowName` + `workflowRunId`, `sessionId`, and
+`metadata`.
+
+## Your callbacks are preserved
+
+If you pass `onChunk`, `onStepFinish`, `onFinish`, or `onError` to a wrapped call,
+foglamp **composes** with them — your callback always runs; foglamp's telemetry
+runs alongside and never throws into your app.
+
+## Flushing
+
+`wrap()` returns `flush()` and `shutdown()` alongside the wrapped functions —
+use them exactly as you would on the collector (see
+[Runtimes & flushing](/sdk/runtimes)). In serverless runtimes, flushing is
+kept alive automatically via `waitUntil`.
+
+```ts
+const fog = wrap(ai, { context: { agentName: "support" } });
+// … after your handler's work …
+await fog.flush();
+```
+
+## Configuration
+
+`wrap(ai, options)` accepts every [configuration](/sdk/configuration) field the
+collector does (`apiKey`, `endpoint`, `recordInputs`, `recordOutputs`,
+`maxPayloadChars`, `waitUntil`, …), plus `context` for the wrap-time default.
+
+## Limitations vs. v7
+
+- A **client-side tool** (one with no `execute` function — your app runs it) can't
+  be timed directly, so its activity is attributed at step boundaries rather than
+  with an exact duration. Tools with an `execute` are timed precisely.
+- `wrap()` instruments a module you pass in; there is no global
+  `registerTelemetry` equivalent on v4–v6.
