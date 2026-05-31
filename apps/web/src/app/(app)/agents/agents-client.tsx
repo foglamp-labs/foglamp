@@ -14,10 +14,10 @@ import { useMemo } from "react";
 
 import {
   CardsSkeleton,
-  EmptyState,
   NoProject,
   PageHeader,
 } from "@/components/app/page-parts";
+import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
 import { useProject } from "@/components/app/project-context";
 import { RangePicker } from "@/components/app/range-picker";
 import {
@@ -64,7 +64,8 @@ export function AgentsClient() {
       {agents.isLoading ? (
         <CardsSkeleton count={6} />
       ) : rows.length === 0 ? (
-        <EmptyState
+        <InstrumentEmptyState
+          feature="agent"
           icon={IconGhostFilled}
           title="No agent activity"
           description="Set agentName on the SDK integration to break down by agent."

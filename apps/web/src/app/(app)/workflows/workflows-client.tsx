@@ -17,10 +17,10 @@ import { useRouter } from "next/navigation";
 
 import {
   CardsSkeleton,
-  EmptyState,
   NoProject,
   PageHeader,
 } from "@/components/app/page-parts";
+import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
@@ -72,7 +72,8 @@ export function WorkflowsClient() {
       {workflows.isLoading ? (
         <CardsSkeleton count={6} />
       ) : rows.length === 0 ? (
-        <EmptyState
+        <InstrumentEmptyState
+          feature="workflow"
           icon={IconSitemapFilled}
           title="No workflows yet"
           description="Pass a workflowName via the SDK integration to group runs."
