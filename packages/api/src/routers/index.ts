@@ -8,6 +8,7 @@ import { orgsRouter } from "./orgs";
 import { providerKeysRouter } from "./providerKeys";
 import { pricingRouter } from "./pricing";
 import { projectsRouter } from "./projects";
+import { sessionsRouter } from "./sessions";
 import { tracesRouter } from "./traces";
 import { workflowRunsRouter } from "./workflowRuns";
 import { workflowsRouter } from "./workflows";
@@ -21,6 +22,7 @@ export const appRouter = router({
   workflows: workflowsRouter,
   workflowRuns: workflowRunsRouter,
   agents: agentsRouter,
+  sessions: sessionsRouter,
   metrics: metricsRouter,
   alerts: alertsRouter,
   evals: evalsRouter,

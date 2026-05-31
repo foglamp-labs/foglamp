@@ -17,11 +17,12 @@ import {
 
 import { CodeBlock } from "./code-block";
 
-// Empty state for the Agents / Workflows pages: the usual dashed card plus a
-// copy-pasteable instrumentation snippet, toggled between the AI SDK v7 native
-// path (`foglamp().integration`) and the v4–v6 wrapping path (`foglamp/wrap`).
+// Empty state for the Agents / Workflows / Sessions pages: the usual dashed card
+// plus a copy-pasteable instrumentation snippet, toggled between the AI SDK v7
+// native path (`foglamp().integration`) and the v4–v6 wrapping path
+// (`foglamp/wrap`).
 
-type Feature = "agent" | "workflow";
+type Feature = "agent" | "workflow" | "session";
 
 const SNIPPETS: Record<Feature, { v7: string; v6: string }> = {
   agent: {
@@ -69,6 +70,35 @@ const { generateText } = wrap(ai, {
   context: {
     workflowName: "nightly-digest",
     workflowRunId: run.id,
+  },
+});
+
+await generateText({ model, prompt });`,
+  },
+  session: {
+    v7: `import { foglamp } from "foglamp";
+
+const fog = foglamp();
+
+await generateText({
+  model,
+  prompt,
+  telemetry: {
+    integrations: [
+      fog.integration({
+        agentName: "support",
+        sessionId: user.threadId,
+      }),
+    ],
+  },
+});`,
+    v6: `import * as ai from "ai";
+import { wrap } from "foglamp/wrap";
+
+const { generateText } = wrap(ai, {
+  context: {
+    agentName: "support",
+    sessionId: user.threadId,
   },
 });
 

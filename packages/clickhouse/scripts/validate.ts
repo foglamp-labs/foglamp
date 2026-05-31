@@ -7,8 +7,10 @@ import { runMigrations, applySpansRetention } from "../src/migrate";
 import { insertSpans, updateOrgRetention, type SpanRow } from "../src/spans";
 import { insertScores, type ScoreRow } from "../src/scores";
 import {
+  getSessionTurns,
   getTraceScores,
   getTraceSpans,
+  listSessions,
   listTraces,
   listWorkflowRuns,
   queryMetricsTimeseries,
@@ -308,6 +310,82 @@ for (let i = 0; i < 10; i++) {
   if (retentionDays === 100) break;
 }
 assert(retentionDays === 100, `retention extended to 100 (got ${retentionDays})`);
+
+console.log("sessions (grouped from trace_summary by session_id):");
+// A second trace in the same session (sess_1) → a 2-turn conversation. Its root
+// agent span carries a messages-array input + final output for the timeline.
+const sessionRows: SpanRow[] = [
+  {
+    ...blank,
+    project_id: PID,
+    trace_id: "trace_2",
+    span_id: "s2_root",
+    span_type: "agent",
+    name: "generateText",
+    start_time: base + 2000,
+    end_time: base + 2600,
+    duration_ms: 600,
+    status: "ok",
+    provider: "openai",
+    model_id: "gpt-4o",
+    trace_name: "support",
+    agent_name: "support",
+    session_id: "sess_1",
+    input: '[{"role":"user","content":"and for SSO?"}]',
+    output: '"For SSO, open Settings → Org."',
+  },
+  {
+    ...blank,
+    project_id: PID,
+    trace_id: "trace_2",
+    span_id: "s2_llm",
+    parent_span_id: "s2_root",
+    span_type: "llm",
+    name: "step-1",
+    start_time: base + 2010,
+    end_time: base + 2400,
+    duration_ms: 390,
+    status: "ok",
+    provider: "openai",
+    model_id: "gpt-4o",
+    priced_model_id: "openai/gpt-4o",
+    input_tokens: 200,
+    output_tokens: 100,
+    total_tokens: 300,
+    total_cost: "0.0030000000",
+    pricing_source: "openrouter",
+    priced_at: base + 2400,
+    trace_name: "support",
+    agent_name: "support",
+    session_id: "sess_1",
+  },
+];
+await insertSpans(client, sessionRows);
+await new Promise((r) => setTimeout(r, 300));
+
+const sessions = await listSessions(client, { projectId: PID });
+assert(sessions.length === 1, `one session, got ${sessions.length}`);
+const sess = sessions[0]!;
+assert(sess.session_id === "sess_1", `session_id = ${sess.session_id}`);
+assert(Number(sess.turn_count) === 2, `turn_count = ${sess.turn_count}`);
+assert(Number(sess.total_cost) === 0.0105, `session total_cost = ${sess.total_cost} (0.0075 + 0.0030)`);
+assert(Number(sess.total_tokens) === 1800, `session total_tokens = ${sess.total_tokens}`);
+assert(Number(sess.error_count) === 1, `session error_count = ${sess.error_count}`);
+
+const turns = await getSessionTurns(client, { projectId: PID, sessionId: "sess_1" });
+assert(turns.length === 2, `two turns (root span per trace), got ${turns.length}`);
+assert(
+  turns[0]!.trace_id === "trace_1" && turns[1]!.trace_id === "trace_2",
+  "turns ordered chronologically",
+);
+assert(
+  turns[1]!.input === '[{"role":"user","content":"and for SSO?"}]',
+  "turn input (messages) round-trips",
+);
+assert(turns[1]!.output === '"For SSO, open Settings → Org."', "turn output round-trips");
+
+const sessTraces = await listTraces(client, { projectId: PID, sessionId: "sess_1" });
+assert(sessTraces.length === 2, `two traces in session, got ${sessTraces.length}`);
 
 await client.close();
 console.log("\nALL CLICKHOUSE CHECKS PASSED ✅");

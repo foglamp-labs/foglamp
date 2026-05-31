@@ -28,6 +28,8 @@ import {
   IconLayoutDistributeHorizontal,
   IconLayoutDistributeHorizontalFilled,
   IconLogout,
+  IconMessage2,
+  IconMessage2Filled,
   IconMeteorFilled,
   IconMichelinStar,
   IconMichelinStarFilled,
@@ -112,6 +114,13 @@ const nav: NavItem[] = [
     icon: IconGhost,
     activeIcon: IconGhostFilled,
     iconClassName: "dark:text-[#FF5512] text-orange-400",
+  },
+  {
+    href: "/sessions",
+    label: "Sessions",
+    icon: IconMessage2,
+    activeIcon: IconMessage2Filled,
+    iconClassName: "dark:text-violet-600 text-violet-400",
   },
   {
     href: "/evals",

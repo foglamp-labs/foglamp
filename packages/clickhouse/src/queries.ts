@@ -39,6 +39,7 @@ export function listTraces(
   params: {
     projectId: string;
     agentName?: string;
+    sessionId?: string;
     from?: string;
     to?: string;
     limit?: number;
@@ -50,6 +51,8 @@ export function listTraces(
   const conditions: string[] = [];
   if (params.agentName !== undefined)
     conditions.push("agent_name = {agentName:String}");
+  if (params.sessionId !== undefined)
+    conditions.push("session_id = {sessionId:String}");
   if (params.from !== undefined)
     conditions.push("trace_start >= {from:DateTime64(3)}");
   if (params.to !== undefined)
@@ -82,11 +85,107 @@ export function listTraces(
     {
       projectId: params.projectId,
       agentName: params.agentName,
+      sessionId: params.sessionId,
       from: params.from,
       to: params.to,
       limit: params.limit ?? 50,
       offset: params.offset ?? 0,
     },
+  );
+}
+
+export type SessionListRow = {
+  session_id: string;
+  agent_name: string;
+  turn_count: string;
+  span_count: string;
+  llm_span_count: string;
+  error_count: string;
+  total_cost: string;
+  priced_span_count: string;
+  total_tokens: string;
+  first_seen: string;
+  last_seen: string;
+};
+
+/**
+ * Sessions grouped from `trace_summary` by `session_id`. session_id is a stable
+ * per-trace value (`SimpleAggregateFunction(any, …)`), so grouping on it buckets
+ * every trace (and all its parts) of a conversation; `sum()`/`uniqExact()` then
+ * aggregate correctly. Empty session_ids (untagged traces) are dropped.
+ */
+export function listSessions(
+  client: ClickHouseClient,
+  params: {
+    projectId: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  },
+): Promise<SessionListRow[]> {
+  const having: string[] = ["session_id != ''"];
+  if (params.from !== undefined) having.push("last_seen >= {from:DateTime64(3)}");
+  if (params.to !== undefined) having.push("first_seen < {to:DateTime64(3)}");
+  return rows<SessionListRow>(
+    client,
+    `SELECT
+       session_id,
+       any(agent_name) AS agent_name,
+       uniqExact(trace_id) AS turn_count,
+       sum(span_count) AS span_count,
+       sum(llm_span_count) AS llm_span_count,
+       sum(error_count) AS error_count,
+       sum(total_cost) AS total_cost,
+       sum(priced_span_count) AS priced_span_count,
+       sum(total_tokens) AS total_tokens,
+       min(trace_summary.trace_start) AS first_seen,
+       max(trace_summary.trace_end) AS last_seen
+     FROM trace_summary
+     WHERE project_id = {projectId:String}
+     GROUP BY session_id
+     HAVING ${having.join(" AND ")}
+     ORDER BY last_seen DESC
+     LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
+    {
+      projectId: params.projectId,
+      from: params.from,
+      to: params.to,
+      limit: params.limit ?? 50,
+      offset: params.offset ?? 0,
+    },
+  );
+}
+
+export type SessionTurnRow = {
+  trace_id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  status: string;
+  input: string;
+  output: string;
+};
+
+/**
+ * One row per turn in a session: the root `agent` span of each trace, in
+ * chronological order. Carries the turn's input (prompt/messages) and output
+ * (final text) for the conversation timeline.
+ */
+export function getSessionTurns(
+  client: ClickHouseClient,
+  params: { projectId: string; sessionId: string },
+): Promise<SessionTurnRow[]> {
+  return rows<SessionTurnRow>(
+    client,
+    `SELECT
+       trace_id, name, start_time, end_time, status, input, output
+     FROM spans FINAL
+     WHERE project_id = {projectId:String}
+       AND session_id = {sessionId:String}
+       AND span_type = 'agent'
+     ORDER BY start_time ASC, span_id ASC`,
+    { projectId: params.projectId, sessionId: params.sessionId },
   );
 }
 
