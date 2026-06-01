@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 import { queryClient } from "@/utils/trpc";
 
+import { PostHogProvider } from "./posthog-provider";
 import { ThemeProvider } from "./theme-provider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -15,11 +16,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <QueryClientProvider client={queryClient}>
-        {children}
-        {/* <ReactQueryDevtools /> */}
-      </QueryClientProvider>
-      <Toaster />
+      <PostHogProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+          {/* <ReactQueryDevtools /> */}
+        </QueryClientProvider>
+        <Toaster />
+      </PostHogProvider>
     </ThemeProvider>
   );
 }

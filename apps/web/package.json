@@ -29,6 +29,7 @@
     "motion": "^12.40.0",
     "next": "^16.2.0",
     "next-themes": "catalog:",
+    "posthog-js": "^1.376.6",
     "react": "catalog:",
     "react-dom": "catalog:",
     "shiki": "^4.1.0",
