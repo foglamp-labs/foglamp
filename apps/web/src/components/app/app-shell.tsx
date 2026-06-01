@@ -120,7 +120,7 @@ const nav: NavItem[] = [
     label: "Sessions",
     icon: IconMessage2,
     activeIcon: IconMessage2Filled,
-    iconClassName: "dark:text-violet-600 text-violet-400",
+    iconClassName: "dark:text-blue-600 text-blue-400",
   },
   {
     href: "/evals",

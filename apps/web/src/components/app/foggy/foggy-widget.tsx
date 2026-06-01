@@ -128,7 +128,7 @@ export function FoggyWidget({ projectId }: { projectId: string }) {
         aria-label="Ask Foggy"
         variant="secondary"
         className={cn(
-          "fixed bottom-6 right-6 z-30 size-10 rounded-full hover:bg-[#0F283F] shadow-(--custom-shadow) transition-all",
+          "fixed bottom-6 right-6 z-30 size-10 rounded-full dark:hover:bg-[#0F283F] hover:bg-blue-100 shadow-(--custom-shadow) transition-all",
           open && "pointer-events-none scale-90 opacity-0"
         )}
       >
