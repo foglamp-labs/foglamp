@@ -12,6 +12,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { useDelayedLoading } from "@/components/app/data-table";
 import { navItem } from "@/components/app/nav";
 import {
   EmptyState,
@@ -58,6 +59,8 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
     ...trpc.evals.traceScores.queryOptions({ projectId: projectId!, traceId }),
     enabled: !!projectId,
   });
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showSkeleton = useDelayedLoading(detail.isLoading);
 
   const spans = detail.data?.spans ?? [];
   const ordered = useMemo(() => orderSpans(spans), [spans]);
@@ -81,7 +84,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
       <PageHeader title="Trace" description={traceId} back={back} />
 
       {detail.isLoading ? (
-        <TableSkeleton />
+        showSkeleton ? <TableSkeleton /> : null
       ) : ordered.length === 0 ? (
         <EmptyState
           icon={IconListTree}

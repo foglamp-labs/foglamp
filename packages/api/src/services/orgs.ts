@@ -1,6 +1,7 @@
 import { getOrgPlan } from "@foglamp/billing";
 import { queryOrgSpanUsage } from "@foglamp/clickhouse";
 import { alertRule } from "@foglamp/db/schema/alert";
+import { evalDefinition } from "@foglamp/db/schema/eval";
 import { project } from "@foglamp/db/schema/project";
 import { count, eq } from "drizzle-orm";
 
@@ -24,7 +25,7 @@ export async function getOrgUsage(
   await requireOrgAccess(db, userId, input.orgId);
   const plan = await getOrgPlan(input.orgId);
 
-  const [spansUsed, projectRows, alertRows] = await Promise.all([
+  const [spansUsed, projectRows, alertRows, evalRows] = await Promise.all([
     queryOrgSpanUsage(ch, {
       orgId: input.orgId,
       from: ymd(plan.periodStart),
@@ -35,6 +36,11 @@ export async function getOrgUsage(
       .select({ n: count() })
       .from(alertRule)
       .innerJoin(project, eq(project.id, alertRule.projectId))
+      .where(eq(project.orgId, input.orgId)),
+    db
+      .select({ n: count() })
+      .from(evalDefinition)
+      .innerJoin(project, eq(project.id, evalDefinition.projectId))
       .where(eq(project.orgId, input.orgId)),
   ]);
 
@@ -51,5 +57,6 @@ export async function getOrgUsage(
     },
     projects: { used: projectRows[0]?.n ?? 0, limit: plan.limits.projects },
     alerts: { used: alertRows[0]?.n ?? 0, limit: plan.limits.alerts },
+    evals: { used: evalRows[0]?.n ?? 0, limit: plan.limits.evals },
   };
 }

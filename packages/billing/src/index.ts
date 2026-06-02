@@ -25,6 +25,7 @@ export type PlanLimits = {
   retentionDays: number | null;
   alerts: number | null;
   projects: number | null;
+  evals: number | null;
 };
 
 // All-unlimited; used when billing is disabled (self-host).
@@ -33,14 +34,21 @@ const UNLIMITED: PlanLimits = {
   retentionDays: null,
   alerts: null,
   projects: null,
+  evals: null,
 };
 
 // The selectable plans (unmetered isn't a plan — it's the billing-off state).
 export const PLAN_LIMITS: Record<Exclude<PlanName, "unmetered">, PlanLimits> = {
-  free: { spansPerMonth: 10_000, retentionDays: 3, alerts: 1, projects: 1 },
-  pro: { spansPerMonth: 1_000_000, retentionDays: 14, alerts: 10, projects: 5 },
+  free: { spansPerMonth: 10_000, retentionDays: 3, alerts: 1, projects: 1, evals: 5 },
+  pro: { spansPerMonth: 1_000_000, retentionDays: 14, alerts: 10, projects: 5, evals: 20 },
   // Enterprise defaults; per-org overrides merge on top (see getOrgPlan).
-  enterprise: { spansPerMonth: null, retentionDays: 90, alerts: null, projects: null },
+  enterprise: {
+    spansPerMonth: null,
+    retentionDays: 90,
+    alerts: null,
+    projects: null,
+    evals: null,
+  },
 };
 
 // The default retention stamped on spans for orgs with no plan resolved yet

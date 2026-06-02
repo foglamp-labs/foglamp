@@ -1,7 +1,9 @@
 "use client";
 
 import { Avatar, AvatarFallback } from "@foglamp/ui/components/avatar";
+import { cn } from "@foglamp/ui/lib/utils";
 import {
+  type Icon,
   IconChevronDown,
   IconDotsVertical,
   IconFlask2,
@@ -171,17 +173,57 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+// Cross-fades the outline icon into its filled variant when the tab goes active.
+// Both icons are stacked in the same grid cell so only the glyph opacity tweens;
+// the colored chip (`className`, e.g. background + padding + shadow) lives on the
+// wrapper so it stays constant across the swap instead of fading in and out.
+//
+// The wrapper is pinned to the icon footprint (`size-4.5`) and the inner SVGs
+// fill its padded content box (`size-full`, overriding the sidebar's forced
+// `[&_svg]:size-4.5`). This keeps a chip item's outer size at 18px with the glyph
+// inset by its padding — matching the original single-icon geometry — rather than
+// letting the padding grow the chip around two full-size icons.
+function NavIcon({
+  icon: OutlineIcon,
+  activeIcon: ActiveIcon,
+  active,
+  className,
+}: {
+  icon: Icon;
+  activeIcon: Icon;
+  active: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "grid size-4.5 place-items-center [&_svg]:size-full!",
+        className
+      )}
+    >
+      <OutlineIcon
+        className={cn(
+          "[grid-area:1/1] transition-opacity duration-100 ease-in-out",
+          active ? "opacity-0" : "opacity-100"
+        )}
+      />
+      <ActiveIcon
+        className={cn(
+          "[grid-area:1/1] transition-opacity duration-100 ease-in-out",
+          active ? "opacity-100" : "opacity-0"
+        )}
+      />
+    </span>
+  );
+}
+
 // Gate page content on the project list so we don't flash "No project selected"
 // while the list is still loading (or in the render between load and auto-select).
 function ProjectGate({ children }: { children: React.ReactNode }) {
   const { projectId, projects, isLoading } = useProject();
   if (projectId) return <>{children}</>;
   if (isLoading || projects.length > 0) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Spinner className="size-6 text-muted-foreground" />
-      </div>
-    );
+    return null;
   }
   return <NoProject />;
 }
@@ -216,14 +258,18 @@ function ShellBody({ children }: { children: React.ReactNode }) {
               <SidebarMenu>
                 {nav.map((item) => {
                   const active = isActive(pathname, item.href);
-                  const Icon = active ? item.activeIcon : item.icon;
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         isActive={active}
                         render={<Link href={item.href} />}
                       >
-                        <Icon className={item.iconClassName} />
+                        <NavIcon
+                          icon={item.icon}
+                          activeIcon={item.activeIcon}
+                          active={active}
+                          className={item.iconClassName}
+                        />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -239,14 +285,18 @@ function ShellBody({ children }: { children: React.ReactNode }) {
               <SidebarMenu>
                 {account.map((item) => {
                   const active = isActive(pathname, item.href);
-                  const Icon = active ? item.activeIcon : item.icon;
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         isActive={active}
                         render={<Link href={item.href} />}
                       >
-                        <Icon className={item.iconClassName} />
+                        <NavIcon
+                          icon={item.icon}
+                          activeIcon={item.activeIcon}
+                          active={active}
+                          className={item.iconClassName}
+                        />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -266,11 +316,12 @@ function ShellBody({ children }: { children: React.ReactNode }) {
                       isActive={isActive(pathname, "/admin")}
                       render={<Link href="/admin" />}
                     >
-                      {isActive(pathname, "/admin") ? (
-                        <IconFlask2Filled className="dark:text-neutral-500 text-neutral-400" />
-                      ) : (
-                        <IconFlask2 className="dark:text-neutral-500 text-neutral-400" />
-                      )}
+                      <NavIcon
+                        icon={IconFlask2}
+                        activeIcon={IconFlask2Filled}
+                        active={isActive(pathname, "/admin")}
+                        className="dark:text-neutral-500 text-neutral-400"
+                      />
                       <span>Admin</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

@@ -1,11 +1,5 @@
 "use client";
 
-import {
-  IconAlertTriangleFilled,
-  IconGhostFilled,
-  IconRobot,
-} from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@foglamp/ui/components/badge";
 import {
   Card,
@@ -20,9 +14,28 @@ import {
   TableHeader,
   TableRow,
 } from "@foglamp/ui/components/table";
+import {
+  IconAlertTriangle,
+  IconAlertTriangleFilled,
+  IconGhost,
+  IconGhostFilled,
+} from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import {
+  ClearFiltersButton,
+  SearchInput,
+  SortableHead,
+  sortRows,
+  ToggleChip,
+  Toolbar,
+  useDelayedLoading,
+  useTableSort,
+  useTextFilter,
+} from "@/components/app/data-table";
+import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
 import {
   CardsSkeleton,
   EmptyState,
@@ -30,17 +43,8 @@ import {
   PageHeader,
   TableSkeleton,
 } from "@/components/app/page-parts";
-import {
-  SearchInput,
-  SortableHead,
-  sortRows,
-  ToggleChip,
-  Toolbar,
-  useTableSort,
-  useTextFilter,
-} from "@/components/app/data-table";
-import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
 import { useProject } from "@/components/app/project-context";
+import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
 import { useViewMode, ViewToggle } from "@/components/app/view-toggle";
 import {
@@ -49,7 +53,6 @@ import {
   formatDuration,
   formatTokens,
 } from "@/lib/format";
-import { useRange } from "@/components/app/range-context";
 import { trpc } from "@/utils/trpc";
 
 type AgentSortKey =
@@ -71,13 +74,16 @@ export function AgentsClient() {
   const { sort, toggle } = useTableSort<AgentSortKey>();
   const { from, to } = useMemo(
     () => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
-    [range],
+    [range]
   );
 
   const agents = useQuery({
     ...trpc.agents.list.queryOptions({ projectId: projectId!, from, to }),
     enabled: !!projectId,
   });
+
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showSkeleton = useDelayedLoading(agents.isLoading);
 
   const rows = agents.data ?? [];
   const searched = useTextFilter(rows, search, (a) => [a.agentName]);
@@ -94,9 +100,9 @@ export function AgentsClient() {
           latency: (a) => a.latencyMs.p95,
           errors: (a) => a.errorCount,
           cost: (a) => a.totalCost,
-        },
+        }
       ),
-    [searched, errorsOnly, sort],
+    [searched, errorsOnly, sort]
   );
 
   if (!projectId) {
@@ -113,19 +119,15 @@ export function AgentsClient() {
       <PageHeader
         title="Agents"
         description="Per-agent cost, latency, and token usage. Open one for its step flow."
-        actions={
-          <>
-            <ViewToggle value={view} onChange={setView} />
-            <RangePicker value={range} onChange={setRange} />
-          </>
-        }
       />
       {agents.isLoading ? (
-        view === "cards" ? (
-          <CardsSkeleton count={6} />
-        ) : (
-          <TableSkeleton />
-        )
+        showSkeleton ? (
+          view === "cards" ? (
+            <CardsSkeleton count={6} />
+          ) : (
+            <TableSkeleton />
+          )
+        ) : null
       ) : rows.length === 0 ? (
         <InstrumentEmptyState
           feature="agent"
@@ -145,14 +147,25 @@ export function AgentsClient() {
               active={errorsOnly}
               onClick={() => setErrorsOnly((v) => !v)}
             >
-              <IconAlertTriangleFilled className="size-3.5" />
+              <IconAlertTriangle className="size-3.5" />
               Errors only
             </ToggleChip>
+            <ClearFiltersButton
+              show={!!(search || errorsOnly)}
+              onClick={() => {
+                setSearch("");
+                setErrorsOnly(false);
+              }}
+            />
+            <div className="ml-auto flex items-center gap-2">
+              <ViewToggle value={view} onChange={setView} />
+              <RangePicker value={range} onChange={setRange} />
+            </div>
           </Toolbar>
 
           {visible.length === 0 ? (
             <EmptyState
-              icon={IconRobot}
+              icon={IconGhostFilled}
               title="No matching agents"
               description="Try a different search or clearing filters."
             />
@@ -168,7 +181,7 @@ export function AgentsClient() {
                 >
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <IconRobot className="size-4 shrink-0 text-muted-foreground" />
+                      <IconGhost className="size-4 shrink-0 text-muted-foreground" />
                       <span className="truncate">{a.agentName}</span>
                       {a.errorCount > 0 && (
                         <Badge variant="rose" className="ml-auto shrink-0">
@@ -181,7 +194,7 @@ export function AgentsClient() {
                     <Stat
                       label="Spans"
                       value={`${formatCount(a.spanCount)} · ${formatCount(
-                        a.llmSpanCount,
+                        a.llmSpanCount
                       )} LLM`}
                     />
                     <Stat label="Tokens" value={formatTokens(a.totalTokens)} />
@@ -210,6 +223,7 @@ export function AgentsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-28"
                   >
                     Spans
                   </SortableHead>
@@ -218,6 +232,7 @@ export function AgentsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-28"
                   >
                     LLM
                   </SortableHead>
@@ -226,6 +241,7 @@ export function AgentsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-28"
                   >
                     Tokens
                   </SortableHead>
@@ -234,6 +250,7 @@ export function AgentsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-36"
                   >
                     Latency p95
                   </SortableHead>
@@ -242,6 +259,7 @@ export function AgentsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-28"
                   >
                     Errors
                   </SortableHead>
@@ -250,6 +268,7 @@ export function AgentsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-36"
                   >
                     Cost
                   </SortableHead>
@@ -266,7 +285,7 @@ export function AgentsClient() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <IconRobot className="size-4 shrink-0 text-muted-foreground" />
+                        <IconGhost className="size-4 shrink-0 text-muted-foreground" />
                         <span className="truncate font-medium">
                           {a.agentName}
                         </span>

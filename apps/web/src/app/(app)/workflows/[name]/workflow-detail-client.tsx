@@ -2,8 +2,8 @@
 
 import {
   IconCheck,
+  IconGhost,
   IconPencil,
-  IconRobot,
   IconTimeline,
   IconX,
 } from "@tabler/icons-react";
@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useDelayedLoading } from "@/components/app/data-table";
 import { navItem } from "@/components/app/nav";
 import { NodeFlow, type FlowNode } from "@/components/app/node-flow";
 import {
@@ -92,6 +93,9 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
     }),
     enabled: !!projectId && !!activeRunId,
   });
+  // Delay the skeletons so fast loads don't flash them (see useDelayedLoading).
+  const showRunsSkeleton = useDelayedLoading(runs.isLoading);
+  const showFlowSkeleton = useDelayedLoading(runDetail.isLoading);
 
   const back = navItem("/workflows");
 
@@ -106,7 +110,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
 
   const nodes: FlowNode[] = (runDetail.data?.traces ?? []).map((t) => ({
     id: t.traceId,
-    icon: <IconRobot className="size-5 text-muted-foreground" />,
+    icon: <IconGhost className="size-5 text-muted-foreground" />,
     label: t.traceName ?? t.agentName ?? "trace",
     status: t.errorCount > 0 ? "error" : "ok",
     timestamp: t.startTime,
@@ -130,7 +134,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
       />
 
       {runs.isLoading ? (
-        <TableSkeleton />
+        showRunsSkeleton ? <TableSkeleton /> : null
       ) : runRows.length === 0 ? (
         <EmptyState
           icon={IconTimeline}
@@ -154,7 +158,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
             </CardHeader>
             <CardContent>
               {runDetail.isLoading ? (
-                <TableSkeleton rows={2} />
+                showFlowSkeleton ? <TableSkeleton rows={2} /> : null
               ) : nodes.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No traces in this run.

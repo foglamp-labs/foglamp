@@ -32,6 +32,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useDelayedLoading } from "@/components/app/data-table";
 import {
 	EmptyState,
 	NoProject,
@@ -121,6 +122,8 @@ export function PricingClient() {
 		...trpc.pricing.list.queryOptions({ projectId: projectId! }),
 		enabled: !!projectId,
 	});
+	// Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+	const showSkeleton = useDelayedLoading(pricing.isLoading);
 
 	const create = useMutation(
 		trpc.pricing.create.mutationOptions({
@@ -234,7 +237,7 @@ export function PricingClient() {
 			/>
 
 			{pricing.isLoading ? (
-				<TableSkeleton />
+				showSkeleton ? <TableSkeleton /> : null
 			) : rows.length === 0 ? (
 				<EmptyState
 					icon={IconCoinFilled}

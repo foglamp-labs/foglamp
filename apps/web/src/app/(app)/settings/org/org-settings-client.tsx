@@ -43,6 +43,7 @@ import {
 import {
   IconAlertTriangleFilled,
   IconFolderFilled,
+  IconGaugeFilled,
   IconStack2Filled,
   IconTrash,
   IconTrashFilled,
@@ -670,8 +671,8 @@ function BillingTab({ orgId }: { orgId: string }) {
         {plan === "free" && (
           <div className="flex items-center gap-3">
             <p className="text-sm text-muted-foreground">
-              Upgrade to Pro for 1M spans/mo, 14-day retention, 10 alerts, and 5
-              projects.
+              Upgrade to Pro for 1M spans/mo, 14-day retention, 10 alerts, 5
+              projects, and 20 evals.
             </p>
             <Button size="sm" onClick={upgrade}>
               Upgrade to Pro · $49/mo
@@ -769,6 +770,12 @@ function UsageTab({ orgId }: { orgId: string }) {
               icon={IconAlertTriangleFilled}
               used={d.alerts.used}
               limit={d.alerts.limit}
+            />
+            <UsageBar
+              label="Evals"
+              icon={IconGaugeFilled}
+              used={d.evals.used}
+              limit={d.evals.limit}
             />
           </>
         ) : (

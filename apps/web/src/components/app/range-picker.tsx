@@ -48,8 +48,7 @@ export function RangePicker({
         render={
           <Button
             variant="outline"
-            size="sm"
-            className="w-fit justify-start px-8 gap-2 active:scale-100 font-normal dark:bg-input/20"
+            className="w-fit justify-start rounded-2xl corner-squircle gap-2 active:scale-100 font-normal dark:bg-input/20 dark:shadow-none dark:border dark:border-border/50"
           />
         }
       >
@@ -68,7 +67,7 @@ export function RangePicker({
               key={p.key}
               variant={value.key === p.key ? "secondary" : "ghost"}
               size="sm"
-              className="justify-start font-normal"
+              className="justify-start font-normal transition-transform"
               onClick={() => {
                 onChange(resolvePreset(p.key));
                 setOpen(false);
@@ -81,6 +80,7 @@ export function RangePicker({
         <div className="p-1">
           <Calendar
             mode="range"
+            className="**:data-day:transition-none"
             numberOfMonths={2}
             defaultMonth={value.from}
             selected={draft}

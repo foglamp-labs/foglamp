@@ -214,6 +214,63 @@ export function listSessions(
 	);
 }
 
+export type SessionCostQuantilesRow = { q: number[] };
+
+/**
+ * Quintile thresholds (20/40/60/80th percentiles) of per-session total cost
+ * across the filtered set, over priced sessions only. Drives the cost heatmap:
+ * the UI buckets each session's cost against these so each shade holds ~1/5 of
+ * sessions regardless of how skewed the cost distribution is. Mirrors the
+ * filtering of `listSessions`.
+ */
+export function sessionCostQuantiles(
+	client: ClickHouseClient,
+	params: {
+		projectId: string;
+		from?: string;
+		to?: string;
+		errorsOnly?: boolean;
+		agentName?: string;
+		sessionId?: string;
+	},
+): Promise<SessionCostQuantilesRow[]> {
+	const having: string[] = ["session_id != ''", "total_cost > 0"];
+	if (params.from !== undefined)
+		having.push("last_seen >= {from:DateTime64(3)}");
+	if (params.to !== undefined) having.push("first_seen < {to:DateTime64(3)}");
+	if (params.errorsOnly) having.push("error_count > 0");
+	if (params.agentName !== undefined)
+		having.push("agent_name = {agentName:String}");
+	if (params.sessionId !== undefined)
+		having.push(
+			"positionCaseInsensitive(session_id, {sessionSearch:String}) > 0",
+		);
+	return rows<SessionCostQuantilesRow>(
+		client,
+		`SELECT quantiles(0.2, 0.4, 0.6, 0.8)(total_cost) AS q
+     FROM (
+       SELECT
+         session_id,
+         any(agent_name) AS agent_name,
+         sum(error_count) AS error_count,
+         sum(total_cost) AS total_cost,
+         min(trace_summary.trace_start) AS first_seen,
+         max(trace_summary.trace_end) AS last_seen
+       FROM trace_summary
+       WHERE project_id = {projectId:String}
+       GROUP BY session_id
+       HAVING ${having.join(" AND ")}
+     )`,
+		{
+			projectId: params.projectId,
+			from: params.from,
+			to: params.to,
+			agentName: params.agentName,
+			sessionSearch: params.sessionId,
+		},
+	);
+}
+
 export type SessionTurnRow = {
 	trace_id: string;
 	name: string;

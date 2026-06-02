@@ -2,6 +2,7 @@ import {
   getSessionTurns,
   listSessions,
   listTraces,
+  sessionCostQuantiles,
   type SessionSortField,
   type SortDir,
   type TraceListRow,
@@ -33,29 +34,42 @@ export async function getSessionList(
   },
 ) {
   await requireProjectAccess(db, userId, input.projectId);
-  const sessions = await listSessions(ch, {
+  const filters = {
     projectId: input.projectId,
     from: toClickHouseDateTime(input.from),
     to: toClickHouseDateTime(input.to),
     agentName: input.agentName,
     sessionId: input.sessionId,
     errorsOnly: input.errorsOnly,
-    sort: input.sort,
-    limit: input.limit,
-    offset: input.offset,
-  });
-  return sessions.map((s) => ({
-    sessionId: s.session_id,
-    agentName: s.agent_name || null,
-    turnCount: num(s.turn_count),
-    spanCount: num(s.span_count),
-    llmSpanCount: num(s.llm_span_count),
-    errorCount: num(s.error_count),
-    totalCost: decimalOrNull(s.total_cost),
-    totalTokens: num(s.total_tokens),
-    firstSeen: s.first_seen,
-    lastSeen: s.last_seen,
-  }));
+  };
+  // Fetch the page and, in parallel, the global cost quintile thresholds across
+  // the whole filtered set — `costQuantiles` drives the cost heatmap in the UI
+  // (percentile-based, so it reflects all sessions, not just the current page).
+  const [sessions, quantiles] = await Promise.all([
+    listSessions(ch, {
+      ...filters,
+      sort: input.sort,
+      limit: input.limit,
+      offset: input.offset,
+    }),
+    sessionCostQuantiles(ch, filters),
+  ]);
+  return {
+    // 20/40/60/80th percentile cost thresholds; finite values only.
+    costQuantiles: (quantiles[0]?.q ?? []).map(Number).filter(Number.isFinite),
+    sessions: sessions.map((s) => ({
+      sessionId: s.session_id,
+      agentName: s.agent_name || null,
+      turnCount: num(s.turn_count),
+      spanCount: num(s.span_count),
+      llmSpanCount: num(s.llm_span_count),
+      errorCount: num(s.error_count),
+      totalCost: decimalOrNull(s.total_cost),
+      totalTokens: num(s.total_tokens),
+      firstSeen: s.first_seen,
+      lastSeen: s.last_seen,
+    })),
+  };
 }
 
 /**

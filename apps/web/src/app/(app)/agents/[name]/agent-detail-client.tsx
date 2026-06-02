@@ -3,8 +3,8 @@
 import {
   IconAlertTriangle,
   IconCpu,
+  IconGhostFilled,
   IconPlayerPlayFilled,
-  IconRobot,
   IconTool,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +28,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 
+import { useDelayedLoading } from "@/components/app/data-table";
 import { navItem } from "@/components/app/nav";
 import { NodeFlow, type FlowNode } from "@/components/app/node-flow";
 import {
@@ -76,6 +77,8 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
     }),
     enabled: !!projectId,
   });
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showSkeleton = useDelayedLoading(detail.isLoading);
 
   const back = navItem("/agents");
 
@@ -110,7 +113,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
       />
 
       {detail.isLoading ? (
-        <TableSkeleton />
+        showSkeleton ? <TableSkeleton /> : null
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -183,7 +186,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
               {(data?.traces ?? []).length === 0 ? (
                 <div className="p-6">
                   <EmptyState
-                    icon={IconRobot}
+                    icon={IconGhostFilled}
                     title="No traces for this agent"
                     description="It may have aged out of retention."
                   />

@@ -134,8 +134,8 @@ function TableRow({
       onClick={onClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "border-b transition-colors dark:border-[#1E1E1E] border-[#EBEBEB] data-[state=selected]:bg-muted has-aria-expanded:bg-muted/50",
-        "data-[interactive]:cursor-pointer data-[interactive]:hover:bg-muted/50 data-[interactive]:outline-none data-[interactive]:focus-visible:bg-muted/50 data-[interactive]:focus-visible:ring-[1.5px] data-[interactive]:focus-visible:ring-inset data-[interactive]:focus-visible:ring-ring/50",
+        "border-b dark:border-[#1E1E1E] border-[#EBEBEB] data-[state=selected]:bg-muted has-aria-expanded:bg-muted/50",
+        "data-interactive:cursor-pointer data-interactive:hover:bg-muted/50 data-interactive:outline-none data-interactive:focus-visible:bg-muted/50 data-interactive:focus-visible:ring-[1.5px] data-interactive:focus-visible:ring-inset data-interactive:focus-visible:ring-ring/50",
         className
       )}
       {...props}
@@ -157,7 +157,7 @@ function TableHead({
         // Vertical column dividers (none on the leftmost cell). More prominent
         // than the body cells to emphasize the header.
         "border-l border-neutral-200 first:border-l-0 dark:border-neutral-800 [&_tr]:border-b",
-        density === "compact" ? "h-9 px-3" : "h-12 px-5",
+        density === "compact" ? "h-9 px-3" : "h-10 px-5",
         align && alignClass[align],
         className
       )}
@@ -179,7 +179,7 @@ function TableCell({
         "align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         // Vertical column dividers (none on the leftmost cell).
         "border-l border-[#EBEBEB] first:border-l-0 dark:border-[#1E1E1E]",
-        density === "compact" ? "p-1.5 px-3" : "p-2.5 px-5",
+        density === "compact" ? "p-1.5 px-3 h-10" : "p-2.5 px-5 h-11",
         align && alignClass[align],
         className
       )}

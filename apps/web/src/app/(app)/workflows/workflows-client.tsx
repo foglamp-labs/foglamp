@@ -1,12 +1,5 @@
 "use client";
 
-import {
-  IconAlertTriangle,
-  IconAlertTriangleFilled,
-  IconSitemapFilled,
-  IconTimeline,
-} from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@foglamp/ui/components/badge";
 import {
   Card,
@@ -14,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@foglamp/ui/components/card";
-import { cn } from "@foglamp/ui/lib/utils";
 import {
   Table,
   TableBody,
@@ -22,18 +14,29 @@ import {
   TableHeader,
   TableRow,
 } from "@foglamp/ui/components/table";
+import { cn } from "@foglamp/ui/lib/utils";
+import {
+  IconAlertTriangle,
+  IconAlertTriangleFilled,
+  IconSitemapFilled,
+  IconTimeline,
+} from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import {
+  ClearFiltersButton,
   SearchInput,
   SortableHead,
   sortRows,
   ToggleChip,
   Toolbar,
+  useDelayedLoading,
   useTableSort,
   useTextFilter,
 } from "@/components/app/data-table";
+import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
 import {
   CardsSkeleton,
   EmptyState,
@@ -41,7 +44,6 @@ import {
   PageHeader,
   TableSkeleton,
 } from "@/components/app/page-parts";
-import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
@@ -86,6 +88,9 @@ export function WorkflowsClient() {
     enabled: !!projectId,
   });
 
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showSkeleton = useDelayedLoading(workflows.isLoading);
+
   const rows = workflows.data ?? [];
   const searched = useTextFilter(rows, search, (w) => [
     w.workflowName ?? "Ungrouped",
@@ -103,9 +108,9 @@ export function WorkflowsClient() {
           errors: (w) => w.errorCount,
           cost: (w) => w.totalCost,
           lastRun: (w) => (w.lastRun ? Date.parse(w.lastRun) : null),
-        },
+        }
       ),
-    [searched, errorsOnly, sort],
+    [searched, errorsOnly, sort]
   );
 
   if (!projectId) {
@@ -122,19 +127,15 @@ export function WorkflowsClient() {
       <PageHeader
         title="Workflows"
         description="Grouped runs by workflow. Open one to see its runs and step flow."
-        actions={
-          <>
-            <ViewToggle value={view} onChange={setView} />
-            <RangePicker value={range} onChange={setRange} />
-          </>
-        }
       />
       {workflows.isLoading ? (
-        view === "cards" ? (
-          <CardsSkeleton count={6} />
-        ) : (
-          <TableSkeleton />
-        )
+        showSkeleton ? (
+          view === "cards" ? (
+            <CardsSkeleton count={6} />
+          ) : (
+            <TableSkeleton />
+          )
+        ) : null
       ) : rows.length === 0 ? (
         <InstrumentEmptyState
           feature="workflow"
@@ -154,9 +155,20 @@ export function WorkflowsClient() {
               active={errorsOnly}
               onClick={() => setErrorsOnly((v) => !v)}
             >
-              <IconAlertTriangleFilled className="size-3.5" />
+              <IconAlertTriangle className="size-3.5" />
               Errors only
             </ToggleChip>
+            <ClearFiltersButton
+              show={!!(search || errorsOnly)}
+              onClick={() => {
+                setSearch("");
+                setErrorsOnly(false);
+              }}
+            />
+            <div className="ml-auto flex items-center gap-2">
+              <ViewToggle value={view} onChange={setView} />
+              <RangePicker value={range} onChange={setRange} />
+            </div>
           </Toolbar>
 
           {visible.length === 0 ? (
@@ -223,6 +235,7 @@ export function WorkflowsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-28"
                   >
                     Runs
                   </SortableHead>
@@ -231,6 +244,7 @@ export function WorkflowsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-28"
                   >
                     Traces
                   </SortableHead>
@@ -239,6 +253,7 @@ export function WorkflowsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-28"
                   >
                     Tokens
                   </SortableHead>
@@ -247,6 +262,7 @@ export function WorkflowsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-28"
                   >
                     Errors
                   </SortableHead>
@@ -255,6 +271,7 @@ export function WorkflowsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-36"
                   >
                     Cost
                   </SortableHead>
@@ -263,6 +280,7 @@ export function WorkflowsClient() {
                     sort={sort}
                     onSort={toggle}
                     align="right"
+                    className="w-36"
                   >
                     Last run
                   </SortableHead>
@@ -283,7 +301,7 @@ export function WorkflowsClient() {
                         <span
                           className={cn(
                             "truncate font-medium",
-                            !w.workflowName && "text-muted-foreground italic",
+                            !w.workflowName && "text-muted-foreground italic"
                           )}
                         >
                           {w.workflowName ?? "Ungrouped"}

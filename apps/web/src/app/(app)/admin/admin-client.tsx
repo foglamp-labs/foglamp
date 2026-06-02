@@ -34,9 +34,9 @@ import {
 	IconDatabaseImport,
 	type IconFlask,
 	IconGaugeFilled,
+	IconGhost,
 	IconMailFilled,
 	IconRefresh,
-	IconRobot,
 	IconSend2,
 	IconSparkles,
 	IconTimeline,
@@ -78,7 +78,7 @@ const TESTS: {
 		label: "Agent (RAG)",
 		description:
 			"A named agent: retrieval embedding → 2 LLM steps with a tool.",
-		icon: IconRobot,
+		icon: IconGhost,
 	},
 	{
 		kind: "workflow",

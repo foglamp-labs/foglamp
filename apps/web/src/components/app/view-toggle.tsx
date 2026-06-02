@@ -54,7 +54,7 @@ export function ViewToggle({
   // Unique per instance so each mounted toggle owns its own sliding pill.
   const pillId = useId();
   return (
-    <div className="inline-flex h-7 items-center rounded-full px-0.5 shadow-(--custom-shadow) p-0.5 dark:bg-input/20">
+    <div className="inline-flex h-8 items-center rounded-2xl corner-squircle px-1 shadow-(--custom-shadow) p-0.5 dark:bg-input/20">
       {OPTIONS.map((opt) => {
         const active = opt.value === value;
         const Icon = opt.icon;
@@ -67,7 +67,7 @@ export function ViewToggle({
             title={opt.label}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "relative flex h-6 w-7 cursor-pointer items-center justify-center rounded-full transition-colors",
+              "relative flex h-6 w-7 cursor-pointer items-center justify-center rounded-2xl corner-squircle transition-colors",
               active
                 ? "text-foreground"
                 : "text-muted-foreground/60 hover:text-foreground"
@@ -77,7 +77,7 @@ export function ViewToggle({
               <motion.span
                 layoutId={pillId}
                 transition={MORPH}
-                className="absolute inset-0 rounded-full bg-muted shadow-(--custom-shadow) dark:bg-input/50"
+                className="absolute inset-0 rounded-2xl corner-squircle bg-muted shadow-(--custom-shadow) dark:bg-input/50"
               />
             )}
             <Icon className="relative z-10 size-4 stroke-[1.5]" />

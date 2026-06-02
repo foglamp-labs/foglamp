@@ -50,6 +50,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useDelayedLoading } from "@/components/app/data-table";
 import {
   EmptyState,
   PageHeader,
@@ -80,6 +81,8 @@ export function SettingsClient() {
     ...trpc.projects.keys.list.queryOptions({ projectId: projectId! }),
     enabled: !!projectId,
   });
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showSkeleton = useDelayedLoading(keys.isLoading);
 
   const createKey = useMutation(
     trpc.projects.keys.create.mutationOptions({
@@ -235,7 +238,7 @@ export function SettingsClient() {
       ) : (
         <>
           {keys.isLoading ? (
-            <TableSkeleton />
+            showSkeleton ? <TableSkeleton /> : null
           ) : keyRows.length === 0 ? (
             <EmptyState
               icon={IconKeyFilled}

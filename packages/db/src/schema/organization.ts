@@ -9,6 +9,7 @@ export type LimitsOverride = {
   retentionDays?: number | null;
   alerts?: number | null;
   projects?: number | null;
+  evals?: number | null;
 };
 
 // Tables owned by the better-auth `organization` plugin. Property keys must

@@ -58,12 +58,12 @@ export function PageHeader({
   const BackIcon = back?.icon;
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1.5">
         {back && BackIcon ? (
           <h1 className="flex items-center gap-1.5 text-base font-medium tracking-tight">
             <Link
               href={back.href}
-              className="flex shrink-0 items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+              className="flex shrink-0 items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
             >
               <BackIcon
                 className={cn("size-4.5 shrink-0", back.iconClassName)}
@@ -91,6 +91,7 @@ export function StatCard({
   hint,
   delta,
   deltaInverted = false,
+  size = "default",
 }: {
   label: string;
   value: React.ReactNode;
@@ -99,13 +100,15 @@ export function StatCard({
   delta?: Delta | null;
   /** When true, "up" is bad (red) — for cost / errors / latency. */
   deltaInverted?: boolean;
+  /** "sm" tightens the card padding and value text for dense layouts. */
+  size?: "default" | "sm";
 }) {
   return (
-    <Card>
+    <Card size={size}>
       <CardHeader>
         <CardDescription>{label}</CardDescription>
         <div className="flex items-baseline justify-between gap-2">
-          <CardTitle className="text-2xl tracking-tight tabular-nums">
+          <CardTitle className={cn("tracking-tight tabular-nums")}>
             {value}
           </CardTitle>
           {delta && <DeltaBadge delta={delta} inverted={deltaInverted} />}
@@ -192,11 +195,13 @@ export function EmptyState({
   );
 }
 
-export function TableSkeleton({ rows = 6 }: { rows?: number }) {
+export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <Skeleton className="h-8 w-1/3" />
+      <Skeleton className="h-12 w-full" />
       {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton key={i} className="h-10 w-full" />
+        <Skeleton key={i} className="h-7 w-full" />
       ))}
     </div>
   );

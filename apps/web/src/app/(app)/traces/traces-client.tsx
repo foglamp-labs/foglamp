@@ -19,22 +19,23 @@ import {
 } from "@foglamp/ui/components/table";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
-  IconAdjustmentsHorizontalFilled,
   IconAffiliateFilled,
   IconAlertTriangle,
-  IconListTree,
+  IconGhost,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import {
+  ClearFiltersButton,
   FilterSelect,
   SearchInput,
   SortableHead,
   ToggleChip,
   Toolbar,
   useDebouncedValue,
+  useDelayedLoading,
   useTableSort,
 } from "@/components/app/data-table";
 import {
@@ -76,7 +77,7 @@ export function TracesClient() {
   // Reset to the first page when the project, range, filters, or sort change.
   useEffect(
     () => setPage(0),
-    [projectId, range, debouncedSearch, agentFilter, errorsOnly, sort],
+    [projectId, range, debouncedSearch, agentFilter, errorsOnly, sort]
   );
 
   // Agent names for the filter dropdown.
@@ -105,6 +106,8 @@ export function TracesClient() {
     // Keep the current page visible while the next one loads.
     placeholderData: (prev) => prev,
   });
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showSkeleton = useDelayedLoading(traces.isLoading);
 
   if (!projectId) {
     return (
@@ -120,6 +123,7 @@ export function TracesClient() {
   const agentOptions = (agentsList.data ?? []).map((a) => ({
     value: a.agentName,
     label: a.agentName,
+    icon: IconGhost,
   }));
 
   return (
@@ -127,10 +131,9 @@ export function TracesClient() {
       <PageHeader
         title="Traces"
         description="Each trace is one top-level generateText / streamText call."
-        actions={<RangePicker value={range} onChange={setRange} />}
       />
       {traces.isLoading ? (
-        <TableSkeleton />
+        showSkeleton ? <TableSkeleton /> : null
       ) : rows.length === 0 && page === 0 && !hasFilters ? (
         <EmptyState
           icon={IconAffiliateFilled}
@@ -149,6 +152,7 @@ export function TracesClient() {
               value={agentFilter}
               onChange={setAgentFilter}
               allLabel="Any agent"
+              icon={IconGhost}
               options={agentOptions}
             />
             <ToggleChip
@@ -158,6 +162,17 @@ export function TracesClient() {
               <IconAlertTriangle className="size-3.5" />
               Errors only
             </ToggleChip>
+            <ClearFiltersButton
+              show={!!(search || agentFilter || errorsOnly)}
+              onClick={() => {
+                setSearch("");
+                setAgentFilter("");
+                setErrorsOnly(false);
+              }}
+            />
+            <div className="ml-auto">
+              <RangePicker value={range} onChange={setRange} />
+            </div>
           </Toolbar>
 
           {rows.length === 0 && page === 0 ? (
@@ -178,6 +193,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
+                      className="w-28"
                     >
                       Spans
                     </SortableHead>
@@ -186,6 +202,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
+                      className="w-28"
                     >
                       Tokens
                     </SortableHead>
@@ -194,6 +211,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
+                      className="w-32"
                     >
                       Duration
                     </SortableHead>
@@ -202,6 +220,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
+                      className="w-36"
                     >
                       Cost
                     </SortableHead>
@@ -210,6 +229,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
+                      className="w-32"
                     >
                       When
                     </SortableHead>
@@ -257,8 +277,8 @@ export function TracesClient() {
                 </TableBody>
               </Table>
 
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground tabular-nums">
+              <div className="flex items-center justify-between px-1">
+                <p className="text-sm text-muted-foreground/50 tabular-nums">
                   {rows.length > 0
                     ? `Showing ${page * PAGE_SIZE + 1}–${page * PAGE_SIZE + rows.length}`
                     : "No more traces"}
@@ -270,7 +290,7 @@ export function TracesClient() {
                         aria-disabled={page === 0 || traces.isFetching}
                         className={cn(
                           (page === 0 || traces.isFetching) &&
-                            "pointer-events-none opacity-50",
+                            "pointer-events-none opacity-50"
                         )}
                         onClick={() => setPage((p) => Math.max(0, p - 1))}
                       />
@@ -283,7 +303,7 @@ export function TracesClient() {
                         aria-disabled={!hasMore || traces.isFetching}
                         className={cn(
                           (!hasMore || traces.isFetching) &&
-                            "pointer-events-none opacity-50",
+                            "pointer-events-none opacity-50"
                         )}
                         onClick={() => setPage((p) => p + 1)}
                       />

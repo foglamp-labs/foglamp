@@ -27,7 +27,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@foglamp/ui/components/dialog";
 import {
   Field,
@@ -104,6 +103,7 @@ import {
   IconSparkles,
   IconSparklesFilled,
   IconStack2,
+  IconToggleRight,
   IconTrash,
   IconTrashFilled,
   IconZoom,
@@ -124,11 +124,13 @@ import {
 import { toast } from "sonner";
 
 import {
+  ClearFiltersButton,
   FilterSelect,
   SearchInput,
   SortableHead,
   sortRows,
   Toolbar,
+  useDelayedLoading,
   useTableSort,
   useTextFilter,
 } from "@/components/app/data-table";
@@ -182,13 +184,13 @@ const PROVIDER_GROUPS: {
 // across providers), so selecting a model derives its provider.
 const MODEL_PROVIDER: Record<string, Provider> = Object.fromEntries(
   (Object.entries(JUDGE_MODELS) as [Provider, { id: string }[]][]).flatMap(
-    ([p, list]) => list.map((m) => [m.id, p] as const),
-  ),
+    ([p, list]) => list.map((m) => [m.id, p] as const)
+  )
 );
 const MODEL_LABEL: Record<string, string> = Object.fromEntries(
   Object.values(JUDGE_MODELS)
     .flat()
-    .map((m) => [m.id, m.label] as const),
+    .map((m) => [m.id, m.label] as const)
 );
 
 // What an eval runs on. Surfaced as an icon'd Select so the two levels read at
@@ -332,7 +334,7 @@ const PRESET_META: Record<
   },
 };
 const presetMeta = (
-  id: string,
+  id: string
 ): { icon: Icon; outline: Icon; family: Family } =>
   PRESET_META[id] ?? {
     icon: IconSparklesFilled,
@@ -460,13 +462,13 @@ function ScrollFade({
       <div
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 h-10 bg-linear-to-b from-popover to-transparent transition-opacity duration-150",
-          edges.top ? "opacity-100" : "opacity-0",
+          edges.top ? "opacity-100" : "opacity-0"
         )}
       />
       <div
         className={cn(
           "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t from-popover to-transparent transition-opacity duration-150",
-          edges.bottom ? "opacity-100" : "opacity-0",
+          edges.bottom ? "opacity-100" : "opacity-0"
         )}
       />
     </div>
@@ -497,7 +499,7 @@ function Segmented<T extends string>({
               "relative flex-1 cursor-pointer rounded-xl corner-squircle px-2 py-1 text-sm font-medium whitespace-nowrap transition-colors",
               active
                 ? "text-foreground"
-                : "text-foreground/60 hover:text-foreground",
+                : "text-foreground/60 hover:text-foreground"
             )}
           >
             {active && (
@@ -562,7 +564,7 @@ export function EvalsClient() {
   const [sourceFilter, setSourceFilter] = useState<"" | "code" | "llm">("");
   const [levelFilter, setLevelFilter] = useState<"" | "trace" | "span">("");
   const [stateFilter, setStateFilter] = useState<"" | "enabled" | "disabled">(
-    "",
+    ""
   );
   const { sort, toggle } = useTableSort<EvalSortKey>();
 
@@ -583,7 +585,7 @@ export function EvalsClient() {
 
   const selectedPreset = useMemo(
     () => presets.data?.find((p) => p.id === form.presetId) ?? null,
-    [presets.data, form.presetId],
+    [presets.data, form.presetId]
   );
   // presetId → friendly name, for the table's Check badge.
   const presetName = useMemo(() => {
@@ -593,7 +595,7 @@ export function EvalsClient() {
       id.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
   }, [presets.data]);
   const configuredProviders = new Set(
-    (providerKeys.data?.keys ?? []).map((k) => k.provider),
+    (providerKeys.data?.keys ?? []).map((k) => k.provider)
   );
   // Existing agent names → combobox suggestions (free typing still allowed).
   const agentNames = (agents.data ?? []).map((a) => a.agentName);
@@ -608,14 +610,14 @@ export function EvalsClient() {
         toast.success("Eval created, scoring new traffic from now.");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
   const update = useMutation(
     trpc.evals.update.mutationOptions({
       onSuccess: () =>
         qc.invalidateQueries({ queryKey: trpc.evals.list.queryKey() }),
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
   const remove = useMutation(
     trpc.evals.delete.mutationOptions({
@@ -625,8 +627,11 @@ export function EvalsClient() {
         toast.success("Eval deleted");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
+
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showSkeleton = useDelayedLoading(evals.isLoading);
 
   const rows = evals.data ?? [];
   const searched = useTextFilter(rows, search, (r) => [r.name, r.presetId]);
@@ -707,20 +712,26 @@ export function EvalsClient() {
         title="Evals"
         description="Score production traces and spans with code checks and LLM-as-a-judge."
         actions={
-          <Dialog
-            open={open}
-            onOpenChange={(o) => {
-              setOpen(o);
-              if (!o) {
-                setStep(1);
-                setForm(DEFAULT_FORM);
-              }
-            }}
-          >
-            <DialogTrigger render={<Button size="sm" />}>
-              <IconPlus />
-              New eval
-            </DialogTrigger>
+          <>
+            {/* With data the New eval button lives in the toolbar; with none,
+                show it here in the header. */}
+            {rows.length === 0 && (
+              <Button size="sm" onClick={() => setOpen(true)}>
+                <IconPlus />
+                New eval
+              </Button>
+            )}
+            <Dialog
+              open={open}
+              onOpenChange={(o) => {
+                setOpen(o);
+                if (!o) {
+                  setStep(1);
+                  setForm(DEFAULT_FORM);
+                }
+              }}
+            >
+              {/* Opened from the header (no data) or toolbar (with data) — controlled. */}
             <DialogContent className="block w-auto max-w-[calc(100vw-2rem)] gap-0 overflow-hidden p-0 sm:max-w-none">
               <motion.div
                 initial={false}
@@ -767,7 +778,7 @@ export function EvalsClient() {
                                 <SelectValue>
                                   {(value) => {
                                     const lvl = LEVELS.find(
-                                      (l) => l.value === value,
+                                      (l) => l.value === value
                                     );
                                     if (!lvl) return null;
                                     const LIcon = lvl.icon;
@@ -906,7 +917,7 @@ export function EvalsClient() {
                                     .filter((p) => p.source === group.source)
                                     .sort(
                                       (a, b) =>
-                                        familyRank(a.id) - familyRank(b.id),
+                                        familyRank(a.id) - familyRank(b.id)
                                     )
                                     .map((p) => {
                                       const { icon: PIcon, family } =
@@ -923,7 +934,7 @@ export function EvalsClient() {
                                           <PIcon
                                             className={cn(
                                               "size-6 shrink-0 rounded-xl corner-squircle p-1",
-                                              FAMILY_CHIP[family],
+                                              FAMILY_CHIP[family]
                                             )}
                                           />
                                           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -1110,11 +1121,14 @@ export function EvalsClient() {
               </motion.div>
             </DialogContent>
           </Dialog>
+          </>
         }
       />
 
       {evals.isLoading ? (
-        <TableSkeleton />
+        showSkeleton ? (
+          <TableSkeleton />
+        ) : null
       ) : rows.length === 0 ? (
         <EmptyState
           icon={IconGaugeFilled}
@@ -1133,39 +1147,65 @@ export function EvalsClient() {
               value={statusFilter}
               onChange={setStatusFilter}
               allLabel="Any status"
+              icon={IconProgress}
               options={[
-                { value: "ok", label: "OK" },
-                { value: "error", label: "Error" },
-                { value: "paused_no_key", label: "Needs key" },
+                { value: "ok", label: "OK", icon: IconCircleCheck },
+                { value: "error", label: "Error", icon: IconForbid },
+                { value: "paused_no_key", label: "Needs key", icon: IconKey },
               ]}
             />
             <FilterSelect
               value={sourceFilter}
               onChange={setSourceFilter}
               allLabel="Any check"
+              icon={IconListCheck}
               options={[
-                { value: "code", label: "Code" },
-                { value: "llm", label: "LLM judge" },
+                { value: "code", label: "Code", icon: IconFileCode },
+                { value: "llm", label: "LLM judge", icon: IconSparkles },
               ]}
             />
             <FilterSelect
               value={levelFilter}
               onChange={setLevelFilter}
               allLabel="Any level"
+              icon={IconStack2}
               options={[
-                { value: "trace", label: "Traces" },
-                { value: "span", label: "Spans" },
+                { value: "trace", label: "Traces", icon: IconAffiliate },
+                { value: "span", label: "Spans", icon: IconStack2 },
               ]}
             />
             <FilterSelect
               value={stateFilter}
               onChange={setStateFilter}
               allLabel="Any state"
+              icon={IconToggleRight}
               options={[
-                { value: "enabled", label: "Enabled" },
-                { value: "disabled", label: "Disabled" },
+                { value: "enabled", label: "Enabled", icon: IconCircleCheck },
+                { value: "disabled", label: "Disabled", icon: IconForbid },
               ]}
             />
+            <ClearFiltersButton
+              show={
+                !!(
+                  search ||
+                  statusFilter ||
+                  sourceFilter ||
+                  levelFilter ||
+                  stateFilter
+                )
+              }
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("");
+                setSourceFilter("");
+                setLevelFilter("");
+                setStateFilter("");
+              }}
+            />
+            <Button size="sm" className="ml-auto" onClick={() => setOpen(true)}>
+              <IconPlus />
+              New eval
+            </Button>
           </Toolbar>
 
           {visible.length === 0 ? (
@@ -1175,22 +1215,35 @@ export function EvalsClient() {
               description="Try a different search or clearing filters."
             />
           ) : (
-            <Table>
+            // Fixed layout so column widths never depend on row content — the
+            // table doesn't reflow as sorting changes which rows are visible.
+            // The text/badge columns truncate (see cells below).
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
                   <SortableHead sortKey="name" sort={sort} onSort={toggle}>
                     Name
                   </SortableHead>
-                  <TableHead>Check</TableHead>
-                  <TableHead>Target</TableHead>
-                  <SortableHead sortKey="sample" sort={sort} onSort={toggle}>
+                  <TableHead className="w-44">Check</TableHead>
+                  <TableHead className="w-40">Target</TableHead>
+                  <SortableHead
+                    sortKey="sample"
+                    sort={sort}
+                    onSort={toggle}
+                    className="w-28"
+                  >
                     Sample
                   </SortableHead>
-                  <SortableHead sortKey="status" sort={sort} onSort={toggle}>
+                  <SortableHead
+                    sortKey="status"
+                    sort={sort}
+                    onSort={toggle}
+                    className="w-32"
+                  >
                     Status
                   </SortableHead>
-                  <TableHead>Enabled</TableHead>
-                  <TableHead />
+                  <TableHead className="w-24">Enabled</TableHead>
+                  <TableHead className="w-14" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1204,18 +1257,23 @@ export function EvalsClient() {
                       interactive
                       onClick={() => router.push(`/evals/${r.id}`)}
                     >
-                      <TableCell className="font-medium">{r.name}</TableCell>
+                      <TableCell className="truncate font-medium">
+                        {r.name}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
                             r.scorerSource === "llm" ? "violet" : "secondary"
                           }
+                          className="min-w-0 max-w-full"
                         >
                           <CheckIcon />
-                          {presetName(r.presetId)}
+                          <span className="min-w-0 truncate">
+                            {presetName(r.presetId)}
+                          </span>
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="truncate text-muted-foreground">
                         {r.targetLevel}
                         {r.filters?.agentName
                           ? ` · ${r.filters.agentName}`
@@ -1295,6 +1353,6 @@ export function EvalsClient() {
 
 function clean(obj: Record<string, string>): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(obj).filter(([, v]) => v.trim() !== ""),
+    Object.entries(obj).filter(([, v]) => v.trim() !== "")
   );
 }

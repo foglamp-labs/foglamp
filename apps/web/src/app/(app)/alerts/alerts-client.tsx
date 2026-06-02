@@ -59,6 +59,7 @@ import {
 import { type ComponentType, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { useDelayedLoading } from "@/components/app/data-table";
 import {
   EmptyState,
   NoProject,
@@ -186,6 +187,8 @@ export function AlertsClient() {
     ...trpc.evals.list.queryOptions({ projectId: projectId! }),
     enabled: !!projectId,
   });
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showSkeleton = useDelayedLoading(alerts.isLoading);
 
   const create = useMutation(
     trpc.alerts.create.mutationOptions({
@@ -457,7 +460,7 @@ export function AlertsClient() {
         }
       />
       {alerts.isLoading ? (
-        <TableSkeleton />
+        showSkeleton ? <TableSkeleton /> : null
       ) : rows.length === 0 ? (
         <EmptyState
           icon={IconAlertTriangleFilled}

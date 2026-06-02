@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { useMemo } from "react";
 
+import { useDelayedLoading } from "@/components/app/data-table";
 import { navItem } from "@/components/app/nav";
 import {
   EmptyState,
@@ -53,6 +54,8 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
     ...trpc.evals.recentScores.queryOptions({ evalId, limit: 50 }),
     enabled: !!projectId,
   });
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showRecentSkeleton = useDelayedLoading(recent.isLoading);
 
   const ev = list.data?.find((e) => e.id === evalId) ?? null;
 
@@ -108,7 +111,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
         </CardHeader>
         <CardContent className="p-0">
           {recent.isLoading ? (
-            <TableSkeleton rows={4} />
+            showRecentSkeleton ? <TableSkeleton rows={4} /> : null
           ) : (recent.data ?? []).length === 0 ? (
             <div className="p-6">
               <EmptyState

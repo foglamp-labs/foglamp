@@ -338,7 +338,7 @@ export function FoggyWidget({
                           key={s}
                           type="button"
                           onClick={() => send(s)}
-                          className="w-fit rounded-xl corner-squircle  px-3 py-2 cursor-pointer text-left text-sm transition-colors hover:bg-accent flex justify-center items-center gap-2"
+                          className="w-fit rounded-xl corner-squircle  px-3 py-2 cursor-pointer text-left text-sm hover:bg-accent flex justify-center items-center gap-2"
                         >
                           <IconMessageFilled className="size-3.5 text-muted-foreground/50" />
                           {s}

@@ -1,3 +1,4 @@
+import { getOrgPlan } from "@foglamp/billing";
 import {
   getTraceScores as chGetTraceScores,
   listEvalScores,
@@ -11,7 +12,8 @@ import {
   type EvalFilters,
   type EvalModel,
 } from "@foglamp/db/schema/eval";
-import { desc, eq } from "drizzle-orm";
+import { project } from "@foglamp/db/schema/project";
+import { count, desc, eq } from "drizzle-orm";
 
 import { decimalOrNull, num } from "../lib/util";
 import { getPreset, PRESETS } from "../evals/presets";
@@ -86,7 +88,24 @@ export async function listEvals(db: Db, userId: string, projectId: string) {
 }
 
 export async function createEval(db: Db, userId: string, input: EvalInput) {
-  await requireProjectAccess(db, userId, input.projectId);
+  const proj = await requireProjectAccess(db, userId, input.projectId);
+
+  // Plan limit: cap evals per org, counted across all its projects.
+  const { limits } = await getOrgPlan(proj.orgId);
+  if (limits.evals !== null) {
+    const rows = await db
+      .select({ n: count() })
+      .from(evalDefinition)
+      .innerJoin(project, eq(project.id, evalDefinition.projectId))
+      .where(eq(project.orgId, proj.orgId));
+    if ((rows[0]?.n ?? 0) >= limits.evals) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Your plan allows ${limits.evals} eval${limits.evals === 1 ? "" : "s"}. Upgrade to add more.`,
+      });
+    }
+  }
+
   const preset = getPreset(input.presetId);
   if (!preset) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown preset" });
