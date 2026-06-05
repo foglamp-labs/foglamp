@@ -1,0 +1,59 @@
+---
+title: Changelog
+description: "What's new in Foglamp."
+---
+
+<Update label="June 5, 2026">
+
+## New features
+
+**Sessions view.** Follow a single conversation or user thread end to end. Set
+a `sessionId` on your calls and Foglamp groups every turn — across workflows
+and agents — under one session. See [Sessions](/dashboard/sessions).
+
+**AI SDK v4–v6 support via `foglamp/wrap`.** A new wrap adapter instruments
+older AI SDK versions without requiring an upgrade to v7. Drop-in replacement
+for `generateText`, `streamText`, `generateObject`, and `streamObject` — same
+traces, same ingest endpoint. See [AI SDK v4–v6 (wrap)](/sdk/wrap).
+
+**Web-search usage in traces.** Provider-reported web-search calls are now
+captured alongside token usage and cost, so search-heavy agents are billed
+and analyzed accurately.
+
+**Compile-time workflow safety.** The SDK now enforces that `workflowName`
+and `workflowRunId` are passed together at the type level — invalid
+combinations fail at build time rather than producing orphaned spans.
+
+**Better dashboard navigation.** Breadcrumb back-nav, card/table view
+toggles, and column filtering + sorting are available across list pages —
+including [Traces](/dashboard/traces), [Workflows](/dashboard/workflows),
+and [Agents](/dashboard/agents).
+
+**Editable project URL.** Rename a project's slug from
+**Org settings → General** without recreating the project. See
+[Projects, keys & billing](/dashboard/account).
+
+**Eval judge model picker.** Choosing a judge model when creating an
+[eval](/dashboard/evals) now uses an icon dropdown so providers and models
+are easier to identify at a glance.
+
+**Copy-paste instrumentation in empty states.** Empty Agents and Workflows
+pages now show ready-to-run snippets so new projects can ship their first
+trace without leaving the dashboard.
+
+## Updates
+
+**Syntax-highlighted code blocks.** Code blocks across the dashboard are now
+rendered with Shiki and follow the app theme — `github-light` in light mode
+and `vesper` in dark mode.
+
+## Bug fixes
+
+- Hardened the ingest path against oversized span metadata and capped
+  onboarding-key accumulation.
+- Resolved access-control and denial-of-service issues surfaced in a
+  security review.
+- Fixed the onboarding telemetry API so first-trace detection fires
+  reliably.
+
+</Update>
