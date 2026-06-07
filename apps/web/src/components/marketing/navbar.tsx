@@ -11,6 +11,8 @@ import { cn } from "@foglamp/ui/lib/utils";
 import { IconChevronDown } from "@tabler/icons-react";
 import Link from "next/link";
 
+import { authClient } from "@/lib/auth-client";
+
 import { products } from "./products";
 import { Wordmark } from "./wordmark";
 
@@ -54,6 +56,12 @@ function ProductsMenu() {
 }
 
 export function MarketingNavbar() {
+  // Swap the CTA for logged-in visitors. The marketing pages are public, so a
+  // signed-in user landing here (e.g. via /homepage) gets a "Dashboard" link
+  // instead of "Start monitoring".
+  const { data: session } = authClient.useSession();
+  const loggedIn = Boolean(session?.user);
+
   return (
     <header className="sticky top-0 z-50 bg-background/70 backdrop-blur-md shadow-[0_1px_0_0_var(--border)]">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
@@ -82,17 +90,25 @@ export function MarketingNavbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            render={<Link href="/login" />}
-            className="hidden sm:inline-flex"
-          >
-            Log in
-          </Button>
-          <Button size="sm" render={<Link href="/login" />}>
-            Start monitoring
-          </Button>
+          {loggedIn ? (
+            <Button size="sm" render={<Link href="/overview" />}>
+              Dashboard
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                render={<Link href="/login" />}
+                className="hidden sm:inline-flex"
+              >
+                Log in
+              </Button>
+              <Button size="sm" render={<Link href="/login" />}>
+                Start monitoring
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </header>

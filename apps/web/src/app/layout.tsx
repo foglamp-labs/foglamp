@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Host_Grotesk, Inter } from "next/font/google";
+import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
 import Providers from "@/components/providers";
@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 
 // Display face for marketing headings only (applied via the `font-display`
 // utility defined in index.css). The app dashboard keeps Inter for everything.
-const hostGrotesk = Host_Grotesk({
-  variable: "--font-host-grotesk",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
 });
 
@@ -47,7 +47,7 @@ export default function RootLayout({
         className={cn(
           inter.variable,
           geistMono.variable,
-          hostGrotesk.variable,
+          spaceGrotesk.variable,
           "antialiased",
         )}
       >
