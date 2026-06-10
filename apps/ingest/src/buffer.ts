@@ -69,14 +69,19 @@ export class WriteBuffer {
     }
   }
 
-  /** Stop the timer and flush whatever remains (called on shutdown). */
+  /** Stop the timer and drain whatever remains (called on shutdown). */
   async stop(): Promise<void> {
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;
     }
-    // A flush may be in flight; wait it out, then drain the remainder.
-    while (this.flushing) await new Promise((r) => setTimeout(r, 10));
-    await this.flush();
+    // Drain in a loop, not a single flush: rows pushed by in-flight request
+    // handlers while a flush is awaiting ClickHouse land in the *next* batch,
+    // which a one-shot flush would leave behind. Bounded so a ClickHouse
+    // outage (failed flushes requeue their batch) can't hang process exit.
+    for (let i = 0; i < 5 && (this.flushing || this.rows.length > 0); i++) {
+      while (this.flushing) await new Promise((r) => setTimeout(r, 10));
+      await this.flush();
+    }
   }
 }

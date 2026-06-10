@@ -168,12 +168,20 @@ export class Collector implements Telemetry {
     return new Collector(this.transport, this.config, context);
   }
 
-  /** Flush buffered traces now (await before a serverless handler returns). */
+  /**
+   * Flush buffered traces now. Await this before a serverless handler returns
+   * (or pass `waitUntil` so the SDK does it for you). The background flush
+   * timer keeps running — the collector stays usable afterwards.
+   */
   flush(): Promise<void> {
     return this.transport.flush();
   }
 
-  /** Stop the flush timer and drain all buffered traces. */
+  /**
+   * Stop the flush timer and drain everything, including traces enqueued
+   * mid-flush. Call once at process exit (SIGTERM handler, end of a script);
+   * for a per-request drain in a server that keeps running, use `flush()`.
+   */
   shutdown(): Promise<void> {
     return this.transport.shutdown();
   }
@@ -194,6 +202,7 @@ export class Collector implements Telemetry {
       // Per-call context wins; otherwise the global path maps functionId→agent.
       const context: IntegrationContext = this.context ?? { agentName: e.functionId };
       const now = Date.now();
+      this.reapAbandoned(now);
       this.builders.set(e.callId, {
         startTime: now,
         endTime: now,
@@ -407,11 +416,23 @@ export class Collector implements Telemetry {
   };
 
   onError: NonNullable<Telemetry["onError"]> = (error) => {
-    // The error event carries no callId. The generation is aborted, so flush
-    // every open trace on this integration with an error root. (For the global
-    // path this may close unrelated concurrent calls — prefer per-call
-    // `fog.integration(...)` when running many in parallel.)
+    // The error event carries no callId, so it's only attributable when exactly
+    // one trace is open on this integration. With several concurrent calls
+    // (shared global collector), closing them all would mark healthy traces as
+    // errored — leave them alone, surface a diagnostic, and let the abandoned-
+    // trace reaper close the failed one. Per-call `fog.integration(...)` avoids
+    // the ambiguity entirely.
     this.guard(() => {
+      if (this.builders.size !== 1) {
+        if (this.builders.size > 1) {
+          this.config.onError(
+            new Error(
+              `[foglamp] onError with ${this.builders.size} traces in flight on one integration — cannot attribute the failure; the failed trace will be finalized as abandoned later. Use fog.integration(...) per call.`,
+            ),
+          );
+        }
+        return;
+      }
       const message = serialize(error instanceof Error ? error.message : error, ERROR_MESSAGE_CAP);
       for (const [callId, builder] of [...this.builders]) {
         builder.error = message ?? "error";
@@ -421,6 +442,22 @@ export class Collector implements Telemetry {
   };
 
   // --- internals ----------------------------------------------------------
+
+  // A call that never reaches onFinish/onError (process crash mid-stream,
+  // unattributable onError above) would leak its builder forever. Sweep on
+  // every onStart: anything idle for maxTraceAgeMs is flushed with an
+  // "abandoned" error so its spans still reach the dashboard. Staleness is
+  // measured from endTime (last recorded activity — steps and tool results
+  // bump it), not startTime, so a legitimately long-running trace that is
+  // still producing events is never reaped mid-stream.
+  private reapAbandoned(now: number): void {
+    for (const [callId, builder] of [...this.builders]) {
+      if (now - builder.endTime > this.config.maxTraceAgeMs) {
+        builder.error ??= "abandoned: trace never finished (exceeded maxTraceAgeMs)";
+        this.finalize(callId, builder);
+      }
+    }
+  }
 
   private guard(fn: () => void): void {
     if (!this.config.enabled) return;

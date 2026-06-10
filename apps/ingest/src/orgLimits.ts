@@ -79,8 +79,10 @@ export async function checkOrgQuota(
   incoming: number,
 ): Promise<QuotaDecision> {
   const plan = await planFor(orgId);
+  // Clamp to [1, 65535]: a 0 (or negative) override would stamp spans with an
+  // already-expired TTL and ClickHouse would delete them on the next merge.
   const retentionDays = Math.min(
-    plan.limits.retentionDays ?? UNLIMITED_RETENTION,
+    Math.max(1, plan.limits.retentionDays ?? UNLIMITED_RETENTION),
     65535,
   );
   const limit = plan.limits.spansPerMonth;

@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "license": "Elastic-2.0",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/main.mjs",
   "scripts": {
@@ -24,7 +24,6 @@
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "evlog": "^2.13.0",
-    "exa-js": "^2.13.0",
     "foglamp": "workspace:*",
     "hono": "catalog:",
     "uuidv7": "catalog:",

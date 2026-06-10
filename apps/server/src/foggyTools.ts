@@ -1,5 +1,4 @@
 import { tool, type ToolSet } from "ai";
-import Exa from "exa-js";
 import { z } from "zod";
 
 import { db } from "@foglamp/db";
@@ -34,8 +33,41 @@ function resolveWindow(from?: string, to?: string) {
   return { from: fromDate, to: toDate };
 }
 
-const exa = env.EXA_API_KEY ? new Exa(env.EXA_API_KEY) : null;
-const DOCS_HOST = new URL(env.FOGGY_DOCS_URL).hostname;
+// User-controlled strings (span names, error messages, trace/agent/workflow
+// names arrive verbatim from customer SDK payloads) are wrapped in delimiters
+// so the model treats them as opaque data rather than instructions — the
+// prompt-injection mitigation paired with the rule in foggy.ts's system prompt.
+function untrusted(v: string | null | undefined): string | null {
+  if (v == null || v === "") return v ?? null;
+  return `[BEGIN_UNTRUSTED]${v}[END_UNTRUSTED]`;
+}
+
+// Docs corpus fetcher: Mintlify auto-serves /llms.txt (index + summaries) and
+// /llms-full.txt (the whole docs text). Cached in-process for 5 minutes and
+// capped so a runaway docs build can't blow up the model context; on fetch
+// failure a stale cache entry beats nothing.
+const DOCS_CACHE_TTL_MS = 5 * 60 * 1000;
+const DOCS_MAX_CHARS = 80_000;
+const docsCache = new Map<string, { text: string; fetchedAt: number }>();
+
+async function fetchDocs(full: boolean): Promise<string | null> {
+  const path = full ? "/llms-full.txt" : "/llms.txt";
+  const cached = docsCache.get(path);
+  if (cached && Date.now() - cached.fetchedAt < DOCS_CACHE_TTL_MS) {
+    return cached.text;
+  }
+  try {
+    const res = await fetch(new URL(path, env.FOGGY_DOCS_URL), {
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!res.ok) return cached?.text ?? null;
+    const text = (await res.text()).slice(0, DOCS_MAX_CHARS);
+    docsCache.set(path, { text, fetchedAt: Date.now() });
+    return text;
+  } catch {
+    return cached?.text ?? null;
+  }
+}
 
 export function buildFoggyTools({ ch, userId, projectId }: ToolCtx): ToolSet {
   return {
@@ -95,8 +127,8 @@ export function buildFoggyTools({ ch, userId, projectId }: ToolCtx): ToolSet {
         });
         return traces.map((t) => ({
           traceId: t.traceId,
-          name: t.traceName ?? t.agentName ?? null,
-          workflowName: t.workflowName,
+          name: untrusted(t.traceName ?? t.agentName ?? null),
+          workflowName: untrusted(t.workflowName),
           startTime: t.startTime,
           durationMs: t.durationMs,
           spanCount: t.spanCount,
@@ -116,10 +148,10 @@ export function buildFoggyTools({ ch, userId, projectId }: ToolCtx): ToolSet {
         const detail = await getTraceDetail(db, ch, userId, { projectId, traceId });
         // Drop the large input/output payloads to keep the tool result small.
         const spans = detail.spans.slice(0, 60).map((s) => ({
-          name: s.name,
+          name: untrusted(s.name),
           spanType: s.spanType,
           status: s.status,
-          errorMessage: s.errorMessage,
+          errorMessage: untrusted(s.errorMessage),
           modelId: s.modelId,
           durationMs: s.durationMs,
           ttftMs: s.ttftMs,
@@ -149,6 +181,9 @@ export function buildFoggyTools({ ch, userId, projectId }: ToolCtx): ToolSet {
         const { agents } = await getAgentList(db, ch, userId, { projectId, ...w });
         return agents.map((a) => ({
           ...a,
+          // Customer-supplied name: untrusted-wrapped for the model; the link
+          // keeps the raw value so the URL stays navigable.
+          agentName: untrusted(a.agentName),
           link: `/agents/${encodeURIComponent(a.agentName)}`,
         }));
       },
@@ -163,6 +198,7 @@ export function buildFoggyTools({ ch, userId, projectId }: ToolCtx): ToolSet {
         const { workflows } = await getWorkflowList(db, ch, userId, { projectId, ...w });
         return workflows.map((wf) => ({
           ...wf,
+          workflowName: untrusted(wf.workflowName),
           link: wf.workflowName
             ? `/workflows/${encodeURIComponent(wf.workflowName)}`
             : "/workflows/~ungrouped",
@@ -172,27 +208,24 @@ export function buildFoggyTools({ ch, userId, projectId }: ToolCtx): ToolSet {
 
     searchDocs: tool({
       description:
-        "Search the Foglamp documentation for how the product works (SDK usage, the data model, concepts, self-hosting). Use for 'how do I…' questions.",
-      inputSchema: z.object({ query: z.string().describe("What to look up.") }),
-      execute: async ({ query }) => {
-        if (!exa) {
+        "Fetch the Foglamp documentation for how the product works (SDK usage, the data model, concepts, self-hosting). Use for 'how do I…' questions. Returns the docs index with per-page summaries; set full=true when you need the complete docs text to answer precisely.",
+      inputSchema: z.object({
+        full: z
+          .boolean()
+          .optional()
+          .describe(
+            "Fetch the full documentation text instead of the index. Slower and much larger; use only when the index isn't enough.",
+          ),
+      }),
+      execute: async ({ full }) => {
+        const text = await fetchDocs(full ?? false);
+        if (!text) {
           return {
             unavailable: true,
-            note: `Docs search isn't configured. Point the user at ${env.FOGGY_DOCS_URL}.`,
+            note: `The docs site is unreachable right now. Point the user at ${env.FOGGY_DOCS_URL}.`,
           };
         }
-        const res = await exa.searchAndContents(query, {
-          numResults: 3,
-          includeDomains: [DOCS_HOST],
-          text: { maxCharacters: 1200 },
-        });
-        return {
-          results: res.results.map((r) => ({
-            title: r.title,
-            url: r.url,
-            text: r.text,
-          })),
-        };
+        return { source: env.FOGGY_DOCS_URL, text };
       },
     }),
   };

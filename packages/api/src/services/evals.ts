@@ -98,6 +98,7 @@ export async function listEvals(
   return rows.map(({ ev, st }) => {
     const s = byEval.get(ev.id);
     const scoreCount = s ? num(s.score_count) : 0;
+    const verdictCount = s ? num(s.verdict_count) : 0;
     const passCount = s ? num(s.pass_count) : 0;
     return {
       id: ev.id,
@@ -116,8 +117,14 @@ export async function listEvals(
       createdAt: ev.createdAt,
       // Windowed score metrics (0 / null when the eval didn't score in range).
       scoreCount,
-      passRate: scoreCount > 0 ? passCount / scoreCount : null,
-      avgScore: s && scoreCount > 0 ? num(s.score_sum) / scoreCount : null,
+      // Rate only over rows with a verdict; numeric-only judges (score, no
+      // pass/fail) show "—" rather than a misleading 0%.
+      passRate: verdictCount > 0 ? passCount / verdictCount : null,
+      // Average only over non-null scores; null means "not scorable", not 0.
+      avgScore:
+        s && num(s.scored_count) > 0
+          ? num(s.score_sum) / num(s.scored_count)
+          : null,
       cost: s ? num(s.cost) : 0,
     };
   });
@@ -217,13 +224,21 @@ export async function getEvalTimeseries(
   });
   return rows.map((r) => {
     const count = num(r.score_count);
+    const scored = num(r.scored_count);
+    const verdicts = num(r.verdict_count);
     return {
       bucket: r.bucket,
       scoreCount: count,
+      // Rows with a non-null score — the avgScore denominator. Lets clients
+      // re-aggregate avgScore across buckets without skew from unscored rows.
+      scoredCount: scored,
+      // Rows with a non-null verdict — the passRate denominator, for the same
+      // reason (numeric-only judges emit score-only rows with no verdict).
+      verdictCount: verdicts,
       passCount: num(r.pass_count),
       failCount: num(r.fail_count),
-      avgScore: count > 0 ? num(r.score_sum) / count : null,
-      passRate: count > 0 ? num(r.pass_count) / count : null,
+      avgScore: scored > 0 ? num(r.score_sum) / scored : null,
+      passRate: verdicts > 0 ? num(r.pass_count) / verdicts : null,
       cost: decimalOrNull(r.cost),
       scoreQuantiles: r.score_quantiles ?? [0, 0, 0],
     };

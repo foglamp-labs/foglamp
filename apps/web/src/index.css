@@ -1,10 +1,10 @@
 @import "@foglamp/ui/globals.css";
 
-/* Marketing display face. `font-display` resolves to Space Grotesk (loaded by
-   next/font in the root layout as --font-space-grotesk) and is used only on
+/* Marketing display face. `font-display` resolves to Host Grotesk (loaded by
+   next/font in the root layout as --font-host-grotesk) and is used only on
    marketing/product-page headings; the app dashboard stays on Inter. */
 @theme inline {
-  --font-display: var(--font-space-grotesk);
+  --font-display: var(--font-host-grotesk);
 }
 
 /* Shiki dual-theme (github-light / vesper). CodeBlock highlights with

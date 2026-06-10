@@ -20,10 +20,10 @@ Biggest lever for adoption outside the JS ecosystem.
 Let users query their own traces/metrics/scores programmatically, or export them.
 Read-only API keys + a typed query endpoint.
 
-### PII redaction at ingest
+### PII redaction at ingest — *Enterprise-only*
 
 Opt-in scrubbing of inputs/outputs before storage (reuse the PII code-scorer
-patterns). A compliance unlock for enterprise.
+patterns). A compliance unlock — the buyer is a compliance officer, not a dev.
 
 ## Quality & evals
 
@@ -68,10 +68,11 @@ edit without a deploy. ⚠️ Latency: cache aggressively to avoid a per-call ho
 Pick an agent's model + params from the dashboard and swap without shipping code.
 ⚠️ Latency: same runtime-config-fetch concern — share the prompt cache layer.
 
-### A/B tests
+### A/B tests — *Enterprise-only*
 
 Run prompt/model variants in production, assign traffic, compare quality × cost ×
-latency (the online counterpart to Experiments). ⚠️ Latency: cache variant assignment.
+latency (the online counterpart to Experiments — which stays free). ⚠️ Latency:
+cache variant assignment.
 
 ## Debugging & DX
 
@@ -119,10 +120,11 @@ usage-based pricing on top of foglamp.
 Surface cache hit-rate (we already track cached/cache-write tokens) and "you'd
 save $X with prompt caching."
 
-### Spend budgets
+### Spend budgets — *Enterprise-only*
 
 Extend the quota/alert machinery to per-project/agent spend budgets with warn
-thresholds and notifications.
+thresholds and notifications. Cost *visibility* stays free; cost *governance* is
+the org feature.
 
 ## Reliability & ops
 
@@ -133,15 +135,44 @@ ClickHouse) and alert on latency regressions.
 
 ### More alert channels
 
-Slack / Discord / PagerDuty / generic webhook delivery, alongside the existing
-email channel.
+Slack / Discord / generic webhook delivery, alongside the existing email
+channel — all free. PagerDuty delivery is *Enterprise-only* (the on-call-rotation
+signal).
+
+## Enterprise (`ee/`)
+
+The backbone of the commercial tier — features enterprises budget for and solo
+devs never miss. All live under `ee/` with a commercial license; everything else
+stays Apache 2.0. Items elsewhere in this file marked *Enterprise-only* land
+here too.
+
+### SSO / SAML
+
+SAML + OIDC single sign-on with enforced-SSO orgs and SCIM provisioning.
+The first checkbox on every enterprise security questionnaire.
+
+### RBAC
+
+Roles beyond owner/member — viewer, billing-only, per-project access, custom
+roles. Required once a customer's org chart is bigger than one team.
+
+### Audit logs
+
+Who did what, when: auth events, config changes, API key lifecycle, data
+exports. Queryable in-app and streamable to the customer's SIEM.
+
+### Multi-workspace
+
+Multiple isolated workspaces under one org with centralized billing and member
+management — the agencies/business-units shape.
 
 ## AI-native (Foggy)
 
-### Auto-RCA on alerts
+### Auto-RCA on alerts — *Enterprise-only*
 
 When an alert fires, have Foggy summarize the likely cause from the offending
-traces and attach it to the notification.
+traces and attach it to the notification. Real inference cost per alert; value
+scales with org size.
 
 ### Weekly digest email
 

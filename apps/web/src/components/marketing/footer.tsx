@@ -4,7 +4,6 @@ import Link from "next/link";
 
 import { ThemeSwitcher } from "@/components/theme-switcher";
 
-import { AsciiDivider } from "./dither-background";
 import { products } from "./products";
 import { Wordmark } from "./wordmark";
 
@@ -55,7 +54,6 @@ function FooterAnchor({ link }: { link: FooterLink }) {
 export function MarketingFooter() {
   return (
     <footer className="relative mt-24">
-      <AsciiDivider className="h-3" />
       <div className="shadow-[0_1px_0_0_var(--border)_inset]">
         <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
@@ -90,9 +88,23 @@ export function MarketingFooter() {
           </div>
 
           <div className="mt-12 flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} Foglamp. All rights reserved.
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-xs text-muted-foreground">
+                © {new Date().getFullYear()} Foglamp. All rights reserved.
+              </p>
+              <Link
+                href="/privacy"
+                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Privacy
+              </Link>
+              <Link
+                href="/terms"
+                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Terms
+              </Link>
+            </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted-foreground">Theme</span>
               <ThemeSwitcher />

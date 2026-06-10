@@ -38,8 +38,18 @@ edition" with features stripped out.
 | ClickHouse | 8123 | Span store and materialized rollups. |
 | Postgres | 5432 | Orgs, projects, API keys, alerts, custom pricing. |
 
-There is no Redis or external queue — the ingest write buffer is in-memory and
-flushes to ClickHouse on an interval and on graceful shutdown.
+There is no external queue — the ingest write buffer is in-memory and flushes
+to ClickHouse on an interval and on graceful shutdown, and eval scoring jobs
+queue in Postgres. Redis is optional: when `REDIS_URL` is set, ingest rate
+limiting is shared across replicas; unset, each instance limits in memory
+(fine for a single replica). The default compose includes a Redis service.
+
+<Note>
+  In the production compose, ClickHouse's port **8123 is internal-only** — it is
+  reachable from the other services but not published on the host. Keep it that
+  way (or set `CLICKHOUSE_PASSWORD`) before exposing the network; an open
+  passwordless ClickHouse leaks every span.
+</Note>
 
 ## Quickstart
 

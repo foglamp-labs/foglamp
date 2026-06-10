@@ -6,9 +6,10 @@
 # credentials printed once by the `migrate` service (search its logs for
 # "Save these now"). Point the SDK at the ingest API on http://localhost:4000.
 #
-# Plain Postgres + ClickHouse — no Supabase, no Redis, no queue. Email is
-# optional: leave RESEND_API_KEY unset and you still log in via the seeded
-# email+password admin.
+# Plain Postgres + ClickHouse + Redis — no Supabase, no queue. Redis only backs
+# ingest rate limiting; remove the service (and REDIS_URL) and ingest falls back
+# to per-instance in-memory limiting. Email is optional: leave RESEND_API_KEY
+# unset and you still log in via the seeded email+password admin.
 #
 # Override secrets/URLs with a local `.env` next to this file, e.g.
 #   BETTER_AUTH_SECRET=...   (REQUIRED in production; the default is dev-only)
@@ -31,8 +32,12 @@ x-app-env: &app-env
   OPENROUTER_MODELS_URL: https://openrouter.ai/api/v1/models
   RESEND_API_KEY: ${RESEND_API_KEY:-}
   RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  AUTH_DISABLE_EMAIL_PASSWORD: ${AUTH_DISABLE_EMAIL_PASSWORD:-}
   ADMIN_EMAIL: ${ADMIN_EMAIL:-}
   ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+  REDIS_URL: redis://redis:6379
 
 services:
   postgres:
@@ -72,6 +77,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 15
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # One-shot: Postgres migrate + ClickHouse DDL + retention + seed, then exits.
   # The app tiers wait for it to complete successfully.
@@ -118,6 +133,8 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
 
@@ -147,3 +164,4 @@ services:
 volumes:
   pg_data:
   ch_data:
+  redis_data:

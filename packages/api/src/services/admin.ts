@@ -35,10 +35,13 @@ import {
 	type EvalFilters,
 	type EvalModel,
 	evalDefinition,
+	evalJob,
 	evalState,
 } from "@foglamp/db/schema/eval";
+import { member } from "@foglamp/db/schema/organization";
+import { project } from "@foglamp/db/schema/project";
 import { env } from "@foglamp/env/server";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 
 import type { Ch, Db } from "../types";
@@ -1960,6 +1963,84 @@ export async function listPricing(): Promise<{
 	}
 	models.sort((a, b) => a.id.localeCompare(b.id));
 	return { count: models.length, models };
+}
+
+// --- Eval job queue observability --------------------------------------------
+
+export type EvalJobRow = {
+	id: string;
+	evalId: string;
+	evalName: string;
+	projectName: string;
+	windowStart: Date;
+	windowEnd: Date;
+	status: "pending" | "running" | "done" | "dead";
+	attempts: number;
+	maxAttempts: number;
+	leasedUntil: Date | null;
+	lastError: string | null;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
+/**
+ * Snapshot of the eval scoring queue (`eval_job`): per-status counts plus the
+ * 50 most recent jobs, joined with the eval + project for display. Surfaced on
+ * the Admin tab to watch the planner/executor pipeline. Scoped to evals in
+ * organizations the caller is a member of — the procedure is reachable by any
+ * authenticated user, so an unscoped query would leak other orgs' eval and
+ * project names.
+ */
+export async function listEvalJobs(
+	db: Db,
+	userId: string,
+): Promise<{
+	counts: Record<"pending" | "running" | "done" | "dead", number>;
+	jobs: EvalJobRow[];
+}> {
+	const countRows = await db
+		.select({
+			status: evalJob.status,
+			count: sql<number>`count(*)::int`,
+		})
+		.from(evalJob)
+		.innerJoin(evalDefinition, eq(evalDefinition.id, evalJob.evalId))
+		.innerJoin(project, eq(project.id, evalDefinition.projectId))
+		.innerJoin(
+			member,
+			and(eq(member.organizationId, project.orgId), eq(member.userId, userId)),
+		)
+		.groupBy(evalJob.status);
+	const counts = { pending: 0, running: 0, done: 0, dead: 0 };
+	for (const row of countRows) counts[row.status] = row.count;
+
+	const jobs = await db
+		.select({
+			id: evalJob.id,
+			evalId: evalJob.evalId,
+			evalName: evalDefinition.name,
+			projectName: project.name,
+			windowStart: evalJob.windowStart,
+			windowEnd: evalJob.windowEnd,
+			status: evalJob.status,
+			attempts: evalJob.attempts,
+			maxAttempts: evalJob.maxAttempts,
+			leasedUntil: evalJob.leasedUntil,
+			lastError: evalJob.lastError,
+			createdAt: evalJob.createdAt,
+			updatedAt: evalJob.updatedAt,
+		})
+		.from(evalJob)
+		.innerJoin(evalDefinition, eq(evalDefinition.id, evalJob.evalId))
+		.innerJoin(project, eq(project.id, evalDefinition.projectId))
+		.innerJoin(
+			member,
+			and(eq(member.organizationId, project.orgId), eq(member.userId, userId)),
+		)
+		.orderBy(desc(evalJob.createdAt))
+		.limit(50);
+
+	return { counts, jobs };
 }
 
 // --- Transactional email preview/test harness (dev-only) ---------------------

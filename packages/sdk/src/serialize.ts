@@ -96,13 +96,26 @@ function toolParams(schema: unknown): unknown {
   }
 }
 
-/** Coerce a user metadata map to the wire contract's string→string shape. */
+// Mirror the wire contract's metadata limits so an oversized map is clamped
+// here instead of getting the whole trace rejected at ingest.
+const METADATA_MAX_ENTRIES = 64;
+const METADATA_MAX_KEY_CHARS = 128;
+const METADATA_MAX_VALUE_CHARS = 1024;
+
+/**
+ * Coerce a user metadata map to the wire contract's string→string shape,
+ * clamped to the contract limits (64 entries, 128-char keys, 1024-char values).
+ */
 export function coerceMetadata(input: MetadataInput | undefined): Metadata | undefined {
   if (!input) return undefined;
   const out: Metadata = {};
+  let count = 0;
   for (const [key, value] of Object.entries(input)) {
     if (value === undefined || value === null) continue;
-    out[key] = typeof value === "string" ? value : String(value);
+    if (count >= METADATA_MAX_ENTRIES) break;
+    const str = typeof value === "string" ? value : String(value);
+    out[key.slice(0, METADATA_MAX_KEY_CHARS)] = str.slice(0, METADATA_MAX_VALUE_CHARS);
+    count++;
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }

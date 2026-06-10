@@ -1,7 +1,7 @@
 # Foglamp Contributor License Agreement
 
 > **Note:** This is a template adapted from the Apache Individual CLA, extended
-> with a relicensing grant so the project can be offered under both the Elastic
+> with a relicensing grant so the project can be offered under both the Apache
 > License 2.0 and separate commercial licenses. **Have it reviewed by legal
 > counsel before relying on it.** Replace "the Maintainer" with the legal entity
 > or individual that owns the Foglamp copyright.
@@ -52,7 +52,7 @@ such litigation is filed.
 
 ## 4. Relicensing and Dual Licensing
 
-You acknowledge and agree that the Project is distributed under the Elastic License
+You acknowledge and agree that the Project is distributed under the Apache License
 2.0 and that the Maintainer may additionally license the Project, including Your
 Contributions, under separate terms — including commercial or proprietary license
 terms. You grant the Maintainer the right to license and relicense Your

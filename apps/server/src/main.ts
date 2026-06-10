@@ -4,7 +4,7 @@ import { startQuotaWarnSweep } from "@foglamp/api/quotaCron";
 import { startScoringWorker } from "@foglamp/api/scoringCron";
 import { createContext } from "@foglamp/api/context";
 import { appRouter } from "@foglamp/api/routers/index";
-import { auth } from "@foglamp/auth";
+import { auth, getAuthMethods } from "@foglamp/auth";
 import { env, getTrustedAppOrigins } from "@foglamp/env/server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -30,6 +30,10 @@ app.use(
 );
 
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
+
+// Public: which sign-in methods this deployment offers (derived from env, no
+// secrets). The login page reads this to render only what will actually work.
+app.get("/api/auth-methods", (c) => c.json(getAuthMethods()));
 
 app.use(
   "/trpc/*",

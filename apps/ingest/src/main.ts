@@ -81,6 +81,10 @@ app.post(
   async (c) => {
   const log = c.get("log");
 
+  // Refuse new work once shutdown began: rows accepted after the final buffer
+  // drain would be silently lost at process.exit. The SDK retries on 503.
+  if (shuttingDown) return c.json({ error: "shutting down" }, 503);
+
   // 1. Authenticate. Accept `Authorization: Bearer fl_…` or `x-api-key`.
   const key =
     bearerKey(c.req.header("authorization")) ?? c.req.header("x-api-key") ?? null;
@@ -90,14 +94,8 @@ app.post(
   if (!resolved) return c.json({ error: "invalid or revoked API key" }, 401);
   log.set({ projectId: resolved.projectId });
 
-  // 2. Rate limit per key (in-memory, per-instance/approximate).
-  const rl = checkRateLimit(resolved.apiKeyId);
-  if (!rl.allowed) {
-    c.header("Retry-After", String(Math.ceil(rl.retryAfterMs / 1000)));
-    return c.json({ error: "rate limit exceeded" }, 429);
-  }
-
-  // 3. Validate the wire payload.
+  // 2. Validate the wire payload. (INGEST_MAX_BODY_BYTES already rejected
+  // oversized bodies before they were buffered.)
   let body: unknown;
   try {
     body = await c.req.json();
@@ -112,9 +110,17 @@ app.post(
     );
   }
 
+  // 3. Rate limit per key, costed by span count so one request carrying a huge
+  // batch can't amplify past the limit (shared via Redis when configured).
+  const incoming = parsed.data.traces.reduce((n, t) => n + t.spans.length, 0);
+  const rl = await checkRateLimit(resolved.apiKeyId, Math.max(1, incoming));
+  if (!rl.allowed) {
+    c.header("Retry-After", String(Math.ceil(rl.retryAfterMs / 1000)));
+    return c.json({ error: "rate limit exceeded" }, 429);
+  }
+
   // 4. Plan quota: reject over the hard cap (110%); also gives the per-org
   // retention to stamp. Warn (90%) is surfaced in-app via the usage endpoint.
-  const incoming = parsed.data.traces.reduce((n, t) => n + t.spans.length, 0);
   const quota = await checkOrgQuota(client, resolved.orgId, incoming);
   if (quota.reject) {
     log.set({ quotaUsed: quota.used, quotaLimit: quota.limit });
@@ -160,6 +166,10 @@ async function shutdown(signal: string): Promise<void> {
   const log = createLogger({ service: "ingest" });
   try {
     clearInterval(pruneTimer);
+    // New /ingest requests now get 503; give handlers already past that guard
+    // a beat to finish pushing before the drain (which also re-checks for
+    // late rows on every pass).
+    await new Promise((r) => setTimeout(r, 100));
     await buffer.stop();
     await client.close();
     log.emit({ outcome: "shutdown", signal });

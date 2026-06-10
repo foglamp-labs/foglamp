@@ -3,8 +3,9 @@ title: Configuration
 description: "Environment variable reference for a self-hosted deployment."
 ---
 
-All services are configured through environment variables, validated at startup.
-Anything with a default is optional; everything else is required.
+All services are configured through environment variables, validated at startup
+(`packages/env`). Anything with a default is optional; everything else is
+required. `apps/server/.env.example` mirrors this reference.
 
 ## Core
 
@@ -14,7 +15,7 @@ Anything with a default is optional; everything else is required.
 | `BETTER_AUTH_SECRET` | yes | — | Session-signing secret, **min 32 chars**. |
 | `BETTER_AUTH_URL` | yes | — | Public URL of `apps/server` (e.g. `http://localhost:3000`). |
 | `CORS_ORIGIN` | yes | — | Dashboard origin allowed to call the API (e.g. `http://localhost:3001`). |
-| `CORS_EXTRA_ORIGINS` | no | — | Additional allowed origins, comma/space separated. |
+| `CORS_EXTRA_ORIGINS` | no | — | Additional allowed origins, comma/space separated (preview deploys, staging). |
 | `PORT` | no | `3000` | Port for `apps/server`. Usually injected by the host. |
 | `NODE_ENV` | no | `development` | `development`, `production`, or `test`. |
 
@@ -24,7 +25,7 @@ Anything with a default is optional; everything else is required.
 | --- | --- | --- |
 | `CLICKHOUSE_URL` | `http://localhost:8123` | ClickHouse HTTP endpoint. |
 | `CLICKHOUSE_USER` | `default` | Username. |
-| `CLICKHOUSE_PASSWORD` | `` | Password. |
+| `CLICKHOUSE_PASSWORD` | `` | Password. Empty is fine while ClickHouse is unreachable from outside your network (the default compose keeps 8123 internal); the server logs a warning if it's empty in production. |
 | `CLICKHOUSE_DATABASE` | `foglamp` | Database name. |
 
 ## Ingest (`apps/ingest`)
@@ -34,7 +35,9 @@ Anything with a default is optional; everything else is required.
 | `INGEST_PORT` | `4000` | Port for the ingest API. |
 | `INGEST_FLUSH_INTERVAL_MS` | `1000` | How often the write buffer flushes to ClickHouse. |
 | `INGEST_FLUSH_MAX_ROWS` | `1000` | Flush early once this many rows are buffered. |
-| `INGEST_RATE_LIMIT_RPS` | `100` | Per-key rate limit (per instance, approximate). |
+| `INGEST_RATE_LIMIT_RPS` | `100` | Spans/second budget per API key — a request costs its span count. |
+| `INGEST_MAX_BODY_BYTES` | `10485760` | Max request body in bytes; larger requests get `413` before parsing. |
+| `REDIS_URL` | — | Optional shared Redis for rate limiting across ingest replicas (e.g. `redis://redis:6379`). Unset → per-instance in-memory limiting, fine for a single replica. |
 | `API_KEY_CACHE_TTL_MS` | `60000` | In-memory API-key cache TTL. |
 
 ## Cost & pricing
@@ -51,6 +54,51 @@ Anything with a default is optional; everything else is required.
 | `ALERT_EVAL_INTERVAL_MS` | `60000` | How often the evaluator sweeps enabled rules. |
 | `ALERT_RENOTIFY_MS` | `3600000` | Re-notify cooldown while a rule stays firing. |
 
+## Evals & provider keys (`apps/server`)
+
+Evals score your traces with bring-your-own-key judge models. The whole
+feature is gated on `FOGLAMP_SECRETS_KEY` — without it, provider keys can't be
+stored and scoring stays off.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `FOGLAMP_SECRETS_KEY` | — | **Min 32 chars.** AES-256-GCM key encrypting provider API keys at rest. Generate with `openssl rand -base64 32`. Unset → evals/provider keys disabled. |
+| `SCORING_EVAL_INTERVAL_MS` | `60000` | How often the scoring planner sweeps enabled evals and enqueues jobs. |
+| `SCORING_SETTLE_MS` | `60000` | Spans newer than this aren't scored yet, so late spans settle first. |
+| `EVAL_JUDGE_CONCURRENCY` | `5` | Max judge LLM calls in flight per eval job. |
+| `EVAL_SCORING_BATCH` | `100` | Max targets scored per eval per planner tick. |
+| `EVAL_JUDGE_MAX_INPUT_CHARS` | `200000` | Char budget for a judge call's prompt fields; larger payloads are truncated. |
+| `EVAL_EXECUTOR_BATCH` | `5` | Max queued eval jobs the executor claims (and runs) per tick. |
+
+## Billing — Stripe (optional)
+
+Most self-hosts leave this whole block unset; billing is enabled only when
+**both** the secret key and webhook secret are present.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `STRIPE_SECRET_KEY` | — | Stripe API secret key. |
+| `STRIPE_WEBHOOK_SECRET` | — | Webhook signing secret for the Stripe endpoint. |
+| `STRIPE_PRICE_ID_PRO_MONTHLY` | — | Price ID for the Pro monthly plan. |
+| `STRIPE_PRICE_ID_PRO_ANNUAL` | — | Price ID for the Pro annual plan. |
+| `QUOTA_WARN_INTERVAL_MS` | `3600000` | How often orgs are swept for the 90% span-quota warning email. |
+
+## Foggy — in-app assistant (optional)
+
+Foggy is enabled only when `GOOGLE_GENERATIVE_AI_API_KEY` is set.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | — | Gemini API key; unset disables Foggy. |
+| `FOGGY_MODEL` | `gemini-3.1-flash-lite` | Model used for chat. |
+| `FOGGY_DOCS_URL` | `https://docs.foglamp.dev` | Docs site Foggy's docs tool fetches `llms.txt` / `llms-full.txt` from. |
+| `FOGGY_RPM` | `15` | Per-user requests/minute. |
+| `FOGGY_DAILY_LIMIT` | `200` | Per-user messages/day. |
+| `FOGGY_MAX_STEPS` | `6` | Max tool-use steps per answer. |
+| `FOGGY_MAX_OUTPUT_TOKENS` | `1500` | Output token cap per answer. |
+| `FOGLAMP_API_KEY` | — | Optional: dogfood Foggy's own LLM calls into a Foglamp project. |
+| `FOGLAMP_INGEST_URL` | — | Ingest endpoint for the dogfooding key. |
+
 ## Email (optional)
 
 Enables magic-link login and alert notifications. Without these, password login
@@ -63,12 +111,14 @@ still works.
 
 ## Google OAuth (optional)
 
-Enabled only when **both** are present.
+Enabled only when **both** are present. Set the OAuth redirect URI in the
+Google Cloud console to `<BETTER_AUTH_URL>/api/auth/callback/google`.
 
 | Variable | Description |
 | --- | --- |
 | `GOOGLE_CLIENT_ID` | OAuth client ID. |
 | `GOOGLE_CLIENT_SECRET` | OAuth client secret. |
+| `AUTH_DISABLE_EMAIL_PASSWORD` | Set to `true` to turn off email+password sign-in (e.g. Google + magic link only). Default: enabled. |
 
 ## Seed bootstrap
 

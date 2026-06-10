@@ -1,6 +1,6 @@
 {
   "name": "foglamp",
-  "license": "Elastic-2.0",
+  "license": "Apache-2.0",
   "private": true,
   "workspaces": {
     "packages": [
@@ -36,8 +36,8 @@
   "scripts": {
     "dev": "turbo dev",
     "predev": "bun run dev:infra",
-    "dev:infra": "docker compose up -d --wait postgres clickhouse",
-    "dev:infra:down": "docker compose stop postgres clickhouse",
+    "dev:infra": "docker compose up -d --wait postgres clickhouse redis",
+    "dev:infra:down": "docker compose stop postgres clickhouse redis",
     "build": "turbo build",
     "check-types": "turbo check-types",
     "dev:web": "turbo -F web dev",

@@ -10,7 +10,7 @@ import { magicLinkClient, organizationClient } from "better-auth/client/plugins"
 // public URL for non-containerized SSR.
 const baseURL =
   typeof window === "undefined"
-    ? process.env.INTERNAL_SERVER_URL || env.NEXT_PUBLIC_SERVER_URL
+    ? env.INTERNAL_SERVER_URL || env.NEXT_PUBLIC_SERVER_URL
     : env.NEXT_PUBLIC_SERVER_URL;
 
 export const authClient = createAuthClient({

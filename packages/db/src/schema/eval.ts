@@ -27,6 +27,12 @@ export const providerName = pgEnum("provider_name", [
   "openai",
   "anthropic",
 ]);
+export const evalJobStatus = pgEnum("eval_job_status", [
+  "pending",
+  "running",
+  "done",
+  "dead",
+]);
 
 // Which traces/spans an eval scores. Empty = everything at the chosen level.
 export type EvalFilters = {
@@ -101,6 +107,43 @@ export const evalState = pgTable("eval_state", {
     .notNull(),
 });
 
+// Durable scoring work queue. The planner claims a watermark window and inserts
+// one job per (eval, window); executors lease jobs with FOR UPDATE SKIP LOCKED
+// and re-query ClickHouse for the window's candidates. Scores collapse in
+// storage (ReplacingMergeTree on score_id), so a retried job re-scoring the
+// same window is idempotent — at-least-once is safe and beats silent gaps.
+export const evalJob = pgTable(
+  "eval_job",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    evalId: text("eval_id")
+      .notNull()
+      .references(() => evalDefinition.id, { onDelete: "cascade" }),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    windowEnd: timestamp("window_end", { withTimezone: true }).notNull(),
+    status: evalJobStatus("status").default("pending").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    maxAttempts: integer("max_attempts").default(3).notNull(),
+    // Lease deadline while running; a job whose lease expired is reclaimed
+    // (crashed executor) rather than stuck in `running` forever.
+    leasedUntil: timestamp("leased_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("eval_job_evalId_idx").on(table.evalId),
+    index("eval_job_status_createdAt_idx").on(table.status, table.createdAt),
+  ],
+);
+
 // BYOK provider credentials, AES-256-GCM encrypted at rest (see crypto.ts).
 // One key per provider per project; plaintext is never stored or returned.
 export const providerCredential = pgTable(
@@ -148,6 +191,13 @@ export const evalDefinitionRelations = relations(evalDefinition, ({ one }) => ({
 export const evalStateRelations = relations(evalState, ({ one }) => ({
   eval: one(evalDefinition, {
     fields: [evalState.evalId],
+    references: [evalDefinition.id],
+  }),
+}));
+
+export const evalJobRelations = relations(evalJob, ({ one }) => ({
+  eval: one(evalDefinition, {
+    fields: [evalJob.evalId],
     references: [evalDefinition.id],
   }),
 }));

@@ -3,8 +3,10 @@
 import dynamic from "next/dynamic";
 
 // The whole dashboard replica is ~50–80kB and renders SSR-fragile charts, so we
-// lazy-load it client-only below the fold behind a same-size skeleton. The
-// skeleton reserves the frame's 660px so the page doesn't jump when it swaps in.
+// lazy-load it client-only behind a same-size skeleton. It anchors the hero's
+// right side and deliberately bleeds off the right edge of the screen (the
+// width + clipping is owned by <Hero>); here we only fill whatever box we're
+// given. The skeleton reserves the frame's 660px so the page doesn't jump.
 const DashboardDemo = dynamic(
   () => import("@/components/marketing/demo").then((m) => m.DashboardDemo),
   {
@@ -35,19 +37,6 @@ function DemoSkeleton() {
   );
 }
 
-export function DemoSection() {
-  return (
-    <section className="mx-auto w-full max-w-6xl px-5 sm:px-8">
-      <div className="mb-8 text-center">
-        <h2 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-          Your whole agent stack, in one pane.
-        </h2>
-        <p className="mx-auto mt-3 max-w-xl text-muted-foreground text-pretty">
-          Cost, traces, agents, evals, and alerts — live. Click around: it&apos;s the real
-          dashboard, running on sample data.
-        </p>
-      </div>
-      <DashboardDemo />
-    </section>
-  );
+export function HeroDemo() {
+  return <DashboardDemo />;
 }

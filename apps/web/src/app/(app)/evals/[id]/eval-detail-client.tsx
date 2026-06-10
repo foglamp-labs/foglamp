@@ -298,17 +298,21 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 		const buckets = series.data ?? [];
 		const count = buckets.reduce((n, b) => n + b.scoreCount, 0);
 		const passes = buckets.reduce((n, b) => n + b.passCount, 0);
+		// Pass rate over rows with a verdict only — score-only rows (numeric
+		// judges) carry no pass/fail and would deflate the rate.
+		const verdicts = buckets.reduce((n, b) => n + b.verdictCount, 0);
+		// avgScore is per-bucket over non-null scores only, so re-weight by
+		// scoredCount (not scoreCount) to recover the exact overall average.
+		const scored = buckets.reduce((n, b) => n + b.scoredCount, 0);
 		const scoreSum = buckets.reduce(
-			(n, b) => n + (b.avgScore ?? 0) * b.scoreCount,
+			(n, b) => n + (b.avgScore ?? 0) * b.scoredCount,
 			0,
 		);
 		const cost = buckets.reduce((n, b) => n + (b.cost ?? 0), 0);
-		const scored = buckets.filter((b) => (b.avgScore ?? null) !== null);
-		const hasScores = scored.reduce((n, b) => n + b.scoreCount, 0) > 0;
 		return {
 			count,
-			avgScore: hasScores && count > 0 ? scoreSum / count : null,
-			passRate: count > 0 ? passes / count : null,
+			avgScore: scored > 0 ? scoreSum / scored : null,
+			passRate: verdicts > 0 ? passes / verdicts : null,
 			cost,
 		};
 	}, [series.data]);
@@ -498,9 +502,11 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 
 						<div className="flex items-center justify-between px-1">
 							<span className="text-sm text-muted-foreground/50 tabular-nums">
-								{`Showing ${page * PAGE_SIZE + 1}–${
-									page * PAGE_SIZE + scores.length
-								} of ${formatCount(scoreTotal)}`}
+								{scores.length === 0
+									? `Showing 0 of ${formatCount(scoreTotal)}`
+									: `Showing ${page * PAGE_SIZE + 1}–${
+											page * PAGE_SIZE + scores.length
+										} of ${formatCount(scoreTotal)}`}
 							</span>
 							<Pagination className="mx-0 w-auto justify-end">
 								<PaginationContent>

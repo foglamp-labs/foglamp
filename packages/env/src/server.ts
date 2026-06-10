@@ -31,7 +31,11 @@ const serverSchema = {
   INGEST_PORT: z.coerce.number().default(4000),
   INGEST_FLUSH_INTERVAL_MS: z.coerce.number().default(1000),
   INGEST_FLUSH_MAX_ROWS: z.coerce.number().default(1000),
+  // Spans/second budget per API key (a request costs its span count).
   INGEST_RATE_LIMIT_RPS: z.coerce.number().default(100),
+  // Optional shared store for ingest rate limiting. Unset → per-instance
+  // in-memory limiting (fine for a single replica).
+  REDIS_URL: z.string().min(1).optional(),
   API_KEY_CACHE_TTL_MS: z.coerce.number().default(60_000),
   // Max ingest request body; rejected (413) before the body is buffered/parsed.
   INGEST_MAX_BODY_BYTES: z.coerce.number().default(10_485_760), // 10 MB
@@ -56,6 +60,8 @@ const serverSchema = {
   // Approx char budget for a judge call's filled prompt fields; larger payloads
   // are head+tail truncated before the call to bound context window + cost.
   EVAL_JUDGE_MAX_INPUT_CHARS: z.coerce.number().default(200_000),
+  // Max eval_job rows an executor claims (and runs) per tick.
+  EVAL_EXECUTOR_BATCH: z.coerce.number().default(5),
 
   // --- Billing (Stripe; org-scoped). Plugin enabled only when the secret is set. ---
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
@@ -68,6 +74,13 @@ const serverSchema = {
   // --- Optional Google OAuth (enabled only when both are present) ---
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  // Turn off email+password sign-in (the hosted deployment sets this so login
+  // is Google + magic link only). Self-hosts leave it unset: password login is
+  // the floor that works without any third-party setup.
+  AUTH_DISABLE_EMAIL_PASSWORD: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
 
   // --- Seed script bootstrap (no static defaults; random if unset) ---
   ADMIN_EMAIL: z.string().optional(),
@@ -88,8 +101,7 @@ const serverSchema = {
   // reports that it isn't configured.
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
   FOGGY_MODEL: z.string().default("gemini-3.1-flash-lite"),
-  // Optional docs-search tool (Exa); no-ops when unset.
-  EXA_API_KEY: z.string().min(1).optional(),
+  // Docs site Foggy's docs tool fetches llms.txt / llms-full.txt from.
   FOGGY_DOCS_URL: z.url().default("https://docs.foglamp.dev"),
   // Cost guardrails.
   FOGGY_RPM: z.coerce.number().default(15),
@@ -107,6 +119,21 @@ export const env = createEnv<undefined, typeof serverSchema>({
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
 });
+
+// Billing co-validation: the Stripe plugin turns on when both secrets are set
+// and registers the pro plan with this price ID. Without it the plan would be
+// registered with priceId "" and only fail when a user reaches checkout —
+// fail at boot instead.
+if (
+  env.STRIPE_SECRET_KEY &&
+  env.STRIPE_WEBHOOK_SECRET &&
+  !env.STRIPE_PRICE_ID_PRO_MONTHLY
+) {
+  throw new Error(
+    "STRIPE_PRICE_ID_PRO_MONTHLY is required when billing is enabled " +
+      "(STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are set)",
+  );
+}
 
 function isLocalHostname(hostname: string) {
   return (

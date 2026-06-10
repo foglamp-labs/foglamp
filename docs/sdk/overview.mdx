@@ -41,12 +41,13 @@ integrations become no-ops, nothing is sent, and nothing is thrown.
 
 ## Collector methods
 
-### `fog.integration(context?)`
+### `fog.integration(context)`
 
 Returns a telemetry integration to pass into a call's
 `telemetry.integrations` array (AI SDK v7 also accepts the legacy
-`experimental_telemetry` alias). The optional context labels every span the
-call produces.
+`experimental_telemetry` alias). The context — a **required** argument —
+labels every span the call produces; calling it without a `traceName` or
+`agentName` throws immediately (at setup, not inside the call).
 
 ```ts
 fog.integration({
@@ -79,8 +80,8 @@ fog.integration({ traceName: "classify-email" });
 ### `fog.flush()`
 
 Sends any buffered spans immediately and resolves when the request completes.
-Call this before a serverless function returns, or on shutdown. Safe to call
-when the collector is disabled (resolves immediately).
+Call this before a serverless function returns. Safe to call when the
+collector is disabled (resolves immediately).
 
 ```ts
 await fog.flush();
@@ -88,12 +89,22 @@ await fog.flush();
 
 ### `fog.shutdown()`
 
-Stops the flush timer and performs a final flush. Use on graceful process
-shutdown in long-running servers.
+Stops the flush timer and drains everything, including traces enqueued while a
+flush was already in flight. Use on graceful process shutdown in long-running
+servers.
 
 ```ts
 process.on("SIGTERM", () => fog.shutdown());
 ```
+
+<Note>
+  **`flush()` vs `shutdown()`** — `flush()` is a per-request drain: the
+  background timer keeps running and the collector stays usable. `shutdown()`
+  is terminal: it stops the timer and loops until the queue is truly empty.
+  Use `flush()` at the end of a serverless handler; use `shutdown()` exactly
+  once when the process exits — calling only `flush()` there can strand traces
+  enqueued mid-flush.
+</Note>
 
 ## Registration paths
 

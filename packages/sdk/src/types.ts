@@ -31,6 +31,18 @@ export interface FoglampConfig {
   maxBatchTraces?: number;
   /** Flush early once this many spans are buffered. Default 500. */
   maxBatchSpans?: number;
+  /**
+   * Hard cap on spans buffered in memory (e.g. when the ingest endpoint is
+   * down). Past it, the oldest traces are dropped and `onError` is called.
+   * Default 5000.
+   */
+  maxQueuedSpans?: number;
+  /**
+   * Traces still open after this long are finalized with an "abandoned" error
+   * the next time a call starts, so a crashed/never-finished generation can't
+   * leak its builder (and its spans) forever. Default 600_000 (10 min).
+   */
+  maxTraceAgeMs?: number;
   /** Per-blob cap for serialized inputs/outputs (chars). Default 100_000. */
   maxPayloadChars?: number;
   /** Capture prompt/messages as span `input`. Default true. */
@@ -97,6 +109,8 @@ export interface ResolvedConfig {
   flushIntervalMs: number;
   maxBatchTraces: number;
   maxBatchSpans: number;
+  maxQueuedSpans: number;
+  maxTraceAgeMs: number;
   maxPayloadChars: number;
   recordInputs: boolean;
   recordOutputs: boolean;

@@ -1,9 +1,10 @@
 import { env } from "@foglamp/env/server";
 
 // Per-user limiter for the Foggy chat endpoint: a token bucket (requests/min)
-// plus a rolling 24h cap. In-memory and per-instance — like the ingest limiter,
-// it bounds a single server's cost, not a coordinated fleet. Good enough for the
-// OSS core; swap for a shared store (Redis) if you run many replicas.
+// plus a rolling 24h cap. In-memory and per-instance — it bounds a single
+// server's cost, not a coordinated fleet. Good enough for the OSS core, since
+// apps/server typically runs as one replica; if you scale it out, move this to
+// the shared Redis the ingest limiter already uses (REDIS_URL).
 
 type Bucket = { tokens: number; updatedAt: number };
 type Daily = { count: number; resetAt: number };

@@ -3,7 +3,7 @@ import { env } from "@foglamp/env/server";
 import { createLogger } from "evlog";
 
 import { ch } from "./clickhouse";
-import { evaluateEvals } from "./services/scoringWorker";
+import { evaluateEvals, executeJobs } from "./services/scoringWorker";
 
 /**
  * Start the eval scoring worker on a fixed interval — the sibling of the alert
@@ -20,7 +20,9 @@ export function startScoringWorker(): () => void {
     if (running) return;
     running = true;
     try {
+      // Plan first (claim windows → enqueue jobs), then execute what's queued.
       await evaluateEvals(db, ch, log);
+      await executeJobs(db, ch, log);
     } catch (err) {
       log.error("eval.sweep_loop_failed", {
         error: err instanceof Error ? err.message : String(err),

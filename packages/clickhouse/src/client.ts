@@ -14,9 +14,25 @@ export type ClickHouseConfig = {
  * config is passed (the common case for ingest/server); an explicit config is
  * used by the migration runner and tests.
  */
+let warnedNoPassword = false;
+
 export function createClickHouseClient(
   config?: Partial<ClickHouseConfig>,
 ): ClickHouseClient {
+  // A passwordless ClickHouse is fine inside the compose network (8123 isn't
+  // published), but a production deploy that exposes it is one port-forward
+  // away from leaking every span. Warn once instead of failing — self-hosts
+  // following the default compose are still safe.
+  if (
+    process.env.NODE_ENV === "production" &&
+    !config?.password &&
+    !warnedNoPassword
+  ) {
+    warnedNoPassword = true;
+    console.warn(
+      "[clickhouse] running in production with an empty CLICKHOUSE_PASSWORD — make sure ClickHouse is not reachable from outside your network, or set a password.",
+    );
+  }
   return createClient({
     url: config?.url,
     username: config?.username,

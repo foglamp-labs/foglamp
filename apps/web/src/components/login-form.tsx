@@ -10,18 +10,45 @@ import { toast } from "sonner";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
-import { IconCodeAsterix } from "@tabler/icons-react";
+import { IconBrandGoogleFilled, IconCodeAsterix } from "@tabler/icons-react";
+
+// Which sign-in methods the server has enabled (fetched by the login page from
+// /api/auth-methods). Hosted: google + magic link. Self-host: password (+ magic
+// link when email is configured).
+export type AuthMethods = {
+  emailPassword: boolean;
+  magicLink: boolean;
+  google: boolean;
+};
 
 // After sign-in, land on the dashboard. A hard navigation (not router.push) so
 // the (app) layout's SSR session gate re-runs and sees the fresh cookie.
 const OVERVIEW_URL = `${env.NEXT_PUBLIC_APP_URL}/overview`;
 
-export default function LoginForm() {
-  // Email+password is the always-on floor (works with no third-party setup).
-  // Magic link only works when the server has RESEND_API_KEY; offered as a
-  // secondary option that degrades gracefully if it isn't configured.
-  const [mode, setMode] = useState<"password" | "magic">("password");
+export default function LoginForm({ methods }: { methods: AuthMethods }) {
+  // Password first when available (the self-host floor); otherwise magic link.
+  const [mode, setMode] = useState<"password" | "magic">(
+    methods.emailPassword ? "password" : "magic"
+  );
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [googlePending, setGooglePending] = useState(false);
+
+  const hasEmailForm =
+    (mode === "password" && methods.emailPassword) ||
+    (mode === "magic" && methods.magicLink);
+
+  const signInWithGoogle = async () => {
+    setGooglePending(true);
+    // On success this navigates away to Google; we only return here on error.
+    const { error } = await authClient.signIn.social({
+      provider: "google",
+      callbackURL: OVERVIEW_URL,
+    });
+    if (error) {
+      toast.error(error.message ?? "Google sign-in failed. Try again.");
+      setGooglePending(false);
+    }
+  };
 
   const passwordForm = useForm({
     defaultValues: { email: "", password: "" },
@@ -55,7 +82,7 @@ export default function LoginForm() {
       if (error) {
         toast.error(
           error.message ??
-            "Magic-link sign-in isn't enabled on this instance. Use email and password."
+            "Magic-link sign-in isn't enabled on this instance."
         );
         return;
       }
@@ -87,7 +114,7 @@ export default function LoginForm() {
           className="self-start px-0"
           onClick={() => {
             setSentTo(null);
-            setMode("password");
+            setMode(methods.emailPassword ? "password" : "magic");
           }}
         >
           Back to sign in
@@ -105,12 +132,35 @@ export default function LoginForm() {
         Sign in
       </h1>
       <p className="mb-6 text-sm text-muted-foreground tracking-normal">
-        {mode === "password"
-          ? "Use your email and password."
-          : "We'll email you a sign-in link."}
+        {!hasEmailForm
+          ? "Continue with your Google account."
+          : mode === "password"
+            ? "Use your email and password."
+            : "We'll email you a sign-in link."}
       </p>
 
-      {mode === "password" ? (
+      {methods.google && (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={googlePending}
+          onClick={signInWithGoogle}
+        >
+          <IconBrandGoogleFilled className="size-4" />
+          {googlePending ? "Redirecting…" : "Continue with Google"}
+        </Button>
+      )}
+
+      {methods.google && hasEmailForm && (
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+      )}
+
+      {hasEmailForm && mode === "password" ? (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -182,7 +232,7 @@ export default function LoginForm() {
             )}
           </passwordForm.Subscribe>
         </form>
-      ) : (
+      ) : hasEmailForm ? (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -231,17 +281,19 @@ export default function LoginForm() {
             )}
           </magicForm.Subscribe>
         </form>
-      )}
+      ) : null}
 
-      <Button
-        variant="link"
-        className="mt-4 self-start px-0 text-muted-foreground"
-        onClick={() => setMode(mode === "password" ? "magic" : "password")}
-      >
-        {mode === "password"
-          ? "Email me a sign-in link instead"
-          : "Use email and password instead"}
-      </Button>
+      {methods.emailPassword && methods.magicLink && (
+        <Button
+          variant="link"
+          className="mt-4 self-start px-0 text-muted-foreground"
+          onClick={() => setMode(mode === "password" ? "magic" : "password")}
+        >
+          {mode === "password"
+            ? "Email me a sign-in link instead"
+            : "Use email and password instead"}
+        </Button>
+      )}
     </div>
   );
 }

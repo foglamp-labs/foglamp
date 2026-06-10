@@ -46,6 +46,8 @@ export function resolveConfig(config: FoglampConfig): ResolvedConfig {
     flushIntervalMs: positive(config.flushIntervalMs, 5_000),
     maxBatchTraces: positive(config.maxBatchTraces, 50),
     maxBatchSpans: positive(config.maxBatchSpans, 500),
+    maxQueuedSpans: positive(config.maxQueuedSpans, 5_000),
+    maxTraceAgeMs: positive(config.maxTraceAgeMs, 600_000),
     maxPayloadChars: Math.min(positive(config.maxPayloadChars, 100_000), CONTRACT_MAX_PAYLOAD),
     recordInputs: config.recordInputs ?? true,
     recordOutputs: config.recordOutputs ?? true,

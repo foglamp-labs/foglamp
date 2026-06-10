@@ -6,10 +6,9 @@ Two lines of code and an API key give you unified observability for your AI
 agents — **costs, latency, token usage, distributed traces, and prompt/response
 logs** — across every `generateText` / `streamText` call in your app.
 
-Foglamp is **source-available** and self-hostable. Bring your own ClickHouse +
-Postgres with `docker compose up`, or point the SDK at the hosted endpoint. (See
-[License](#license) — free to self-host, including commercially; offering it as a
-hosted service to others needs a commercial license.)
+Foglamp is **open source** ([Apache 2.0](#license)) and self-hostable. Bring
+your own ClickHouse + Postgres with `docker compose up`, or point the SDK at
+the hosted endpoint.
 
 ```ts
 import { registerTelemetry } from "ai";
@@ -42,8 +41,9 @@ it, and what did it actually send the model?"* Foglamp fills that gap:
 - **Alerts** — threshold rules on cost, latency, error rate, TTFT, tokens, or
   request count, evaluated every minute, with email notifications.
 
-Scope: **TypeScript + Vercel AI SDK v7 only.** (OTLP ingest is a planned
-follow-up; see [Deferred](#deferred).)
+Scope: **TypeScript + Vercel AI SDK v4–v7** — v7 via the native
+telemetry-integrations collector, v4/v5/v6 via the [`foglamp/wrap`](./docs/sdk/wrap.mdx)
+entry point. (OTLP ingest is a planned follow-up; see [Deferred](#deferred).)
 
 ---
 
@@ -177,8 +177,9 @@ Spans are stored in **ClickHouse**; org/project/key/pricing/alert state in
 ## Self-hosting
 
 Everything you need is in [`docker-compose.yml`](./docker-compose.yml): plain
-Postgres + ClickHouse, the ingest API, the dashboard API, and the web app. No
-Redis, no queue, no Supabase.
+Postgres + ClickHouse + Redis, the ingest API, the dashboard API, and the web
+app. No external queue, no Supabase — Redis only backs ingest rate limiting,
+and removing it (and `REDIS_URL`) falls back to in-memory limiting.
 
 ```bash
 docker compose up --build
@@ -220,10 +221,13 @@ Backend (`apps/server`, `apps/ingest`) — see [`apps/server/.env.example`](./ap
 | `BETTER_AUTH_SECRET` | — | Auth signing secret (≥ 32 chars). |
 | `BETTER_AUTH_URL` | — | Public URL of the server. |
 | `CORS_ORIGIN` | — | Web app origin (also the alert email deep-link base). |
+| `CORS_EXTRA_ORIGINS` | — | Extra allowed origins, comma/space separated (previews, staging). |
 | `CLICKHOUSE_URL` / `_USER` / `_PASSWORD` / `_DATABASE` | `localhost:8123` / `default` / — / `foglamp` | ClickHouse connection. |
 | `OPENROUTER_MODELS_URL` | OpenRouter models API | Pricing source (cached, 24h refresh). |
 | `FOGLAMP_PRICING_FILE` | — | Local pricing JSON for air-gapped deploys. |
-| `INGEST_PORT` / `INGEST_FLUSH_INTERVAL_MS` / `INGEST_FLUSH_MAX_ROWS` / `INGEST_RATE_LIMIT_RPS` | `4000` / `1000` / `1000` / `100` | Ingest tuning. |
+| `INGEST_PORT` / `INGEST_FLUSH_INTERVAL_MS` / `INGEST_FLUSH_MAX_ROWS` / `INGEST_RATE_LIMIT_RPS` | `4000` / `1000` / `1000` / `100` | Ingest tuning (`_RPS` is spans/second per API key). |
+| `INGEST_MAX_BODY_BYTES` | `10485760` | Max ingest request body; larger gets `413`. |
+| `REDIS_URL` | — | Optional shared Redis for ingest rate limiting across replicas. |
 | `API_KEY_CACHE_TTL_MS` | `60000` | In-memory API-key cache TTL. |
 | `ALERT_EVAL_INTERVAL_MS` / `ALERT_RENOTIFY_MS` | `60000` / `3600000` | Alert evaluator cadence + re-notify cooldown. |
 | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` | — | Email (magic-link, alerts). Optional. |
@@ -319,32 +323,34 @@ more providers/models resolve to a price) and provider coverage. Please:
 
 ## Deferred
 
-OTLP `/v1/traces` ingest (stubbed), AI SDK v5/v6 compatibility (planned via
-OTLP), Redis/queue, ClickHouse tiered storage, and the cloud billing layer are
-intentionally out of this build.
+OTLP `/v1/traces` ingest (stubbed), ClickHouse tiered storage, and the cloud
+billing layer are intentionally out of this build. (AI SDK v4–v6 are covered
+today via `foglamp/wrap`; Redis is now an optional rate-limiting backend.)
 
 ## License
 
-Foglamp uses a split license:
+Foglamp is open source:
 
 - **The platform** — `apps/*` (ingest, server, web) and the server-side packages
-  (`api`, `db`, `auth`, `clickhouse`, `cost`, `env`, `ui`) — is licensed under the
-  [**Elastic License 2.0**](./LICENSE) (ELv2). In plain terms: you may freely use,
-  modify, and self-host it — **including for commercial/internal use** — but you
-  **may not offer it to third parties as a hosted or managed service** without a
-  commercial license. Contact us for commercial/hosting licensing.
+  (`api`, `db`, `auth`, `clickhouse`, `cost`, `env`, `ui`) — is licensed under
+  [**Apache 2.0**](./LICENSE). Use it, modify it, self-host it, embed it —
+  including commercially — with no restrictions beyond the license's standard
+  terms.
 - **The SDK** — [`foglamp`](./packages/sdk) — is licensed under
   [**MIT**](./packages/sdk/LICENSE), and the bundled wire contract
   [`@foglamp/contracts`](./packages/contracts) under
   [**Apache-2.0**](./packages/contracts/LICENSE) — so you can embed the client
-  anywhere with no restrictions, including in commercial and hosted products.
+  anywhere, including in commercial and hosted products.
 
-ELv2 is *source-available*, not OSI "open source." Each package's `license` field
-reflects which license applies.
+Future enterprise features may live in an `ee/` directory under a separate
+commercial license; everything outside it stays Apache 2.0. Each package's
+`license` field reflects which license applies.
+
+Versions released before this change remain under the Elastic License 2.0.
 
 ### Contributing & the CLA
 
 Contributions require signing the [Contributor License Agreement](./CLA.md). It's
 automated — the CLA Assistant bot will prompt you on your first PR. The CLA lets
-the project offer Foglamp under both ELv2 and commercial licenses; you retain
-ownership of your contributions.
+the project offer Foglamp under both Apache 2.0 and commercial licenses (e.g.
+for future `ee/` features); you retain ownership of your contributions.

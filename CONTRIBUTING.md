@@ -10,8 +10,8 @@ Foglamp requires every contributor to sign a **Contributor License Agreement**
 on your first pull request asking you to reply with a one-line signature. You
 sign once and every future PR passes automatically.
 
-The CLA lets the project be offered under both the Elastic License 2.0 and
-separate commercial licenses; **you keep full ownership of your contributions.**
+The CLA lets the project be offered under both Apache 2.0 and separate
+commercial licenses; **you keep full ownership of your contributions.**
 See [`CLA.md`](./CLA.md) for the exact terms.
 
 ## Licensing of contributions
@@ -21,7 +21,7 @@ determines its license, so please keep contributions in the matching area:
 
 | Area | License | Notes |
 | --- | --- | --- |
-| Platform — `apps/*`, and `packages/{api,auth,billing,clickhouse,config,cost,db,env,ui}` | **Elastic License 2.0** | Source-available; the bulk of the codebase. |
+| Platform — `apps/*`, and `packages/{api,auth,billing,clickhouse,config,cost,db,env,ui}` | **Apache-2.0** | Open source; the bulk of the codebase. |
 | SDK — `packages/sdk` (`foglamp`) | **MIT** | Permissive; embedded in users' apps. |
 | Wire contract — `packages/contracts` | **Apache-2.0** | The public ingest protocol. |
 | Examples — `examples/*` | **MIT** | Sample code meant to be copied freely. |
@@ -132,9 +132,8 @@ happened, and the smallest reproduction you can manage (versions, env, logs).
 
 ## Security
 
-**Please do not file public issues for security vulnerabilities.** See
-[`SECURITY.md`](./SECURITY.md) if present, or email the maintainers privately so
-we can address it before disclosure.
+**Please do not file public issues for security vulnerabilities.** Email the
+maintainers privately so we can address it before disclosure.
 
 ## Questions
 

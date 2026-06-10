@@ -294,6 +294,10 @@ assert(
   Number(win.pass_count) === 1 && Number(win.fail_count) === 1,
   `pass=1 fail=1 (got ${win.pass_count}/${win.fail_count})`,
 );
+assert(
+  Number(win.verdict_count) === 2,
+  `verdict_count=2 (got ${win.verdict_count})`,
+);
 
 console.log("org usage rollup (usage_by_org_day MV):");
 const dayFrom = new Date(base - 86_400_000).toISOString().slice(0, 10);

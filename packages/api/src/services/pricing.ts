@@ -4,7 +4,11 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { decimalOrNull } from "../lib/util";
 import type { Db } from "../types";
-import { requireProjectAccess } from "./access";
+import { requireOrgRole, requireProjectAccess } from "./access";
+
+// Custom pricing rewrites cost data for every span in the project, so writes
+// are admin-gated like API keys and provider keys; reads stay member-level.
+const ADMIN = ["owner", "admin"] as const;
 
 // The eight OpenRouter price dimensions, stored per-token. Any unset dimension
 // falls back to the resolved OpenRouter price at ingest time.
@@ -70,7 +74,8 @@ export async function createCustomPricing(
   userId: string,
   input: { projectId: string; modelPattern: string; effectiveFrom?: Date } & PriceDims,
 ) {
-  await requireProjectAccess(db, userId, input.projectId);
+  const proj = await requireProjectAccess(db, userId, input.projectId);
+  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
   const rows = await db
     .insert(customPricing)
     .values({
@@ -88,7 +93,8 @@ export async function updateCustomPricing(
   userId: string,
   input: { id: string; projectId: string; modelPattern?: string } & PriceDims,
 ) {
-  await requireProjectAccess(db, userId, input.projectId);
+  const proj = await requireProjectAccess(db, userId, input.projectId);
+  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
   const rows = await db
     .update(customPricing)
     .set({
@@ -115,7 +121,8 @@ export async function deleteCustomPricing(
   userId: string,
   input: { id: string; projectId: string },
 ) {
-  await requireProjectAccess(db, userId, input.projectId);
+  const proj = await requireProjectAccess(db, userId, input.projectId);
+  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
   await db
     .delete(customPricing)
     .where(

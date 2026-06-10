@@ -5,6 +5,7 @@ import {
 	TEST_EMAILS,
 	TEST_KINDS,
 	ingestTest,
+	listEvalJobs,
 	listPricing,
 	sendTestEmail,
 } from "../services/admin";
@@ -14,6 +15,12 @@ import {
 export const adminRouter = router({
 	// Current in-process OpenRouter pricing table (what ingest prices against).
 	pricing: protectedProcedure.query(() => listPricing()),
+
+	// Eval scoring queue snapshot: per-status counts + recent eval_job rows,
+	// scoped to the caller's organizations.
+	evalJobs: protectedProcedure.query(({ ctx }) =>
+		listEvalJobs(ctx.db, ctx.session.user.id),
+	),
 
 	// Synthesize + insert test spans for a project (populates the rollup MVs).
 	ingestTest: protectedProcedure

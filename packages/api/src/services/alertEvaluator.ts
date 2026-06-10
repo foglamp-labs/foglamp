@@ -158,13 +158,18 @@ export async function evaluateAlerts(db: Db, ch: Ch, log: Log): Promise<void> {
           from: toClickHouseDateTime(from),
           to: toClickHouseDateTime(now),
         });
-        const count = num(sw.score_count);
+        const scored = num(sw.scored_count);
+        // Pass rate over rows with a verdict only — score-only rows (numeric
+        // judges) carry no pass/fail and must not deflate the rate.
+        const verdicts = num(sw.verdict_count);
         value =
-          count === 0
-            ? 0
-            : metric === "eval_avg_score"
-              ? num(sw.score_sum) / count
-              : num(sw.pass_count) / count;
+          metric === "eval_avg_score"
+            ? scored === 0
+              ? 0
+              : num(sw.score_sum) / scored
+            : verdicts === 0
+              ? 0
+              : num(sw.pass_count) / verdicts;
       } else {
         const window = await queryAlertWindow(ch, {
           projectId: rule.projectId,

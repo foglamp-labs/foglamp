@@ -4,7 +4,6 @@ import Link from "next/link";
 
 import { CodeBlock } from "../code-block";
 import { CopyButton } from "../copy-button";
-import { DitherBackground } from "../dither-background";
 import { INSTALL_CODE, SETUP_PROMPT } from "../snippets";
 
 // Closing pitch: the whole sell is "two lines." Show the snippet, then the two
@@ -13,18 +12,12 @@ export function CtaSection() {
   return (
     <section className="mx-auto w-full max-w-5xl px-5 sm:px-8">
       <div className="relative overflow-hidden rounded-3xl corner-squircle bg-card px-6 py-16 text-center shadow-(--custom-shadow) sm:px-12">
-        <DitherBackground
-          className="absolute inset-0 -z-10"
-          opacity={0.04}
-          variant="fine"
-          seed={3}
-        />
         <h2 className="font-display mx-auto max-w-2xl text-3xl font-semibold tracking-tight text-balance sm:text-5xl">
           Two lines to never ship a junk agent again.
         </h2>
         <p className="mx-auto mt-4 max-w-lg text-muted-foreground text-pretty">
-          Wrap your model. Foglamp traces, costs, and scores every call — no prompt changes, no
-          new infra.
+          Wrap your model. Foglamp traces, costs, and scores every call — no
+          prompt changes, no new infra.
         </p>
 
         <div className="mx-auto mt-8 max-w-xl text-left">

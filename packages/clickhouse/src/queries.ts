@@ -409,6 +409,10 @@ export type SessionTurnRow = {
  * One row per turn in a session: the root `agent` span of each trace, in
  * chronological order. Carries the turn's input (prompt/messages) and output
  * (final text) for the conversation timeline.
+ *
+ * `LIMIT 1 BY trace_id` collapses traces with several `agent` spans (an agent
+ * spawning sub-agents) to their earliest-starting one — the root — so a trace
+ * is one turn, never N duplicates.
  */
 export function getSessionTurns(
 	client: ClickHouseClient,
@@ -422,7 +426,8 @@ export function getSessionTurns(
      WHERE project_id = {projectId:String}
        AND session_id = {sessionId:String}
        AND span_type = 'agent'
-     ORDER BY start_time ASC, span_id ASC`,
+     ORDER BY start_time ASC, span_id ASC
+     LIMIT 1 BY trace_id`,
 		{ projectId: params.projectId, sessionId: params.sessionId },
 	);
 }
@@ -1626,6 +1631,10 @@ export type ScoreSummaryRow = { pass_count: string; fail_count: string };
  * Project-wide pass/fail totals over a window, across all evals. Pass rate =
  * pass / (pass + fail) — numeric-only judge scores (no verdict) are excluded,
  * since they contribute to neither count.
+ *
+ * Counts deduplicated `scores FINAL`, not the per-minute MV: the MV fires per
+ * insert, *before* ReplacingMergeTree collapses re-scores of the same target,
+ * so it overcounts whenever a job retries (see `evalListSummary`).
  */
 export async function queryProjectScoreSummary(
 	client: ClickHouseClient,
@@ -1633,10 +1642,12 @@ export async function queryProjectScoreSummary(
 ): Promise<ScoreSummaryRow> {
 	const result = await rows<ScoreSummaryRow>(
 		client,
-		`SELECT sum(pass_count) AS pass_count, sum(fail_count) AS fail_count
-     FROM score_metrics_by_minute
+		`SELECT
+       countIf(passed = 1) AS pass_count,
+       countIf(passed = 0) AS fail_count
+     FROM scores FINAL
      WHERE project_id = {projectId:String}
-       AND bucket >= {from:DateTime} AND bucket < {to:DateTime}`,
+       AND scored_at >= {from:DateTime} AND scored_at < {to:DateTime}`,
 		{ projectId: params.projectId, from: params.from, to: params.to },
 	);
 	return result[0] ?? { pass_count: "0", fail_count: "0" };
@@ -1645,6 +1656,12 @@ export async function queryProjectScoreSummary(
 export type ScoreBucketRow = {
 	bucket: string;
 	score_count: string;
+	// Rows whose score is non-null — the correct avg denominator (a null score
+	// must not drag the average toward 0).
+	scored_count: string;
+	// Rows whose passed verdict is non-null — the correct pass-rate denominator
+	// (numeric-only judges emit score-only rows with no verdict).
+	verdict_count: string;
 	pass_count: string;
 	fail_count: string;
 	score_sum: string;
@@ -1666,6 +1683,8 @@ export function queryScoreTimeseries(
 		`SELECT
        toStartOfMinute(scored_at) AS bucket,
        count() AS score_count,
+       countIf(isNotNull(score)) AS scored_count,
+       countIf(isNotNull(passed)) AS verdict_count,
        countIf(passed = 1) AS pass_count,
        countIf(passed = 0) AS fail_count,
        sum(ifNull(score, 0)) AS score_sum,
@@ -1688,6 +1707,8 @@ export function queryScoreTimeseries(
 export type EvalListSummaryRow = {
 	eval_id: string;
 	score_count: string;
+	scored_count: string;
+	verdict_count: string;
 	pass_count: string;
 	fail_count: string;
 	score_sum: string;
@@ -1715,6 +1736,8 @@ export function evalListSummary(
 		`SELECT
        eval_id,
        count() AS score_count,
+       countIf(isNotNull(score)) AS scored_count,
+       countIf(isNotNull(passed)) AS verdict_count,
        countIf(passed = 1) AS pass_count,
        countIf(passed = 0) AS fail_count,
        sum(ifNull(score, 0)) AS score_sum,
@@ -1885,6 +1908,8 @@ export function queryTraceSiblings(
 
 export type ScoreAlertWindowRow = {
 	score_count: string;
+	scored_count: string;
+	verdict_count: string;
 	pass_count: string;
 	fail_count: string;
 	score_sum: string;
@@ -1893,7 +1918,8 @@ export type ScoreAlertWindowRow = {
 
 /**
  * Single-row score rollup over an alert's window for one eval. The evaluator
- * derives avg score (score_sum/score_count) or pass rate (pass/count) from it.
+ * derives avg score (score_sum/scored_count) or pass rate
+ * (pass_count/verdict_count) from it.
  */
 export async function queryScoreAlertWindow(
 	client: ClickHouseClient,
@@ -1903,6 +1929,8 @@ export async function queryScoreAlertWindow(
 		client,
 		`SELECT
        count() AS score_count,
+       countIf(isNotNull(score)) AS scored_count,
+       countIf(isNotNull(passed)) AS verdict_count,
        countIf(passed = 1) AS pass_count,
        countIf(passed = 0) AS fail_count,
        sum(ifNull(score, 0)) AS score_sum,
@@ -1920,6 +1948,8 @@ export async function queryScoreAlertWindow(
 	return (
 		result[0] ?? {
 			score_count: "0",
+			scored_count: "0",
+			verdict_count: "0",
 			pass_count: "0",
 			fail_count: "0",
 			score_sum: "0",

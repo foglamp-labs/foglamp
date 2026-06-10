@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
 	Card,
@@ -175,6 +176,20 @@ function perReq(p: string | null): string {
 	return `$${Number(p).toFixed(4)}`;
 }
 
+// tRPC ships Dates as ISO strings (no transformer), so accept either shape.
+function fmtTs(v: Date | string | null): string {
+	if (v == null) return "—";
+	const d = new Date(v);
+	return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+
+const JOB_STATUS_STYLES: Record<string, string> = {
+	pending: "bg-muted text-muted-foreground",
+	running: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+	done: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+	dead: "bg-red-500/15 text-red-600 dark:text-red-400",
+};
+
 export function AdminClient() {
 	const { projectId } = useProject();
 	const qc = useQueryClient();
@@ -187,6 +202,12 @@ export function AdminClient() {
 	const pricing = useQuery({
 		...trpc.admin.pricing.queryOptions(),
 		staleTime: 60_000,
+	});
+
+	// Live view of the eval scoring queue; refreshes alongside the worker cadence.
+	const evalJobs = useQuery({
+		...trpc.admin.evalJobs.queryOptions(),
+		refetchInterval: 10_000,
 	});
 
 	const ingestTest = useMutation(
@@ -317,6 +338,95 @@ export function AdminClient() {
 						</div>
 					))}
 				</div>
+			</div>
+
+			<div className="mt-8">
+				<CardHeader className="flex flex-row items-center justify-between gap-4 px-0">
+					<div className="flex flex-col gap-1">
+						<CardTitle>Eval scoring queue</CardTitle>
+						<CardDescription>
+							The durable eval_job queue behind the scoring worker.{" "}
+							{evalJobs.data
+								? `${evalJobs.data.counts.pending} pending · ${evalJobs.data.counts.running} running · ${evalJobs.data.counts.done} done · ${evalJobs.data.counts.dead} dead.`
+								: "Loading…"}
+						</CardDescription>
+					</div>
+					<Button
+						size="icon-sm"
+						variant="ghost"
+						disabled={evalJobs.isFetching}
+						onClick={() =>
+							qc.invalidateQueries({ queryKey: trpc.admin.evalJobs.queryKey() })
+						}
+					>
+						<IconRefresh />
+					</Button>
+				</CardHeader>
+				{evalJobs.isLoading ? (
+					<TableSkeleton />
+				) : (
+					<Table className="mt-4">
+						<TableHeader>
+							<TableRow>
+								<TableHead>Eval</TableHead>
+								<TableHead>Project</TableHead>
+								<TableHead>Window</TableHead>
+								<TableHead>Status</TableHead>
+								<TableHead className="text-right">Attempts</TableHead>
+								<TableHead>Leased until</TableHead>
+								<TableHead>Error</TableHead>
+								<TableHead>Created</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{(evalJobs.data?.jobs ?? []).map((j) => (
+								<TableRow key={j.id}>
+									<TableCell className="font-medium">{j.evalName}</TableCell>
+									<TableCell className="text-muted-foreground">
+										{j.projectName}
+									</TableCell>
+									<TableCell className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+										{fmtTs(j.windowStart)} → {fmtTs(j.windowEnd)}
+									</TableCell>
+									<TableCell>
+										<Badge
+											variant="outline"
+											className={`border-transparent ${JOB_STATUS_STYLES[j.status] ?? ""}`}
+										>
+											{j.status}
+										</Badge>
+									</TableCell>
+									<TableCell className="text-right tabular-nums">
+										{j.attempts}/{j.maxAttempts}
+									</TableCell>
+									<TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+										{fmtTs(j.leasedUntil)}
+									</TableCell>
+									<TableCell
+										className="max-w-64 truncate text-xs text-muted-foreground"
+										title={j.lastError ?? undefined}
+									>
+										{j.lastError ?? "—"}
+									</TableCell>
+									<TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+										{fmtTs(j.createdAt)}
+									</TableCell>
+								</TableRow>
+							))}
+							{(evalJobs.data?.jobs ?? []).length === 0 && (
+								<TableRow>
+									<TableCell
+										colSpan={8}
+										className="text-center text-sm text-muted-foreground"
+									>
+										No eval jobs yet. Jobs appear once an enabled eval has new
+										spans to score.
+									</TableCell>
+								</TableRow>
+							)}
+						</TableBody>
+					</Table>
+				)}
 			</div>
 
 			<div className="mt-8">

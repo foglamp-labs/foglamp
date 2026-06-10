@@ -40,6 +40,7 @@ import {
   formatRelative,
   formatTokens,
 } from "@/lib/format";
+import { toMs } from "@/lib/trace-timeline";
 import { trpc } from "@/utils/trpc";
 
 type Turn = {
@@ -113,10 +114,12 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
   const turns = (data?.turns ?? []) as Turn[];
   const costThresholds = quintiles(turns.map((t) => t.totalCost ?? 0));
 
-  // Session wall-clock duration (first turn start → last turn end).
+  // Session wall-clock duration (first turn start → last turn end). toMs, not
+  // new Date(): these are ClickHouse space-separated UTC strings, which
+  // new Date() rejects on Safari/Firefox and parses as local time on V8.
   const durationMs =
     stats?.firstSeen && stats?.lastSeen
-      ? new Date(stats.lastSeen).getTime() - new Date(stats.firstSeen).getTime()
+      ? toMs(stats.lastSeen) - toMs(stats.firstSeen)
       : null;
 
   const scrollToTurn = (i: number) =>

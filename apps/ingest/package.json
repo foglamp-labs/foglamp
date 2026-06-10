@@ -1,6 +1,6 @@
 {
   "name": "ingest",
-  "license": "Elastic-2.0",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "dist/main.mjs",
   "scripts": {

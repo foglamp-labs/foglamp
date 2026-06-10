@@ -508,9 +508,9 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                 ) : (
                   <NodeFlow
                     nodes={nodes}
-                    onNodeClick={() =>
+                    onNodeClick={(spanId) =>
                       router.push(
-                        `/traces/${encodeURIComponent(activeTraceId)}`
+                        `/traces/${encodeURIComponent(activeTraceId)}?span=${encodeURIComponent(spanId)}`
                       )
                     }
                   />
@@ -618,16 +618,14 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                               t.errorCount > 0 &&
                                 "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
                             )}
-                            onClick={() => selectTrace(t.traceId)}
+                            onClick={() => {
+                              // Row click both drives the flow above and
+                              // toggles the input/output preview.
+                              selectTrace(t.traceId);
+                              setExpanded(isOpen ? null : t.traceId);
+                            }}
                           >
-                            <TableCell
-                              className="text-muted-foreground/50 pr-2"
-                              onClick={(e) => {
-                                // Toggle the preview without also selecting the trace.
-                                e.stopPropagation();
-                                setExpanded(isOpen ? null : t.traceId);
-                              }}
-                            >
+                            <TableCell className="text-muted-foreground/50 pr-2">
                               <IconChevronRight
                                 className={cn(
                                   "size-3.5 transition-transform",
@@ -696,9 +694,11 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 
                 <div className="flex items-center justify-between px-1">
                   <span className="text-sm text-muted-foreground/50 tabular-nums">
-                    {`Showing ${page * PAGE_SIZE + 1}–${
-                      page * PAGE_SIZE + traceRows.length
-                    } of ${formatCount(totalTraces)}`}
+                    {traceRows.length === 0
+                      ? `Showing 0 of ${formatCount(totalTraces)}`
+                      : `Showing ${page * PAGE_SIZE + 1}–${
+                          page * PAGE_SIZE + traceRows.length
+                        } of ${formatCount(totalTraces)}`}
                   </span>
                   <Pagination className="mx-0 w-auto justify-end">
                     <PaginationContent>

@@ -9,7 +9,7 @@ import { env, getTrustedAppOrigins } from "@foglamp/env/server";
 import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink, organization as organizationPlugin } from "better-auth/plugins";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import Stripe from "stripe";
 import { uuidv7 } from "uuidv7";
 import { sendInvitationEmail, sendMagicLinkEmail } from "./email";
@@ -39,13 +39,26 @@ function getSharedCookieDomain(appUrl: string) {
   return hostname.startsWith("www.") ? hostname.slice(4) : hostname;
 }
 
+// Which sign-in methods this deployment offers, derived from configuration.
+// Single source of truth for both the better-auth config below and the public
+// /api/auth-methods endpoint the login page reads to decide what to render.
+// Self-host default: email+password (no third-party setup needed) + magic link
+// when email is configured. Hosted: sets AUTH_DISABLE_EMAIL_PASSWORD and the
+// Google envs, yielding Google + magic link.
+export function getAuthMethods() {
+  return {
+    emailPassword: !env.AUTH_DISABLE_EMAIL_PASSWORD,
+    magicLink: Boolean(env.RESEND_API_KEY),
+    google: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+  };
+}
+
 export function createAuth() {
   const db = createDb();
 
-  // Email+password is the always-on floor so a self-host works without any
-  // third-party setup. Magic-link and Google layer on only when configured.
-  const emailEnabled = Boolean(env.RESEND_API_KEY);
-  const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+  const methods = getAuthMethods();
+  const emailEnabled = methods.magicLink;
+  const googleEnabled = methods.google;
 
   // The organization plugin owns organization/member/invitation (roles +
   // invites). Magic-link is added only when email is configured.
@@ -148,7 +161,7 @@ export function createAuth() {
       env.CORS_EXTRA_ORIGINS
     ),
     emailAndPassword: {
-      enabled: true,
+      enabled: methods.emailPassword,
     },
     socialProviders: googleEnabled
       ? {
@@ -178,7 +191,9 @@ export function createAuth() {
           after: async (user: { id: string; email: string; name?: string }) => {
             try {
               // An invited user is joining an existing org via the invitation —
-              // don't also create them a throwaway personal workspace.
+              // don't also create them a throwaway personal workspace. Only a
+              // live invite counts: expired rows keep status='pending', and an
+              // independent signup after expiry must still get a workspace.
               const pending = await db
                 .select({ id: invitation.id })
                 .from(invitation)
@@ -186,6 +201,7 @@ export function createAuth() {
                   and(
                     eq(invitation.email, user.email),
                     eq(invitation.status, "pending"),
+                    gt(invitation.expiresAt, new Date()),
                   ),
                 )
                 .limit(1);
@@ -228,11 +244,12 @@ export function createAuth() {
             }
           : undefined;
       })(),
-      defaultCookieAttributes: {
-        sameSite: "none",
-        secure: true,
-        httpOnly: true,
-      },
+      // SameSite=None requires Secure, and Secure cookies are never sent over
+      // plain HTTP — so on an http:// origin (local dev, bare self-host) we
+      // must fall back to Lax/insecure or login silently fails.
+      defaultCookieAttributes: env.CORS_ORIGIN.startsWith("https://")
+        ? { sameSite: "none" as const, secure: true, httpOnly: true }
+        : { sameSite: "lax" as const, secure: false, httpOnly: true },
     },
     plugins,
   });
