@@ -98,8 +98,8 @@ export default function TermsPage() {
           body: (
             <>
               <p>
-                Paid plans are billed by Stripe, monthly or annually in
-                advance, and renew automatically until cancelled. You can
+                Paid plans are billed by Stripe, monthly in advance, and renew
+                automatically until cancelled. You can
                 cancel anytime from Settings; cancellation takes effect at the
                 end of the current billing period, and except where required by
                 law, payments are non-refundable.

@@ -23,12 +23,17 @@ RUN bun install --frozen-lockfile
 # tsdown inlines the @foglamp/* workspace packages; external npm deps
 # (hono, better-auth, @trpc/server, pg, …) stay in node_modules.
 FROM base AS server-build
-RUN bun run --filter server build
+# Build the foglamp SDK too — it's a runtime workspace dep of the server
+# (foggy.ts dogfooding) and its exports resolve to dist/.
+RUN bun run --filter foglamp build && bun run --filter server build
 
 FROM oven/bun:${BUN_VERSION}-slim AS server
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=server-build /app/node_modules ./node_modules
+# node_modules/foglamp is a workspace symlink to packages/sdk (imported by
+# foggy.ts for dogfooding) — copy the target or the symlink dangles at runtime.
+COPY --from=server-build /app/packages/sdk ./packages/sdk
 COPY --from=server-build /app/apps/server/dist ./apps/server/dist
 COPY --from=server-build /app/apps/server/package.json ./apps/server/package.json
 ENV PORT=3000
