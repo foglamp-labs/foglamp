@@ -74,6 +74,10 @@
         ]
       },
       {
+        "tab": "Changelog",
+        "pages": ["changelog"]
+      },
+      {
         "tab": "API reference",
         "groups": [
           {
