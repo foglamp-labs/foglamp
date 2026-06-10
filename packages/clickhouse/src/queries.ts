@@ -1975,8 +1975,11 @@ export async function queryPlatformUsageByDay(
 ): Promise<PlatformUsageDayRow[]> {
 	return rows<PlatformUsageDayRow>(
 		client,
+		// No toString(day) alias here: aliasing over the real column would get
+		// substituted into WHERE (alias wins), turning `day >= {from:Date}` into
+		// a String/Date comparison. JSON output serializes Date as YYYY-MM-DD.
 		`SELECT
-       toString(day) AS day,
+       day,
        sum(span_count) AS span_count,
        uniqExact(org_id) AS active_orgs
      FROM usage_by_org_day
