@@ -58,7 +58,10 @@ export function ProviderKeysClient() {
   const qc = useQueryClient();
   const [provider, setProvider] = useState<Provider>("google");
   const [key, setKey] = useState("");
+  // Target kept set while the dialog animates closed so its label doesn't
+  // blank out mid-animation; `removeOpen` alone drives visibility.
   const [removeTarget, setRemoveTarget] = useState<Provider | null>(null);
+  const [removeOpen, setRemoveOpen] = useState(false);
 
   const keys = useQuery({
     ...trpc.providerKeys.list.queryOptions({ projectId: projectId! }),
@@ -79,7 +82,7 @@ export function ProviderKeysClient() {
     trpc.providerKeys.delete.mutationOptions({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: trpc.providerKeys.list.queryKey() });
-        setRemoveTarget(null);
+        setRemoveOpen(false);
         toast.success("Provider key removed");
       },
       onError: (e) => toast.error(e.message),
@@ -196,7 +199,10 @@ export function ProviderKeysClient() {
                           size="icon-sm"
                           variant="ghost"
                           disabled={remove.isPending}
-                          onClick={() => setRemoveTarget(p)}
+                          onClick={() => {
+                            setRemoveTarget(p);
+                            setRemoveOpen(true);
+                          }}
                         >
                           <IconTrashFilled />
                         </Button>
@@ -210,10 +216,7 @@ export function ProviderKeysClient() {
         </CardContent>
       </Card>
 
-      <AlertDialog
-        open={removeTarget !== null}
-        onOpenChange={(o) => !o && setRemoveTarget(null)}
-      >
+      <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

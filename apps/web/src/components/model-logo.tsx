@@ -114,19 +114,28 @@ export function resolveVendorKey(
 	provider?: string | null,
 	modelId?: string | null,
 ): string | null {
-	// Prefer the vendor slug embedded in a "vendor/model" id, then the provider.
-	const fromId = modelId?.includes("/")
-		? modelId.split("/")[0]?.toLowerCase()
+	const id = modelId?.toLowerCase();
+	// Prefer the vendor slug embedded in a "vendor/model" id, then a vendor
+	// segment of a dot-namespaced Bedrock id ("us.anthropic.claude-…-v1:0" — the
+	// model's own vendor must beat the "bedrock" provider), then the provider.
+	const fromSlash = id?.includes("/") ? id.split("/")[0] : undefined;
+	const fromDots = id?.includes(".")
+		? id
+				.split(".")
+				.slice(0, -1)
+				.find((segment) => LOGOS[segment])
 		: undefined;
 	const fromProvider = provider?.split(".")[0]?.toLowerCase();
-	for (const key of [fromId, fromProvider]) {
+	for (const key of [fromSlash, fromDots, fromProvider]) {
 		if (key && LOGOS[key]) return key;
 	}
-	// Fall back to the model id's own name (e.g. a bare "gemini-3.1-flash-lite").
-	const id = modelId?.toLowerCase();
+	// Fall back to the model id's own name (e.g. a bare "gemini-3.1-flash-lite"),
+	// also trying the last dotted segment so a namespaced id still gets a hint.
 	if (id) {
+		const tail = id.split(".").at(-1);
 		for (const [pattern, vendor] of MODEL_ID_HINTS) {
-			if (pattern.test(id) && LOGOS[vendor]) return vendor;
+			if ((pattern.test(id) || (tail && pattern.test(tail))) && LOGOS[vendor])
+				return vendor;
 		}
 	}
 	return null;
@@ -167,13 +176,23 @@ const MODEL_WORD_CASE: Record<string, string> = {
  */
 export function formatModelName(modelId?: string | null): string {
 	if (!modelId) return "—";
-	// Drop the vendor prefix ("anthropic/…"), then any trailing date stamp
-	// (YYYY-MM-DD / YYYYMMDD / YYMMDD) or "-latest" build pointer.
-	const id = (
-		modelId.includes("/")
-			? modelId.slice(modelId.lastIndexOf("/") + 1)
-			: modelId
-	)
+	// Drop the vendor prefix ("anthropic/…").
+	let id = modelId.includes("/")
+		? modelId.slice(modelId.lastIndexOf("/") + 1)
+		: modelId;
+	// Bedrock ids ("us.anthropic.claude-haiku-4-5-…-v1:0"): drop the ":0" build
+	// counter, keep only the model segment of the dotted namespace (guarded so a
+	// version dot like "gpt-4.1" survives), and drop the "-v1" build suffix.
+	const wasBedrock = /:\d+$/.test(id);
+	id = id.replace(/:\d+$/, "");
+	const lastDotSegment = id.split(".").at(-1);
+	const isDotNamespaced =
+		id.includes(".") && !!lastDotSegment && /^[a-z]/i.test(lastDotSegment);
+	if (isDotNamespaced) id = lastDotSegment;
+	if (wasBedrock || isDotNamespaced) id = id.replace(/-v\d+$/i, "");
+	// Then any trailing date stamp (YYYY-MM-DD / YYYYMMDD / YYMMDD) or "-latest"
+	// build pointer.
+	id = id
 		.replace(/[-@](\d{4}-\d{2}-\d{2}|\d{8}|\d{6})$/i, "")
 		.replace(/-latest$/i, "");
 

@@ -123,10 +123,13 @@ export function PricingClient() {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [modelPattern, setModelPattern] = useState("");
 	const [prices, setPrices] = useState<Partial<Record<PriceKey, string>>>({});
+	// Target kept set while the dialog animates closed so its pattern doesn't
+	// blank out mid-animation; `deleteOpen` alone drives visibility.
 	const [deleteTarget, setDeleteTarget] = useState<{
 		id: string;
 		modelPattern: string;
 	} | null>(null);
+	const [deleteOpen, setDeleteOpen] = useState(false);
 	const setPrice = (key: PriceKey, value: string) =>
 		setPrices((p) => ({ ...p, [key]: value }));
 	const hasAnyPrice = PRICE_FIELDS.some(
@@ -162,7 +165,7 @@ export function PricingClient() {
 		trpc.pricing.delete.mutationOptions({
 			onSuccess: () => {
 				qc.invalidateQueries({ queryKey: trpc.pricing.list.queryKey() });
-				setDeleteTarget(null);
+				setDeleteOpen(false);
 				toast.success("Pricing override removed");
 			},
 			onError: (e) => toast.error(e.message),
@@ -318,12 +321,13 @@ export function PricingClient() {
 											size="icon-sm"
 											variant="ghost"
 											disabled={del.isPending}
-											onClick={() =>
+											onClick={() => {
 												setDeleteTarget({
 													id: r.id,
 													modelPattern: r.modelPattern,
-												})
-											}
+												});
+												setDeleteOpen(true);
+											}}
 										>
 											<IconTrashFilled />
 										</Button>
@@ -335,10 +339,7 @@ export function PricingClient() {
 				</Table>
 			)}
 
-			<AlertDialog
-				open={deleteTarget !== null}
-				onOpenChange={(o) => !o && setDeleteTarget(null)}
-			>
+			<AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>

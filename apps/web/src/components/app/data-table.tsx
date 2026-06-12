@@ -380,7 +380,13 @@ export function FilterSelect<T extends string>({
         )}
         <SelectValue placeholder={allLabel} />
       </SelectTrigger>
-      <SelectContent className="min-w-44" align="start" sideOffset={8}>
+      {/* w-auto: size to the longest option (instead of the trigger's width)
+          so long names aren't clipped; the truncate span caps the extremes. */}
+      <SelectContent
+        className="w-auto min-w-44 max-w-80"
+        align="start"
+        sideOffset={8}
+      >
         {/* Explicit `label` keeps the value→label map (and SelectValue) text
             only, so the icon in the children doesn't render twice in the
             trigger. */}
@@ -397,7 +403,9 @@ export function FilterSelect<T extends string>({
               {OptIcon && (
                 <OptIcon className="size-4 shrink-0 text-neutral-500 mt-0.5" />
               )}
-              {o.label}
+              <span className="block max-w-64 truncate" title={o.label}>
+                {o.label}
+              </span>
             </SelectItem>
           );
         })}

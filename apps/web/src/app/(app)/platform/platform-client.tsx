@@ -69,10 +69,13 @@ function AccessGrantsCard() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [days, setDays] = useState("30");
+  // Target kept set while the dialog animates closed so its name doesn't
+  // blank out mid-animation; `revokeOpen` alone drives visibility.
   const [revokeTarget, setRevokeTarget] = useState<{
     id: string;
     name: string;
   } | null>(null);
+  const [revokeOpen, setRevokeOpen] = useState(false);
 
   const search = useQuery({
     ...trpc.platform.searchOrgs.queryOptions({ query }),
@@ -102,7 +105,7 @@ function AccessGrantsCard() {
     trpc.platform.revokeAccess.mutationOptions({
       onSuccess: () => {
         toast.success("Access grant revoked.");
-        setRevokeTarget(null);
+        setRevokeOpen(false);
         refresh();
       },
       onError: (e) => toast.error(e.message),
@@ -205,7 +208,10 @@ function AccessGrantsCard() {
                 variant="ghost"
                 className="text-destructive"
                 disabled={revoke.isPending}
-                onClick={() => setRevokeTarget({ id: org.id, name: org.name })}
+                onClick={() => {
+                  setRevokeTarget({ id: org.id, name: org.name });
+                  setRevokeOpen(true);
+                }}
               >
                 Revoke
               </Button>
@@ -219,10 +225,7 @@ function AccessGrantsCard() {
         </div>
       </CardContent>
 
-      <AlertDialog
-        open={revokeTarget !== null}
-        onOpenChange={(o) => !o && setRevokeTarget(null)}
-      >
+      <AlertDialog open={revokeOpen} onOpenChange={setRevokeOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

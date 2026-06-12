@@ -24,10 +24,6 @@ import {
 import { Field, FieldLabel } from "@foglamp/ui/components/field";
 import { Input } from "@foglamp/ui/components/input";
 import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@foglamp/ui/components/native-select";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -366,7 +362,9 @@ function GeneralTab({ orgId, orgName }: { orgId: string; orgName: string }) {
 
 function MembersTab({ orgId }: { orgId: string }) {
   const { members, refresh } = useOrgPeople(orgId);
+  // Target kept set while the dialog animates closed (see ProjectsTab).
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [roleUpdating, setRoleUpdating] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
 
@@ -393,7 +391,7 @@ function MembersTab({ orgId }: { orgId: string }) {
         memberIdOrEmail: removeTarget.id,
         organizationId: orgId,
       });
-      setRemoveTarget(null);
+      setRemoveOpen(false);
       if (res.error) return toast.error(res.error.message ?? "Failed");
       toast.success("Member removed");
       void refresh();
@@ -432,20 +430,28 @@ function MembersTab({ orgId }: { orgId: string }) {
               {m.role === "owner" ? (
                 <Badge variant="amber">Owner</Badge>
               ) : (
-                <NativeSelect
+                <Select
                   value={m.role}
                   disabled={roleUpdating !== null}
-                  onChange={(e) => changeRole(m.id, e.target.value as Role)}
+                  onValueChange={(v) => changeRole(m.id, v as Role)}
                 >
-                  <NativeSelectOption value="admin">Admin</NativeSelectOption>
-                  <NativeSelectOption value="member">Member</NativeSelectOption>
-                </NativeSelect>
+                  <SelectTrigger size="sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="member">Member</SelectItem>
+                  </SelectContent>
+                </Select>
               )}
               {m.role !== "owner" && (
                 <Button
                   size="icon-sm"
                   variant="ghost"
-                  onClick={() => setRemoveTarget(m)}
+                  onClick={() => {
+                    setRemoveTarget(m);
+                    setRemoveOpen(true);
+                  }}
                 >
                   <IconTrashFilled />
                 </Button>
@@ -455,10 +461,7 @@ function MembersTab({ orgId }: { orgId: string }) {
         ))}
       </CardContent>
 
-      <AlertDialog
-        open={removeTarget !== null}
-        onOpenChange={(o) => !o && setRemoveTarget(null)}
-      >
+      <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove member?</AlertDialogTitle>
@@ -487,7 +490,9 @@ function InvitationsTab({ orgId }: { orgId: string }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
   const [inviting, setInviting] = useState(false);
+  // Target kept set while the dialog animates closed (see ProjectsTab).
   const [revokeTarget, setRevokeTarget] = useState<Invite | null>(null);
+  const [revokeOpen, setRevokeOpen] = useState(false);
   const [revoking, setRevoking] = useState(false);
 
   const invite = async () => {
@@ -516,7 +521,7 @@ function InvitationsTab({ orgId }: { orgId: string }) {
       const res = await authClient.organization.cancelInvitation({
         invitationId: revokeTarget.id,
       });
-      setRevokeTarget(null);
+      setRevokeOpen(false);
       if (res.error) return toast.error(res.error.message ?? "Failed");
       void refresh();
     } finally {
@@ -588,7 +593,10 @@ function InvitationsTab({ orgId }: { orgId: string }) {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setRevokeTarget(i)}
+                      onClick={() => {
+                        setRevokeTarget(i);
+                        setRevokeOpen(true);
+                      }}
                     >
                       Revoke
                     </Button>
@@ -600,10 +608,7 @@ function InvitationsTab({ orgId }: { orgId: string }) {
         )}
       </CardContent>
 
-      <AlertDialog
-        open={revokeTarget !== null}
-        onOpenChange={(o) => !o && setRevokeTarget(null)}
-      >
+      <AlertDialog open={revokeOpen} onOpenChange={setRevokeOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke invitation?</AlertDialogTitle>
@@ -632,10 +637,13 @@ function ProjectsTab({ orgId }: { orgId: string }) {
   const { projects } = useProject();
   const qc = useQueryClient();
   const orgProjects = projects.filter((p) => p.orgId === orgId);
+  // The target is kept set while the dialog animates closed (open is a
+  // separate flag) so its name doesn't blank out mid-animation.
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
   } | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   // Require typing the project name to confirm deletion (same as org delete).
   const [confirm, setConfirm] = useState("");
   const canDelete =
@@ -645,7 +653,7 @@ function ProjectsTab({ orgId }: { orgId: string }) {
     trpc.projects.delete.mutationOptions({
       onSuccess: () => {
         void qc.invalidateQueries({ queryKey: trpc.projects.list.queryKey() });
-        setDeleteTarget(null);
+        setDeleteOpen(false);
         toast.success("Project deleted");
       },
       onError: (e) => toast.error(e.message),
@@ -673,7 +681,11 @@ function ProjectsTab({ orgId }: { orgId: string }) {
             <Button
               size="icon-sm"
               variant="ghost"
-              onClick={() => setDeleteTarget({ id: p.id, name: p.name })}
+              onClick={() => {
+                setDeleteTarget({ id: p.id, name: p.name });
+                setConfirm("");
+                setDeleteOpen(true);
+              }}
             >
               <IconTrashFilled />
             </Button>
@@ -681,15 +693,7 @@ function ProjectsTab({ orgId }: { orgId: string }) {
         ))}
       </CardContent>
 
-      <AlertDialog
-        open={deleteTarget !== null}
-        onOpenChange={(o) => {
-          if (!o) {
-            setDeleteTarget(null);
-            setConfirm("");
-          }
-        }}
-      >
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
