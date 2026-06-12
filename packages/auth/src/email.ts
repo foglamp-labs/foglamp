@@ -152,6 +152,50 @@ export async function sendMagicLinkEmail({
 	}
 }
 
+export async function sendResetPasswordEmail({
+	to,
+	url,
+}: {
+	to: string;
+	url: string;
+}) {
+	const apiKey = env.RESEND_API_KEY;
+	const from = env.RESEND_FROM_EMAIL ?? DEFAULT_FROM;
+
+	if (!apiKey) {
+		// No email configured (local dev / self-host) — the reset link is still
+		// usable; grab it from the server logs.
+		log.info("auth.reset_password.skipped_no_api_key", { to, url });
+		return;
+	}
+
+	const resend = new Resend(apiKey);
+	const { error } = await resend.emails.send({
+		from,
+		to: [to],
+		subject: "Reset your Foglamp password",
+		html: emailLayout({
+			previewText: "Reset your Foglamp password — expires in 1 hour.",
+			title: "Reset your password",
+			body: `<p style="margin:0;">Click the button below to choose a new password.</p>`,
+			cta: { label: "Reset password", url },
+			footnote:
+				"This link expires in 1 hour. If you didn't request a reset, you can safely ignore this email — your password is unchanged.",
+		}),
+		text: `Reset your Foglamp password
+
+Open the link below to choose a new password. This link expires in 1 hour.
+
+${url}
+
+If you didn't request a reset, you can safely ignore this email — your password is unchanged.`,
+	});
+
+	if (error) {
+		throw new Error(`Resend request failed: ${error.name} — ${error.message}`);
+	}
+}
+
 export async function sendInvitationEmail({
 	to,
 	inviterName,

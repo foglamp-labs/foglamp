@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@foglamp/ui/components/alert-dialog";
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
@@ -28,10 +38,10 @@ import {
   PageHeader,
   TableSkeleton,
 } from "@/components/app/page-parts";
-import { ProviderKeysHeader } from "./header";
 import { useProject } from "@/components/app/project-context";
 import { ModelLogo } from "@/components/model-logo";
 import { trpc } from "@/utils/trpc";
+import { ProviderKeysHeader } from "./header";
 
 type Provider = "google" | "openai" | "anthropic";
 const PROVIDER_LABELS: Record<Provider, string> = {
@@ -48,6 +58,7 @@ export function ProviderKeysClient() {
   const qc = useQueryClient();
   const [provider, setProvider] = useState<Provider>("google");
   const [key, setKey] = useState("");
+  const [removeTarget, setRemoveTarget] = useState<Provider | null>(null);
 
   const keys = useQuery({
     ...trpc.providerKeys.list.queryOptions({ projectId: projectId! }),
@@ -68,6 +79,7 @@ export function ProviderKeysClient() {
     trpc.providerKeys.delete.mutationOptions({
       onSuccess: () => {
         qc.invalidateQueries({ queryKey: trpc.providerKeys.list.queryKey() });
+        setRemoveTarget(null);
         toast.success("Provider key removed");
       },
       onError: (e) => toast.error(e.message),
@@ -98,7 +110,7 @@ export function ProviderKeysClient() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
-          {!configured && (
+          {!keys.isLoading && !configured && (
             <div className="rounded-xl corner-squircle border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
               <span className="font-medium text-destructive">
                 Encryption not configured.
@@ -183,9 +195,8 @@ export function ProviderKeysClient() {
                         <Button
                           size="icon-sm"
                           variant="ghost"
-                          onClick={() =>
-                            remove.mutate({ projectId, provider: p })
-                          }
+                          disabled={remove.isPending}
+                          onClick={() => setRemoveTarget(p)}
                         >
                           <IconTrashFilled />
                         </Button>
@@ -198,6 +209,37 @@ export function ProviderKeysClient() {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={removeTarget !== null}
+        onOpenChange={(o) => !o && setRemoveTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Remove the {removeTarget ? PROVIDER_LABELS[removeTarget] : ""}{" "}
+              key?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Every judge eval that uses this provider's models will stop
+              scoring until a new key is saved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={remove.isPending}
+              onClick={() =>
+                removeTarget &&
+                remove.mutate({ projectId, provider: removeTarget })
+              }
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

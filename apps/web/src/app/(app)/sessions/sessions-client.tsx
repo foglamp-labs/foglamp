@@ -35,8 +35,10 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import { AgentIcon } from "@/components/app/agent-icon";
+import { CopyIcon } from "@/components/app/copy-icon";
 import {
   ClearFiltersButton,
   FilterSelect,
@@ -44,12 +46,14 @@ import {
   SortableHead,
   ToggleChip,
   Toolbar,
+  cycleSortParam,
+  parseSortParam,
   useDebouncedValue,
   useDelayedLoading,
-  useTableSort,
+  useUrlFilters,
 } from "@/components/app/data-table";
-import { AgentIcon } from "@/components/app/agent-icon";
 import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
+import { navItem } from "@/components/app/nav";
 import {
   EmptyState,
   NoProject,
@@ -57,9 +61,6 @@ import {
   StatCard,
   TableSkeleton,
 } from "@/components/app/page-parts";
-import { navItem } from "@/components/app/nav";
-import { SessionsHeader } from "./header";
-import { CopyIcon } from "@/components/app/copy-icon";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
@@ -71,10 +72,18 @@ import {
   formatTokens,
 } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
+import { SessionsHeader } from "./header";
 
 const PAGE_SIZE = 25;
 
 type SessionSortKey = "last" | "cost" | "tokens" | "turns";
+
+const SESSION_SORT_KEYS = [
+  "last",
+  "cost",
+  "tokens",
+  "turns",
+] as const satisfies readonly SessionSortKey[];
 
 /** Page numbers to render (1-based), collapsing long runs to a single ellipsis.
  * Always keeps the first/last page and the current page ±1 in view, e.g.
@@ -153,20 +162,43 @@ export function SessionsClient() {
   const { projectId } = useProject();
   const { range, setRange } = useRange();
   const router = useRouter();
-  const [page, setPage] = useState(0);
 
-  // Filters + sorting (applied server-side across the full result set).
-  const [search, setSearch] = useState("");
-  const [agentFilter, setAgentFilter] = useState("");
-  const [errorsOnly, setErrorsOnly] = useState(false);
-  const { sort, toggle } = useTableSort<SessionSortKey>();
+  // Filters + sorting (applied server-side across the full result set) live in
+  // the URL so the view survives reload/back and can be shared. The search box
+  // keeps local state for typing; the debounced value syncs to ?q=.
+  const [params, patchParams] = useUrlFilters({
+    q: "",
+    agent: "",
+    errors: "",
+    sort: "",
+    page: "1",
+  });
+  const [search, setSearch] = useState(params.q);
   const debouncedSearch = useDebouncedValue(search);
+  useEffect(() => {
+    patchParams({ q: debouncedSearch.trim() });
+  }, [debouncedSearch, patchParams]);
+  const agentFilter = params.agent;
+  const errorsOnly = params.errors === "1";
+  const sort = parseSortParam(params.sort, SESSION_SORT_KEYS);
+  const toggle = (key: SessionSortKey) =>
+    patchParams({ sort: cycleSortParam(sort, key) });
+  const page = Math.max(0, (Number.parseInt(params.page, 10) || 1) - 1);
+  const setPage = (p: number) => patchParams({ page: String(p + 1) });
   const hasFilters = !!(debouncedSearch.trim() || agentFilter || errorsOnly);
 
-  useEffect(
-    () => setPage(0),
-    [projectId, range, debouncedSearch, agentFilter, errorsOnly, sort]
-  );
+  // Filter/sort changes reset the page inside patchParams; project and range
+  // changes happen outside it, so reset explicitly (skipping mount, which
+  // would wipe the page from a shared/reloaded URL).
+  const mounted = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: page reset on project/range change only
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    patchParams({ page: "1" });
+  }, [projectId, range]);
 
   // Agent names for the filter dropdown.
   const agentsList = useQuery({
@@ -295,14 +327,14 @@ export function SessionsClient() {
             />
             <FilterSelect
               value={agentFilter}
-              onChange={setAgentFilter}
+              onChange={(v) => patchParams({ agent: v })}
               allLabel="Any agent"
               icon={IconGhost}
               options={agentOptions}
             />
             <ToggleChip
               active={errorsOnly}
-              onClick={() => setErrorsOnly((v) => !v)}
+              onClick={() => patchParams({ errors: errorsOnly ? "" : "1" })}
             >
               <IconAlertTriangle className="size-3.5" />
               Errors only
@@ -311,8 +343,7 @@ export function SessionsClient() {
               show={!!(search || agentFilter || errorsOnly)}
               onClick={() => {
                 setSearch("");
-                setAgentFilter("");
-                setErrorsOnly(false);
+                patchParams({ q: "", agent: "", errors: "" });
               }}
             />
             <div className="ml-auto flex items-center gap-3">
@@ -452,7 +483,7 @@ export function SessionsClient() {
                           (page === 0 || sessions.isFetching) &&
                             "pointer-events-none opacity-50"
                         )}
-                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                        onClick={() => setPage(Math.max(0, page - 1))}
                       />
                     </PaginationItem>
                     {pages.map((p, i) =>
@@ -484,7 +515,7 @@ export function SessionsClient() {
                           (currentPage >= totalPages || sessions.isFetching) &&
                             "pointer-events-none opacity-50"
                         )}
-                        onClick={() => setPage((p) => p + 1)}
+                        onClick={() => setPage(page + 1)}
                       />
                     </PaginationItem>
                   </PaginationContent>

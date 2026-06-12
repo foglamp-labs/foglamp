@@ -1,14 +1,15 @@
 "use client";
 
 import {
-  IconBuilding,
-  IconCoinFilled,
-  IconCreditCard,
-  IconFolderFilled,
-  IconStack2Filled,
-  IconUserFilled,
-  IconUserPlus,
-} from "@tabler/icons-react";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@foglamp/ui/components/alert-dialog";
 import { Button } from "@foglamp/ui/components/button";
 import {
   Card,
@@ -22,6 +23,15 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@foglamp/ui/components/native-select";
+import {
+  IconBuilding,
+  IconCoinFilled,
+  IconCreditCard,
+  IconFolderFilled,
+  IconStack2Filled,
+  IconUserFilled,
+  IconUserPlus,
+} from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -59,6 +69,10 @@ function AccessGrantsCard() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [days, setDays] = useState("30");
+  const [revokeTarget, setRevokeTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const search = useQuery({
     ...trpc.platform.searchOrgs.queryOptions({ query }),
@@ -88,6 +102,7 @@ function AccessGrantsCard() {
     trpc.platform.revokeAccess.mutationOptions({
       onSuccess: () => {
         toast.success("Access grant revoked.");
+        setRevokeTarget(null);
         refresh();
       },
       onError: (e) => toast.error(e.message),
@@ -190,7 +205,7 @@ function AccessGrantsCard() {
                 variant="ghost"
                 className="text-destructive"
                 disabled={revoke.isPending}
-                onClick={() => revoke.mutate({ orgId: org.id })}
+                onClick={() => setRevokeTarget({ id: org.id, name: org.name })}
               >
                 Revoke
               </Button>
@@ -203,6 +218,35 @@ function AccessGrantsCard() {
           )}
         </div>
       </CardContent>
+
+      <AlertDialog
+        open={revokeTarget !== null}
+        onOpenChange={(o) => !o && setRevokeTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Revoke access for {revokeTarget?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The org drops back to its paid or free plan limits within a
+              minute.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={revoke.isPending}
+              onClick={() =>
+                revokeTarget && revoke.mutate({ orgId: revokeTarget.id })
+              }
+            >
+              Revoke
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

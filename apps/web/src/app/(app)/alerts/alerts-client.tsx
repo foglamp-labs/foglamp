@@ -1,23 +1,6 @@
 "use client";
 
 import {
-  IconAlertTriangle,
-  IconAlertTriangleFilled,
-  IconBolt,
-  IconChartDots,
-  IconCircleCheck,
-  IconCircleCheckFilled,
-  IconCircleDotFilled,
-  IconClock,
-  IconCoin,
-  IconPlus,
-  IconStack2,
-  IconStar,
-  IconTrash,
-  IconTrashFilled,
-} from "@tabler/icons-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -56,21 +39,38 @@ import {
   TableHeader,
   TableRow,
 } from "@foglamp/ui/components/table";
+import {
+  IconAlertTriangle,
+  IconAlertTriangleFilled,
+  IconBolt,
+  IconChartDots,
+  IconCircleCheck,
+  IconCircleCheckFilled,
+  IconCircleDotFilled,
+  IconClock,
+  IconCoin,
+  IconPlus,
+  IconStack2,
+  IconStar,
+  IconTrash,
+  IconTrashFilled,
+} from "@tabler/icons-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ComponentType, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useDelayedLoading } from "@/components/app/data-table";
+import { navItem } from "@/components/app/nav";
 import {
   EmptyState,
   NoProject,
   PageHeader,
   TableSkeleton,
 } from "@/components/app/page-parts";
-import { navItem } from "@/components/app/nav";
-import { AlertsHeader } from "./header";
 import { useProject } from "@/components/app/project-context";
 import { formatDuration } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
+import { AlertsHeader } from "./header";
 
 type Metric =
   | "cost"
@@ -90,20 +90,80 @@ const METRICS: {
   value: Metric;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  // Shown next to the threshold label and as its placeholder so users know
+  // which unit the number is in (dollars vs ms vs a 0–1 ratio).
+  unit: string;
+  placeholder: string;
 }[] = [
-  { value: "cost", label: "Cost", icon: IconCoin },
-  { value: "latency_p50", label: "Latency p50", icon: IconClock },
-  { value: "latency_p95", label: "Latency p95", icon: IconClock },
-  { value: "latency_p99", label: "Latency p99", icon: IconClock },
-  { value: "ttft_p95", label: "TTFT p95", icon: IconBolt },
-  { value: "error_rate", label: "Error rate", icon: IconAlertTriangle },
-  { value: "token_usage", label: "Token usage", icon: IconStack2 },
-  { value: "request_count", label: "Request count", icon: IconChartDots },
-  { value: "eval_avg_score", label: "Avg eval score", icon: IconStar },
+  {
+    value: "cost",
+    label: "Cost",
+    icon: IconCoin,
+    unit: "USD",
+    placeholder: "5.00",
+  },
+  {
+    value: "latency_p50",
+    label: "Latency p50",
+    icon: IconClock,
+    unit: "ms",
+    placeholder: "2000",
+  },
+  {
+    value: "latency_p95",
+    label: "Latency p95",
+    icon: IconClock,
+    unit: "ms",
+    placeholder: "2000",
+  },
+  {
+    value: "latency_p99",
+    label: "Latency p99",
+    icon: IconClock,
+    unit: "ms",
+    placeholder: "2000",
+  },
+  {
+    value: "ttft_p95",
+    label: "TTFT p95",
+    icon: IconBolt,
+    unit: "ms",
+    placeholder: "1000",
+  },
+  {
+    value: "error_rate",
+    label: "Error rate",
+    icon: IconAlertTriangle,
+    unit: "0–1",
+    placeholder: "0.05",
+  },
+  {
+    value: "token_usage",
+    label: "Token usage",
+    icon: IconStack2,
+    unit: "tokens",
+    placeholder: "100000",
+  },
+  {
+    value: "request_count",
+    label: "Request count",
+    icon: IconChartDots,
+    unit: "requests",
+    placeholder: "1000",
+  },
+  {
+    value: "eval_avg_score",
+    label: "Avg eval score",
+    icon: IconStar,
+    unit: "0–1",
+    placeholder: "0.8",
+  },
   {
     value: "eval_pass_rate",
     label: "Eval pass rate",
     icon: IconCircleCheck,
+    unit: "0–1",
+    placeholder: "0.9",
   },
 ];
 
@@ -386,19 +446,22 @@ export function AlertsClient() {
                     </Select>
                   </Field>
                   <Field className="w-28" data-invalid={!!errors.threshold}>
-                    <FieldLabel>Threshold</FieldLabel>
+                    <FieldLabel className="flex items-center gap-1.5">
+                      Threshold
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {METRIC_BY_VALUE[form.metric].unit}
+                      </span>
+                    </FieldLabel>
                     <Input
                       type="number"
-                      placeholder="0"
+                      placeholder={METRIC_BY_VALUE[form.metric].placeholder}
                       aria-invalid={!!errors.threshold}
                       value={form.threshold}
                       onChange={(e) => setField("threshold", e.target.value)}
                     />
+                    <FieldError>{errors.threshold}</FieldError>
                   </Field>
                 </div>
-                {errors.threshold && (
-                  <FieldError>{errors.threshold}</FieldError>
-                )}
                 {isEvalMetric(form.metric) && (
                   <Field data-invalid={!!errors.evalId}>
                     <FieldLabel>Eval</FieldLabel>
@@ -519,6 +582,7 @@ export function AlertsClient() {
                       <Switch
                         checked={r.enabled}
                         size="sm"
+                        disabled={update.isPending}
                         onCheckedChange={(checked) =>
                           update.mutate({ ruleId: r.id, enabled: checked })
                         }

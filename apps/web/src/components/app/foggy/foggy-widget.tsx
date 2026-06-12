@@ -289,6 +289,19 @@ export function FoggyWidget({
     return () => clearTimeout(t);
   }, [open]);
 
+  // Escape closes the panel (the overlay convention), mirroring the "f" open
+  // shortcut. Window-level so it works even while the composer has focus.
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      onOpenChange(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onOpenChange]);
+
   function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;

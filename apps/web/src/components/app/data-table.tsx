@@ -13,21 +13,114 @@ import { TableHead } from "@foglamp/ui/components/table";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconArrowDown,
-  IconArrowsSort,
   IconArrowUp,
+  IconArrowsSort,
   IconSearch,
   IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
+import type { Route } from "next";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   type ComponentType,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
 } from "react";
+
+// ---------------------------------------------------------------------------
+// URL state
+// ---------------------------------------------------------------------------
+
+/**
+ * Keeps a list view's filter/search/sort/page state in the URL query string so
+ * it survives reload and back-navigation and can be shared as a link.
+ *
+ * `defaults` declares the managed keys; a key at its default value is dropped
+ * from the URL. `patch` merges updates via history replace (no history spam),
+ * skips writes that change nothing, and — because changing a filter
+ * invalidates the current page — clears `page` on every patch that doesn't set
+ * it explicitly. Same-tick patches accumulate in a ref so they don't clobber
+ * each other (the router's searchParams only update after navigation).
+ */
+export function useUrlFilters<K extends string>(
+  defaults: Record<K, string>
+): [Record<K, string>, (updates: Partial<Record<K, string>>) => void] {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const values = {} as Record<K, string>;
+  for (const key of Object.keys(defaults) as K[]) {
+    values[key] = searchParams.get(key) ?? defaults[key];
+  }
+
+  // Same-tick accumulator, keyed to the searchParams snapshot it started from.
+  const pendingRef = useRef<{ base: string; params: URLSearchParams } | null>(
+    null
+  );
+  const defaultsRef = useRef(defaults);
+  defaultsRef.current = defaults;
+
+  const patch = useCallback(
+    (updates: Partial<Record<K, string>>) => {
+      const base = searchParams.toString();
+      const params =
+        pendingRef.current?.base === base
+          ? pendingRef.current.params
+          : new URLSearchParams(base);
+
+      const changed = Object.entries(updates).some(
+        ([k, v]) => (params.get(k) ?? defaultsRef.current[k as K]) !== v
+      );
+      if (!changed) return;
+
+      for (const [k, v] of Object.entries(updates) as [K, string][]) {
+        if (v === defaultsRef.current[k]) params.delete(k);
+        else params.set(k, v);
+      }
+      if (!("page" in updates)) params.delete("page");
+
+      pendingRef.current = { base, params };
+      const qs = params.toString();
+      // The query string varies at runtime, which typed routes can't model.
+      router.replace((qs ? `${pathname}?${qs}` : pathname) as Route, {
+        scroll: false,
+      });
+    },
+    [router, pathname, searchParams]
+  );
+
+  return [values, patch];
+}
+
+/** Parse a `key:dir` sort param ("cost:desc") back into a SortState; unknown
+ * keys/dirs yield null (the table's natural order). */
+export function parseSortParam<K extends string>(
+  value: string,
+  validKeys: readonly K[]
+): SortState<K> | null {
+  const [key, dir] = value.split(":");
+  if (!validKeys.includes(key as K)) return null;
+  if (dir !== "asc" && dir !== "desc") return null;
+  return { key: key as K, dir };
+}
+
+/** The next sort param in the tri-state cycle (desc → asc → off), serialized
+ * for the URL. Mirrors useTableSort's toggle. */
+export function cycleSortParam<K extends string>(
+  sort: SortState<K> | null,
+  key: K
+): string {
+  if (!sort || sort.key !== key) return `${key}:desc`;
+  if (sort.dir === "desc") return `${key}:asc`;
+  return "";
+}
 
 // ---------------------------------------------------------------------------
 // Sorting

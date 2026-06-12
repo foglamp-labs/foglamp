@@ -102,7 +102,6 @@ import {
 	useTextFilter,
 } from "@/components/app/data-table";
 import { navItem } from "@/components/app/nav";
-import { EvalsHeader } from "./header";
 import {
 	EmptyState,
 	NoProject,
@@ -116,6 +115,7 @@ import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
 import { formatCost, formatCount, formatPercent } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
+import { EvalsHeader } from "./header";
 
 import {
 	EvalSettingsFields,
@@ -1086,6 +1086,7 @@ export function EvalsClient() {
 														<Switch
 															size="sm"
 															checked={r.enabled}
+															disabled={update.isPending}
 															onCheckedChange={(checked) =>
 																update.mutate({
 																	evalId: r.id,

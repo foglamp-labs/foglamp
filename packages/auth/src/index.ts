@@ -12,7 +12,7 @@ import { magicLink, organization as organizationPlugin } from "better-auth/plugi
 import { and, eq, gt } from "drizzle-orm";
 import Stripe from "stripe";
 import { uuidv7 } from "uuidv7";
-import { sendInvitationEmail, sendMagicLinkEmail } from "./email";
+import { sendInvitationEmail, sendMagicLinkEmail, sendResetPasswordEmail } from "./email";
 
 // Tiny local slugify — we can't import from @foglamp/api (it depends on auth).
 function slugify(input: string): string {
@@ -162,6 +162,12 @@ export function createAuth() {
     ),
     emailAndPassword: {
       enabled: methods.emailPassword,
+      // Without RESEND_API_KEY the sender logs the reset URL instead of
+      // emailing it, which is the local-dev / self-host path.
+      sendResetPassword: async ({ user, url }) => {
+        await sendResetPasswordEmail({ to: user.email, url });
+      },
+      resetPasswordTokenExpiresIn: 60 * 60,
     },
     socialProviders: googleEnabled
       ? {

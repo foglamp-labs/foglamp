@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import type { Route } from "next";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, use, useEffect, useMemo, useState } from "react";
 
 import { trpc } from "@/utils/trpc";
@@ -27,7 +29,20 @@ const ProjectContext = createContext<ProjectContextValue | null>(null);
 
 const STORAGE_KEY = "foglamp.projectId";
 
+// Detail routes reference records that belong to a single project. After a
+// project switch the record on screen is from the previous project, so we send
+// the user back to the section's list page instead.
+const PROJECT_SCOPED_SECTIONS = new Set([
+  "traces",
+  "sessions",
+  "agents",
+  "workflows",
+  "evals",
+]);
+
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const { data, isLoading } = useQuery(trpc.projects.list.queryOptions());
   const projects = (data ?? []) as Project[];
   const [selected, setSelected] = useState<string | null>(null);
@@ -50,8 +65,13 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }, [projects, selected]);
 
   const setProjectId = (id: string) => {
+    if (id === selected) return;
     setSelected(id);
     if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, id);
+    const [section, ...rest] = pathname.split("/").filter(Boolean);
+    if (section && rest.length > 0 && PROJECT_SCOPED_SECTIONS.has(section)) {
+      router.push(`/${section}` as Route);
+    }
   };
 
   const value = useMemo<ProjectContextValue>(() => {

@@ -54,12 +54,12 @@ import { type ComponentType, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { NoProject, PageHeader } from "@/components/app/page-parts";
-import { OrgSettingsHeader } from "./header";
 import { useProject } from "@/components/app/project-context";
 import { ProjectIcon } from "@/components/app/project-icon";
 import { authClient } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
+import { OrgSettingsHeader } from "./header";
 
 type Member = {
   id: string;
@@ -200,12 +200,21 @@ function GeneralTab({ orgId, orgName }: { orgId: string; orgName: string }) {
     updateProject.mutate({ projectId: project.id, url: url.trim() });
   };
 
+  const [deleting, setDeleting] = useState(false);
   const del = async () => {
-    if (!canDelete) return;
-    const res = await authClient.organization.delete({ organizationId: orgId });
-    if (res.error) return toast.error(res.error.message ?? "Failed to delete");
-    toast.success("Organization deleted");
-    window.location.href = "/overview";
+    if (!canDelete || deleting) return;
+    setDeleting(true);
+    try {
+      const res = await authClient.organization.delete({
+        organizationId: orgId,
+      });
+      if (res.error)
+        return toast.error(res.error.message ?? "Failed to delete");
+      toast.success("Organization deleted");
+      window.location.href = "/overview";
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -343,7 +352,7 @@ function GeneralTab({ orgId, orgName }: { orgId: string; orgName: string }) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              disabled={!canDelete}
+              disabled={!canDelete || deleting}
               onClick={del}
             >
               Delete
@@ -358,26 +367,39 @@ function GeneralTab({ orgId, orgName }: { orgId: string; orgName: string }) {
 function MembersTab({ orgId }: { orgId: string }) {
   const { members, refresh } = useOrgPeople(orgId);
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
+  const [roleUpdating, setRoleUpdating] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const changeRole = async (memberId: string, role: Role) => {
-    const res = await authClient.organization.updateMemberRole({
-      memberId,
-      role,
-      organizationId: orgId,
-    });
-    if (res.error) return toast.error(res.error.message ?? "Failed");
-    void refresh();
+    if (roleUpdating) return;
+    setRoleUpdating(memberId);
+    try {
+      const res = await authClient.organization.updateMemberRole({
+        memberId,
+        role,
+        organizationId: orgId,
+      });
+      if (res.error) return toast.error(res.error.message ?? "Failed");
+      void refresh();
+    } finally {
+      setRoleUpdating(null);
+    }
   };
   const remove = async () => {
-    if (!removeTarget) return;
-    const res = await authClient.organization.removeMember({
-      memberIdOrEmail: removeTarget.id,
-      organizationId: orgId,
-    });
-    setRemoveTarget(null);
-    if (res.error) return toast.error(res.error.message ?? "Failed");
-    toast.success("Member removed");
-    void refresh();
+    if (!removeTarget || removing) return;
+    setRemoving(true);
+    try {
+      const res = await authClient.organization.removeMember({
+        memberIdOrEmail: removeTarget.id,
+        organizationId: orgId,
+      });
+      setRemoveTarget(null);
+      if (res.error) return toast.error(res.error.message ?? "Failed");
+      toast.success("Member removed");
+      void refresh();
+    } finally {
+      setRemoving(false);
+    }
   };
 
   return (
@@ -412,6 +434,7 @@ function MembersTab({ orgId }: { orgId: string }) {
               ) : (
                 <NativeSelect
                   value={m.role}
+                  disabled={roleUpdating !== null}
                   onChange={(e) => changeRole(m.id, e.target.value as Role)}
                 >
                   <NativeSelectOption value="admin">Admin</NativeSelectOption>
@@ -445,7 +468,11 @@ function MembersTab({ orgId }: { orgId: string }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={remove}>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removing}
+              onClick={remove}
+            >
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -459,26 +486,42 @@ function InvitationsTab({ orgId }: { orgId: string }) {
   const { invites, refresh } = useOrgPeople(orgId);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
+  const [inviting, setInviting] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<Invite | null>(null);
+  const [revoking, setRevoking] = useState(false);
 
   const invite = async () => {
-    if (!email.trim()) return;
-    const res = await authClient.organization.inviteMember({
-      email: email.trim(),
-      role,
-      organizationId: orgId,
-    });
-    if (res.error) return toast.error(res.error.message ?? "Failed to invite");
-    setEmail("");
-    toast.success("Invitation sent");
-    void refresh();
+    if (!email.trim() || inviting) return;
+    setInviting(true);
+    try {
+      const res = await authClient.organization.inviteMember({
+        email: email.trim(),
+        role,
+        organizationId: orgId,
+      });
+      if (res.error)
+        return toast.error(res.error.message ?? "Failed to invite");
+      setEmail("");
+      toast.success("Invitation sent");
+      void refresh();
+    } finally {
+      setInviting(false);
+    }
   };
 
-  const cancel = async (invitationId: string) => {
-    const res = await authClient.organization.cancelInvitation({
-      invitationId,
-    });
-    if (res.error) return toast.error(res.error.message ?? "Failed");
-    void refresh();
+  const cancel = async () => {
+    if (!revokeTarget || revoking) return;
+    setRevoking(true);
+    try {
+      const res = await authClient.organization.cancelInvitation({
+        invitationId: revokeTarget.id,
+      });
+      setRevokeTarget(null);
+      if (res.error) return toast.error(res.error.message ?? "Failed");
+      void refresh();
+    } finally {
+      setRevoking(false);
+    }
   };
 
   return (
@@ -512,7 +555,11 @@ function InvitationsTab({ orgId }: { orgId: string }) {
               </SelectContent>
             </Select>
           </Field>
-          <Button onClick={invite} disabled={!email.trim()} className="mb-0.5">
+          <Button
+            onClick={invite}
+            disabled={!email.trim() || inviting}
+            className="mb-0.5"
+          >
             Invite
           </Button>
         </div>
@@ -541,7 +588,7 @@ function InvitationsTab({ orgId }: { orgId: string }) {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => cancel(i.id)}
+                      onClick={() => setRevokeTarget(i)}
                     >
                       Revoke
                     </Button>
@@ -552,6 +599,31 @@ function InvitationsTab({ orgId }: { orgId: string }) {
           </div>
         )}
       </CardContent>
+
+      <AlertDialog
+        open={revokeTarget !== null}
+        onOpenChange={(o) => !o && setRevokeTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke invitation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {revokeTarget?.email} will no longer be able to join with this
+              invitation. You can always send a new one.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={revoking}
+              onClick={cancel}
+            >
+              Revoke
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
@@ -564,6 +636,10 @@ function ProjectsTab({ orgId }: { orgId: string }) {
     id: string;
     name: string;
   } | null>(null);
+  // Require typing the project name to confirm deletion (same as org delete).
+  const [confirm, setConfirm] = useState("");
+  const canDelete =
+    deleteTarget !== null && confirm.trim() === deleteTarget.name;
 
   const del = useMutation(
     trpc.projects.delete.mutationOptions({
@@ -607,7 +683,12 @@ function ProjectsTab({ orgId }: { orgId: string }) {
 
       <AlertDialog
         open={deleteTarget !== null}
-        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDeleteTarget(null);
+            setConfirm("");
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -617,11 +698,27 @@ function ProjectsTab({ orgId }: { orgId: string }) {
               and scores.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Field>
+            <FieldLabel>
+              Type{" "}
+              <span className="font-medium text-foreground">
+                {deleteTarget?.name}
+              </span>{" "}
+              to confirm
+            </FieldLabel>
+            <Input
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder={deleteTarget?.name}
+              autoComplete="off"
+              autoFocus
+            />
+          </Field>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              disabled={del.isPending}
+              disabled={!canDelete || del.isPending}
               onClick={() =>
                 deleteTarget && del.mutate({ projectId: deleteTarget.id })
               }
@@ -640,23 +737,40 @@ function BillingTab({ orgId }: { orgId: string }) {
     ...trpc.orgs.usage.queryOptions({ orgId }),
     enabled: !!orgId,
   });
-  const plan = usage.data?.plan ?? "free";
+  const [redirecting, setRedirecting] = useState(false);
 
   const upgrade = async () => {
-    const origin = window.location.origin;
-    await authClient.subscription.upgrade({
-      plan: "pro",
-      referenceId: orgId,
-      successUrl: `${origin}/settings/org`,
-      cancelUrl: `${origin}/settings/org`,
-    });
+    if (redirecting) return;
+    setRedirecting(true);
+    try {
+      const origin = window.location.origin;
+      await authClient.subscription.upgrade({
+        plan: "pro",
+        referenceId: orgId,
+        successUrl: `${origin}/settings/org`,
+        cancelUrl: `${origin}/settings/org`,
+      });
+    } finally {
+      setRedirecting(false);
+    }
   };
   const manage = async () => {
-    await authClient.subscription.billingPortal({
-      referenceId: orgId,
-      returnUrl: `${window.location.origin}/settings/org`,
-    });
+    if (redirecting) return;
+    setRedirecting(true);
+    try {
+      await authClient.subscription.billingPortal({
+        referenceId: orgId,
+        returnUrl: `${window.location.origin}/settings/org`,
+      });
+    } finally {
+      setRedirecting(false);
+    }
   };
+
+  // Don't guess the plan while it loads — a Pro org would otherwise see the
+  // free-plan upgrade pitch flash on every cold load.
+  if (!usage.data) return null;
+  const plan = usage.data.plan;
 
   return (
     <Card>
@@ -676,13 +790,18 @@ function BillingTab({ orgId }: { orgId: string }) {
               Upgrade to Pro for 1M spans/mo, 14-day retention, 10 alerts, 5
               projects, and 20 evals.
             </p>
-            <Button size="sm" onClick={upgrade}>
+            <Button size="sm" disabled={redirecting} onClick={upgrade}>
               Upgrade to Pro · $49/mo
             </Button>
           </div>
         )}
         {plan === "pro" && (
-          <Button size="sm" variant="outline" onClick={manage}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={redirecting}
+            onClick={manage}
+          >
             Manage billing
           </Button>
         )}

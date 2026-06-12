@@ -40,7 +40,7 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import {
   ClearFiltersButton,
@@ -48,11 +48,14 @@ import {
   SortableHead,
   ToggleChip,
   Toolbar,
+  cycleSortParam,
+  parseSortParam,
   useDebouncedValue,
   useDelayedLoading,
-  useTableSort,
+  useUrlFilters,
 } from "@/components/app/data-table";
 import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
+import { navItem } from "@/components/app/nav";
 import {
   CardsSkeleton,
   EmptyState,
@@ -61,12 +64,10 @@ import {
   StatCard,
   TableSkeleton,
 } from "@/components/app/page-parts";
-import { navItem } from "@/components/app/nav";
-import { WorkflowsHeader } from "./header";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
-import { useViewMode, ViewToggle } from "@/components/app/view-toggle";
+import { ViewToggle, useViewMode } from "@/components/app/view-toggle";
 import {
   formatCost,
   formatCount,
@@ -74,6 +75,7 @@ import {
   formatTokens,
 } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
+import { WorkflowsHeader } from "./header";
 
 const PAGE_SIZE = 25;
 
@@ -89,6 +91,16 @@ type WorkflowSortKey =
   | "errors"
   | "cost"
   | "lastRun";
+
+const WORKFLOW_SORT_KEYS = [
+  "name",
+  "runs",
+  "traces",
+  "tokens",
+  "errors",
+  "cost",
+  "lastRun",
+] as const satisfies readonly WorkflowSortKey[];
 
 /** Page numbers to render (1-based), collapsing long runs to a single ellipsis.
  * Always keeps the first/last page and the current page ±1 in view, e.g.
@@ -159,20 +171,41 @@ export function WorkflowsClient() {
   const { range, setRange } = useRange();
   const router = useRouter();
   const [view, setView] = useViewMode("workflows", "cards");
-  const [page, setPage] = useState(0);
 
-  // Filters + sorting (applied server-side across the full result set).
-  const [search, setSearch] = useState("");
-  const [errorsOnly, setErrorsOnly] = useState(false);
-  const { sort, toggle } = useTableSort<WorkflowSortKey>();
+  // Filters + sorting (applied server-side across the full result set) live in
+  // the URL so the view survives reload/back and can be shared. The search box
+  // keeps local state for typing; the debounced value syncs to ?q=.
+  const [params, patchParams] = useUrlFilters({
+    q: "",
+    errors: "",
+    sort: "",
+    page: "1",
+  });
+  const [search, setSearch] = useState(params.q);
   const debouncedSearch = useDebouncedValue(search);
+  useEffect(() => {
+    patchParams({ q: debouncedSearch.trim() });
+  }, [debouncedSearch, patchParams]);
+  const errorsOnly = params.errors === "1";
+  const sort = parseSortParam(params.sort, WORKFLOW_SORT_KEYS);
+  const toggle = (key: WorkflowSortKey) =>
+    patchParams({ sort: cycleSortParam(sort, key) });
+  const page = Math.max(0, (Number.parseInt(params.page, 10) || 1) - 1);
+  const setPage = (p: number) => patchParams({ page: String(p + 1) });
   const hasFilters = !!(debouncedSearch.trim() || errorsOnly);
 
-  // Reset to the first page when the project, range, filters, or sort change.
-  useEffect(
-    () => setPage(0),
-    [projectId, range, debouncedSearch, errorsOnly, sort]
-  );
+  // Filter/sort changes reset the page inside patchParams; project and range
+  // changes happen outside it, so reset explicitly (skipping mount, which
+  // would wipe the page from a shared/reloaded URL).
+  const mounted = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: page reset on project/range change only
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    patchParams({ page: "1" });
+  }, [projectId, range]);
 
   const workflows = useQuery({
     ...trpc.workflows.list.queryOptions({
@@ -278,7 +311,7 @@ export function WorkflowsClient() {
             />
             <ToggleChip
               active={errorsOnly}
-              onClick={() => setErrorsOnly((v) => !v)}
+              onClick={() => patchParams({ errors: errorsOnly ? "" : "1" })}
             >
               <IconAlertTriangle className="size-3.5" />
               Errors only
@@ -287,7 +320,7 @@ export function WorkflowsClient() {
               show={!!(search || errorsOnly)}
               onClick={() => {
                 setSearch("");
-                setErrorsOnly(false);
+                patchParams({ q: "", errors: "" });
               }}
             />
             <div className="ml-auto flex items-center gap-3">
@@ -500,7 +533,7 @@ export function WorkflowsClient() {
                         (page === 0 || workflows.isFetching) &&
                           "pointer-events-none opacity-50"
                       )}
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      onClick={() => setPage(Math.max(0, page - 1))}
                     />
                   </PaginationItem>
                   {pages.map((p, i) =>
@@ -532,7 +565,7 @@ export function WorkflowsClient() {
                         (currentPage >= totalPages || workflows.isFetching) &&
                           "pointer-events-none opacity-50"
                       )}
-                      onClick={() => setPage((p) => p + 1)}
+                      onClick={() => setPage(page + 1)}
                     />
                   </PaginationItem>
                 </PaginationContent>

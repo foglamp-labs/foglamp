@@ -1,5 +1,15 @@
 "use client";
 
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@foglamp/ui/components/alert-dialog";
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
@@ -39,10 +49,10 @@ import {
 	PageHeader,
 	TableSkeleton,
 } from "@/components/app/page-parts";
-import { PricingHeader } from "./header";
 import { useProject } from "@/components/app/project-context";
 import { formatDateTime } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
+import { PricingHeader } from "./header";
 
 // The eight OpenRouter price dimensions, in display order. Prompt/completion
 // lead (the common case); the rest are optional and fall back to OpenRouter
@@ -113,11 +123,20 @@ export function PricingClient() {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [modelPattern, setModelPattern] = useState("");
 	const [prices, setPrices] = useState<Partial<Record<PriceKey, string>>>({});
+	const [deleteTarget, setDeleteTarget] = useState<{
+		id: string;
+		modelPattern: string;
+	} | null>(null);
 	const setPrice = (key: PriceKey, value: string) =>
 		setPrices((p) => ({ ...p, [key]: value }));
 	const hasAnyPrice = PRICE_FIELDS.some(
 		(f) => (prices[f.key] ?? "").trim() !== "",
 	);
+	// Prices must be non-negative numbers; a negative price would credit usage.
+	const hasInvalidPrice = PRICE_FIELDS.some((f) => {
+		const v = (prices[f.key] ?? "").trim();
+		return v !== "" && (Number.isNaN(Number(v)) || Number(v) < 0);
+	});
 
 	const pricing = useQuery({
 		...trpc.pricing.list.queryOptions({ projectId: projectId! }),
@@ -143,6 +162,7 @@ export function PricingClient() {
 		trpc.pricing.delete.mutationOptions({
 			onSuccess: () => {
 				qc.invalidateQueries({ queryKey: trpc.pricing.list.queryKey() });
+				setDeleteTarget(null);
 				toast.success("Pricing override removed");
 			},
 			onError: (e) => toast.error(e.message),
@@ -164,7 +184,7 @@ export function PricingClient() {
 	const rows = pricing.data ?? [];
 
 	const handleSubmit = () => {
-		if (!modelPattern.trim() || !hasAnyPrice) return;
+		if (!modelPattern.trim() || !hasAnyPrice || hasInvalidPrice) return;
 		const dims: Partial<Record<PriceKey, number>> = {};
 		for (const f of PRICE_FIELDS) {
 			const v = (prices[f.key] ?? "").trim();
@@ -213,6 +233,8 @@ export function PricingClient() {
 										</FieldLabel>
 										<Input
 											type="number"
+											min={0}
+											step="any"
 											placeholder={f.placeholder}
 											value={prices[f.key] ?? ""}
 											onChange={(e) => setPrice(f.key, e.target.value)}
@@ -223,7 +245,10 @@ export function PricingClient() {
 							<DialogFooter>
 								<Button
 									disabled={
-										!modelPattern.trim() || !hasAnyPrice || create.isPending
+										!modelPattern.trim() ||
+										!hasAnyPrice ||
+										hasInvalidPrice ||
+										create.isPending
 									}
 									onClick={handleSubmit}
 								>
@@ -236,7 +261,9 @@ export function PricingClient() {
 			/>
 
 			{pricing.isLoading ? (
-				showSkeleton ? <TableSkeleton /> : null
+				showSkeleton ? (
+					<TableSkeleton />
+				) : null
 			) : rows.length === 0 ? (
 				<EmptyState
 					icon={IconCoinFilled}
@@ -291,7 +318,12 @@ export function PricingClient() {
 											size="icon-sm"
 											variant="ghost"
 											disabled={del.isPending}
-											onClick={() => del.mutate({ id: r.id, projectId })}
+											onClick={() =>
+												setDeleteTarget({
+													id: r.id,
+													modelPattern: r.modelPattern,
+												})
+											}
 										>
 											<IconTrashFilled />
 										</Button>
@@ -302,6 +334,35 @@ export function PricingClient() {
 					</TableBody>
 				</Table>
 			)}
+
+			<AlertDialog
+				open={deleteTarget !== null}
+				onOpenChange={(o) => !o && setDeleteTarget(null)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							Delete the override for {deleteTarget?.modelPattern}?
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							Models matching this pattern fall back to the resolved OpenRouter
+							price. This can't be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							disabled={del.isPending}
+							onClick={() =>
+								deleteTarget && del.mutate({ id: deleteTarget.id, projectId })
+							}
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 }
