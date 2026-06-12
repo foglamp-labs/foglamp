@@ -3,6 +3,87 @@ title: Changelog
 description: "What's new in Foglamp."
 ---
 
+<Update label="June 12, 2026">
+
+## New features
+
+**Ambient trace context with `fog.run()`.** Wrap any call with
+`fog.run(context, fn)` and every traced call inside picks up the
+workflow, session, and metadata automatically — no parameter
+threading, singletons stay singletons. See the [SDK overview](/sdk/overview).
+
+**Typed `with()` context binding and agent-class wrapping.** `fog.with(ctx)`
+now returns wrapped functions typed exactly like the originals, and
+`foglamp/wrap` ships drop-in wrappers for `ToolLoopAgent` and
+`Experimental_Agent` with per-call tool attribution. See
+[AI SDK v4–v6 (wrap)](/sdk/wrap).
+
+**Forgot-password and account recovery.** A new password-reset flow,
+plus a redesigned accept-invitation page with explicit accept/decline
+and a wrong-account recovery path.
+
+**Shareable list views.** Search, filter, sort, and pagination on
+[Traces](/dashboard/traces), [Sessions](/dashboard/sessions),
+[Agents](/dashboard/agents), and [Workflows](/dashboard/workflows)
+are now reflected in the URL — copy the link and a teammate lands on
+the same view.
+
+**Profile picture in the sidebar.** Google sign-in users now see their
+photo in the sidebar; email/password users keep the initials avatar.
+
+## Updates
+
+**Confirmation dialogs for destructive actions.** Deleting a project,
+provider key, pricing override, invitation, or access grant now
+prompts before it commits — project deletes require type-to-confirm.
+
+**Louder SDK auth failures.** The transport now warns once on a 401
+or 403 from ingest, even without debug mode, so a bad API key can't
+silently drop every trace.
+
+**Vercel `waitUntil` without the peer dependency.** The SDK reads the
+Vercel runtime context directly, so serverless flushing works without
+adding `@vercel/functions` to your project.
+
+**Eval scores on a 0–1 scale.** Numeric judges now score on a
+normalized 0.00–1.00 scale (was 1–5), with an **Avg score** stat card
+on the [Evals](/dashboard/evals) page that reflects active filters.
+
+**Deleted active project no longer strands the app.** Deleting the
+currently selected project now falls back to another project instead
+of leaving the dashboard blank.
+
+**Newly created projects stay selected.** Creating a project now
+keeps it as the active project instead of reverting to the first one
+in the list.
+
+**Onboarding key stability.** The onboarding panel no longer revokes
+prior keys you may have already pasted into your code — the minted
+key is cached and reused while valid.
+
+## Bug fixes
+
+- Bedrock model IDs and dash-versioned Anthropic IDs
+  (e.g. `claude-haiku-4-5`) now resolve to pricing instead of recording
+  null cost.
+- Hardened model-ID normalization for `-fast` Anthropic variants,
+  3.x IDs, and additional Bedrock creators (OpenAI, Qwen, Luma,
+  Stability, TwelveLabs, DeepSeek R1).
+- Fixed a 500 in the usage-by-day query caused by a column alias
+  collision.
+- Trace inspector card shadow is now visible in light mode.
+- Brightened the default button hover state in dark mode.
+- Invitation flow now survives sign-in: unauthenticated users bounce
+  through login and return to the invitation, and zero-org dashboards
+  list pending invitations with an **Accept** button.
+- Disabled form controls while mutations are pending to prevent
+  duplicate submissions.
+- Removed loading flashes on the billing plan and encryption banner.
+- Stale project-scoped detail routes now redirect on project switch.
+- Escape closes the Foggy panel.
+
+</Update>
+
 <Update label="June 5, 2026">
 
 ## New features
