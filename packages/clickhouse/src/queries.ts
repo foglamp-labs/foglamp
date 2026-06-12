@@ -482,6 +482,11 @@ export type SpanDetailRow = {
 	session_id: string;
 };
 
+// Hard cap on spans returned for one trace. Each row can carry ~MB-scale
+// input/output payloads, and the waterfall renders every row it gets — an
+// unbounded trace would stall both the transfer and the browser.
+const TRACE_SPANS_LIMIT = 2000;
+
 /** All spans for one trace, deduped (FINAL) and ordered for the waterfall. */
 export function getTraceSpans(
 	client: ClickHouseClient,
@@ -504,7 +509,8 @@ export function getTraceSpans(
        agent_name, workflow_name, workflow_run_id, session_id
      FROM spans FINAL
      WHERE project_id = {projectId:String} AND trace_id = {traceId:String}
-     ORDER BY start_time ASC, span_id ASC`,
+     ORDER BY start_time ASC, span_id ASC
+     LIMIT ${TRACE_SPANS_LIMIT}`,
 		{ projectId: params.projectId, traceId: params.traceId },
 	);
 }

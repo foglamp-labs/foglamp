@@ -9,6 +9,7 @@ import {
   IconMessageFilled,
   IconPacmanFilled,
   IconPlus,
+  IconRefresh,
   IconX,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -249,7 +250,15 @@ export function FoggyWidget({
     [projectId, threadId]
   );
 
-  const { messages, sendMessage, setMessages, status, error, stop } = useChat({
+  const {
+    messages,
+    sendMessage,
+    setMessages,
+    status,
+    error,
+    stop,
+    regenerate,
+  } = useChat({
     transport,
   });
   const busy = status === "submitted" || status === "streaming";
@@ -467,9 +476,23 @@ export function FoggyWidget({
                     />
                   )}
                   {error && (
-                    <div className="rounded-3xl corner-squircle bg-destructive/10 px-3 ml-3 py-2 text-sm text-destructive w-fit flex gap-2 items-center">
-                      <IconAlertHexagonFilled className="size-3.5" />
-                      {errorMessage(error)}
+                    <div className="ml-3 flex w-fit flex-col gap-2">
+                      <div className="rounded-3xl corner-squircle bg-destructive/10 px-3 py-2 text-sm text-destructive w-fit flex gap-2 items-center">
+                        <IconAlertHexagonFilled className="size-3.5" />
+                        {errorMessage(error)}
+                      </div>
+                      {/* The failed question is still in the thread — let the
+                          user re-send it instead of retyping. */}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-fit"
+                        onClick={() => void regenerate()}
+                      >
+                        <IconRefresh className="size-3.5" />
+                        Try again
+                      </Button>
                     </div>
                   )}
                 </motion.div>

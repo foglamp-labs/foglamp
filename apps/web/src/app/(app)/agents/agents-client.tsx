@@ -184,6 +184,11 @@ export function AgentsClient() {
   useEffect(() => {
     patchParams({ q: debouncedSearch.trim() });
   }, [debouncedSearch, patchParams]);
+  // Back/forward (or any external URL change) re-syncs the input; in-flight
+  // typing wins when it already matches what the URL will settle on.
+  useEffect(() => {
+    setSearch((prev) => (prev.trim() === params.q ? prev : params.q));
+  }, [params.q]);
   const errorsOnly = params.errors === "1";
   const sort = parseSortParam(params.sort, AGENT_SORT_KEYS);
   const toggle = (key: AgentSortKey) =>

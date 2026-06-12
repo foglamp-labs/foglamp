@@ -7,6 +7,7 @@ import { type HighlighterCore, createHighlighterCore } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 
 import { CopyIcon } from "./copy-icon";
+import { useCopied } from "./use-copied";
 
 // A copy-pasteable code block with Shiki syntax highlighting. Highlighting runs
 // client-side and async; the raw code renders immediately as a fallback so there
@@ -15,6 +16,11 @@ import { CopyIcon } from "./copy-icon";
 // load in the browser. Dual theme: `github-light` in light mode, `vesper` in
 // dark; each token carries both as CSS variables, selected by the `.dark` class
 // (see index.css).
+
+// Above this size highlighting is skipped and the plain <pre> fallback stays
+// up: Shiki tokenizes on the main thread, and a multi-MB pretty-printed JSON
+// payload would freeze the tab for seconds.
+const HIGHLIGHT_MAX_CHARS = 50_000;
 
 let highlighterPromise: Promise<HighlighterCore> | undefined;
 
@@ -45,6 +51,10 @@ export function useShikiHtml(code: string, lang = "typescript"): string | null {
 	const [html, setHtml] = useState<string | null>(null);
 
 	useEffect(() => {
+		if (code.length > HIGHLIGHT_MAX_CHARS) {
+			setHtml(null);
+			return;
+		}
 		let active = true;
 		void getHighlighter()
 			.then((hl) => {
@@ -77,12 +87,11 @@ export function CodeBlock({
 	actions?: React.ReactNode;
 }) {
 	const html = useShikiHtml(code, lang);
-	const [copied, setCopied] = useState(false);
+	const { copied, markCopied } = useCopied(2000);
 
 	const copy = () => {
 		void navigator.clipboard.writeText(code);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
+		markCopied();
 	};
 
 	return (

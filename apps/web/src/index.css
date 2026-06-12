@@ -1,5 +1,10 @@
 @import "@foglamp/ui/globals.css";
 
+/* Streamdown's built-in components (chat code blocks with their copy button,
+   etc.) carry Tailwind classes inside its dist bundle; without scanning it,
+   those classes are never generated and the blocks render unstyled. */
+@source "../../../node_modules/streamdown/dist/*.js";
+
 /* Marketing display face. `font-display` resolves to Host Grotesk (loaded by
    next/font in the root layout as --font-host-grotesk) and is used only on
    marketing/product-page headings; the app dashboard stays on Inter. */

@@ -50,6 +50,7 @@ import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CopyIcon } from "@/components/app/copy-icon";
+import { useCopied } from "@/components/app/use-copied";
 import { useDelayedLoading } from "@/components/app/data-table";
 import { EmptyState, TableSkeleton } from "@/components/app/page-parts";
 import { ApiKeysHeader } from "./header";
@@ -64,7 +65,7 @@ export function SettingsClient() {
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
   const [keyName, setKeyName] = useState("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const { copied, markCopied, resetCopied } = useCopied(2000);
   // Key pending revocation (drives the confirm dialog).
   const [revokeTarget, setRevokeTarget] = useState<{
     id: string;
@@ -129,7 +130,7 @@ export function SettingsClient() {
                 if (!open) {
                   setKeyName("");
                   setRevealedKey(null);
-                  setCopied(false);
+                  resetCopied();
                 }
               }}
             >
@@ -164,8 +165,7 @@ export function SettingsClient() {
                             variant="ghost"
                             onClick={() => {
                               void navigator.clipboard.writeText(revealedKey);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 2000);
+                              markCopied();
                             }}
                           >
                             <CopyIcon
@@ -182,7 +182,7 @@ export function SettingsClient() {
                           setKeyDialogOpen(false);
                           setRevealedKey(null);
                           setKeyName("");
-                          setCopied(false);
+                          resetCopied();
                         }}
                       >
                         Done
@@ -249,6 +249,7 @@ export function SettingsClient() {
                   <TableHead>Prefix</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead>Last used</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -274,10 +275,17 @@ export function SettingsClient() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground border-r-0">
+                    <TableCell className="text-muted-foreground">
                       {formatDistanceToNow(new Date(k.createdAt), {
                         addSuffix: true,
                       })}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground border-r-0">
+                      {k.lastUsedAt
+                        ? formatDistanceToNow(new Date(k.lastUsedAt), {
+                            addSuffix: true,
+                          })
+                        : "Never"}
                     </TableCell>
                     <TableCell align="center" className="py-0">
                       {!k.revokedAt && (

@@ -52,7 +52,9 @@ export const alertsRouter = router({
         evalId: z.string().optional(),
         filters: filtersSchema,
         windowSeconds: z.number().int().min(60).max(86_400),
-        threshold: z.number(),
+        // Every metric is non-negative (cost, ms, counts, 0–1 rates), so a
+        // negative threshold can only be a typo.
+        threshold: z.number().finite().nonnegative(),
         comparison: comparisonEnum,
         enabled: z.boolean().optional(),
         channels: channelsSchema,
@@ -71,7 +73,7 @@ export const alertsRouter = router({
         evalId: z.string().optional(),
         filters: filtersSchema,
         windowSeconds: z.number().int().min(60).max(86_400).optional(),
-        threshold: z.number().optional(),
+        threshold: z.number().finite().nonnegative().optional(),
         comparison: comparisonEnum.optional(),
         enabled: z.boolean().optional(),
         channels: channelsSchema.optional(),

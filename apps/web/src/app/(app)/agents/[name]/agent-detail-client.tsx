@@ -81,12 +81,12 @@ import {
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import { ModelLogo } from "@/components/model-logo";
+import { RelativeTime } from "@/components/app/relative-time";
 import {
   formatCost,
   formatCount,
   formatDuration,
   formatPercent,
-  formatRelative,
   formatTokens,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -656,9 +656,20 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                             </TableCell>
                             <TableCell>
                               {t.workflowName ? (
-                                <Badge variant="secondary">
-                                  {t.workflowName}
-                                </Badge>
+                                <Link
+                                  href={`/workflows/${encodeURIComponent(
+                                    t.workflowName
+                                  )}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="View workflow"
+                                >
+                                  <Badge
+                                    variant="secondary"
+                                    className="transition-colors hover:bg-secondary/80"
+                                  >
+                                    {t.workflowName}
+                                  </Badge>
+                                </Link>
                               ) : (
                                 "—"
                               )}
@@ -676,7 +687,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                               {formatCost(t.totalCost)}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">
-                              {formatRelative(t.startTime)}
+                              <RelativeTime value={t.startTime} />
                             </TableCell>
                           </TableRow>
                           {isOpen && (

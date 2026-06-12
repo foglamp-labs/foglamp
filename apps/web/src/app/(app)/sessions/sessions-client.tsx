@@ -64,11 +64,12 @@ import {
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
+import { RelativeTime } from "@/components/app/relative-time";
+import { useCopied } from "@/components/app/use-copied";
 import {
   formatCost,
   formatCount,
   formatPercent,
-  formatRelative,
   formatTokens,
 } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
@@ -178,6 +179,11 @@ export function SessionsClient() {
   useEffect(() => {
     patchParams({ q: debouncedSearch.trim() });
   }, [debouncedSearch, patchParams]);
+  // Back/forward (or any external URL change) re-syncs the input; in-flight
+  // typing wins when it already matches what the URL will settle on.
+  useEffect(() => {
+    setSearch((prev) => (prev.trim() === params.q ? prev : params.q));
+  }, [params.q]);
   const agentFilter = params.agent;
   const errorsOnly = params.errors === "1";
   const sort = parseSortParam(params.sort, SESSION_SORT_KEYS);
@@ -458,7 +464,7 @@ export function SessionsClient() {
                           align="right"
                           className="text-muted-foreground "
                         >
-                          {formatRelative(s.lastSeen)}
+                          <RelativeTime value={s.lastSeen} />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -570,7 +576,7 @@ function HeatCell({
 /** Copy a session id to the clipboard, with a brief check-mark confirmation.
  * Stops propagation so it doesn't trigger the row's navigate-on-click. */
 function CopyIdButton({ id }: { id: string }) {
-  const [copied, setCopied] = useState(false);
+  const { copied, markCopied } = useCopied();
   return (
     <button
       type="button"
@@ -578,8 +584,7 @@ function CopyIdButton({ id }: { id: string }) {
       onClick={(e) => {
         e.stopPropagation();
         void navigator.clipboard.writeText(id);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        markCopied();
       }}
       className="inline-flex shrink-0 items-center justify-center rounded p-0.5 text-muted-foreground/50 cursor-pointer transition-colors hover:text-foreground"
     >

@@ -27,8 +27,10 @@ import {
   EmptyTitle,
 } from "@foglamp/ui/components/empty";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
+import type { Route } from "next";
+import Link from "next/link";
 import { useTheme } from "next-themes";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text as RechartsText } from "recharts";
 
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
@@ -330,6 +332,7 @@ function BreakdownRow({
   fraction,
   color,
   metrics,
+  href,
 }: {
   renderIcon: (className: string) => React.ReactNode;
   title: string;
@@ -337,9 +340,12 @@ function BreakdownRow({
   fraction: number;
   color: string;
   metrics: React.ReactNode;
+  href?: Route;
 }) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 px-0.5">
+  const rowClassName =
+    "flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 px-0.5";
+  const inner = (
+    <>
       {/* Left: name + secondary metrics. */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-[6px]">
@@ -363,8 +369,19 @@ function BreakdownRow({
           />
         </div>
       </div>
-    </div>
+    </>
   );
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={cn(rowClassName, "transition-colors hover:bg-muted/50")}
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={rowClassName}>{inner}</div>;
 }
 
 export function OverviewClient() {
@@ -385,6 +402,14 @@ export function OverviewClient() {
   const [costSelected, setCostSelected] = useState<string | null>(null);
   const [volumeSelected, setVolumeSelected] = useState<string | null>(null);
   const [latencySelected, setLatencySelected] = useState<string | null>(null);
+
+  // A new range brings a new series set (cost keys are per-model, m0…mN), so a
+  // selection carried over from the old range could point at nothing.
+  useEffect(() => {
+    setCostSelected(null);
+    setVolumeSelected(null);
+    setLatencySelected(null);
+  }, [from, to]);
 
   const summary = useQuery({
     ...trpc.metrics.summary.queryOptions(args),
@@ -717,7 +742,12 @@ export function OverviewClient() {
             value={formatDuration(cur?.latencyMs.p95 ?? 0)}
             delta={formatDelta(cur?.latencyMs.p95, prev?.latencyMs.p95)}
             deltaInverted
-            hint={`p50 ${formatDuration(cur?.latencyMs.p50 ?? 0)} · TTFT p95 ${formatDuration(cur?.ttftMs.p95 ?? 0)}`}
+            hint={`p50 ${formatDuration(cur?.latencyMs.p50 ?? 0)}${
+              // Streaming-only metric — skip it instead of showing a bogus 0s.
+              cur?.ttftMs.p95
+                ? ` · TTFT p95 ${formatDuration(cur.ttftMs.p95)}`
+                : ""
+            }`}
           />
           <StatCard
             icon={IconCoinFilled}
@@ -778,6 +808,7 @@ export function OverviewClient() {
               />
               <LineChart.Tooltip
                 labelFormatter={(v) => formatBucketFull(String(v))}
+                valueFormatter={(v) => formatCost(Number(v))}
               />
               {costChartKeys.map((k) => (
                 <LineChart.Line key={k} dataKey={k} strokeVariant="solid" />
@@ -970,6 +1001,9 @@ export function OverviewClient() {
                   {agentRows.map((a) => (
                     <BreakdownRow
                       key={a.agentName}
+                      href={
+                        `/agents/${encodeURIComponent(a.agentName)}` as Route
+                      }
                       renderIcon={(cls) => (
                         <AgentIcon name={a.agentName} className={cls} />
                       )}
@@ -1011,6 +1045,11 @@ export function OverviewClient() {
                   {workflowRows.map((w) => (
                     <BreakdownRow
                       key={w.workflowName ?? "~ungrouped"}
+                      href={
+                        w.workflowName
+                          ? (`/workflows/${encodeURIComponent(w.workflowName)}` as Route)
+                          : undefined
+                      }
                       renderIcon={(cls) => (
                         <IconSitemap className={cn(cls, "text-emerald-500")} />
                       )}

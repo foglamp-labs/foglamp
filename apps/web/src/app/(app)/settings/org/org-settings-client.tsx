@@ -369,7 +369,7 @@ function MembersTab({ orgId }: { orgId: string }) {
   const [removing, setRemoving] = useState(false);
 
   const changeRole = async (memberId: string, role: Role) => {
-    if (roleUpdating) return;
+    if (roleUpdating === memberId) return;
     setRoleUpdating(memberId);
     try {
       const res = await authClient.organization.updateMemberRole({
@@ -432,7 +432,8 @@ function MembersTab({ orgId }: { orgId: string }) {
               ) : (
                 <Select
                   value={m.role}
-                  disabled={roleUpdating !== null}
+                  // Lock only the row being updated; the rest stay usable.
+                  disabled={roleUpdating === m.id}
                   onValueChange={(v) => changeRole(m.id, v as Role)}
                 >
                   <SelectTrigger size="sm">
@@ -538,7 +539,14 @@ function InvitationsTab({ orgId }: { orgId: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 mt-2">
-        <div className="flex items-end gap-2">
+        {/* A real form so Enter in the email field submits the invite. */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void invite();
+          }}
+          className="flex items-end gap-2"
+        >
           <Field className="flex-1">
             <FieldLabel>Email</FieldLabel>
             <Input
@@ -561,13 +569,13 @@ function InvitationsTab({ orgId }: { orgId: string }) {
             </Select>
           </Field>
           <Button
-            onClick={invite}
+            type="submit"
             disabled={!email.trim() || inviting}
             className="mb-0.5"
           >
             Invite
           </Button>
-        </div>
+        </form>
 
         {invites.length > 0 && (
           <div className="mt-4 flex flex-col">

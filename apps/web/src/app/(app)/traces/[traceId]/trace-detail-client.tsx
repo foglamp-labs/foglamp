@@ -38,6 +38,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgentIcon } from "@/components/app/agent-icon";
 import { useShikiHtml } from "@/components/app/code-block";
 import { CopyIcon } from "@/components/app/copy-icon";
+import { useCopied } from "@/components/app/use-copied";
 import { useDelayedLoading } from "@/components/app/data-table";
 import {
 	type EvalMeta,
@@ -952,15 +953,14 @@ function CopyButton({
 	title: string;
 	className?: string;
 }) {
-	const [copied, setCopied] = useState(false);
+	const { copied, markCopied } = useCopied();
 	return (
 		<button
 			type="button"
 			title={title}
 			onClick={() => {
 				void navigator.clipboard.writeText(value);
-				setCopied(true);
-				setTimeout(() => setCopied(false), 1500);
+				markCopied();
 			}}
 			className={cn(
 				"inline-flex shrink-0 items-center justify-center rounded p-1 text-muted-foreground/60 cursor-pointer transition-colors hover:text-foreground",

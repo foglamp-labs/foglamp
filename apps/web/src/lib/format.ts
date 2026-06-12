@@ -81,7 +81,9 @@ export function formatRelative(value: string | Date | null | undefined): string 
   const d = value instanceof Date ? value : new Date(`${value.replace(" ", "T")}Z`);
   const diff = Date.now() - d.getTime();
   if (Number.isNaN(diff)) return String(value);
-  const sec = Math.round(diff / 1000);
+  // Clamp clock skew: a server timestamp slightly ahead of the client must not
+  // render as "-3s ago".
+  const sec = Math.max(0, Math.round(diff / 1000));
   if (sec < 60) return `${sec}s ago`;
   const min = Math.round(sec / 60);
   if (min < 60) return `${min}m ago`;

@@ -32,12 +32,13 @@ import {
   TableSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
+import { RelativeTime } from "@/components/app/relative-time";
+import { useCopied } from "@/components/app/use-copied";
 import {
   formatCost,
   formatCount,
   formatDateTime,
   formatDuration,
-  formatRelative,
   formatTokens,
 } from "@/lib/format";
 import { toMs } from "@/lib/trace-timeline";
@@ -170,7 +171,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                   {durationMs == null ? "—" : formatDuration(durationMs)}
                   {stats?.firstSeen && (
                     <span className="text-xs font-normal text-muted-foreground">
-                      started {formatRelative(stats.firstSeen)}
+                      started <RelativeTime value={stats.firstSeen} />
                     </span>
                   )}
                 </span>
@@ -398,15 +399,14 @@ function Bubble({
 
 /** Copy a string to the clipboard, with a brief check-mark confirmation. */
 function CopyButton({ value, title }: { value: string; title: string }) {
-  const [copied, setCopied] = useState(false);
+  const { copied, markCopied } = useCopied();
   return (
     <button
       type="button"
       title={title}
       onClick={() => {
         void navigator.clipboard.writeText(value);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        markCopied();
       }}
       className="inline-flex shrink-0 items-center justify-center rounded p-1 text-muted-foreground/60 cursor-pointer transition-colors hover:text-foreground"
     >

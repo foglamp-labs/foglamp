@@ -267,8 +267,9 @@ export function AlertsClient() {
 
   const update = useMutation(
     trpc.alerts.update.mutationOptions({
-      onSuccess: () => {
+      onSuccess: (_data, variables) => {
         qc.invalidateQueries({ queryKey: trpc.alerts.list.queryKey() });
+        toast.success(variables.enabled ? "Alert resumed" : "Alert paused");
       },
       onError: (e) => toast.error(e.message),
     })
@@ -321,8 +322,13 @@ export function AlertsClient() {
     if (!form.name.trim()) next.name = "Name is required";
     if (isEvalMetric(form.metric) && !form.evalId)
       next.evalId = "Select an eval";
-    if (form.threshold.trim() === "" || Number.isNaN(Number(form.threshold)))
+    const threshold = Number(form.threshold);
+    if (form.threshold.trim() === "" || Number.isNaN(threshold))
       next.threshold = "Enter a number";
+    else if (!Number.isFinite(threshold) || threshold < 0)
+      next.threshold = "Must be 0 or more";
+    else if (METRIC_BY_VALUE[form.metric].unit === "0–1" && threshold > 1)
+      next.threshold = "Must be between 0 and 1";
     const email = form.email.trim();
     if (!email) next.email = "Email is required";
     else if (!EMAIL_RE.test(email)) next.email = "Enter a valid email address";
@@ -362,12 +368,20 @@ export function AlertsClient() {
                   a value.
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex flex-col gap-4">
+              {/* A real form so Enter in any field submits the dialog. */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSubmit();
+                }}
+                className="flex flex-col gap-4"
+              >
                 <Field data-invalid={!!errors.name}>
                   <FieldLabel>Name</FieldLabel>
                   <Input
                     placeholder="e.g. High error rate"
                     aria-invalid={!!errors.name}
+                    maxLength={200}
                     value={form.name}
                     onChange={(e) => setField("name", e.target.value)}
                   />
@@ -454,6 +468,7 @@ export function AlertsClient() {
                     </FieldLabel>
                     <Input
                       type="number"
+                      min={0}
                       placeholder={METRIC_BY_VALUE[form.metric].placeholder}
                       aria-invalid={!!errors.threshold}
                       value={form.threshold}
@@ -516,12 +531,12 @@ export function AlertsClient() {
                     <FieldError>{errors.email}</FieldError>
                   </Field>
                 </div>
-              </div>
-              <DialogFooter>
-                <Button disabled={create.isPending} onClick={handleSubmit}>
-                  Create alert
-                </Button>
-              </DialogFooter>
+                <DialogFooter>
+                  <Button type="submit" disabled={create.isPending}>
+                    Create alert
+                  </Button>
+                </DialogFooter>
+              </form>
             </DialogContent>
           </Dialog>
         }
@@ -582,7 +597,10 @@ export function AlertsClient() {
                       <Switch
                         checked={r.enabled}
                         size="sm"
-                        disabled={update.isPending}
+                        // Lock only the row being toggled.
+                        disabled={
+                          update.isPending && update.variables?.ruleId === r.id
+                        }
                         onCheckedChange={(checked) =>
                           update.mutate({ ruleId: r.id, enabled: checked })
                         }

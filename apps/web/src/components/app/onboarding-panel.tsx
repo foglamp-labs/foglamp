@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { CopyIcon } from "@/components/app/copy-icon";
 import { useProject } from "@/components/app/project-context";
+import { useCopied } from "@/components/app/use-copied";
 import { trpc } from "@/utils/trpc";
 
 const DOCS_URL = "https://docs.foglamp.dev/quickstart";
@@ -69,7 +70,7 @@ export function OnboardingPanel() {
   const { projectId } = useProject();
   const qc = useQueryClient();
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const { copied, markCopied } = useCopied(2000);
   const mintedRef = useRef(false);
 
   const keys = useQuery({
@@ -127,8 +128,7 @@ export function OnboardingPanel() {
   const copy = () => {
     if (!prompt) return;
     void navigator.clipboard.writeText(prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    markCopied();
   };
 
   return (

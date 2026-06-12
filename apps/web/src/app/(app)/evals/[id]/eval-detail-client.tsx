@@ -62,7 +62,9 @@ import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
-import { formatCost, formatCount, formatRelative } from "@/lib/format";
+import { RelativeTime } from "@/components/app/relative-time";
+import { useCopied } from "@/components/app/use-copied";
+import { formatCost, formatCount } from "@/lib/format";
 import { type RouterOutputs, trpc } from "@/utils/trpc";
 
 import {
@@ -484,7 +486,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 													</span>
 												</TableCell>
 												<TableCell className="text-right text-muted-foreground">
-													{formatRelative(s.scoredAt)}
+													<RelativeTime value={s.scoredAt} />
 												</TableCell>
 											</TableRow>
 											{isOpen && (
@@ -729,7 +731,7 @@ function FocusedRun({
 				<CardTitle className="w-full">Focused run</CardTitle>
 				<div className="flex items-center gap-2 w-full justify-end">
 					<span className="text-xs text-muted-foreground tabular-nums">
-						{formatRelative(score.scoredAt)}
+						<RelativeTime value={score.scoredAt} />
 					</span>
 					{score.passed !== null ? (
 						<Badge variant={score.passed ? "emerald" : "rose"}>
@@ -803,15 +805,14 @@ function Glimpse({
 
 /** Copy a string to the clipboard, with a brief check-mark confirmation. */
 function CopyButton({ value, title }: { value: string; title: string }) {
-	const [copied, setCopied] = useState(false);
+	const { copied, markCopied } = useCopied();
 	return (
 		<button
 			type="button"
 			title={title}
 			onClick={() => {
 				void navigator.clipboard.writeText(value);
-				setCopied(true);
-				setTimeout(() => setCopied(false), 1500);
+				markCopied();
 			}}
 			className="inline-flex shrink-0 items-center justify-center rounded p-0.5 text-muted-foreground/60 cursor-pointer transition-colors hover:text-foreground"
 		>

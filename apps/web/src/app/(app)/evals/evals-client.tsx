@@ -353,8 +353,10 @@ export function EvalsClient() {
 	);
 	const update = useMutation(
 		trpc.evals.update.mutationOptions({
-			onSuccess: () =>
-				qc.invalidateQueries({ queryKey: trpc.evals.list.queryKey() }),
+			onSuccess: (_data, variables) => {
+				qc.invalidateQueries({ queryKey: trpc.evals.list.queryKey() });
+				toast.success(variables.enabled ? "Eval resumed" : "Eval paused");
+			},
 			onError: (e) => toast.error(e.message),
 		}),
 	);
@@ -496,6 +498,20 @@ export function EvalsClient() {
 		});
 	};
 
+	// Shared between the footer buttons and the form's Enter-key submit.
+	const nextDisabled =
+		(step === 1 && !form.name.trim()) || (step === 2 && !form.presetId);
+	const createDisabled =
+		create.isPending ||
+		needsKey ||
+		(isJudge && !form.judgeModel.trim()) ||
+		!!settingsParamError(selectedPreset, {
+			substring: form.substring,
+			pattern: form.pattern,
+			maxChars: form.maxChars,
+		}) ||
+		!!promptOverrideError(selectedPreset, form.promptOverride);
+
 	return (
 		<>
 			<EvalsHeader
@@ -523,7 +539,18 @@ export function EvalsClient() {
 									transition={MORPH}
 									className="overflow-hidden"
 								>
-									<div className="flex flex-col gap-6 py-6">
+									{/* Enter advances the wizard (or creates on the last step). */}
+									<form
+										onSubmit={(e) => {
+											e.preventDefault();
+											if (step < 3) {
+												if (!nextDisabled) setStep((s) => s + 1);
+											} else if (!createDisabled) {
+												submit();
+											}
+										}}
+										className="flex flex-col gap-6 py-6"
+									>
 										<DialogHeader className="px-6">
 											<DialogTitle>New eval</DialogTitle>
 											<DialogDescription>
@@ -547,6 +574,7 @@ export function EvalsClient() {
 															<Input
 																placeholder="e.g. Support answer relevance"
 																value={form.name}
+																maxLength={200}
 																onChange={(e) => set({ name: e.target.value })}
 															/>
 														</Field>
@@ -774,6 +802,7 @@ export function EvalsClient() {
 										<DialogFooter className="px-6">
 											{step > 1 && (
 												<Button
+													type="button"
 													variant="outline"
 													onClick={() => setStep((s) => s - 1)}
 												>
@@ -781,38 +810,16 @@ export function EvalsClient() {
 												</Button>
 											)}
 											{step < 3 ? (
-												<Button
-													disabled={
-														(step === 1 && !form.name.trim()) ||
-														(step === 2 && !form.presetId)
-													}
-													onClick={() => setStep((s) => s + 1)}
-												>
+												<Button type="submit" disabled={nextDisabled}>
 													Next
 												</Button>
 											) : (
-												<Button
-													disabled={
-														create.isPending ||
-														needsKey ||
-														(isJudge && !form.judgeModel.trim()) ||
-														!!settingsParamError(selectedPreset, {
-															substring: form.substring,
-															pattern: form.pattern,
-															maxChars: form.maxChars,
-														}) ||
-														!!promptOverrideError(
-															selectedPreset,
-															form.promptOverride,
-														)
-													}
-													onClick={submit}
-												>
+												<Button type="submit" disabled={createDisabled}>
 													Create eval
 												</Button>
 											)}
 										</DialogFooter>
-									</div>
+									</form>
 								</motion.div>
 							</DialogContent>
 						</Dialog>
@@ -1086,7 +1093,11 @@ export function EvalsClient() {
 														<Switch
 															size="sm"
 															checked={r.enabled}
-															disabled={update.isPending}
+															// Lock only the row being toggled.
+															disabled={
+																update.isPending &&
+																update.variables?.evalId === r.id
+															}
 															onCheckedChange={(checked) =>
 																update.mutate({
 																	evalId: r.id,

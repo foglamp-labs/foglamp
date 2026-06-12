@@ -72,13 +72,13 @@ import {
   thinTicks,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
+import { RelativeTime } from "@/components/app/relative-time";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import {
   formatCost,
   formatCount,
   formatDuration,
   formatPercent,
-  formatRelative,
   formatTokens,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -611,7 +611,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                           {formatCost(r.totalCost)}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {formatRelative(r.startTime)}
+                          <RelativeTime value={r.startTime} />
                         </TableCell>
                       </TableRow>
                     ))}

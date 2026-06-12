@@ -38,7 +38,13 @@ const PROJECT_SCOPED_SECTIONS = new Set([
   "agents",
   "workflows",
   "evals",
+  "alerts",
+  "settings",
 ]);
+
+// Settings subpages that are org-scoped, not project-scoped — switching
+// projects doesn't invalidate them, so the user stays put.
+const ORG_SCOPED_PATHS = new Set(["/settings/org"]);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -69,7 +75,12 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setSelected(id);
     if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, id);
     const [section, ...rest] = pathname.split("/").filter(Boolean);
-    if (section && rest.length > 0 && PROJECT_SCOPED_SECTIONS.has(section)) {
+    if (
+      section &&
+      rest.length > 0 &&
+      PROJECT_SCOPED_SECTIONS.has(section) &&
+      !ORG_SCOPED_PATHS.has(pathname)
+    ) {
       router.push(`/${section}` as Route);
     }
   };

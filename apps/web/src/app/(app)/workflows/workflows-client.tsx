@@ -67,13 +67,9 @@ import {
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
+import { RelativeTime } from "@/components/app/relative-time";
 import { ViewToggle, useViewMode } from "@/components/app/view-toggle";
-import {
-  formatCost,
-  formatCount,
-  formatRelative,
-  formatTokens,
-} from "@/lib/format";
+import { formatCost, formatCount, formatTokens } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { WorkflowsHeader } from "./header";
 
@@ -186,6 +182,11 @@ export function WorkflowsClient() {
   useEffect(() => {
     patchParams({ q: debouncedSearch.trim() });
   }, [debouncedSearch, patchParams]);
+  // Back/forward (or any external URL change) re-syncs the input; in-flight
+  // typing wins when it already matches what the URL will settle on.
+  useEffect(() => {
+    setSearch((prev) => (prev.trim() === params.q ? prev : params.q));
+  }, [params.q]);
   const errorsOnly = params.errors === "1";
   const sort = parseSortParam(params.sort, WORKFLOW_SORT_KEYS);
   const toggle = (key: WorkflowSortKey) =>
@@ -372,7 +373,7 @@ export function WorkflowsClient() {
                       <Stat label="Runs" value={formatCount(w.runCount)} />
                       <Stat
                         label="Last run"
-                        value={formatRelative(w.lastRun)}
+                        value={<RelativeTime value={w.lastRun} />}
                       />
                       <Stat
                         label="Tokens"
@@ -508,7 +509,7 @@ export function WorkflowsClient() {
                         align="right"
                         className="text-muted-foreground"
                       >
-                        {formatRelative(w.lastRun)}
+                        <RelativeTime value={w.lastRun} />
                       </TableCell>
                     </TableRow>
                   ))}
