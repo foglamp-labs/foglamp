@@ -13,6 +13,13 @@ import {
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@foglamp/ui/components/card";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -31,14 +38,7 @@ import {
   SelectValue,
 } from "@foglamp/ui/components/select";
 import { Switch } from "@foglamp/ui/components/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@foglamp/ui/components/table";
+import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAlertTriangle,
   IconAlertTriangleFilled,
@@ -552,76 +552,96 @@ export function AlertsClient() {
           description="Create a rule to get notified when a metric crosses a threshold."
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Metric</TableHead>
-              <TableHead>Condition</TableHead>
-              <TableHead>Window</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-32" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => {
-              const metric = METRIC_BY_VALUE[r.metric as Metric];
-              const MetricIcon = metric?.icon;
-              const status = STATUS_META[r.status] ?? DEFAULT_STATUS_META;
-              const StatusIcon = status.icon;
-              return (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.name}</TableCell>
-                  <TableCell>
+        <div className="grid gap-4 md:grid-cols-2">
+          {rows.map((r) => {
+            const metric = METRIC_BY_VALUE[r.metric as Metric];
+            const MetricIcon = metric?.icon;
+            const status = STATUS_META[r.status] ?? DEFAULT_STATUS_META;
+            const StatusIcon = status.icon;
+            const firing = r.status === "firing";
+            return (
+              <Card
+                key={r.id}
+                className={cn(
+                  "transition-opacity",
+                  // Rose ring + soft glow when a rule is actively firing.
+                  firing &&
+                    "shadow-[inset_0_0_0_1px_rgba(244,63,94,0.3),0_2px_10px_-4px_rgba(244,63,94,0.4)]",
+                  // Dim paused rules so the active set reads first.
+                  !r.enabled && "opacity-60",
+                )}
+              >
+                <CardHeader>
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className={cn(
+                        "grid size-7 shrink-0 place-items-center rounded-xl corner-squircle p-0.5",
+                        status.variant === "rose" &&
+                          "bg-rose-100 text-rose-500 dark:bg-rose-950",
+                        status.variant === "emerald" &&
+                          "bg-emerald-100 text-emerald-500 dark:bg-emerald-950",
+                        status.variant === "secondary" &&
+                          "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {firing ? (
+                        <span className="relative grid place-items-center">
+                          <span className="absolute size-4 animate-ping rounded-full bg-rose-500/40" />
+                          <StatusIcon className="relative size-4" />
+                        </span>
+                      ) : (
+                        <StatusIcon className="size-4" />
+                      )}
+                    </span>
+                    <CardTitle className="truncate">{r.name}</CardTitle>
+                    <Badge variant={status.variant} className="ml-auto shrink-0">
+                      {r.status}
+                    </Badge>
+                  </div>
+                  <CardDescription className="flex flex-wrap items-center gap-1.5">
                     <Badge variant="secondary">
                       {MetricIcon && <MetricIcon />}
                       {metric?.label ?? r.metric}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="tabular-nums text-sm">
-                    {COMPARISON_SYMBOLS[r.comparison as Comparison] ??
-                      r.comparison}{" "}
-                    {r.threshold ?? "—"}
-                  </TableCell>
-                  <TableCell className="tabular-nums text-muted-foreground">
-                    {formatDuration(r.windowSeconds * 1000)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={status.variant}>
-                      <StatusIcon />
-                      {r.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-center gap-2">
-                      <Switch
-                        checked={r.enabled}
-                        size="sm"
-                        // Lock only the row being toggled.
-                        disabled={
-                          update.isPending && update.variables?.ruleId === r.id
-                        }
-                        onCheckedChange={(checked) =>
-                          update.mutate({ ruleId: r.id, enabled: checked })
-                        }
-                      />
-                      <Button
-                        size="icon-sm"
-                        variant="ghost-destructive"
-                        className="size-7"
-                        onClick={() =>
-                          setDeleteTarget({ id: r.id, name: r.name })
-                        }
-                      >
-                        <IconTrashFilled />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    <span className="tabular-nums text-foreground">
+                      {COMPARISON_SYMBOLS[r.comparison as Comparison] ??
+                        r.comparison}{" "}
+                      {r.threshold ?? "—"}
+                    </span>
+                    <span>·</span>
+                    <span className="tabular-nums">
+                      {formatDuration(r.windowSeconds * 1000)}
+                    </span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                    <Switch
+                      checked={r.enabled}
+                      size="sm"
+                      // Lock only the rule being toggled.
+                      disabled={
+                        update.isPending && update.variables?.ruleId === r.id
+                      }
+                      onCheckedChange={(checked) =>
+                        update.mutate({ ruleId: r.id, enabled: checked })
+                      }
+                    />
+                    {r.enabled ? "Enabled" : "Paused"}
+                  </label>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost-destructive"
+                    className="size-7"
+                    onClick={() => setDeleteTarget({ id: r.id, name: r.name })}
+                  >
+                    <IconTrashFilled />
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
       <AlertDialog
         open={deleteTarget !== null}

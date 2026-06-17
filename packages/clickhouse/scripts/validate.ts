@@ -86,6 +86,17 @@ const blank = {
   rate_limit_tokens_limit: null,
   rate_limit_tokens_remaining: null,
   rate_limit_tokens_reset_ms: null,
+  response_time_ms: null,
+  effective_output_tps: null,
+  effective_total_tps: null,
+  output_tps: null,
+  input_tps: null,
+  chunk_jitter_min: null,
+  chunk_jitter_p10: null,
+  chunk_jitter_median: null,
+  chunk_jitter_avg: null,
+  chunk_jitter_p90: null,
+  chunk_jitter_max: null,
 } satisfies Partial<SpanRow>;
 
 const PID = "proj_test";

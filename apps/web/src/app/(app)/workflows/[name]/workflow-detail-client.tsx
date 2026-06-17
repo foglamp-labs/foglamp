@@ -322,7 +322,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
               iconClassName="text-yellow-300 dark:text-yellow-600"
               size="sm"
               label="Total cost"
-              value={formatCost(stats?.totalCost)}
+              value={formatCost(stats?.totalCost, 4)}
               hint={`${formatTokens(stats?.totalTokens ?? 0)} tokens`}
             />
           </section>
@@ -330,13 +330,8 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
           {/* Trend: run volume + run-duration percentiles over the window. */}
           <section className="grid gap-4 lg:grid-cols-2">
             <Card size="sm">
-              <CardHeader className="flex flex-row items-end justify-between gap-4">
-                <div className="space-y-1.5">
-                  <CardTitle>Runs & errors</CardTitle>
-                  <CardDescription>
-                    Runs per bucket; errored runs overlaid.
-                  </CardDescription>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <CardTitle>Runs & errors</CardTitle>
                 <ChartLegend
                   config={volumeConfig}
                   selected={volumeSelected}
@@ -388,13 +383,8 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
             </Card>
 
             <Card size="sm">
-              <CardHeader className="flex flex-row items-end justify-between gap-4">
-                <div className="space-y-1.5">
-                  <CardTitle>Run duration</CardTitle>
-                  <CardDescription>
-                    p50 / p95 / p99 per bucket (ms).
-                  </CardDescription>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <CardTitle>Run duration</CardTitle>
                 <ChartLegend
                   config={latencyConfig}
                   selected={latencySelected}

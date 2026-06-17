@@ -65,6 +65,19 @@ export type SpanRow = {
   rate_limit_tokens_limit: number | null;
   rate_limit_tokens_remaining: number | null;
   rate_limit_tokens_reset_ms: number | null;
+  // Official AI SDK step `performance` statistics (v7 beta/canary; null otherwise).
+  response_time_ms: number | null; // provider response wall-clock (also feeds model_call_ms)
+  effective_output_tps: number | null; // outputTokens / requestSeconds
+  effective_total_tps: number | null; // (inputTokens + outputTokens) / requestSeconds
+  output_tps: number | null; // post-first-chunk output rate (streaming)
+  input_tps: number | null; // prefill rate before first chunk (streaming)
+  // Inter-output-chunk gap stats (ms); avg kept fractional, rest rounded.
+  chunk_jitter_min: number | null;
+  chunk_jitter_p10: number | null;
+  chunk_jitter_median: number | null;
+  chunk_jitter_avg: number | null;
+  chunk_jitter_p90: number | null;
+  chunk_jitter_max: number | null;
 };
 
 /** Format epoch milliseconds as a ClickHouse DateTime64(3) literal (UTC). */

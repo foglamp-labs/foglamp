@@ -116,6 +116,21 @@ export function buildSpanRows(args: {
         rate_limit_tokens_limit: span.rateLimit?.tokensLimit ?? null,
         rate_limit_tokens_remaining: span.rateLimit?.tokensRemaining ?? null,
         rate_limit_tokens_reset_ms: span.rateLimit?.tokensResetMs ?? null,
+        // Official AI SDK step `performance` stats. response_time_ms is rounded
+        // (UInt32); TPS rates pass through (Float32); jitter ms are rounded to
+        // UInt32 except avg, which stays fractional (Float32).
+        response_time_ms: span.responseTimeMs == null ? null : Math.round(span.responseTimeMs),
+        effective_output_tps: span.effectiveOutputTps ?? null,
+        effective_total_tps: span.effectiveTotalTps ?? null,
+        output_tps: span.outputTps ?? null,
+        input_tps: span.inputTps ?? null,
+        chunk_jitter_min: span.chunkJitter == null ? null : Math.round(span.chunkJitter.min),
+        chunk_jitter_p10: span.chunkJitter == null ? null : Math.round(span.chunkJitter.p10),
+        chunk_jitter_median:
+          span.chunkJitter == null ? null : Math.round(span.chunkJitter.median),
+        chunk_jitter_avg: span.chunkJitter?.avg ?? null,
+        chunk_jitter_p90: span.chunkJitter == null ? null : Math.round(span.chunkJitter.p90),
+        chunk_jitter_max: span.chunkJitter == null ? null : Math.round(span.chunkJitter.max),
       });
     }
   }

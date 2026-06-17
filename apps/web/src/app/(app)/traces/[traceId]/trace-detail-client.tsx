@@ -20,13 +20,13 @@ import {
 	IconAlertTriangleFilled,
 	IconArrowUpRight,
 	IconBoltFilled,
+	IconCirclesFilled,
 	IconClockFilled,
 	IconCoinFilled,
 	IconListTree,
 	IconMessage2Filled,
 	IconSitemapFilled,
 	IconSparklesFilled,
-	IconStack2Filled,
 	IconX,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
@@ -274,7 +274,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 						<ContextChip
 							href={`/agents/${encodeURIComponent(ctx.agentName)}`}
 							icon={(p) => (
-								<AgentIcon name={ctx.agentName} className={p.className} />
+								<AgentIcon name={ctx.agentName} filled className={p.className} />
 							)}
 							iconClassName=""
 							label={ctx.agentName}
@@ -311,8 +311,8 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 							value={formatCount(stats.llm)}
 						/>
 						<StatCard
-							icon={IconStack2Filled}
-							iconClassName="text-fuchsia-300 dark:text-fuchsia-700"
+							icon={IconCirclesFilled}
+							iconClassName="text-blue-400 dark:text-blue-600"
 							size="sm"
 							label="Tokens"
 							value={formatTokens(stats.tokens)}
@@ -345,7 +345,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 							iconClassName="text-yellow-300 dark:text-yellow-600"
 							size="sm"
 							label="Cost"
-							value={formatCost(stats.cost)}
+							value={formatCost(stats.cost, 4)}
 						/>
 					</section>
 

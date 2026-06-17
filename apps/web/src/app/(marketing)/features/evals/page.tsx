@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function EvalsPage() {
   return (
-    <div className="flex flex-col gap-24 pb-12">
+    <div className="flex flex-col gap-36 pb-42">
       <ProductHero
         product={product}
         headline="Score every answer. Catch the regressions."
@@ -49,12 +49,17 @@ export default function EvalsPage() {
             <div className="mb-4 text-sm font-medium">Score distribution</div>
             <div className="flex h-40 items-end gap-2">
               {[8, 14, 41, 132, 386, 819].map((n, i) => (
-                <div key={i} className="flex flex-1 flex-col items-center gap-2">
+                <div
+                  key={i}
+                  className="flex flex-1 flex-col items-center gap-2"
+                >
                   <div
                     className="w-full rounded-sm corner-squircle bg-fuchsia-500/70"
                     style={{ height: `${(n / 819) * 100}%` }}
                   />
-                  <span className="text-[10px] text-muted-foreground">{(i * 0.2).toFixed(1)}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {(i * 0.2).toFixed(1)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -76,11 +81,16 @@ export default function EvalsPage() {
         visualPosition="left"
         visual={
           <FrameCard>
-            <div className="mb-4 text-sm font-medium">Pass rate · answer-groundedness</div>
+            <div className="mb-4 text-sm font-medium">
+              Pass rate · answer-groundedness
+            </div>
             <PassFailStrip pass={8} fail={2} />
           </FrameCard>
         }
-        secondaryCta={{ label: "Explore traces", href: "/features/distributed-traces" }}
+        secondaryCta={{
+          label: "Explore traces",
+          href: "/features/distributed-traces",
+        }}
       />
 
       <CtaSection />

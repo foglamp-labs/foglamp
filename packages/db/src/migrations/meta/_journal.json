@@ -43,6 +43,13 @@
       "when": 1781115913475,
       "tag": "0005_cuddly_clint_barton",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781665019101,
+      "tag": "0006_device_code",
+      "breakpoints": true
     }
   ]
 }

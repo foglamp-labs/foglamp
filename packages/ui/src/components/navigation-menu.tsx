@@ -2,7 +2,6 @@ import { NavigationMenu as NavigationMenuPrimitive } from "@base-ui/react/naviga
 import { cva } from "class-variance-authority";
 
 import { cn } from "@foglamp/ui/lib/utils";
-import { IconChevronDown } from "@tabler/icons-react";
 
 function NavigationMenu({
   align = "start",
@@ -56,7 +55,7 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  "group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-[1.5px] focus-visible:ring-ring/50 focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-popup-open:bg-muted/50 data-popup-open:hover:bg-muted data-open:bg-muted/50 data-open:hover:bg-muted data-open:focus:bg-muted"
+  "group/navigation-menu-trigger inline-flex h-8 dark:hover:bg-muted/50 hover:text-foreground gap-1.5 px-3 in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2 w-max items-center justify-center rounded-full text-sm font-normal cursor-pointer transition-all outline-none hover:bg-muted  focus-visible:ring-[1.5px] focus-visible:ring-ring/50 focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-popup-open:bg-muted data-popup-open:dark:bg-muted/50 data-popup-open:text-foreground data-popup-open:hover:bg-muted data-open:hover:bg-muted"
 );
 
 function NavigationMenuTrigger({
@@ -71,10 +70,6 @@ function NavigationMenuTrigger({
       {...props}
     >
       {children}{" "}
-      <IconChevronDown
-        className="relative top-px ml-1 size-3 transition duration-300 group-data-popup-open/navigation-menu-trigger:rotate-180 group-data-open/navigation-menu-trigger:rotate-180"
-        aria-hidden="true"
-      />
     </NavigationMenuPrimitive.Trigger>
   );
 }
@@ -126,13 +121,15 @@ function NavigationMenuPositioner({
 
 function NavigationMenuLink({
   className,
+  closeOnClick = true,
   ...props
 }: NavigationMenuPrimitive.Link.Props) {
   return (
     <NavigationMenuPrimitive.Link
       data-slot="navigation-menu-link"
+      closeOnClick={closeOnClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-lg p-2 text-sm transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-[1.5px] focus-visible:ring-ring/50 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-lg data-[active=true]:bg-muted/50 data-[active=true]:hover:bg-muted data-[active=true]:focus:bg-muted [&_svg:not([class*='size-'])]:size-4",
+        "flex items-center gap-1.5 rounded-lg p-2 text-sm transition-none outline-none hover:bg-muted focus-visible:bg-muted in-data-[slot=navigation-menu-content]:focus:bg-muted focus-visible:ring-[1.5px] focus-visible:ring-ring/50 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-lg [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -165,7 +162,7 @@ export {
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
+  NavigationMenuPositioner,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
-  NavigationMenuPositioner,
 };

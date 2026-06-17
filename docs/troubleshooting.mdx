@@ -53,9 +53,11 @@ that's your answer — jump to the next section.
 
 <AccordionGroup>
   <Accordion title="Cost shows as “—” or a model is “(unknown)”">
-    Foglamp couldn't find a price for that model, so it refuses to guess. Add a
-    [custom pricing rule](/dashboard/cost#custom-pricing-rules) for the model
-    pattern. Token counts and latency are unaffected.
+    Foglamp couldn't find a price for that model, so it refuses to guess rather
+    than charge you a wrong number. The price table is sourced from
+    [OpenRouter](https://openrouter.ai/api/v1/models) and refreshed every 24
+    hours, so this usually resolves on its own once the model is listed. Token
+    counts and latency are unaffected. See [Cost & pricing](/dashboard/cost).
   </Accordion>
   <Accordion title="No prompt/response text on spans">
     Capture may be disabled. Check you haven't set `recordInputs: false` /

@@ -3,7 +3,11 @@ import type { Metadata } from "next";
 import { CtaSection } from "@/components/marketing/landing/cta";
 import { FeatureSection } from "@/components/marketing/feature/feature-section";
 import { ProductHero } from "@/components/marketing/feature/product-hero";
-import { FrameCard, StatRow, WaterfallVisual } from "@/components/marketing/feature/visuals";
+import {
+  FrameCard,
+  StatRow,
+  WaterfallVisual,
+} from "@/components/marketing/feature/visuals";
 import { productBySlug } from "@/components/marketing/products";
 
 const product = productBySlug("distributed-traces")!;
@@ -12,12 +16,15 @@ const ACCENT = "text-[#8b5e34] dark:text-[#c9a888]";
 export const metadata: Metadata = {
   title: "Distributed traces",
   description: product.tagline,
-  openGraph: { title: "Distributed traces · Foglamp", description: product.tagline },
+  openGraph: {
+    title: "Distributed traces · Foglamp",
+    description: product.tagline,
+  },
 };
 
 export default function DistributedTracesPage() {
   return (
-    <div className="flex flex-col gap-24 pb-12">
+    <div className="flex flex-col gap-36 pb-42">
       <ProductHero
         product={product}
         headline="Waterfall every run, down to the token."
@@ -26,7 +33,9 @@ export default function DistributedTracesPage() {
           <FrameCard>
             <div className="mb-4 flex items-baseline justify-between">
               <span className="text-sm font-medium">support-triage</span>
-              <span className="font-mono text-xs text-muted-foreground">5.84s · 8 spans</span>
+              <span className="font-mono text-xs text-muted-foreground">
+                5.84s · 8 spans
+              </span>
             </div>
             <WaterfallVisual />
           </FrameCard>

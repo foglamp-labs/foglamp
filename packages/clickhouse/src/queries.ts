@@ -32,6 +32,8 @@ export type TraceListRow = {
 	total_cost: string;
 	priced_span_count: string;
 	total_tokens: string;
+	/** Distinct LLM model ids used across the trace's spans. */
+	models: string[];
 };
 
 export type SortDir = "asc" | "desc";
@@ -107,7 +109,8 @@ export function listTraces(
        sum(error_count) AS error_count,
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
-       sum(total_tokens) AS total_tokens
+       sum(total_tokens) AS total_tokens,
+       groupUniqArrayMerge(models) AS models
      FROM trace_summary
      WHERE project_id = {projectId:String}
      GROUP BY trace_id
@@ -489,6 +492,19 @@ export type SpanDetailRow = {
 	rate_limit_tokens_limit: number | null;
 	rate_limit_tokens_remaining: number | null;
 	rate_limit_tokens_reset_ms: number | null;
+	// Official AI SDK step `performance` stats (llm spans, v7 beta/canary). Null on
+	// older v7, v4-v6 wrap, and non-llm spans.
+	response_time_ms: number | null;
+	effective_output_tps: number | null;
+	effective_total_tps: number | null;
+	output_tps: number | null;
+	input_tps: number | null;
+	chunk_jitter_min: number | null;
+	chunk_jitter_p10: number | null;
+	chunk_jitter_median: number | null;
+	chunk_jitter_avg: number | null;
+	chunk_jitter_p90: number | null;
+	chunk_jitter_max: number | null;
 	// Trace-level context (stable across a trace's spans), so the detail header
 	// can link back to the owning session/workflow/agent.
 	agent_name: string;
@@ -525,6 +541,9 @@ export function getTraceSpans(
        model_call_ms, system_fingerprint, safety_metadata, sources,
        rate_limit_requests_limit, rate_limit_requests_remaining, rate_limit_requests_reset_ms,
        rate_limit_tokens_limit, rate_limit_tokens_remaining, rate_limit_tokens_reset_ms,
+       response_time_ms, effective_output_tps, effective_total_tps, output_tps, input_tps,
+       chunk_jitter_min, chunk_jitter_p10, chunk_jitter_median,
+       chunk_jitter_avg, chunk_jitter_p90, chunk_jitter_max,
        agent_name, workflow_name, workflow_run_id, session_id
      FROM spans FINAL
      WHERE project_id = {projectId:String} AND trace_id = {traceId:String}
@@ -951,6 +970,13 @@ export type MetricsBucketRow = {
 	/** [p50, p95, p99] in milliseconds. */
 	duration_quantiles: number[];
 	ttft_quantiles: number[];
+	/** Official AI SDK step `performance` rollups (v7 beta/canary). [p50, p95, p99].
+	 * response_time in ms; the *_tps are tokens/sec; chunk_jitter_median in ms.
+	 * Zero-valued for windows with no performance-bearing spans. */
+	response_time_quantiles: number[];
+	effective_output_tps_quantiles: number[];
+	effective_total_tps_quantiles: number[];
+	chunk_jitter_median_quantiles: number[];
 };
 
 /**
@@ -994,7 +1020,11 @@ export function queryMetricsTimeseries(
        sum(input_tokens) AS input_tokens,
        sum(output_tokens) AS output_tokens,
        quantilesTDigestMerge(0.5, 0.95, 0.99)(duration_quantiles) AS duration_quantiles,
-       quantilesTDigestMerge(0.5, 0.95, 0.99)(ttft_quantiles) AS ttft_quantiles
+       quantilesTDigestMerge(0.5, 0.95, 0.99)(ttft_quantiles) AS ttft_quantiles,
+       quantilesTDigestMerge(0.5, 0.95, 0.99)(response_time_quantiles) AS response_time_quantiles,
+       quantilesTDigestMerge(0.5, 0.95, 0.99)(effective_output_tps_quantiles) AS effective_output_tps_quantiles,
+       quantilesTDigestMerge(0.5, 0.95, 0.99)(effective_total_tps_quantiles) AS effective_total_tps_quantiles,
+       quantilesTDigestMerge(0.5, 0.95, 0.99)(chunk_jitter_median_quantiles) AS chunk_jitter_median_quantiles
      FROM metrics_by_minute
      WHERE ${filters.join(" AND ")}
      GROUP BY bucket
@@ -1300,54 +1330,6 @@ export function queryAgentNames(
 	);
 }
 
-export type AgentCostBreakdownRow = {
-	prompt_cost: string;
-	completion_cost: string;
-	request_cost: string;
-	image_cost: string;
-	web_search_cost: string;
-	internal_reasoning_cost: string;
-	cache_read_cost: string;
-	cache_write_cost: string;
-	priced_span_count: string;
-};
-
-/**
- * Per-dimension cost totals for one agent in a window — the agent-page cost
- * donut. metrics_by_minute only rolls up total_cost, so this scans `spans`
- * directly; fine for a single agent + window (project_id leads the ORDER BY,
- * the agent_name bloom index prunes), promote to an MV if it ever gets hot.
- */
-export function queryAgentCostBreakdown(
-	client: ClickHouseClient,
-	params: { projectId: string; agentName: string; from: string; to: string },
-): Promise<AgentCostBreakdownRow[]> {
-	return rows<AgentCostBreakdownRow>(
-		client,
-		`SELECT
-       sum(ifNull(prompt_cost, 0)) AS prompt_cost,
-       sum(ifNull(completion_cost, 0)) AS completion_cost,
-       sum(ifNull(request_cost, 0)) AS request_cost,
-       sum(ifNull(image_cost, 0)) AS image_cost,
-       sum(ifNull(web_search_cost, 0)) AS web_search_cost,
-       sum(ifNull(internal_reasoning_cost, 0)) AS internal_reasoning_cost,
-       sum(ifNull(cache_read_cost, 0)) AS cache_read_cost,
-       sum(ifNull(cache_write_cost, 0)) AS cache_write_cost,
-       toUInt64(countIf(total_cost IS NOT NULL)) AS priced_span_count
-     FROM spans FINAL
-     WHERE project_id = {projectId:String}
-       AND agent_name = {agentName:String}
-       AND span_type IN ('llm', 'embedding')
-       AND start_time >= {from:DateTime64(3)} AND start_time < {to:DateTime64(3)}`,
-		{
-			projectId: params.projectId,
-			agentName: params.agentName,
-			from: params.from,
-			to: params.to,
-		},
-	);
-}
-
 /**
  * Distinct workflow names with activity in a window — for the workflow-filter
  * dropdown on the traces table. Reads `trace_summary` (which carries
@@ -1460,7 +1442,8 @@ export function listTracesByWorkflowRun(
        sum(error_count) AS error_count,
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
-       sum(total_tokens) AS total_tokens
+       sum(total_tokens) AS total_tokens,
+       groupUniqArrayMerge(models) AS models
      FROM trace_summary
      -- Qualify workflow_run_id so the filter binds to the column, not the
      -- \`any(workflow_run_id) AS workflow_run_id\` alias above (an aggregate,
@@ -1604,6 +1587,7 @@ export function listEvalScores(
 		offset?: number;
 		from?: string;
 		to?: string;
+		sort?: { field: "score"; dir: "asc" | "desc" };
 	},
 ): Promise<ScoreDetailRow[]> {
 	// Optional [from, to) window — passed by the single-eval page so the recent
@@ -1612,6 +1596,15 @@ export function listEvalScores(
 		params.from && params.to
 			? "AND scored_at >= {from:DateTime} AND scored_at < {to:DateTime}"
 			: "";
+	// Sort by the unified "score" — numeric score when present, else the pass/fail
+	// flag as 1/0 — so pass/fail and graded evals order on one scale. Rows with
+	// neither (the "—" cells) sink to the bottom. Recency is the default and the
+	// stable tiebreak. `dir` is a fixed enum, so interpolating it is safe.
+	const orderBy = params.sort
+		? `coalesce(score, toFloat64(passed)) ${
+				params.sort.dir === "asc" ? "ASC" : "DESC"
+			} NULLS LAST, scored_at DESC`
+		: "scored_at DESC";
 	return rows<ScoreDetailRow>(
 		client,
 		`SELECT
@@ -1620,7 +1613,7 @@ export function listEvalScores(
      FROM scores FINAL
      WHERE project_id = {projectId:String} AND eval_id = {evalId:String}
        ${window}
-     ORDER BY scored_at DESC
+     ORDER BY ${orderBy}
      LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
 		{
 			projectId: params.projectId,

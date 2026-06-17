@@ -4,8 +4,12 @@ import { startQuotaWarnSweep } from "@foglamp/api/quotaCron";
 import { startScoringWorker } from "@foglamp/api/scoringCron";
 import { createContext } from "@foglamp/api/context";
 import { appRouter } from "@foglamp/api/routers/index";
+import { provisionCliKey } from "@foglamp/api/services/projects";
 import { auth, getAuthMethods } from "@foglamp/auth";
+import { db } from "@foglamp/db";
 import { env, getTrustedAppOrigins } from "@foglamp/env/server";
+import { TRPCError } from "@trpc/server";
+import { getHTTPStatusCodeFromError } from "@trpc/server/http";
 import { createLogger } from "evlog";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -37,6 +41,31 @@ app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 // Public: which sign-in methods this deployment offers (derived from env, no
 // secrets). The login page reads this to render only what will actually work.
 app.get("/api/auth-methods", (c) => c.json(getAuthMethods()));
+
+// CLI key provisioning for `npx foglamp login`. Once the user approves the
+// device-auth request in the browser, the CLI exchanges its device code for a
+// session token and calls this with `Authorization: Bearer <token>` (the
+// bearer plugin maps it to a session, which the evlog middleware resolves into
+// `c.get("session")`). We mint a key against the user's default project so the
+// CLI can write FOGLAMP_API_KEY and the agent can start instrumenting.
+app.post("/api/cli/provision-key", async (c) => {
+  const session = c.get("session");
+  if (!session?.user?.id) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+  try {
+    const result = await provisionCliKey(db, session.user.id);
+    return c.json(result);
+  } catch (err) {
+    // Surface curated TRPCError messages (e.g. "Requires owner or admin role",
+    // "No project found"); keep anything else generic so we don't leak internals.
+    if (err instanceof TRPCError) {
+      return c.json({ error: err.message }, getHTTPStatusCodeFromError(err) as 400);
+    }
+    c.get("log").error(err instanceof Error ? err : new Error(String(err)));
+    return c.json({ error: "Failed to provision key" }, 500);
+  }
+});
 
 app.use(
   "/trpc/*",

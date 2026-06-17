@@ -10,14 +10,18 @@ import { decimalOrNull, finite, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
 
-// Generation tokens/sec: output tokens over the active streaming window
-// (duration minus time-to-first-token). Returns null when no positive window
-// exists (non-streaming, zero-duration, or no output).
+// Generation tokens/sec. Prefer the AI SDK's own measured rate
+// (`effective_output_tps`, present on v7 beta/canary spans) over our derivation:
+// output tokens over the active streaming window (duration minus
+// time-to-first-token). Returns null when neither is available (non-streaming,
+// zero-duration, or no output).
 function generationTps(
+  effectiveOutputTps: number | null,
   outputTokens: number,
   durationMs: number,
   ttftMs: number | null,
 ): number | null {
+  if (effectiveOutputTps !== null && effectiveOutputTps > 0) return effectiveOutputTps;
   if (outputTokens <= 0) return null;
   const windowMs = durationMs - (ttftMs ?? 0);
   if (windowMs <= 0) return null;
@@ -91,6 +95,7 @@ export async function getTraceList(
       totalCost: decimalOrNull(r.total_cost),
       pricedSpanCount: num(r.priced_span_count),
       totalTokens: num(r.total_tokens),
+      models: r.models ?? [],
     })),
   };
 }
@@ -139,9 +144,10 @@ export async function getTraceDetail(
     reasoningOffsets: (s.reasoning_offsets ?? []).map(num),
     reasoningChunkTokens: (s.reasoning_chunk_tokens ?? []).map(num),
     reasoningDurationMs: s.reasoning_duration_ms === null ? null : num(s.reasoning_duration_ms),
-    // Generation throughput: output tokens over the streaming window, excluding
-    // the time-to-first-token wait. Null when there's no measurable window.
-    tps: generationTps(num(s.output_tokens), num(s.duration_ms), s.ttft_ms),
+    // Generation throughput: the SDK's measured rate when present, else output
+    // tokens over the streaming window (excluding the TTFT wait). Null when
+    // there's no measurable window.
+    tps: generationTps(s.effective_output_tps, num(s.output_tokens), num(s.duration_ms), s.ttft_ms),
     totalCost: decimalOrNull(s.total_cost),
     // Per-dimension cost breakdown (null when unpriced/zero); these sum to
     // totalCost and drive the span-detail breakdown panel.
@@ -162,6 +168,27 @@ export async function getTraceDetail(
     toolCatalog: s.tool_catalog || null,
     // Pure model-call time; tool time is the remainder of the span window.
     modelCallMs: s.model_call_ms === null ? null : num(s.model_call_ms),
+    // Official AI SDK step `performance` stats (v7 beta/canary; null on older v7,
+    // the v4-v6 wrap path, and — for the streaming-only fields — non-streamed
+    // steps). Captured for storage/API now; not yet surfaced in the UI.
+    responseTimeMs: s.response_time_ms === null ? null : num(s.response_time_ms),
+    effectiveOutputTps: s.effective_output_tps,
+    effectiveTotalTps: s.effective_total_tps,
+    outputTps: s.output_tps,
+    inputTps: s.input_tps,
+    chunkJitter:
+      s.chunk_jitter_min === null &&
+      s.chunk_jitter_median === null &&
+      s.chunk_jitter_max === null
+        ? null
+        : {
+            min: s.chunk_jitter_min === null ? null : num(s.chunk_jitter_min),
+            p10: s.chunk_jitter_p10 === null ? null : num(s.chunk_jitter_p10),
+            median: s.chunk_jitter_median === null ? null : num(s.chunk_jitter_median),
+            avg: s.chunk_jitter_avg,
+            p90: s.chunk_jitter_p90 === null ? null : num(s.chunk_jitter_p90),
+            max: s.chunk_jitter_max === null ? null : num(s.chunk_jitter_max),
+          },
     systemFingerprint: s.system_fingerprint || null,
     safetyMetadata: s.safety_metadata || null,
     sources: s.sources || null,

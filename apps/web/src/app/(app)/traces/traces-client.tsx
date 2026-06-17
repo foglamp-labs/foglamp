@@ -23,9 +23,6 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAffiliateFilled,
   IconAlertTriangle,
-  IconAlertTriangleFilled,
-  IconClockFilled,
-  IconCoinFilled,
   IconGhost,
   IconMessage2Filled,
   IconSitemap,
@@ -37,7 +34,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
-import { CopyButton } from "@/components/app/copy-button";
+import { ModelLogo, formatModelName } from "@/components/model-logo";
 import {
   ClearFiltersButton,
   FilterSelect,
@@ -56,7 +53,6 @@ import {
   EmptyState,
   NoProject,
   PageHeader,
-  StatCard,
   TableSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
@@ -69,7 +65,6 @@ import {
   formatCost,
   formatCount,
   formatDuration,
-  formatPercent,
   formatTokens,
 } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
@@ -235,48 +230,6 @@ export function TracesClient() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatCard
-              icon={IconAffiliateFilled}
-              iconClassName="text-[#c9a888] dark:text-[#8b5e34]"
-              size="sm"
-              label="Traces"
-              value={formatCount(summary?.traceCount ?? 0)}
-            />
-            <StatCard
-              icon={IconAlertTriangleFilled}
-              iconClassName="text-rose-300 dark:text-rose-700"
-              size="sm"
-              label="Errored traces"
-              value={
-                <>
-                  {formatCount(summary?.errorTraceCount ?? 0)}
-                  {summary?.traceCount ? (
-                    <span className="ml-1.5 text-sm font-normal text-muted-foreground">
-                      {formatPercent(
-                        summary.errorTraceCount / summary.traceCount
-                      )}
-                    </span>
-                  ) : null}
-                </>
-              }
-            />
-            <StatCard
-              icon={IconClockFilled}
-              iconClassName="text-sky-300 dark:text-sky-700"
-              size="sm"
-              label="Duration p95"
-              value={formatDuration(summary?.durationP95 ?? 0)}
-            />
-            <StatCard
-              icon={IconCoinFilled}
-              iconClassName="text-yellow-300 dark:text-yellow-600"
-              size="sm"
-              label="Total cost"
-              value={formatCost(summary?.totalCost ?? 0)}
-            />
-          </section>
-
           <Toolbar>
             <SearchInput
               value={search}
@@ -407,19 +360,25 @@ export function TracesClient() {
                                 </span>
                               </div>
                               <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
-                                <div className="flex items-center">
-                                  <span className="truncate font-mono text-[10px] max-w-36">
-                                    {t.traceId}
+                                {t.models.length > 0 && (
+                                  <span
+                                    className="inline-flex min-w-0 shrink items-center gap-1"
+                                    title={t.models
+                                      .map(formatModelName)
+                                      .join(", ")}
+                                  >
+                                    <ModelLogo
+                                      modelId={t.models[0]}
+                                      className="size-[11px] shrink-0"
+                                    />
+                                    <span className="truncate">
+                                      {formatModelName(t.models[0])}
+                                      {t.models.length > 1
+                                        ? ` +${t.models.length - 1}`
+                                        : ""}
+                                    </span>
                                   </span>
-
-                                  <CopyButton
-                                    value={t.traceId}
-                                    title="Copy trace ID"
-                                    stopPropagation
-                                    iconSize="size-3"
-                                    className="p-0.5 text-muted-foreground/50"
-                                  />
-                                </div>
+                                )}
                                 {t.sessionId && (
                                   <Link
                                     href={`/sessions/${encodeURIComponent(
@@ -444,6 +403,7 @@ export function TracesClient() {
                                   >
                                     <AgentIcon
                                       name={t.agentName}
+                                      filled
                                       className="size-3 shrink-0"
                                     />
                                     <span className="truncate">

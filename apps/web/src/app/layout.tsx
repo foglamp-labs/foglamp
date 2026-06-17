@@ -21,6 +21,11 @@ const hostGrotesk = Host_Grotesk({
 });
 
 export const metadata: Metadata = {
+  // Absolute base for OG/Twitter image URLs (and any relative metadata URL).
+  // Override in prod via NEXT_PUBLIC_SITE_URL if the canonical domain changes.
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://foglamp.dev"
+  ),
   title: {
     default: "Foglamp ··· Observability for AI agents",
     template: "%s · Foglamp",

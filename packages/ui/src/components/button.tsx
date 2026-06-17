@@ -24,7 +24,9 @@ const buttonVariants = cva(
           "hover:bg-destructive/10 hover:text-destructive focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:hover:bg-destructive/20 dark:focus-visible:ring-destructive/40",
         destructive:
           "bg-destructive/10 shadow-[var(--custom-shadow-destructive)] text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
+        // Underline stays rendered but transparent at rest, fading its opacity
+        // in on hover — the base `transition-all` animates the decoration color.
+        link: "text-foreground underline decoration-foreground/20 underline-offset-4 hover:decoration-foreground",
       },
       size: {
         default:

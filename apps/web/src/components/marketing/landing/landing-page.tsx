@@ -1,17 +1,20 @@
 import { BentoGrid } from "@/components/marketing/landing/bento";
 import { CtaSection } from "@/components/marketing/landing/cta";
+import { DriftStory } from "@/components/marketing/landing/drift-story";
 import { Hero } from "@/components/marketing/landing/hero";
-import { QuoteBand } from "@/components/marketing/landing/quote";
+import { SocialProof } from "@/components/marketing/landing/social-proof";
 
 // Shared landing content, rendered by both `/` (which redirects logged-in
 // users to the dashboard) and `/homepage` (which never redirects). The live
-// dashboard demo now lives inside <Hero> (bleeding off the right edge), so
-// there's no longer a standalone demo section.
+// dashboard demo lives inside <Hero> (stacked below the copy), so there's no
+// longer a standalone demo section. SocialProof sits right under the hero —
+// the model-logo strip is factual; its testimonial is a placeholder (see file).
 export function LandingPage() {
   return (
-    <div className="flex flex-col gap-24 pb-12">
+    <div className="flex flex-col gap-36 pb-42">
       <Hero />
-      <QuoteBand />
+      <SocialProof />
+      <DriftStory />
       <BentoGrid />
       <CtaSection />
     </div>

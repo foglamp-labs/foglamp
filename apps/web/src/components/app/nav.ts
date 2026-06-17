@@ -4,8 +4,6 @@ import {
   IconAffiliateFilled,
   IconAlertTriangle,
   IconAlertTriangleFilled,
-  IconCoin,
-  IconCoinFilled,
   IconGauge,
   IconGaugeFilled,
   IconGhost,
@@ -116,13 +114,6 @@ export const account: NavItem[] = [
     label: "Settings",
     icon: IconSettings,
     activeIcon: IconSettingsFilled,
-    iconClassName: "dark:text-neutral-500 text-neutral-400",
-  },
-  {
-    href: "/settings/pricing",
-    label: "Pricing",
-    icon: IconCoin,
-    activeIcon: IconCoinFilled,
     iconClassName: "dark:text-neutral-500 text-neutral-400",
   },
 ];

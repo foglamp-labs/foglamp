@@ -6,6 +6,7 @@ import {
   isValidElement,
   use,
   useCallback,
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -274,6 +275,7 @@ type AreaProps = {
   animationType?: AreaAnimationType; // intro reveal — falls back to the chart default
   connectNulls?: boolean; // join segments across null/missing values
   isClickable?: boolean; // lets this area be selected by clicking it
+  enableBufferLine?: boolean; // dashes this area's last stroke segment (fill stays solid)
   children?: ReactNode; // optional <Dot /> and <ActiveDot /> composition
   areaProps?: ComponentProps<typeof RechartsArea>; // escape hatch for raw Recharts Area props
 };
@@ -293,6 +295,7 @@ export function Area({
   animationType,
   connectNulls = false,
   isClickable = false,
+  enableBufferLine,
   children,
   areaProps,
 }: AreaProps) {
@@ -332,6 +335,15 @@ export function Area({
   const isAnimatedDashed = strokeVariant === "animated-dashed";
   const isDashed = strokeVariant === "dashed" || isAnimatedDashed;
 
+  // A consumer-controlled buffer (defined, even when false) gets a unique marker
+  // class so <BufferDash> can find this area's stroke path and toggle the dash.
+  const bufferActive = enableBufferLine !== undefined;
+  const bufferClass = `evil-buffer-${id}`;
+  const areaClassName =
+    [areaProps?.className, bufferActive ? bufferClass : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
   return (
     <>
       <RechartsArea
@@ -361,9 +373,13 @@ export function Area({
           selectDataKey(isSelected ? null : dataKey);
         }}
         {...areaProps}
+        className={areaClassName}
       >
         {isAnimatedDashed && !hasSelection && <AnimatedDashedStroke />}
       </RechartsArea>
+      {bufferActive && (
+        <BufferDash targetClass={bufferClass} active={!!enableBufferLine} />
+      )}
       <defs>
         {revealType !== "none" && <RevealMask id={id} type={revealType} />}
         <ColorGradient id={id} dataKey={dataKey} config={config} isExpanded={isExpanded} />
@@ -377,6 +393,91 @@ export function Area({
       </defs>
     </>
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Buffer line — dashed last stroke segment for a still-filling current bucket
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Match the line chart's buffer dashes so both chart types read identically.
+const BUFFER_DASH_SIZE = 4;
+const BUFFER_GAP_SIZE = 3;
+
+// Binary-search the path for the length at which path.x ≈ targetX, using the
+// browser's native getPointAtLength for exact curve measurement.
+const findLengthAtX = (
+  path: SVGPathElement,
+  totalLength: number,
+  targetX: number,
+): number => {
+  let lo = 0;
+  let hi = totalLength;
+  while (hi - lo > 0.5) {
+    const mid = (lo + hi) / 2;
+    const pt = path.getPointAtLength(mid);
+    if (pt.x < targetX) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+};
+
+// x of the second-to-last vertex — where solid meets dashed. Parsed from the
+// path's M/L command coordinates (linear curve), the same split point the line
+// chart derives from its computed points.
+const secondToLastVertexX = (path: SVGPathElement): number | null => {
+  const d = path.getAttribute("d");
+  if (!d) return null;
+  const coords = [...d.matchAll(/[ML]\s*(-?[\d.]+)[,\s]+(-?[\d.]+)/g)];
+  if (coords.length < 2) return null;
+  return Number(coords[coords.length - 2]![1]);
+};
+
+// Splits the path's stroke-dasharray into a solid run then a dashed last segment.
+const applyBufferDash = (path: SVGPathElement) => {
+  const splitX = secondToLastVertexX(path);
+  if (splitX === null) {
+    path.removeAttribute("stroke-dasharray");
+    return;
+  }
+  const totalLength = path.getTotalLength();
+  const solidLength = findLengthAtX(path, totalLength, splitX);
+  const lastSegmentLength = totalLength - solidLength;
+  const reps =
+    Math.ceil(lastSegmentLength / (BUFFER_DASH_SIZE + BUFFER_GAP_SIZE)) + 1;
+  const dashedPart = Array.from(
+    { length: reps },
+    () => `${BUFFER_DASH_SIZE} ${BUFFER_GAP_SIZE}`,
+  ).join(" ");
+  path.setAttribute("stroke-dasharray", `${solidLength} 0 ${dashedPart}`);
+};
+
+/**
+ * Renders the last segment of an area's top stroke as a dashed "buffer" (used to
+ * flag a still-filling current bucket) while leaving the area fill solid and
+ * continuous. Recharts' <Area> exposes no shape hook for its stroke, so we reach
+ * the rendered `.recharts-area-curve` path by its owning area's unique marker
+ * class and set stroke-dasharray imperatively — mirroring the line chart's
+ * bufferLineShape. Renders nothing; it only runs the side effect.
+ */
+function BufferDash({
+  targetClass,
+  active,
+}: {
+  targetClass: string;
+  active: boolean;
+}) {
+  // No dep array: re-runs every commit so it tracks the data/resize/selection
+  // re-renders that regenerate the path geometry. React leaves stroke-dasharray
+  // alone (the prop stays undefined), so toggling `active` off must clear it.
+  useEffect(() => {
+    const path = document
+      .querySelector(`.${targetClass}`)
+      ?.querySelector<SVGPathElement>(".recharts-area-curve");
+    if (!path) return;
+    if (active) applyBufferDash(path);
+    else path.removeAttribute("stroke-dasharray");
+  });
+  return null;
 }
 
 type DotProps = {

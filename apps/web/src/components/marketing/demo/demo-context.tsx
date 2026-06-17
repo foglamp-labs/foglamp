@@ -9,6 +9,7 @@ export type DetailView =
   | { type: "eval"; id: string }
   | { type: "agent"; id: string }
   | { type: "workflow"; id: string }
+  | { type: "session"; id: string }
   | null;
 
 type DemoContextValue = {

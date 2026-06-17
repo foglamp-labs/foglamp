@@ -22,8 +22,10 @@ export function ChartLegend({
   selected: string | null;
   onSelect: (key: string | null) => void;
 }) {
-  const { resolvedTheme } = useTheme();
-  const mode = resolvedTheme === "dark" ? "dark" : "light";
+  // Honor a forced theme (the marketing demo forces dark) before the user's
+  // stored theme, which next-themes still reports via resolvedTheme.
+  const { resolvedTheme, forcedTheme } = useTheme();
+  const mode = (forcedTheme ?? resolvedTheme) === "dark" ? "dark" : "light";
 
   return (
     <div className="flex items-center gap-3 select-none">

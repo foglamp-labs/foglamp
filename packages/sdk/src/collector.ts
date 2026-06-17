@@ -19,6 +19,17 @@ import type {
 import { mapUsage } from "./usage";
 import type { Metadata, Span, Trace } from "./wire";
 
+// Some Telemetry hooks exist only in older SDK versions inside our broad peer
+// range (`^4 || ^5 || ^6 || ^7.0.0-beta.1`) but were dropped from the current
+// v7 beta/canary `Telemetry` interface we now type-check against: `onChunk` and
+// `onFinish` (renamed `onEnd`), and `onObjectStepFinish` (renamed
+// `onObjectStepEnd`). The SDK still invokes them by name on those versions, so
+// we keep them as methods typed with this local callback shape — a class may
+// declare members beyond the interface it implements. On the current v7
+// beta/canary they never fire; the live onStepEnd/onObjectStepEnd/onEnd
+// handlers cover that path.
+type LegacyTelemetryHandler = (event: unknown) => void;
+
 // Maps the AI SDK v7 `Telemetry` lifecycle onto Foglamp's trace/span model:
 //   trace  = one top-level generateText/streamText call (keyed by `callId`)
 //   agent  = the root span for that call            → `${callId}:root`
@@ -81,6 +92,28 @@ interface StepEndView {
   // RAG/grounding citations + the provider response (carries rate-limit headers).
   sources?: unknown;
   response?: { headers?: unknown };
+  // Official per-step statistics (AI SDK v7 beta/canary `StepResult.performance`).
+  // All optional: absent on older v7, the v4-v6 wrap path, and (sub-fields) on
+  // non-streaming steps. We read responseTimeMs, the TPS rates,
+  // timeToFirstOutputMs, and the inter-chunk gap stats. `stepTimeMs` (==
+  // endTime - startTime, already duration_ms) and `toolExecutionMs` (already
+  // captured as individual tool spans) are intentionally ignored.
+  performance?: {
+    responseTimeMs?: number;
+    effectiveOutputTokensPerSecond?: number;
+    effectiveTotalTokensPerSecond?: number;
+    outputTokensPerSecond?: number;
+    inputTokensPerSecond?: number;
+    timeToFirstOutputMs?: number;
+    timeBetweenOutputChunksMs?: {
+      min?: number;
+      p10?: number;
+      median?: number;
+      avg?: number;
+      p90?: number;
+      max?: number;
+    };
+  };
 }
 // onLanguageModelCallStart/End carry only the callId we need; timing is wall-clock.
 interface LmCallView {
@@ -141,6 +174,10 @@ interface TraceBuilder {
   finalOutput: string | undefined;
   error: string | undefined;
   spans: Span[];
+  // Steps already recorded as llm spans, so a step is never double-counted when
+  // both onStepEnd and the deprecated onStepFinish (or onObjectStepEnd /
+  // onObjectStepFinish) fire for it.
+  stepFinished: Set<number>;
   stepStart: Map<number, number>;
   stepInput: Map<number, string>;
   ttft: Map<number, number>;
@@ -174,6 +211,44 @@ const ERROR_MESSAGE_CAP = 8_192;
 // a hard cap matching the wire contract's `.max(200)` on the chunk arrays.
 const CHUNK_SAMPLE_INTERVAL_MS = 100;
 const MAX_CHUNK_SAMPLES = 200;
+
+// Map the AI SDK `performance.timeBetweenOutputChunksMs` stats onto the wire
+// chunkJitter shape. Returns undefined unless all six values are present — the
+// SDK reports them as a set, and only for streaming steps with >=2 output
+// chunks. Raw values are kept (clamped >=0); ingest rounds the integer columns.
+function buildChunkJitter(
+  j:
+    | {
+        min?: number;
+        p10?: number;
+        median?: number;
+        avg?: number;
+        p90?: number;
+        max?: number;
+      }
+    | undefined,
+): Span["chunkJitter"] {
+  if (!j) return undefined;
+  const { min, p10, median, avg, p90, max } = j;
+  if (
+    min == null ||
+    p10 == null ||
+    median == null ||
+    avg == null ||
+    p90 == null ||
+    max == null
+  ) {
+    return undefined;
+  }
+  return {
+    min: Math.max(0, min),
+    p10: Math.max(0, p10),
+    median: Math.max(0, median),
+    avg: Math.max(0, avg),
+    p90: Math.max(0, p90),
+    max: Math.max(0, max),
+  };
+}
 
 // Evenly thin samples to at most `max`, always keeping the last entry (it
 // anchors the cumulative text length used for the token rescale).
@@ -262,6 +337,15 @@ export class Collector implements Telemetry {
     this.guard(() => {
       const e = event as StartView;
       if (!e.callId) return;
+      // The current v7 beta/canary fires the generic onStart/onEnd for embedding and
+      // reranking too, not just text/object generation. We only model
+      // generation (steps + tools, via onStepEnd/onObjectStepEnd/onTool*); an
+      // embed/rerank call has none of those, so it would otherwise mint an
+      // empty root-only trace. Skip those operations by operationId. This is a
+      // denylist (not an allowlist) so any new/unknown generation operation is
+      // still captured rather than silently dropped.
+      const operationId = e.operationId ?? "";
+      if (operationId.startsWith("ai.embed") || operationId.startsWith("ai.rerank")) return;
       const recordInputs = e.recordInputs ?? this.config.recordInputs;
       const recordOutputs = e.recordOutputs ?? this.config.recordOutputs;
       // Layering: ambient `fog.run(...)` context underneath, then the per-call
@@ -286,6 +370,7 @@ export class Collector implements Telemetry {
         finalOutput: undefined,
         error: undefined,
         spans: [],
+        stepFinished: new Set(),
         stepStart: new Map(),
         stepInput: new Map(),
         ttft: new Map(),
@@ -346,7 +431,11 @@ export class Collector implements Telemetry {
     });
   };
 
-  onChunk: NonNullable<Telemetry["onChunk"]> = (event) => {
+  // Legacy hook (removed from the current v7 beta/canary Telemetry; still
+  // emitted by older v7 betas in our peer range). Powers intra-stream sampling
+  // and the firstChunk TTFT derivation. On the current v7 beta/canary it never
+  // fires — TTFT/TPS come from `performance`.
+  onChunk: LegacyTelemetryHandler = (event) => {
     this.guard(() => {
       const chunk = (event as ChunkView).chunk;
       if (!chunk) return;
@@ -454,88 +543,126 @@ export class Collector implements Telemetry {
     return found;
   };
 
-  onStepFinish: NonNullable<Telemetry["onStepFinish"]> = (event) => {
-    this.guard(() => {
-      const e = event as StepEndView;
-      if (!e.callId || e.stepNumber === undefined) return;
-      const builder = this.builders.get(e.callId);
-      if (!builder) return;
+  // Shared by onStepEnd (v7 beta/canary) and the deprecated onStepFinish. Records one
+  // llm span per step, preferring the official AI SDK `performance` numbers over
+  // our derivations where they overlap (TTFT, model-call time), and capturing
+  // the remaining performance stats for storage.
+  private handleStepEnd(e: StepEndView): void {
+    if (!e.callId || e.stepNumber === undefined) return;
+    const builder = this.builders.get(e.callId);
+    if (!builder) return;
+    // A current v7 beta/canary may fire both onStepEnd and the deprecated
+    // onStepFinish for the same step; older v7 fires only onStepFinish. Record
+    // each step exactly once.
+    if (builder.stepFinished.has(e.stepNumber)) return;
+    builder.stepFinished.add(e.stepNumber);
 
-      const now = Date.now();
-      const start = builder.stepStart.get(e.stepNumber) ?? builder.startTime;
-      const metadata: Metadata = { stepNumber: String(e.stepNumber) };
-      if (e.finishReason) metadata.finishReason = e.finishReason;
+    const now = Date.now();
+    const start = builder.stepStart.get(e.stepNumber) ?? builder.startTime;
+    const metadata: Metadata = { stepNumber: String(e.stepNumber) };
+    if (e.finishReason) metadata.finishReason = e.finishReason;
 
-      let usage = mapUsage(e.usage);
-      // Web-search usage isn't in `usage` — pull it from provider metadata / tools.
-      const webSearchCount = extractWebSearchCount(e);
-      if (webSearchCount !== undefined) usage = { ...(usage ?? {}), webSearchCount };
-      const chunks = this.buildChunkArrays(builder, e.stepNumber, usage);
-      // Close reasoning blocks that never saw a reasoning-end (best effort:
-      // count them as running until now), then fold into the step total.
-      const openBlocks = builder.activeReasoningBlocks.get(e.stepNumber);
-      if (openBlocks) {
-        const endOffsetMs = Math.max(0, now - start);
-        for (const blockStart of openBlocks.values()) {
-          builder.reasoningDurationMs.set(
-            e.stepNumber,
-            (builder.reasoningDurationMs.get(e.stepNumber) ?? 0) +
-              Math.max(0, endOffsetMs - blockStart),
-          );
-        }
+    let usage = mapUsage(e.usage);
+    // Web-search usage isn't in `usage` — pull it from provider metadata / tools.
+    const webSearchCount = extractWebSearchCount(e);
+    if (webSearchCount !== undefined) usage = { ...(usage ?? {}), webSearchCount };
+    const chunks = this.buildChunkArrays(builder, e.stepNumber, usage);
+    // Close reasoning blocks that never saw a reasoning-end (best effort:
+    // count them as running until now), then fold into the step total.
+    const openBlocks = builder.activeReasoningBlocks.get(e.stepNumber);
+    if (openBlocks) {
+      const endOffsetMs = Math.max(0, now - start);
+      for (const blockStart of openBlocks.values()) {
+        builder.reasoningDurationMs.set(
+          e.stepNumber,
+          (builder.reasoningDurationMs.get(e.stepNumber) ?? 0) +
+            Math.max(0, endOffsetMs - blockStart),
+        );
       }
-      const reasoning = this.buildReasoningArrays(builder, e.stepNumber, usage);
-      const reasoningDurationMs = builder.reasoningDurationMs.get(e.stepNumber);
-      // Secondary provider signals: model build fingerprint, safety ratings,
-      // grounding sources (output-gated), and normalized rate-limit headroom.
-      const systemFingerprint = extractSystemFingerprint(e);
-      const safetyMetadata = extractSafetyMetadata(e, this.config.maxPayloadChars);
-      const sources = builder.recordOutputs
-        ? extractSources(e, this.config.maxPayloadChars)
-        : undefined;
-      const rateLimit = extractRateLimit(stepResponseHeaders(e), now);
-      const modelCallMs = builder.modelCallMs.get(e.stepNumber);
-      // This step is done streaming; drop its sampling scratch state.
-      builder.chunkSamples.delete(e.stepNumber);
-      builder.chunkTextLen.delete(e.stepNumber);
-      builder.reasoningSamples.delete(e.stepNumber);
-      builder.reasoningTextLen.delete(e.stepNumber);
-      builder.activeReasoningBlocks.delete(e.stepNumber);
-      builder.reasoningDurationMs.delete(e.stepNumber);
-      builder.modelCallStart.delete(e.stepNumber);
-      builder.modelCallMs.delete(e.stepNumber);
-      if (builder.streamingStep === e.stepNumber) builder.streamingStep = undefined;
+    }
+    const reasoning = this.buildReasoningArrays(builder, e.stepNumber, usage);
+    const reasoningDurationMs = builder.reasoningDurationMs.get(e.stepNumber);
+    // Secondary provider signals: model build fingerprint, safety ratings,
+    // grounding sources (output-gated), and normalized rate-limit headroom.
+    const systemFingerprint = extractSystemFingerprint(e);
+    const safetyMetadata = extractSafetyMetadata(e, this.config.maxPayloadChars);
+    const sources = builder.recordOutputs
+      ? extractSources(e, this.config.maxPayloadChars)
+      : undefined;
+    const rateLimit = extractRateLimit(stepResponseHeaders(e), now);
 
-      builder.spans.push({
-        spanId: `${e.callId}:step:${e.stepNumber}`,
-        parentSpanId: `${e.callId}:root`,
-        spanType: "llm",
-        name: `step ${e.stepNumber}`,
-        startTime: start,
-        endTime: now,
-        status: e.finishReason === "error" ? "error" : "ok",
-        provider: e.model?.provider ?? builder.provider,
-        modelId: e.model?.modelId ?? builder.modelId,
-        usage,
-        ttftMs: builder.ttft.get(e.stepNumber),
-        chunkOffsets: chunks?.chunkOffsets,
-        chunkTokens: chunks?.chunkTokens,
-        reasoningOffsets: reasoning?.reasoningOffsets,
-        reasoningChunkTokens: reasoning?.reasoningChunkTokens,
-        reasoningDurationMs:
-          reasoningDurationMs !== undefined ? Math.round(reasoningDurationMs) : undefined,
-        input: builder.recordInputs ? builder.stepInput.get(e.stepNumber) : undefined,
-        output: builder.recordOutputs ? this.stepOutput(e) : undefined,
-        toolCatalog: builder.toolCatalog,
-        modelCallMs,
-        systemFingerprint,
-        safetyMetadata,
-        sources,
-        rateLimit,
-        metadata,
-      });
-      if (now > builder.endTime) builder.endTime = now;
+    // Official-over-derived: prefer the AI SDK step `performance` numbers when
+    // present (measured at the source), falling back to our derivations.
+    //  • ttftMs       ← timeToFirstOutputMs ?? the onChunk firstChunk marker
+    //  • modelCallMs  ← responseTimeMs ?? the onLanguageModelCall* lifecycle
+    const perf = e.performance;
+    const ttftMs =
+      perf?.timeToFirstOutputMs != null
+        ? Math.max(0, Math.round(perf.timeToFirstOutputMs))
+        : builder.ttft.get(e.stepNumber);
+    const responseTimeMs =
+      perf?.responseTimeMs != null ? Math.max(0, Math.round(perf.responseTimeMs)) : undefined;
+    const modelCallMs = responseTimeMs ?? builder.modelCallMs.get(e.stepNumber);
+    const chunkJitter = buildChunkJitter(perf?.timeBetweenOutputChunksMs);
+
+    // This step is done streaming; drop its sampling scratch state.
+    builder.chunkSamples.delete(e.stepNumber);
+    builder.chunkTextLen.delete(e.stepNumber);
+    builder.reasoningSamples.delete(e.stepNumber);
+    builder.reasoningTextLen.delete(e.stepNumber);
+    builder.activeReasoningBlocks.delete(e.stepNumber);
+    builder.reasoningDurationMs.delete(e.stepNumber);
+    builder.modelCallStart.delete(e.stepNumber);
+    builder.modelCallMs.delete(e.stepNumber);
+    if (builder.streamingStep === e.stepNumber) builder.streamingStep = undefined;
+
+    builder.spans.push({
+      spanId: `${e.callId}:step:${e.stepNumber}`,
+      parentSpanId: `${e.callId}:root`,
+      spanType: "llm",
+      name: `step ${e.stepNumber}`,
+      startTime: start,
+      endTime: now,
+      status: e.finishReason === "error" ? "error" : "ok",
+      provider: e.model?.provider ?? builder.provider,
+      modelId: e.model?.modelId ?? builder.modelId,
+      usage,
+      ttftMs,
+      chunkOffsets: chunks?.chunkOffsets,
+      chunkTokens: chunks?.chunkTokens,
+      reasoningOffsets: reasoning?.reasoningOffsets,
+      reasoningChunkTokens: reasoning?.reasoningChunkTokens,
+      reasoningDurationMs:
+        reasoningDurationMs !== undefined ? Math.round(reasoningDurationMs) : undefined,
+      input: builder.recordInputs ? builder.stepInput.get(e.stepNumber) : undefined,
+      output: builder.recordOutputs ? this.stepOutput(e) : undefined,
+      toolCatalog: builder.toolCatalog,
+      modelCallMs,
+      responseTimeMs,
+      effectiveOutputTps: perf?.effectiveOutputTokensPerSecond,
+      effectiveTotalTps: perf?.effectiveTotalTokensPerSecond,
+      outputTps: perf?.outputTokensPerSecond,
+      inputTps: perf?.inputTokensPerSecond,
+      chunkJitter,
+      systemFingerprint,
+      safetyMetadata,
+      sources,
+      rateLimit,
+      metadata,
     });
+    if (now > builder.endTime) builder.endTime = now;
+  }
+
+  // onStepEnd: the v7 beta/canary successor to onStepFinish. The event is a
+  // StepResult carrying the official `performance` object.
+  onStepEnd: NonNullable<Telemetry["onStepEnd"]> = (event) => {
+    this.guard(() => this.handleStepEnd(event as StepEndView));
+  };
+
+  // Deprecated predecessor of onStepEnd; still emitted by older v7 in our peer
+  // range. Routed to the same handler, deduped via builder.stepFinished.
+  onStepFinish: NonNullable<Telemetry["onStepFinish"]> = (event) => {
+    this.guard(() => this.handleStepEnd(event as StepEndView));
   };
 
   // Object generation (generateObject/streamObject) drives a separate step
@@ -560,61 +687,80 @@ export class Collector implements Telemetry {
     });
   };
 
-  onObjectStepFinish: NonNullable<Telemetry["onObjectStepFinish"]> = (event) => {
-    this.guard(() => {
-      const e = event as ObjectStepEndView;
-      if (!e.callId) return;
-      const builder = this.builders.get(e.callId);
-      if (!builder) return;
+  // Shared by onObjectStepEnd (v7 beta/canary) and the deprecated onObjectStepFinish.
+  // The object path has no `performance` object (it bypasses the text-step
+  // lifecycle), so none of the new TPS/jitter fields apply here.
+  private handleObjectStepEnd(e: ObjectStepEndView): void {
+    if (!e.callId) return;
+    const builder = this.builders.get(e.callId);
+    if (!builder) return;
 
-      const step = e.stepNumber ?? 0;
-      const now = Date.now();
-      const start = builder.stepStart.get(step) ?? builder.startTime;
-      const metadata: Metadata = { stepNumber: String(step) };
-      if (e.finishReason) metadata.finishReason = e.finishReason;
+    const step = e.stepNumber ?? 0;
+    // Object steps share the `${callId}:step:${n}` span id with the text path,
+    // so they dedup against the same set: a v7 beta/canary firing both onObjectStepEnd
+    // and the deprecated onObjectStepFinish records the step exactly once.
+    if (builder.stepFinished.has(step)) return;
+    builder.stepFinished.add(step);
 
-      let usage = mapUsage(e.usage);
-      const webSearchCount = extractWebSearchCount(e);
-      if (webSearchCount !== undefined) usage = { ...(usage ?? {}), webSearchCount };
+    const now = Date.now();
+    const start = builder.stepStart.get(step) ?? builder.startTime;
+    const metadata: Metadata = { stepNumber: String(step) };
+    if (e.finishReason) metadata.finishReason = e.finishReason;
 
-      const systemFingerprint = extractSystemFingerprint(e);
-      const safetyMetadata = extractSafetyMetadata(e, this.config.maxPayloadChars);
-      const sources = builder.recordOutputs
-        ? extractSources(e, this.config.maxPayloadChars)
-        : undefined;
-      const rateLimit = extractRateLimit(stepResponseHeaders(e), now);
-      const ttftMs =
-        e.msToFirstChunk !== undefined ? Math.max(0, Math.round(e.msToFirstChunk)) : undefined;
-      const input = builder.recordInputs ? builder.stepInput.get(step) : undefined;
+    let usage = mapUsage(e.usage);
+    const webSearchCount = extractWebSearchCount(e);
+    if (webSearchCount !== undefined) usage = { ...(usage ?? {}), webSearchCount };
 
-      builder.stepStart.delete(step);
-      builder.stepInput.delete(step);
+    const systemFingerprint = extractSystemFingerprint(e);
+    const safetyMetadata = extractSafetyMetadata(e, this.config.maxPayloadChars);
+    const sources = builder.recordOutputs
+      ? extractSources(e, this.config.maxPayloadChars)
+      : undefined;
+    const rateLimit = extractRateLimit(stepResponseHeaders(e), now);
+    const ttftMs =
+      e.msToFirstChunk !== undefined ? Math.max(0, Math.round(e.msToFirstChunk)) : undefined;
+    const input = builder.recordInputs ? builder.stepInput.get(step) : undefined;
 
-      builder.spans.push({
-        spanId: `${e.callId}:step:${step}`,
-        parentSpanId: `${e.callId}:root`,
-        spanType: "llm",
-        name: `step ${step}`,
-        startTime: start,
-        endTime: now,
-        status: e.finishReason === "error" ? "error" : "ok",
-        provider: e.provider ?? builder.provider,
-        modelId: e.modelId ?? builder.modelId,
-        usage,
-        ttftMs,
-        input,
-        output: builder.recordOutputs
-          ? serialize(e.objectText, this.config.maxPayloadChars)
-          : undefined,
-        toolCatalog: builder.toolCatalog,
-        systemFingerprint,
-        safetyMetadata,
-        sources,
-        rateLimit,
-        metadata,
-      });
-      if (now > builder.endTime) builder.endTime = now;
+    builder.stepStart.delete(step);
+    builder.stepInput.delete(step);
+
+    builder.spans.push({
+      spanId: `${e.callId}:step:${step}`,
+      parentSpanId: `${e.callId}:root`,
+      spanType: "llm",
+      name: `step ${step}`,
+      startTime: start,
+      endTime: now,
+      status: e.finishReason === "error" ? "error" : "ok",
+      provider: e.provider ?? builder.provider,
+      modelId: e.modelId ?? builder.modelId,
+      usage,
+      ttftMs,
+      input,
+      output: builder.recordOutputs
+        ? serialize(e.objectText, this.config.maxPayloadChars)
+        : undefined,
+      toolCatalog: builder.toolCatalog,
+      systemFingerprint,
+      safetyMetadata,
+      sources,
+      rateLimit,
+      metadata,
     });
+    if (now > builder.endTime) builder.endTime = now;
+  }
+
+  // onObjectStepEnd: the v7 beta/canary successor to onObjectStepFinish (both are
+  // deprecated on the interface, but this is the one the current v7 beta/canary fires).
+  onObjectStepEnd: NonNullable<Telemetry["onObjectStepEnd"]> = (event) => {
+    this.guard(() => this.handleObjectStepEnd(event as ObjectStepEndView));
+  };
+
+  // Deprecated predecessor; removed from the current v7 beta/canary Telemetry
+  // interface but still emitted by older v7 in our peer range. Routed to the
+  // same handler, deduped via builder.stepFinished.
+  onObjectStepFinish: LegacyTelemetryHandler = (event) => {
+    this.guard(() => this.handleObjectStepEnd(event as ObjectStepEndView));
   };
 
   onToolExecutionStart: NonNullable<Telemetry["onToolExecutionStart"]> = (event) => {
@@ -660,21 +806,34 @@ export class Collector implements Telemetry {
     });
   };
 
-  onFinish: NonNullable<Telemetry["onFinish"]> = (event) => {
-    this.guard(() => {
-      const e = event as FinishView;
-      if (!e.callId) return;
-      const builder = this.builders.get(e.callId);
-      if (!builder) return;
-      // Text generation reports `text`; object generation reports the parsed
-      // `object`. Capture whichever is present as the trace's final output.
-      const output = e.text ?? e.object;
-      if (builder.recordOutputs && output !== undefined) {
-        const serialized = serialize(output, this.config.maxPayloadChars);
-        if (serialized) builder.finalOutput = serialized;
-      }
-      this.finalize(e.callId, builder);
-    });
+  // Shared by onEnd (v7 beta/canary) and the deprecated onFinish. finalize() deletes the
+  // builder, so if both hooks fire for one operation the second no-ops at the
+  // `!builder` guard — no extra dedup state needed.
+  private handleFinish(e: FinishView): void {
+    if (!e.callId) return;
+    const builder = this.builders.get(e.callId);
+    if (!builder) return;
+    // Text generation reports `text`; object generation reports the parsed
+    // `object`. Capture whichever is present as the trace's final output.
+    const output = e.text ?? e.object;
+    if (builder.recordOutputs && output !== undefined) {
+      const serialized = serialize(output, this.config.maxPayloadChars);
+      if (serialized) builder.finalOutput = serialized;
+    }
+    this.finalize(e.callId, builder);
+  }
+
+  // onEnd: the v7 beta/canary successor to onFinish, fired when the whole operation
+  // completes (generateText/streamText/generateObject/streamObject).
+  onEnd: NonNullable<Telemetry["onEnd"]> = (event) => {
+    this.guard(() => this.handleFinish(event as FinishView));
+  };
+
+  // Deprecated predecessor; removed from the current v7 beta/canary Telemetry
+  // interface but still emitted by older v7 in our peer range. Routed to the
+  // same handler; finalize()'s builder delete dedups the two.
+  onFinish: LegacyTelemetryHandler = (event) => {
+    this.guard(() => this.handleFinish(event as FinishView));
   };
 
   onError: NonNullable<Telemetry["onError"]> = (error) => {

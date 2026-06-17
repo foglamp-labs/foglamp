@@ -108,6 +108,10 @@ export function EvilDonutChart({
           {showLegend && (
             <ChartLegend
               verticalAlign="bottom"
+              // Span the full width so the wrapped, centered legend stays
+              // centered — otherwise Recharts sizes the wrapper to the
+              // content's single-line width and anchors it off-center.
+              wrapperStyle={{ left: 0, width: "100%" }}
               content={<ChartLegendContent align="center" variant={legendVariant} />}
             />
           )}

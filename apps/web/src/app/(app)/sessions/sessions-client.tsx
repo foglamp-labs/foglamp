@@ -22,11 +22,8 @@ import { TooltipProvider } from "@foglamp/ui/components/tooltip";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAlertTriangle,
-  IconAlertTriangleFilled,
-  IconCoinFilled,
   IconGhost,
   IconMessage2Filled,
-  IconStack2Filled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -55,7 +52,6 @@ import {
   EmptyState,
   NoProject,
   PageHeader,
-  StatCard,
   TableSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
@@ -65,7 +61,6 @@ import { RelativeTime } from "@/components/app/relative-time";
 import {
   formatCost,
   formatCount,
-  formatPercent,
   formatTokens,
 } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
@@ -207,48 +202,6 @@ export function SessionsClient() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatCard
-              icon={IconMessage2Filled}
-              iconClassName="text-sky-300 dark:text-sky-700"
-              size="sm"
-              label="Sessions"
-              value={formatCount(summary?.sessionCount ?? 0)}
-            />
-            <StatCard
-              icon={IconAlertTriangleFilled}
-              iconClassName="text-rose-300 dark:text-rose-700"
-              size="sm"
-              label="Errored sessions"
-              value={
-                <>
-                  {formatCount(summary?.errorSessionCount ?? 0)}
-                  {summary?.sessionCount ? (
-                    <span className="ml-1.5 text-sm font-normal text-muted-foreground">
-                      {formatPercent(
-                        summary.errorSessionCount / summary.sessionCount
-                      )}
-                    </span>
-                  ) : null}
-                </>
-              }
-            />
-            <StatCard
-              icon={IconStack2Filled}
-              iconClassName="text-fuchsia-300 dark:text-fuchsia-700"
-              size="sm"
-              label="Total tokens"
-              value={formatTokens(summary?.totalTokens ?? 0)}
-            />
-            <StatCard
-              icon={IconCoinFilled}
-              iconClassName="text-yellow-300 dark:text-yellow-600"
-              size="sm"
-              label="Total cost"
-              value={formatCost(summary?.totalCost ?? 0)}
-            />
-          </section>
-
           <Toolbar>
             <SearchInput
               value={search}

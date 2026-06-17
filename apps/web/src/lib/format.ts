@@ -1,24 +1,40 @@
 // Display formatters for the dashboard. Costs come back as numbers|null (null =
 // unpriced, must render "—", never "$0.00"); counts/durations as numbers.
 
-const usd = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 6,
-});
+// Cost formatters keyed by their max fraction digits, built lazily and cached
+// (Intl.NumberFormat construction isn't free). Full precision (6) is the
+// default; stat-card headline figures pass 4 for a more compact number.
+const usdFormatters = new Map<number, Intl.NumberFormat>();
+function usdFormatter(maxDecimals: number): Intl.NumberFormat {
+  let f = usdFormatters.get(maxDecimals);
+  if (!f) {
+    f = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: maxDecimals,
+    });
+    usdFormatters.set(maxDecimals, f);
+  }
+  return f;
+}
 
-/** A cost value; `null`/`undefined` → em dash (unpriced, never $0). */
-export function formatCost(value: number | null | undefined): string {
+/** A cost value; `null`/`undefined` → em dash (unpriced, never $0). `maxDecimals`
+ * caps the fractional digits — 6 (full precision) by default, 4 for the more
+ * compact stat-card treatment. */
+export function formatCost(
+  value: number | null | undefined,
+  maxDecimals = 6
+): string {
   if (value === null || value === undefined) return "—";
-  return usd.format(value);
+  return usdFormatter(maxDecimals).format(value);
 }
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact" });
 const plain = new Intl.NumberFormat("en-US");
 
 export function formatCount(value: number): string {
-  return value >= 10_000 ? compact.format(value) : plain.format(value);
+  return value >= 1000 ? compact.format(value) : plain.format(value);
 }
 
 export function formatTokens(value: number): string {
@@ -27,7 +43,8 @@ export function formatTokens(value: number): string {
 
 /** Tokens/sec; `null`/`undefined` → em dash (no measurable rate). */
 export function formatTps(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  if (value === null || value === undefined || !Number.isFinite(value))
+    return "—";
   return `${value >= 1000 ? compact.format(value) : Math.round(value)} tok/s`;
 }
 
@@ -61,9 +78,12 @@ export function formatPercent(fraction: number | null | undefined): string {
 }
 
 /** ClickHouse DateTime strings ('YYYY-MM-DD HH:MM:SS', UTC) or ISO → local. */
-export function formatDateTime(value: string | Date | null | undefined): string {
+export function formatDateTime(
+  value: string | Date | null | undefined
+): string {
   if (!value) return "—";
-  const d = value instanceof Date ? value : new Date(`${value.replace(" ", "T")}Z`);
+  const d =
+    value instanceof Date ? value : new Date(`${value.replace(" ", "T")}Z`);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString(undefined, {
     month: "short",
@@ -76,9 +96,12 @@ export function formatDateTime(value: string | Date | null | undefined): string 
   });
 }
 
-export function formatRelative(value: string | Date | null | undefined): string {
+export function formatRelative(
+  value: string | Date | null | undefined
+): string {
   if (!value) return "—";
-  const d = value instanceof Date ? value : new Date(`${value.replace(" ", "T")}Z`);
+  const d =
+    value instanceof Date ? value : new Date(`${value.replace(" ", "T")}Z`);
   const diff = Date.now() - d.getTime();
   if (Number.isNaN(diff)) return String(value);
   // Clamp clock skew: a server timestamp slightly ahead of the client must not
@@ -100,10 +123,11 @@ export type Delta = { pct: number; dir: "up" | "down" | "flat" };
  */
 export function formatDelta(
   current: number | null | undefined,
-  previous: number | null | undefined,
+  previous: number | null | undefined
 ): Delta | null {
   if (current === null || current === undefined) return null;
-  if (previous === null || previous === undefined || previous === 0) return null;
+  if (previous === null || previous === undefined || previous === 0)
+    return null;
   const pct = (current - previous) / previous;
   const dir = Math.abs(pct) < 0.0001 ? "flat" : pct > 0 ? "up" : "down";
   return { pct, dir };
@@ -112,7 +136,7 @@ export function formatDelta(
 /** Extrapolate a window's cost to a 30-day run-rate. `null` when cost is unknown. */
 export function projectMonthlyCost(
   cost: number | null | undefined,
-  windowMs: number,
+  windowMs: number
 ): number | null {
   if (cost === null || cost === undefined || windowMs <= 0) return null;
   const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;

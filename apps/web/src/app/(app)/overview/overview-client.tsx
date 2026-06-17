@@ -2,13 +2,12 @@
 
 import {
   IconAlertTriangleFilled,
-  IconBoltFilled,
   IconChartAreaFilled,
   IconCircleCheckFilled,
-  IconClockFilled,
+  IconCirclesFilled,
   IconCoinFilled,
+  IconGaugeFilled,
   IconSitemap,
-  IconStack2Filled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -47,9 +46,11 @@ import { useProject } from "@/components/app/project-context";
 import { useDelayedLoading } from "@/components/app/data-table";
 import { OnboardingPanel } from "@/components/app/onboarding-panel";
 import {
+  CardSparkline,
   EmptyState,
   NoProject,
   PageHeader,
+  PillMeter,
   ScrollFade,
   StatCard,
   TableSkeleton,
@@ -165,21 +166,64 @@ function ChartLegend({
 
 /** Loading placeholder for the KPI row — built from the real Card shell so its
  * grid and heights match the loaded cards exactly (no layout shift). */
-function StatCardsSkeleton({ count = 6 }: { count?: number }) {
+function StatCardsSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
         <Card key={i} size="sm">
-          <CardHeader>
-            <Skeleton className="h-3 w-16" />
-            <Skeleton className="mt-1.5 h-6 w-24" />
+          <CardHeader className="gap-1.5">
+            {/* Icon + label row, mirroring the real StatCard header. */}
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-[13px] rounded-full" />
+                <Skeleton className="h-3 w-14" />
+              </div>
+              <Skeleton className="h-3 w-9" />
+            </div>
+            {/* Value + hint row. */}
+            <div className="flex items-baseline justify-between gap-2">
+              <Skeleton className="h-6 w-20" />
+              <Skeleton className="h-3 w-16" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <Skeleton className="h-3 w-28" />
-          </CardContent>
+          {/* Bottom chart strip — bleeds to the card edge like the real chart. */}
+          <div className="mt-3 -mb-5">
+            <Skeleton className="h-8 w-full rounded-b-none" />
+          </div>
         </Card>
       ))}
     </section>
+  );
+}
+
+/** Loading placeholder for a chart card — same Card shell, header, and 260px
+ * plot height as the real charts, so swapping it in causes no layout shift. */
+function ChartCardSkeleton() {
+  return (
+    <Card size="sm">
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-4 w-24" />
+      </CardHeader>
+      <CardContent className="mt-3">
+        <Skeleton className="h-[260px] w-full" />
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Loading placeholder for a breakdown list card (Models / Agents / Workflows) —
+ * same Card shell and header as the real cards so swapping it in causes no shift. */
+function ListCardSkeleton() {
+  return (
+    <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0!">
+      <CardHeader>
+        <Skeleton className="h-4 w-20" />
+      </CardHeader>
+      <CardContent className="mt-3">
+        <TableSkeleton />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -255,13 +299,13 @@ function BreakdownRow({
           {renderIcon("size-4 shrink-0")}
           <span className="truncate text-sm font-medium">{title}</span>
         </div>
-        <div className="mt-1 text-xs tabular-nums text-muted-foreground">
+        <div className="mt-1 text-xs tabular-nums text-muted-foreground/70">
           {metrics}
         </div>
       </div>
       {/* Right: cost + share bar (≤60% of the row), both right-aligned. */}
-      <div className="flex w-1/5 shrink-0 flex-col items-end gap-1.5">
-        <span className="text-sm  tabular-nums">{value}</span>
+      <div className="flex w-1/5 shrink-0 flex-col items-end gap-2">
+        <span className="text-sm tabular-nums">{value}</span>
         <div className="h-0.5 w-full overflow-hidden rounded-full bg-muted-foreground/10">
           <div
             className="ml-auto h-full rounded-full"
@@ -346,8 +390,14 @@ export function OverviewClient() {
     ...trpc.traces.list.queryOptions({ projectId: projectId!, limit: 1 }),
     enabled,
   });
-  // Delay each section's skeleton so fast loads don't flash it.
+  // Delay every section's loading treatment so fast loads never flash it: the
+  // whole page (KPI cards, charts, and lists) stays blank until a load has run
+  // long enough to be worth a skeleton, then they all reveal in step.
   const showSummarySkeleton = useDelayedLoading(summary.isLoading);
+  const showSeriesSkeleton = useDelayedLoading(timeseries.isLoading);
+  const showCostSkeleton = useDelayedLoading(
+    costByModel.isLoading || models.isLoading
+  );
   const showModelsSkeleton = useDelayedLoading(models.isLoading);
   const showAgentsSkeleton = useDelayedLoading(agents.isLoading);
   const showWorkflowsSkeleton = useDelayedLoading(workflows.isLoading);
@@ -363,6 +413,8 @@ export function OverviewClient() {
         p99: r.latencyMs.p99,
         requests: r.spanCount,
         errors: r.errorCount,
+        tokens: r.totalTokens,
+        cost: r.totalCost ?? 0,
       })),
     [timeseries.data]
   );
@@ -391,6 +443,20 @@ export function OverviewClient() {
       ),
     [seriesData, bucketLabel]
   );
+
+  // Is the final bucket the current, still-filling one? True when "now" still
+  // falls inside the last bucket's window (its start + one bucket's width),
+  // which holds for now-anchored ranges but not historical ones (e.g. "Last
+  // month"). Drives the dashed trailing segment on the trend charts. Bucket
+  // width is read from the data so it tracks whatever cadence the server picked.
+  const lastBucketLive = useMemo(() => {
+    if (seriesData.length < 2) return false;
+    const ms = (b: string) => new Date(`${b.replace(" ", "T")}Z`).getTime();
+    const last = ms(seriesData[seriesData.length - 1]!.bucket);
+    const prev = ms(seriesData[seriesData.length - 2]!.bucket);
+    if (Number.isNaN(last) || Number.isNaN(prev)) return false;
+    return Date.now() < last + (last - prev);
+  }, [seriesData]);
 
   // Top-5 models become stacked series (safe keys, since model ids contain
   // "/" and "."); everything else rolls into "Other". Colors track each
@@ -516,7 +582,7 @@ export function OverviewClient() {
       cost,
       ticks: thinTicks(
         rows.map((r) => r.bucket),
-        bucketLabel,
+        bucketLabel
       ),
     };
   }, [range, bucketLabel]);
@@ -546,7 +612,9 @@ export function OverviewClient() {
     1,
     ...workflowRows.map((w) => w.totalCost ?? 0)
   );
-  // Charts render their own shimmer via the `isLoading` prop instead of a skeleton.
+  // Raw load flags: drive empty-state detection here, and gate each chart card
+  // (nothing pre-delay → ChartCardSkeleton after the delay → the real chart),
+  // mirroring the KPI cards so the whole page shares one loading rhythm.
   const costLoading = costByModel.isLoading || models.isLoading;
   const seriesLoading = timeseries.isLoading;
 
@@ -563,6 +631,10 @@ export function OverviewClient() {
   const volumeChartData = seriesEmpty ? sample.series : seriesData;
   const latencyChartData = seriesEmpty ? sample.latency : latencyData;
   const seriesChartTicks = seriesEmpty ? sample.ticks : seriesTicks;
+  // Dash the trailing segment only on live ranges with real data — never on the
+  // blurred sample shown behind an empty state.
+  const costBuffer = lastBucketLive && !costEmpty;
+  const seriesBuffer = lastBucketLive && !seriesEmpty;
 
   const volumeItems: LegendItem[] = Object.entries(volumeConfig).map(
     ([key, entry]) => ({
@@ -589,149 +661,95 @@ export function OverviewClient() {
       {!everReceived.isLoading &&
         (everReceived.data?.traces ?? []).length === 0 && <OnboardingPanel />}
 
-      {/* KPIs */}
+      {/* KPIs — skeleton waits out the shared delay (see showSummarySkeleton),
+          so fast loads render nothing until the data lands. `isLoading` is
+          already false for cached data, so normal navigation never flashes it. */}
       {summary.isLoading ? (
         showSummarySkeleton ? (
-          <StatCardsSkeleton count={6} />
+          <StatCardsSkeleton count={4} />
         ) : null
       ) : (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            icon={IconBoltFilled}
-            iconClassName="text-violet-300 dark:text-violet-700"
-            label="Requests"
-            size="sm"
-            value={formatCount(cur?.spanCount ?? 0)}
-            delta={formatDelta(cur?.spanCount, prev?.spanCount)}
-            hint={`${formatCount(cur?.llmSpanCount ?? 0)} LLM spans`}
-          />
-          <StatCard
-            icon={IconStack2Filled}
-            iconClassName="text-fuchsia-300 dark:text-fuchsia-700"
+            icon={IconCirclesFilled}
+            iconClassName="text-blue-400 dark:text-blue-600"
             label="Tokens"
             size="sm"
             value={formatTokens(cur?.totalTokens ?? 0)}
             delta={formatDelta(cur?.totalTokens, prev?.totalTokens)}
             hint={`${formatTokens(cur?.inputTokens ?? 0)} in · ${formatTokens(cur?.outputTokens ?? 0)} out`}
+            chart={
+              <CardSparkline
+                data={seriesData.map((d) => d.tokens)}
+                className="text-blue-400/50 dark:text-blue-600/50"
+              />
+            }
           />
           <StatCard
-            icon={IconAlertTriangleFilled}
-            iconClassName="text-rose-300 dark:text-rose-700"
-            label="Error rate"
+            icon={IconCoinFilled}
+            iconClassName="text-yellow-400 dark:text-yellow-600"
+            label="Total cost"
             size="sm"
-            value={formatPercent(cur?.errorRate)}
-            delta={formatDelta(cur?.errorRate, prev?.errorRate)}
+            value={formatCost(cur?.totalCost, 4)}
+            delta={formatDelta(cur?.totalCost, prev?.totalCost)}
             deltaInverted
-            hint={`${formatCount(cur?.errorCount ?? 0)} of ${formatCount(cur?.spanCount ?? 0)} spans`}
+            hint={`~${formatCost(projectMonthlyCost(cur?.totalCost ?? null, windowMs), 4)}/mo`}
+            chart={
+              <CardSparkline
+                data={seriesData.map((d) => d.cost)}
+                className="text-yellow-400/50 dark:text-yellow-600/50"
+              />
+            }
           />
           <StatCard
-            icon={IconCircleCheckFilled}
-            iconClassName="text-emerald-300 dark:text-emerald-700"
+            icon={IconGaugeFilled}
+            iconClassName="text-fuchsia-400 dark:text-fuchsia-600"
             label="Eval pass rate"
             size="sm"
             value={formatPercent(cur?.passRate)}
             delta={formatDelta(cur?.passRate, prev?.passRate)}
             hint={
               cur?.checkCount
-                ? `${formatCount(cur.checkCount)} checks · scored traffic`
+                ? `${formatCount(cur.checkCount)} checks`
                 : "No checks scored yet"
+            }
+            chart={
+              <PillMeter
+                fraction={cur?.passRate ?? null}
+                className="text-fuchsia-400 dark:text-fuchsia-700"
+              />
             }
           />
           <StatCard
-            icon={IconClockFilled}
-            iconClassName="text-sky-300 dark:text-sky-700"
-            label="Latency p95"
+            icon={IconAlertTriangleFilled}
+            iconClassName="text-rose-400 dark:text-rose-600"
+            label="Error rate"
             size="sm"
-            value={formatDuration(cur?.latencyMs.p95 ?? 0)}
-            delta={formatDelta(cur?.latencyMs.p95, prev?.latencyMs.p95)}
+            value={formatPercent(cur?.errorRate)}
+            delta={formatDelta(cur?.errorRate, prev?.errorRate)}
             deltaInverted
-            hint={`p50 ${formatDuration(cur?.latencyMs.p50 ?? 0)}${
-              // Streaming-only metric — skip it instead of showing a bogus 0s.
-              cur?.ttftMs.p95
-                ? ` · TTFT p95 ${formatDuration(cur.ttftMs.p95)}`
-                : ""
-            }`}
-          />
-          <StatCard
-            icon={IconCoinFilled}
-            iconClassName="text-yellow-300 dark:text-yellow-600"
-            label="Total cost"
-            size="sm"
-            value={formatCost(cur?.totalCost)}
-            delta={formatDelta(cur?.totalCost, prev?.totalCost)}
-            deltaInverted
-            hint={`~${formatCost(projectMonthlyCost(cur?.totalCost ?? null, windowMs))}/mo · ${formatPercent(cur?.costCoverage)} priced`}
+            hint={`${formatCount(cur?.errorCount ?? 0)} of ${formatCount(cur?.spanCount ?? 0)} spans`}
+            chart={
+              <PillMeter
+                fraction={cur?.errorRate ?? null}
+                className="text-rose-400 dark:text-rose-700"
+              />
+            }
           />
         </section>
       )}
 
-      {/* Cost over time, stacked by model */}
-      <Card size="sm">
-        <CardHeader className="flex flex-row items-end justify-between gap-4">
-          <div className="space-y-1.5">
-            <CardTitle>Cost over time</CardTitle>
-            <CardDescription>
-              Spend per bucket, stacked by model.
-            </CardDescription>
-          </div>
-          {costItems.length > 0 && (
-            <ChartLegend
-              items={costItems}
-              selected={costSelected}
-              onSelect={setCostSelected}
-            />
-          )}
-        </CardHeader>
-        <CardContent className="mt-3">
-          <MaybeEmptyOverlay
-            empty={costEmpty}
-            description="Instrument a call with the SDK to populate this chart."
-          >
-            <LineChart.EvilLineChart
-              config={costChartConfig}
-              data={costChartData}
-              isLoading={costLoading}
-              xDataKey="bucket"
-              selectedDataKey={costSelected}
-              onSelectionChange={setCostSelected}
-              className="h-[260px] w-full"
-            >
-              <LineChart.Grid />
-              <LineChart.XAxis
-                dataKey="bucket"
-                ticks={costChartTicks}
-                tickFormatter={bucketLabel}
-                interval={0}
-                tick={edgeTick}
-              />
-              <LineChart.YAxis
-                width={64}
-                tickFormatter={(v) => costAxisUsd.format(Number(v))}
-                dx={-4}
-                className="tabular-nums"
-              />
-              <LineChart.Tooltip
-                labelFormatter={(v) => formatBucketFull(String(v))}
-                valueFormatter={(v) => formatCost(Number(v))}
-              />
-              {costChartKeys.map((k) => (
-                <LineChart.Line key={k} dataKey={k} strokeVariant="solid" />
-              ))}
-            </LineChart.EvilLineChart>
-          </MaybeEmptyOverlay>
-        </CardContent>
-      </Card>
-
-      {/* Volume + errors and latency, side by side */}
+      {/* Volume + errors and latency, side by side. Each card mirrors the KPI
+          gate: nothing pre-delay, a card skeleton after it, the chart once loaded. */}
       <section className="grid gap-4 lg:grid-cols-2">
+        {timeseries.isLoading ? (
+          showSeriesSkeleton ? (
+            <ChartCardSkeleton />
+          ) : null
+        ) : (
         <Card size="sm">
-          <CardHeader className="flex flex-row items-end justify-between gap-4">
-            <div className="space-y-1.5">
-              <CardTitle>Requests & errors</CardTitle>
-              <CardDescription>
-                Requests per bucket; errors overlaid.
-              </CardDescription>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardTitle>Requests & errors</CardTitle>
             <ChartLegend
               items={volumeItems}
               selected={volumeSelected}
@@ -743,11 +761,13 @@ export function OverviewClient() {
               <AreaChart.EvilAreaChart
                 config={volumeConfig}
                 data={volumeChartData}
-                isLoading={seriesLoading}
                 xDataKey="bucket"
                 selectedDataKey={volumeSelected}
                 onSelectionChange={setVolumeSelected}
                 className="h-[260px] w-full"
+                chartProps={{
+                  margin: { top: 5, right: 5, bottom: 5, left: 5 },
+                }}
               >
                 <AreaChart.Grid />
                 <AreaChart.XAxis
@@ -765,25 +785,31 @@ export function OverviewClient() {
                 <AreaChart.Tooltip
                   labelFormatter={(v) => formatBucketFull(String(v))}
                 />
-                <AreaChart.Area dataKey="requests" strokeVariant="solid" />
+                <AreaChart.Area
+                  dataKey="requests"
+                  strokeVariant="solid"
+                  enableBufferLine={seriesBuffer}
+                />
                 <AreaChart.Area
                   dataKey="errors"
                   strokeVariant="solid"
                   variant="lines"
+                  enableBufferLine={seriesBuffer}
                 />
               </AreaChart.EvilAreaChart>
             </MaybeEmptyOverlay>
           </CardContent>
         </Card>
+        )}
 
+        {timeseries.isLoading ? (
+          showSeriesSkeleton ? (
+            <ChartCardSkeleton />
+          ) : null
+        ) : (
         <Card size="sm">
-          <CardHeader className="flex flex-row items-end justify-between gap-4">
-            <div className="space-y-1.5">
-              <CardTitle>Latency</CardTitle>
-              <CardDescription>
-                p50 / p95 / p99 per bucket (ms).
-              </CardDescription>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardTitle>Latency</CardTitle>
             <ChartLegend
               items={latencyItems}
               selected={latencySelected}
@@ -795,7 +821,6 @@ export function OverviewClient() {
               <AreaChart.EvilAreaChart
                 config={latencyConfig}
                 data={latencyChartData}
-                isLoading={seriesLoading}
                 xDataKey="bucket"
                 stackType="stacked"
                 selectedDataKey={latencySelected}
@@ -823,30 +848,102 @@ export function OverviewClient() {
                 />
                 {/* Stacked deltas (see latencyData): draw bottom band → top so
                     the stack reads p50, then p95−p50, then p99−p95. */}
-                <AreaChart.Area dataKey="p50" strokeVariant="solid" />
-                <AreaChart.Area dataKey="p95" strokeVariant="solid" />
-                <AreaChart.Area dataKey="p99" strokeVariant="solid" />
+                <AreaChart.Area
+                  dataKey="p50"
+                  strokeVariant="solid"
+                  enableBufferLine={seriesBuffer}
+                />
+                <AreaChart.Area
+                  dataKey="p95"
+                  strokeVariant="solid"
+                  enableBufferLine={seriesBuffer}
+                />
+                <AreaChart.Area
+                  dataKey="p99"
+                  strokeVariant="solid"
+                  enableBufferLine={seriesBuffer}
+                />
               </AreaChart.EvilAreaChart>
             </MaybeEmptyOverlay>
           </CardContent>
         </Card>
+        )}
       </section>
+
+      {/* Cost over time, stacked by model */}
+      {costLoading ? (
+        showCostSkeleton ? (
+          <ChartCardSkeleton />
+        ) : null
+      ) : (
+      <Card size="sm">
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardTitle>Cost over time</CardTitle>
+          {costItems.length > 0 && (
+            <ChartLegend
+              items={costItems}
+              selected={costSelected}
+              onSelect={setCostSelected}
+            />
+          )}
+        </CardHeader>
+        <CardContent className="mt-3">
+          <MaybeEmptyOverlay
+            empty={costEmpty}
+            description="Instrument a call with the SDK to populate this chart."
+          >
+            <LineChart.EvilLineChart
+              config={costChartConfig}
+              data={costChartData}
+              xDataKey="bucket"
+              selectedDataKey={costSelected}
+              onSelectionChange={setCostSelected}
+              className="h-[260px] w-full"
+            >
+              <LineChart.Grid />
+              <LineChart.XAxis
+                dataKey="bucket"
+                ticks={costChartTicks}
+                tickFormatter={bucketLabel}
+                interval={0}
+                tick={edgeTick}
+              />
+              <LineChart.YAxis
+                width={50}
+                tickFormatter={(v) => costAxisUsd.format(Number(v))}
+                dx={-2}
+              />
+              <LineChart.Tooltip
+                labelFormatter={(v) => formatBucketFull(String(v))}
+                valueFormatter={(v) => formatCost(Number(v))}
+              />
+              {costChartKeys.map((k) => (
+                <LineChart.Line
+                  key={k}
+                  dataKey={k}
+                  strokeVariant="solid"
+                  enableBufferLine={costBuffer}
+                />
+              ))}
+            </LineChart.EvilLineChart>
+          </MaybeEmptyOverlay>
+        </CardContent>
+      </Card>
+      )}
 
       {/* By model + by agent + by workflow, side by side */}
       <section className="grid gap-4 lg:grid-cols-3">
-        <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0!">
+        {models.isLoading ? (
+          showModelsSkeleton ? (
+            <ListCardSkeleton />
+          ) : null
+        ) : (
+        <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0">
           <CardHeader>
-            <CardTitle>By model</CardTitle>
-            <CardDescription>
-              Spend, usage, and latency per model.
-            </CardDescription>
+            <CardTitle>Models</CardTitle>
           </CardHeader>
-          <CardContent className="mt-2">
-            {models.isLoading ? (
-              showModelsSkeleton ? (
-                <TableSkeleton />
-              ) : null
-            ) : modelRows.length === 0 ? (
+          <CardContent className="mt-3">
+            {modelRows.length === 0 ? (
               <EmptyState
                 icon={IconChartAreaFilled}
                 title="No model usage yet"
@@ -879,20 +976,19 @@ export function OverviewClient() {
             )}
           </CardContent>
         </Card>
+        )}
 
+        {agents.isLoading ? (
+          showAgentsSkeleton ? (
+            <ListCardSkeleton />
+          ) : null
+        ) : (
         <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0!">
           <CardHeader>
-            <CardTitle>By agent</CardTitle>
-            <CardDescription>
-              Spend, errors, and latency per agent.
-            </CardDescription>
+            <CardTitle>Agents</CardTitle>
           </CardHeader>
-          <CardContent className="mt-2">
-            {agents.isLoading ? (
-              showAgentsSkeleton ? (
-                <TableSkeleton />
-              ) : null
-            ) : agentRows.length === 0 ? (
+          <CardContent className="mt-3">
+            {agentRows.length === 0 ? (
               <EmptyState
                 icon={IconChartAreaFilled}
                 title="No agent activity yet"
@@ -923,20 +1019,19 @@ export function OverviewClient() {
             )}
           </CardContent>
         </Card>
+        )}
 
+        {workflows.isLoading ? (
+          showWorkflowsSkeleton ? (
+            <ListCardSkeleton />
+          ) : null
+        ) : (
         <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0!">
           <CardHeader>
-            <CardTitle>By workflow</CardTitle>
-            <CardDescription>
-              Spend, runs, and errors per workflow.
-            </CardDescription>
+            <CardTitle>Workflows</CardTitle>
           </CardHeader>
-          <CardContent className="mt-2">
-            {workflows.isLoading ? (
-              showWorkflowsSkeleton ? (
-                <TableSkeleton />
-              ) : null
-            ) : workflowRows.length === 0 ? (
+          <CardContent className="mt-3">
+            {workflowRows.length === 0 ? (
               <EmptyState
                 icon={IconChartAreaFilled}
                 title="No workflow activity yet"
@@ -969,6 +1064,7 @@ export function OverviewClient() {
             )}
           </CardContent>
         </Card>
+        )}
       </section>
     </>
   );

@@ -3,7 +3,6 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../index";
 import { resolveRange } from "../lib/util";
 import {
-  getAgentCostBreakdown,
   getAgentDetail,
   getAgentList,
   getAgentNames,
@@ -76,26 +75,6 @@ export const agentsRouter = router({
     .query(({ ctx, input }) => {
       const { from, to } = resolveRange(input.from, input.to);
       return getAgentDetail(ctx.db, ctx.ch, ctx.session.user.id, {
-        projectId: input.projectId,
-        agentName: input.agentName,
-        from,
-        to,
-      });
-    }),
-
-  // Per-dimension cost totals for one agent — the agent-page cost donut.
-  costBreakdown: protectedProcedure
-    .input(
-      z.object({
-        projectId: z.string(),
-        agentName: z.string(),
-        from: z.coerce.date().optional(),
-        to: z.coerce.date().optional(),
-      }),
-    )
-    .query(({ ctx, input }) => {
-      const { from, to } = resolveRange(input.from, input.to);
-      return getAgentCostBreakdown(ctx.db, ctx.ch, ctx.session.user.id, {
         projectId: input.projectId,
         agentName: input.agentName,
         from,

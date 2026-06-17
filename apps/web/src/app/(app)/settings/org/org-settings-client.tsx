@@ -39,9 +39,11 @@ import {
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAlertTriangleFilled,
+  IconClockFilled,
   IconFolderFilled,
   IconGaugeFilled,
   IconStack2Filled,
+  IconTimelineEventFilled,
   IconTrash,
   IconTrashFilled,
 } from "@tabler/icons-react";
@@ -744,6 +746,17 @@ function ProjectsTab({ orgId }: { orgId: string }) {
   );
 }
 
+// Pro plan headline limits, icons matched to the marketing pricing page
+// (apps/web/src/app/(marketing)/pricing/page.tsx). Keep both in sync.
+const PRO_LIMITS: { label: string; icon: ComponentType<{ className?: string }> }[] =
+  [
+    { label: "1M spans / month", icon: IconTimelineEventFilled },
+    { label: "14-day retention", icon: IconClockFilled },
+    { label: "5 projects", icon: IconFolderFilled },
+    { label: "10 alerts", icon: IconAlertTriangleFilled },
+    { label: "20 evals", icon: IconGaugeFilled },
+  ];
+
 function BillingTab({ orgId }: { orgId: string }) {
   const usage = useQuery({
     ...trpc.orgs.usage.queryOptions({ orgId }),
@@ -797,12 +810,24 @@ function BillingTab({ orgId }: { orgId: string }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {plan === "free" && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Upgrade to Pro for 1M spans/mo, 14-day retention, 10 alerts, 5
-              projects, and 20 evals.
+              Upgrade to Pro for more headroom:
             </p>
-            <Button size="sm" disabled={redirecting} onClick={upgrade}>
+            <div className="flex flex-col gap-2.5">
+              {PRO_LIMITS.map((l) => (
+                <div key={l.label} className="flex items-center gap-2.5 text-sm">
+                  <l.icon className="size-4 shrink-0 text-muted-foreground/70" />
+                  {l.label}
+                </div>
+              ))}
+            </div>
+            <Button
+              size="sm"
+              className="self-start"
+              disabled={redirecting}
+              onClick={upgrade}
+            >
               Upgrade to Pro · $49/mo
             </Button>
           </div>

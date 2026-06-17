@@ -5,6 +5,8 @@ import {
   IconAlertTriangle,
   IconAlertTriangleFilled,
   IconCode,
+  IconCoin,
+  IconCoinFilled,
   IconGauge,
   IconGaugeFilled,
   IconGhost,
@@ -38,11 +40,11 @@ export const products: Product[] = [
     href: "/features/cost-intelligence",
     label: "Cost intelligence",
     tagline: "Know exactly what every call costs — by model, agent, customer.",
-    icon: IconReportMoney,
-    activeIcon: IconReportMoney,
+    icon: IconCoin,
+    activeIcon: IconCoinFilled,
     chipClassName:
-      "bg-amber-100 dark:bg-amber-950 rounded-xl p-0.5 corner-squircle text-amber-500 shadow-[inset_0_0_0_1px_rgba(245,158,11,0.14),0_2px_6px_-2px_rgba(245,158,11,0.25)] dark:shadow-(--custom-shadow)",
-    accent: "amber",
+      "bg-emerald-100 dark:bg-emerald-950 rounded-xl p-0.5 corner-squircle text-emerald-500 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.14),0_2px_6px_-2px_rgba(16,185,129,0.25)] dark:shadow-(--custom-shadow)",
+    accent: "emerald",
   },
   {
     slug: "evals",
@@ -59,7 +61,7 @@ export const products: Product[] = [
     slug: "alerts",
     href: "/features/alerts",
     label: "Alerts",
-    tagline: "Threshold rules on cost, latency, and error rate — every minute.",
+    tagline: "Threshold rules on cost, latency, and error rate.",
     icon: IconAlertTriangle,
     activeIcon: IconAlertTriangleFilled,
     chipClassName:
@@ -70,7 +72,7 @@ export const products: Product[] = [
     slug: "agents",
     href: "/features/agents",
     label: "Agents",
-    tagline: "Per-agent spans, latency, and spend — with the full call flow.",
+    tagline: "Per-agent spans, latency, and spend - with the full call flow.",
     icon: IconGhost,
     activeIcon: IconGhostFilled,
     chipClassName:
@@ -81,7 +83,8 @@ export const products: Product[] = [
     slug: "distributed-traces",
     href: "/features/distributed-traces",
     label: "Distributed traces",
-    tagline: "Waterfall every run, with the exact prompt and response per span.",
+    tagline:
+      "Waterfall every run, with the exact prompt and response per span.",
     icon: IconAffiliate,
     activeIcon: IconAffiliateFilled,
     chipClassName:

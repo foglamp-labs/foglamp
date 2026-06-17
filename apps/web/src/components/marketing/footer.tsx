@@ -1,8 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 
-import { ThemeSwitcher } from "@/components/theme-switcher";
-
+import { Cubes } from "./cubes";
 import { GithubLogo } from "./github-logo";
 import { Logo } from "./logo";
 import { products } from "./products";
@@ -12,27 +11,18 @@ const DOCS_URL = "https://docs.foglamp.dev";
 
 type FooterLink = { label: string; href: string; external?: boolean };
 
-const columns: { heading: string; links: FooterLink[] }[] = [
-  {
-    heading: "Product",
-    links: products.map((p) => ({ label: p.label, href: p.href })),
-  },
-  {
-    heading: "Resources",
-    links: [
-      { label: "Pricing", href: "/pricing" },
-      { label: "Docs", href: DOCS_URL, external: true },
-      { label: "GitHub", href: GITHUB_URL, external: true },
-    ],
-  },
-  {
-    heading: "Get started",
-    links: [
-      { label: "Log in", href: "/login" },
-      { label: "Start monitoring", href: "/login" },
-    ],
-  },
+const productLinks: FooterLink[] = products.map((p) => ({
+  label: p.label,
+  href: p.href,
+}));
+
+const resourceLinks: FooterLink[] = [
+  { label: "Pricing", href: "/pricing" },
+  { label: "Docs", href: DOCS_URL, external: true },
+  { label: "GitHub", href: GITHUB_URL, external: true },
 ];
+
+const headingClassName = "text-sm font-medium tracking-wide text-foreground";
 
 function FooterAnchor({ link }: { link: FooterLink }) {
   const className =
@@ -53,65 +43,79 @@ function FooterAnchor({ link }: { link: FooterLink }) {
 
 export function MarketingFooter() {
   return (
-    // Pinned to the viewport bottom and revealed as the page content scrolls up
-    // and off it (see the sticky-footer reveal wired up in (marketing)/layout).
-    <footer className="sticky bottom-0 z-0 bg-background">
-      <div className="shadow-[0_1px_0_0_var(--border)_inset]">
-        <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
-            <div className="flex flex-col gap-4">
-              <Logo />
-              <p className="max-w-xs text-sm text-muted-foreground">
-                The missing observability layer for AI agents.
-              </p>
-              <a
-                href={GITHUB_URL}
-                aria-label="Foglamp on GitHub"
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <GithubLogo className="size-5" />
-              </a>
-            </div>
-
-            {columns.map((column) => (
-              <div key={column.heading} className="flex flex-col gap-3">
-                <h3 className="text-xs font-medium tracking-wide text-foreground/70 uppercase">
-                  {column.heading}
-                </h3>
-                <ul className="flex flex-col gap-2.5">
-                  {column.links.map((link) => (
-                    <li key={link.label}>
-                      <FooterAnchor link={link} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+    <footer className="bg-card/50 dark:shadow-(--custom-shadow)">
+      <div className="mx-auto max-w-7xl px-5 py-16 pb-12 sm:px-8">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.5fr_1fr]">
+          <div className="flex flex-col gap-4">
+            <Logo />
+            <p className="max-w-xs text-sm text-muted-foreground">
+              The missing observability layer for AI agents.
+            </p>
+            <a
+              href={GITHUB_URL}
+              aria-label="Foglamp on GitHub"
+              className="text-muted-foreground transition-colors hover:text-foreground mt-2"
+            >
+              <GithubLogo className="size-4" />
+            </a>
           </div>
 
-          <div className="mt-12 flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <div className="flex items-center gap-4">
-              <p className="text-xs text-muted-foreground">
-                © {new Date().getFullYear()} Foglamp. All rights reserved.
-              </p>
-              <Link
-                href="/privacy"
-                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Privacy
-              </Link>
-              <Link
-                href="/terms"
-                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Terms
-              </Link>
-            </div>
-            <div className="flex items-center gap-3">
-              <ThemeSwitcher />
-            </div>
+          <div className="flex flex-col gap-3">
+            <h3 className={headingClassName}>Product</h3>
+            <ul className="grid grid-flow-col grid-rows-3 gap-x-8 gap-y-2.5">
+              {productLinks.map((link) => (
+                <li key={link.label}>
+                  <FooterAnchor link={link} />
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <h3 className={headingClassName}>Resources</h3>
+            <ul className="flex flex-col gap-2.5">
+              {resourceLinks.map((link) => (
+                <li key={link.label}>
+                  <FooterAnchor link={link} />
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
+
+        <div className="mt-12 flex items-center gap-4">
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} Foglamp
+          </p>
+          <Link
+            href="/privacy"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Privacy
+          </Link>
+          <Link
+            href="/terms"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Terms
+          </Link>
+        </div>
+      </div>
+
+      {/* Decorative cube field on the footer floor. The grid renders as a
+          full-width square; the .cubes-band wrapper clips it to its top ~20%,
+          so the cubes read as rising out of the footer surface. */}
+      <div className="cubes-band" aria-hidden>
+        <Cubes
+          className="cubes-band__grid"
+          gridSize={14}
+          maxAngle={45}
+          cellGap={0}
+          autoAnimate
+          borderStyle="1px solid var(--muted)"
+          faceColor="#131313"
+          rippleOnClick={false}
+        />
       </div>
     </footer>
   );

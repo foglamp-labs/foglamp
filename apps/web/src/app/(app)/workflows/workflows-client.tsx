@@ -27,9 +27,6 @@ import { TooltipProvider } from "@foglamp/ui/components/tooltip";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAlertTriangle,
-  IconAlertTriangleFilled,
-  IconBoltFilled,
-  IconCoinFilled,
   IconSitemap,
   IconSitemapFilled,
 } from "@tabler/icons-react";
@@ -59,7 +56,6 @@ import {
   EmptyState,
   NoProject,
   PageHeader,
-  StatCard,
   TableSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
@@ -208,37 +204,6 @@ export function WorkflowsClient() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatCard
-              icon={IconSitemapFilled}
-              iconClassName="text-emerald-300 dark:text-emerald-700"
-              size="sm"
-              label="Workflows"
-              value={formatCount(workflowCount)}
-            />
-            <StatCard
-              icon={IconBoltFilled}
-              iconClassName="text-violet-300 dark:text-violet-700"
-              size="sm"
-              label="Runs"
-              value={formatCount(summary?.runCount ?? 0)}
-            />
-            <StatCard
-              icon={IconAlertTriangleFilled}
-              iconClassName="text-rose-300 dark:text-rose-700"
-              size="sm"
-              label="Errored workflows"
-              value={formatCount(summary?.errorWorkflowCount ?? 0)}
-            />
-            <StatCard
-              icon={IconCoinFilled}
-              iconClassName="text-yellow-300 dark:text-yellow-600"
-              size="sm"
-              label="Total cost"
-              value={formatCost(summary?.totalCost ?? 0)}
-            />
-          </section>
-
           <Toolbar>
             <SearchInput
               value={search}

@@ -1,7 +1,11 @@
 import { stripeClient } from "@better-auth/stripe/client";
 import { env } from "@foglamp/env/web";
 import { createAuthClient } from "better-auth/react";
-import { magicLinkClient, organizationClient } from "better-auth/client/plugins";
+import {
+  deviceAuthorizationClient,
+  magicLinkClient,
+  organizationClient,
+} from "better-auth/client/plugins";
 
 // In the browser, always use the public server URL. During SSR (e.g. the
 // (app)/layout session gate) the web container can't reach the public host, so
@@ -20,9 +24,12 @@ export const authClient = createAuthClient({
   // adds org/member/invitation methods used by Settings.
   // stripeClient adds subscription methods (upgrade/list/billingPortal) used by
   // the Billing tab; harmless when the server has billing disabled.
+  // deviceAuthorizationClient adds device.* methods used by the /device page to
+  // approve/deny a `npx foglamp login` request.
   plugins: [
     magicLinkClient(),
     organizationClient(),
     stripeClient({ subscription: true }),
+    deviceAuthorizationClient(),
   ],
 });

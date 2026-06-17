@@ -3,7 +3,11 @@ import type { Metadata } from "next";
 import { CtaSection } from "@/components/marketing/landing/cta";
 import { FeatureSection } from "@/components/marketing/feature/feature-section";
 import { ProductHero } from "@/components/marketing/feature/product-hero";
-import { FlowStripVisual, FrameCard, StatRow } from "@/components/marketing/feature/visuals";
+import {
+  FlowStripVisual,
+  FrameCard,
+  StatRow,
+} from "@/components/marketing/feature/visuals";
 import { productBySlug } from "@/components/marketing/products";
 
 const product = productBySlug("agents")!;
@@ -17,14 +21,16 @@ export const metadata: Metadata = {
 
 export default function AgentsPage() {
   return (
-    <div className="flex flex-col gap-24 pb-12">
+    <div className="flex flex-col gap-36 pb-42">
       <ProductHero
         product={product}
         headline="See every agent's spend, speed, and health."
         sub="Foglamp groups traffic by agent name automatically — so you can see which agents are slow, expensive, or failing, and watch the full call flow for each one."
         visual={
           <FrameCard>
-            <div className="mb-4 text-sm font-medium">support-triage · typical run</div>
+            <div className="mb-4 text-sm font-medium">
+              support-triage · typical run
+            </div>
             <FlowStripVisual />
           </FrameCard>
         }
@@ -71,7 +77,10 @@ export default function AgentsPage() {
             <FlowStripVisual />
           </FrameCard>
         }
-        secondaryCta={{ label: "Explore traces", href: "/features/distributed-traces" }}
+        secondaryCta={{
+          label: "Explore traces",
+          href: "/features/distributed-traces",
+        }}
       />
 
       <CtaSection />

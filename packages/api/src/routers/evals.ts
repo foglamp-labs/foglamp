@@ -101,6 +101,12 @@ export const evalsRouter = router({
         offset: z.number().int().min(0).optional(),
         from: z.coerce.date().optional(),
         to: z.coerce.date().optional(),
+        sort: z
+          .object({
+            field: z.literal("score"),
+            dir: z.enum(["asc", "desc"]),
+          })
+          .optional(),
       }),
     )
     .query(({ ctx, input }) =>

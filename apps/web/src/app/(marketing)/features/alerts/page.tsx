@@ -3,7 +3,11 @@ import type { Metadata } from "next";
 import { CtaSection } from "@/components/marketing/landing/cta";
 import { FeatureSection } from "@/components/marketing/feature/feature-section";
 import { ProductHero } from "@/components/marketing/feature/product-hero";
-import { AlertCardVisual, FrameCard, StatRow } from "@/components/marketing/feature/visuals";
+import {
+  AlertCardVisual,
+  FrameCard,
+  StatRow,
+} from "@/components/marketing/feature/visuals";
 import { productBySlug } from "@/components/marketing/products";
 
 const product = productBySlug("alerts")!;
@@ -17,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function AlertsPage() {
   return (
-    <div className="flex flex-col gap-24 pb-12">
+    <div className="flex flex-col gap-36 pb-42">
       <ProductHero
         product={product}
         headline="Find out from a dashboard, not a customer."
@@ -60,7 +64,9 @@ export default function AlertsPage() {
         visualPosition="left"
         visual={
           <FrameCard>
-            <div className="mb-4 text-sm font-medium">Status · last check 28s ago</div>
+            <div className="mb-4 text-sm font-medium">
+              Status · last check 28s ago
+            </div>
             <StatRow
               items={[
                 { value: "1", label: "firing" },
@@ -70,7 +76,10 @@ export default function AlertsPage() {
             />
           </FrameCard>
         }
-        secondaryCta={{ label: "See cost intelligence", href: "/features/cost-intelligence" }}
+        secondaryCta={{
+          label: "See cost intelligence",
+          href: "/features/cost-intelligence",
+        }}
       />
 
       <CtaSection />

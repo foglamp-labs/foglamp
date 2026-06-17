@@ -108,7 +108,12 @@ import {
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
-import { formatCost, formatCount, formatPercent } from "@/lib/format";
+import {
+	formatCost,
+	formatCount,
+	formatDelta,
+	formatPercent,
+} from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { EvalsHeader } from "./header";
 
@@ -261,6 +266,25 @@ export function EvalsClient() {
 		// Keep the table populated while a range change refetches.
 		placeholderData: (prev) => prev,
 	});
+	// Same eval set over the immediately-preceding window, so the stat cards can
+	// show period-over-period deltas. Eval filters are config-based (window
+	// invariant), so we match prev metrics back to the current rows by id.
+	const prevWindow = useMemo(() => {
+		const span = range.to.getTime() - range.from.getTime();
+		return {
+			from: new Date(range.from.getTime() - span).toISOString(),
+			to: range.from.toISOString(),
+		};
+	}, [range]);
+	const prevEvals = useQuery({
+		...trpc.evals.list.queryOptions({
+			projectId: projectId!,
+			from: prevWindow.from,
+			to: prevWindow.to,
+		}),
+		enabled: !!projectId,
+		placeholderData: (prev) => prev,
+	});
 	const presets = useQuery(trpc.evals.presets.queryOptions());
 	const providerKeys = useQuery({
 		...trpc.providerKeys.list.queryOptions({ projectId: projectId! }),
@@ -388,6 +412,35 @@ export function EvalsClient() {
 			avgScore: scorable > 0 ? scoreSum / scorable : null,
 		};
 	}, [visible]);
+
+	// Prev-window totals over the *same* visible evals (matched by id), weighted
+	// identically to `totals` so the deltas are apples-to-apples.
+	const prevTotals = useMemo(() => {
+		const prevById = new Map((prevEvals.data ?? []).map((r) => [r.id, r]));
+		let passed = 0;
+		let cost = 0;
+		let passable = 0;
+		let scoreSum = 0;
+		let scorable = 0;
+		for (const v of visible) {
+			const r = prevById.get(v.id);
+			if (!r) continue;
+			cost += r.cost;
+			if (r.passRate != null) {
+				passed += r.passRate * r.scoreCount;
+				passable += r.scoreCount;
+			}
+			if (r.avgScore != null) {
+				scoreSum += r.avgScore * r.scoreCount;
+				scorable += r.scoreCount;
+			}
+		}
+		return {
+			cost,
+			passRate: passable > 0 ? passed / passable : null,
+			avgScore: scorable > 0 ? scoreSum / scorable : null,
+		};
+	}, [visible, prevEvals.data]);
 
 	if (!projectId) {
 		return (
@@ -818,6 +871,7 @@ export function EvalsClient() {
 							size="sm"
 							label="Avg score"
 							value={totals.avgScore == null ? "—" : totals.avgScore.toFixed(2)}
+							delta={formatDelta(totals.avgScore, prevTotals.avgScore)}
 						/>
 						<StatCard
 							icon={IconCircleCheckFilled}
@@ -827,13 +881,16 @@ export function EvalsClient() {
 							value={
 								totals.passRate == null ? "—" : formatPercent(totals.passRate)
 							}
+							delta={formatDelta(totals.passRate, prevTotals.passRate)}
 						/>
 						<StatCard
 							icon={IconCoinFilled}
 							iconClassName="text-yellow-300 dark:text-yellow-600"
 							size="sm"
 							label="Total spend"
-							value={formatCost(totals.cost)}
+							value={formatCost(totals.cost, 4)}
+							delta={formatDelta(totals.cost, prevTotals.cost)}
+							deltaInverted
 						/>
 					</section>
 

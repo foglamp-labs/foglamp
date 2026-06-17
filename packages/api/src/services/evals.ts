@@ -255,6 +255,7 @@ export async function listRecentScores(
     offset?: number;
     from?: Date;
     to?: Date;
+    sort?: { field: "score"; dir: "asc" | "desc" };
   },
 ) {
   const ev = await requireEvalAccess(db, userId, input.evalId);
@@ -268,6 +269,7 @@ export async function listRecentScores(
       offset: input.offset,
       from,
       to,
+      sort: input.sort,
     }),
     countEvalScores(ch, {
       projectId: ev.projectId,

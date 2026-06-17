@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -76,6 +76,37 @@ export const verification = pgTable(
       .notNull(),
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+// OAuth 2.0 device authorization grant (RFC 8628), owned by the better-auth
+// `device-authorization` plugin. Backs `npx foglamp login`: the CLI requests a
+// code, the user approves it in the browser, and the row's status flips to
+// approved. `userId` is null until the verification page claims the code for
+// the signed-in user. Property keys are camelCase to match the plugin's model
+// fields; SQL columns stay snake_case like the rest of the schema.
+export const deviceCode = pgTable(
+  "device_code",
+  {
+    id: text("id").primaryKey(),
+    deviceCode: text("device_code").notNull(),
+    userCode: text("user_code").notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at").notNull(),
+    status: text("status").notNull(),
+    lastPolledAt: timestamp("last_polled_at"),
+    pollingInterval: integer("polling_interval"),
+    clientId: text("client_id"),
+    scope: text("scope"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("device_code_userCode_idx").on(table.userCode),
+    index("device_code_deviceCode_idx").on(table.deviceCode),
+  ],
 );
 
 export const userRelations = relations(user, ({ many }) => ({

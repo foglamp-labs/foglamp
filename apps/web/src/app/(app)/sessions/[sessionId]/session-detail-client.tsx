@@ -4,12 +4,12 @@ import {
   IconAlertTriangle,
   IconArrowUpRight,
   IconBoltFilled,
+  IconCirclesFilled,
   IconClockFilled,
   IconCoinFilled,
   IconGhostFilled,
   IconMessageOff,
   IconSitemapFilled,
-  IconStack2Filled,
   IconUserFilled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
@@ -144,8 +144,8 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
               value={formatCount(stats?.turnCount ?? 0)}
             />
             <StatCard
-              icon={IconStack2Filled}
-              iconClassName="text-fuchsia-300 dark:text-fuchsia-700"
+              icon={IconCirclesFilled}
+              iconClassName="text-blue-400 dark:text-blue-600"
               size="sm"
               label="Tokens"
               value={formatTokens(stats?.totalTokens ?? 0)}
@@ -171,7 +171,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
               iconClassName="text-yellow-300 dark:text-yellow-600"
               size="sm"
               label="Cost"
-              value={formatCost(stats?.totalCost ?? null)}
+              value={formatCost(stats?.totalCost ?? null, 4)}
             />
           </div>
 

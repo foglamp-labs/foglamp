@@ -17,12 +17,15 @@ const ACCENT = "text-amber-500";
 export const metadata: Metadata = {
   title: "Cost intelligence",
   description: product.tagline,
-  openGraph: { title: "Cost intelligence · Foglamp", description: product.tagline },
+  openGraph: {
+    title: "Cost intelligence · Foglamp",
+    description: product.tagline,
+  },
 };
 
 export default function CostIntelligencePage() {
   return (
-    <div className="flex flex-col gap-24 pb-12">
+    <div className="flex flex-col gap-36 pb-42">
       <ProductHero
         product={product}
         headline="Know exactly what every call costs."
@@ -31,7 +34,9 @@ export default function CostIntelligencePage() {
           <FrameCard>
             <div className="mb-4 flex items-baseline justify-between">
               <span className="text-sm font-medium">Spend · last 24h</span>
-              <span className="font-mono text-sm text-muted-foreground">$842.17</span>
+              <span className="font-mono text-sm text-muted-foreground">
+                $842.17
+              </span>
             </div>
             <Sparkline tint="var(--color-amber-500)" />
             <div className="mt-4">

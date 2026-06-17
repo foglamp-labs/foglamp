@@ -8,7 +8,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
+  --background: oklch(0.995 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -202,8 +202,6 @@
   --font-heading: var(--font-sans);
   /* prompt-kit text-shimmer loader */
   --animate-shimmer: shimmer 4s linear infinite;
-  /* slowly rotating conic-gradient border (e.g. onboarding rainbow ring) */
-  --animate-rainbow-spin: rainbow-spin 8s linear infinite;
 }
 
 @keyframes shimmer {
@@ -212,19 +210,6 @@
   }
   100% {
     background-position: -200% center;
-  }
-}
-
-/* Registered so the conic-gradient angle is animatable, not just swappable. */
-@property --rainbow-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
-@keyframes rainbow-spin {
-  to {
-    --rainbow-angle: 360deg;
   }
 }
 

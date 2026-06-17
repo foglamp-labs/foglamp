@@ -7,7 +7,12 @@ import { and, count, desc, eq } from "drizzle-orm";
 
 import { generateApiKey, hashApiKey, keyPrefix, slugify } from "../lib/util";
 import type { Ch, Db } from "../types";
-import { ADMIN, requireOrgRole, requireProjectAccess } from "./access";
+import {
+  ADMIN,
+  listAccessibleProjects,
+  requireOrgRole,
+  requireProjectAccess,
+} from "./access";
 
 /** Create a project in an org the user belongs to, with a unique slug. */
 export async function createProject(
@@ -126,6 +131,26 @@ export async function createApiKey(
 
   // `key` is the only time the plaintext exists outside the caller.
   return { id: rows[0]!.id, name: input.name, keyPrefix: rows[0]!.keyPrefix, key };
+}
+
+/**
+ * Mint an API key for `npx foglamp login`. Resolves the user's default project
+ * (the "default"-slug project the signup bootstrap creates, falling back to
+ * their earliest project for edge/legacy accounts) and mints a key against it.
+ * Called by the device-auth flow once the user approves in the browser.
+ */
+export async function provisionCliKey(db: Db, userId: string, name = "CLI") {
+  const projects = await listAccessibleProjects(db, userId);
+  // listAccessibleProjects is ordered by createdAt, so projects[0] is earliest.
+  const target = projects.find((p) => p.slug === "default") ?? projects[0];
+  if (!target) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "No project found for this account",
+    });
+  }
+  const minted = await createApiKey(db, userId, { projectId: target.id, name });
+  return { key: minted.key, projectId: target.id, projectName: target.name };
 }
 
 /** Soft-revoke a key (sets revoked_at; ingest honors it within its cache TTL). */

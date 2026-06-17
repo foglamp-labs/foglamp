@@ -50,7 +50,11 @@ import { toast } from "sonner";
 
 import { CopyButton } from "@/components/app/copy-button";
 import { pageWindow } from "@/components/app/trend-charts";
-import { useDelayedLoading } from "@/components/app/data-table";
+import {
+	SortableHead,
+	useDelayedLoading,
+	useTableSort,
+} from "@/components/app/data-table";
 import { navItem } from "@/components/app/nav";
 import {
 	EmptyState,
@@ -112,6 +116,9 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 	const focusRef = useRef<HTMLTableRowElement>(null);
 	// Current page of the recent-scores table (0-based).
 	const [page, setPage] = useState(0);
+	// Score-column sort (server-side, since the table is paginated). `null` keeps
+	// the default recency order.
+	const { sort, toggle } = useTableSort<"score">();
 	// Edit dialog: open state + the draft seeded from the eval when opened.
 	const [editOpen, setEditOpen] = useState(false);
 	const [draft, setDraft] = useState<EditDraft>({
@@ -142,7 +149,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 		enabled: !!projectId,
 	});
 	// Reset to the first page when the eval or range changes.
-	useEffect(() => setPage(0), [evalId, range]);
+	useEffect(() => setPage(0), [evalId, range, sort]);
 
 	const recent = useQuery({
 		...trpc.evals.recentScores.queryOptions({
@@ -151,6 +158,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 			offset: page * PAGE_SIZE,
 			from: range.from,
 			to: range.to,
+			sort: sort ? { field: "score", dir: sort.dir } : undefined,
 		}),
 		enabled: !!projectId,
 		// Keep the current page visible while the range/page change refetches.
@@ -376,7 +384,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 					iconClassName="text-yellow-300 dark:text-yellow-600"
 					size="sm"
 					label="Eval spend"
-					value={formatCost(totals.cost)}
+					value={formatCost(totals.cost, 4)}
 				/>
 			</div>
 
@@ -405,7 +413,14 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 								<TableRow>
 									<TableHead className="w-8" />
 									<TableHead className="border-l-0 pl-0 w-72">Target</TableHead>
-									<TableHead className="w-28">Score</TableHead>
+									<SortableHead
+										sortKey="score"
+										sort={sort}
+										onSort={toggle}
+										className="w-28"
+									>
+										Score
+									</SortableHead>
 									<TableHead>Reason</TableHead>
 									<TableHead className="w-32 text-right">When</TableHead>
 								</TableRow>

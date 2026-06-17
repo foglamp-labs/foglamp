@@ -36,7 +36,7 @@ edition" with features stripped out.
 | `apps/server` | 3000 | tRPC dashboard API, auth, and the alert evaluator cron. |
 | `apps/web` | 3001 | Next.js dashboard UI. |
 | ClickHouse | 8123 | Span store and materialized rollups. |
-| Postgres | 5432 | Orgs, projects, API keys, alerts, custom pricing. |
+| Postgres | 5432 | Orgs, projects, API keys, alerts. |
 
 There is no external queue — the ingest write buffer is in-memory and flushes
 to ClickHouse on an interval and on graceful shutdown, and eval scoring jobs

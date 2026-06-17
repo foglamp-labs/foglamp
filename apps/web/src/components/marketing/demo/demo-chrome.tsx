@@ -5,6 +5,8 @@ import {
   IconCalendar,
   IconChevronDown,
   IconChevronRight,
+  IconLayoutGrid,
+  IconLayoutList,
   IconSearch,
   type Icon,
 } from "@tabler/icons-react";
@@ -15,8 +17,8 @@ import {
 
 export function DemoRangePill() {
   return (
-    <span className="inline-flex h-8 items-center gap-2 rounded-2xl corner-squircle bg-background px-3 text-sm text-muted-foreground shadow-(--custom-shadow)">
-      <IconCalendar className="size-3.5" />
+    <span className="inline-flex h-8 items-center gap-2 rounded-2xl corner-squircle bg-card px-3 text-sm shadow-(--custom-shadow)">
+      <IconCalendar className="size-3.5 text-muted-foreground" />
       Last 24 hours
       <IconChevronDown className="size-3.5 opacity-50" />
     </span>
@@ -62,7 +64,9 @@ export function DetailHeader({
           <span className="truncate">{title}</span>
         </h1>
         {description && (
-          <p className="truncate text-sm text-muted-foreground">{description}</p>
+          <p className="truncate text-sm text-muted-foreground">
+            {description}
+          </p>
         )}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
@@ -72,16 +76,22 @@ export function DetailHeader({
 
 export function DemoSearch({ placeholder }: { placeholder: string }) {
   return (
-    <span className="inline-flex h-8 w-56 items-center gap-2 rounded-2xl corner-squircle bg-background px-3 text-sm text-muted-foreground shadow-(--custom-shadow)">
+    <span className="inline-flex h-8 w-56 items-center gap-2 rounded-2xl corner-squircle bg-card px-3 text-sm text-muted-foreground shadow-(--custom-shadow)">
       <IconSearch className="size-3.5" />
       {placeholder}
     </span>
   );
 }
 
-export function DemoFilter({ icon: Icon, label }: { icon: Icon; label: string }) {
+export function DemoFilter({
+  icon: Icon,
+  label,
+}: {
+  icon: Icon;
+  label: string;
+}) {
   return (
-    <span className="inline-flex h-8 items-center gap-2 rounded-2xl corner-squircle bg-background px-3 text-sm text-muted-foreground shadow-(--custom-shadow)">
+    <span className="inline-flex h-8 items-center gap-2 rounded-2xl corner-squircle bg-card px-3 text-sm text-muted-foreground shadow-(--custom-shadow)">
       <Icon className="size-3.5" />
       {label}
       <IconChevronDown className="size-3.5 opacity-50" />
@@ -104,7 +114,7 @@ export function DemoToggle({
         "inline-flex h-8 items-center gap-2 rounded-2xl corner-squircle px-3 text-sm shadow-(--custom-shadow)",
         active
           ? "bg-foreground/90 text-background"
-          : "bg-background text-muted-foreground",
+          : "bg-card text-muted-foreground"
       )}
     >
       <Icon className="size-3.5" />

@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 export default function SdkPage() {
   return (
-    <div className="flex flex-col gap-24 pb-12">
+    <div className="flex flex-col gap-36 pb-42">
       <ProductHero
         product={product}
         headline="Two lines. Every call, instrumented."

@@ -2,8 +2,6 @@
 
 import {
   Card,
-  CardAction,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -11,8 +9,6 @@ import {
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   type Icon,
-  IconArrowDownRight,
-  IconArrowUpRight,
   IconChevronRight,
   IconCircleArrowDownFilled,
   IconCircleArrowUpFilled,
@@ -22,7 +18,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@foglamp/ui/components/button";
@@ -135,6 +131,7 @@ export function StatCard({
   size = "default",
   icon: Icon,
   iconClassName,
+  chart,
 }: {
   label: string;
   value: React.ReactNode;
@@ -150,29 +147,44 @@ export function StatCard({
   icon?: Icon;
   /** Color class for the icon, e.g. `text-amber-500`. Defaults to muted. */
   iconClassName?: string;
+  /** Full-bleed visual pinned to the card's bottom edge — e.g. a
+   * `CardSparkline` or `PillMeter`. Bleeds past the card's vertical padding. */
+  chart?: React.ReactNode;
 }) {
   return (
     <Card size={size}>
-      <CardHeader>
-        <CardDescription>{label}</CardDescription>
-        <div className="flex items-baseline gap-2">
+      <CardHeader className="gap-1.5">
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex items-center gap-1.5">
+            {Icon && (
+              <Icon
+                className={cn(
+                  "size-[13px] shrink-0 text-muted-foreground",
+                  iconClassName
+                )}
+              />
+            )}
+            <CardDescription>{label}</CardDescription>
+          </div>
+
+          {delta && <DeltaBadge delta={delta} inverted={deltaInverted} />}
+        </div>
+        <div className="flex items-baseline justify-between gap-2">
           <CardTitle className={cn("tracking-tight tabular-nums")}>
             {value}
           </CardTitle>
-          {delta && <DeltaBadge delta={delta} inverted={deltaInverted} />}
+          {hint && (
+            <span className="min-w-0 truncate text-end text-xs text-muted-foreground/70">
+              {hint}
+            </span>
+          )}
         </div>
-        {Icon && (
-          <CardAction>
-            <Icon
-              className={cn("size-4 text-muted-foreground", iconClassName)}
-            />
-          </CardAction>
-        )}
       </CardHeader>
-      {hint && (
-        <CardContent className="text-xs text-muted-foreground/70 line-clamp-1 truncate">
-          {hint}
-        </CardContent>
+
+      {chart && (
+        <div className="mt-auto -mb-6 group-data-[size=sm]/card:-mb-5">
+          {chart}
+        </div>
       )}
     </Card>
   );
@@ -200,8 +212,187 @@ function DeltaBadge({ delta, inverted }: { delta: Delta; inverted: boolean }) {
       title="vs. previous period"
     >
       {Math.abs(Math.round(delta.pct * 100))}%
-      <Arrow className="size-[13px]" />
+      <Arrow className="size-[13px] opacity-90" />
     </span>
+  );
+}
+
+/**
+ * A full-bleed area sparkline for a `StatCard`'s `chart` slot — a compact trend
+ * of a volume metric (tokens, cost, requests). The accent color comes from the
+ * `text-*` class on `className`; the area fades from that color to transparent.
+ * When `dashedLast` is set, the final segment renders dashed to signal the
+ * trailing bucket is still filling. With fewer than two finite points it falls
+ * back to a faint sample trend (`CardSparklinePlaceholder`) so the card mirrors
+ * `PillMeter`'s empty state instead of leaving a blank strip.
+ */
+export function CardSparkline({
+  data,
+  dashedLast = false,
+  className,
+}: {
+  data: number[];
+  dashedLast?: boolean;
+  className?: string;
+}) {
+  const gid = useId().replace(/:/g, "");
+  const pts = data.filter((n) => Number.isFinite(n));
+  if (pts.length < 2) return <CardSparklinePlaceholder />;
+
+  const W = 100;
+  const H = 32;
+  const PAD = 2;
+  const max = Math.max(...pts, 0);
+  const span = max > 0 ? max : 1;
+  const coords = pts.map((v, i) => {
+    const x = (i / (pts.length - 1)) * W;
+    const y = H - PAD - (v / span) * (H - PAD);
+    return [x, y] as const;
+  });
+
+  const toPath = (slice: ReadonlyArray<readonly [number, number]>) =>
+    slice
+      .map(
+        ([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`
+      )
+      .join(" ");
+
+  const linePath = toPath(coords);
+  const areaPath = `${linePath} L${W} ${H} L0 ${H} Z`;
+  // Split the stroke so the trailing segment can be dashed independently.
+  const solid = dashedLast ? coords.slice(0, -1) : coords;
+  const tail = dashedLast ? coords.slice(-2) : [];
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      className={cn("block h-8 w-full", className)}
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity={0.2} />
+          <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gid})`} stroke="none" />
+      {solid.length >= 2 && (
+        <path
+          d={toPath(solid)}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
+      {tail.length === 2 && (
+        <path
+          d={toPath(tail)}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.2}
+          strokeLinecap="round"
+          strokeDasharray="2.5 2"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
+    </svg>
+  );
+}
+
+// A fixed, gently rising sample curve (normalized 0..1, where 1 is the top of
+// the strip) drawn when a `CardSparkline` has no real series yet — the
+// area-chart counterpart to `PillMeter`'s unlit capsule row.
+const SAMPLE_SPARKLINE = [0.3, 0.45, 0.38, 0.55, 0.48, 0.66, 0.58, 0.75];
+
+/** Faint placeholder trend for an empty `CardSparkline`. Ignores the caller's
+ * accent and renders in the muted color so the card reads as "trend goes here"
+ * rather than leaving a blank strip below the value. */
+function CardSparklinePlaceholder() {
+  const gid = useId().replace(/:/g, "");
+  const W = 100;
+  const H = 32;
+  const PAD = 2;
+  const coords = SAMPLE_SPARKLINE.map((v, i) => {
+    const x = (i / (SAMPLE_SPARKLINE.length - 1)) * W;
+    const y = H - PAD - v * (H - PAD);
+    return [x, y] as const;
+  });
+  const linePath = coords
+    .map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`)
+    .join(" ");
+  const areaPath = `${linePath} L${W} ${H} L0 ${H} Z`;
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="none"
+      className="block h-8 w-full text-muted-foreground"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity={0.03} />
+          <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gid})`} stroke="none" />
+      <path
+        d={linePath}
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity={0.25}
+        strokeWidth={1.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
+/**
+ * A segmented "pill" meter for a `StatCard`'s `chart` slot — visualizes a ratio
+ * metric (error rate, pass rate) as a row of capsules, the leading `fraction`
+ * of which are lit in the accent color (`text-*` on `className`). Any positive
+ * fraction lights at least one pill so small-but-nonzero rates stay visible;
+ * `null` lights none (no data). Re-adds the card's horizontal inset since the
+ * chart slot bleeds full-width.
+ */
+export function PillMeter({
+  fraction,
+  count = 32,
+  className,
+}: {
+  fraction: number | null;
+  /** Number of capsules in the row. */
+  count?: number;
+  className?: string;
+}) {
+  const pct = fraction == null ? 0 : Math.min(Math.max(fraction, 0), 1);
+  const filled = pct > 0 ? Math.max(1, Math.round(pct * count)) : 0;
+  return (
+    <div
+      className={cn(
+        "px-6 pt-1.5 pb-5 group-data-[size=sm]/card:px-5",
+        className
+      )}
+    >
+      <div className="flex h-3.5 items-stretch gap-[3px]">
+        {Array.from({ length: count }, (_, i) => (
+          <span
+            key={i}
+            className={cn(
+              "flex-1 rounded-full",
+              i < filled ? "bg-current" : "bg-muted-foreground/10"
+            )}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

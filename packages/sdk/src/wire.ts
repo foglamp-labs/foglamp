@@ -55,6 +55,33 @@ export interface Span {
   toolCatalog?: string;
   /** Pure model-call wall-clock for the step (ms), excluding tool execution. v7 only. */
   modelCallMs?: number;
+  /**
+   * Official provider response time (ms) from the AI SDK step `performance`
+   * object: time spent waiting for the language-model response. Also feeds
+   * `modelCallMs` (preferred over the derived value). v7 beta/canary only; absent on
+   * v4–v6 wrap and older v7.
+   */
+  responseTimeMs?: number;
+  /** Effective output tokens/sec over the full response (outputTokens/requestSeconds). v7 beta/canary only. */
+  effectiveOutputTps?: number;
+  /** Effective (input+output) tokens/sec over the full response. v7 beta/canary only. */
+  effectiveTotalTps?: number;
+  /** Output tokens/sec after the first output chunk; streaming steps only. v7 beta/canary only. */
+  outputTps?: number;
+  /** Input tokens/sec before the first output chunk (prefill rate); streaming steps only. v7 beta/canary only. */
+  inputTps?: number;
+  /**
+   * Inter-output-chunk gap statistics (ms) from `performance`; present only for
+   * streaming steps with ≥2 output chunks. v7 beta/canary only.
+   */
+  chunkJitter?: {
+    min: number;
+    p10: number;
+    median: number;
+    avg: number;
+    p90: number;
+    max: number;
+  };
   /** OpenAI-style model build fingerprint (drift detection). */
   systemFingerprint?: string;
   /** JSON blob of provider safety ratings, as reported (no logprobs). */

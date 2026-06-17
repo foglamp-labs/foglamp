@@ -8,7 +8,12 @@ import { project } from "@foglamp/db/schema/project";
 import { env, getTrustedAppOrigins } from "@foglamp/env/server";
 import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { magicLink, organization as organizationPlugin } from "better-auth/plugins";
+import {
+  bearer,
+  deviceAuthorization,
+  magicLink,
+  organization as organizationPlugin,
+} from "better-auth/plugins";
 import { and, eq, gt } from "drizzle-orm";
 import Stripe from "stripe";
 import { uuidv7 } from "uuidv7";
@@ -74,6 +79,21 @@ export function createAuth() {
         });
       },
     }),
+    // OAuth device authorization grant (RFC 8628) — powers `npx foglamp login`:
+    // the CLI gets a code, the user approves it at the web app's /device page,
+    // and the CLI exchanges it for a session token. verificationUri points at
+    // the web app (not BETTER_AUTH_URL, which is the API origin) so the user
+    // lands on our themed approval page. Generous expiry — a first-time visitor
+    // may sign up (magic-link email round-trip) before approving.
+    deviceAuthorization({
+      expiresIn: "15m",
+      interval: "5s",
+      verificationUri: `${appOrigin}/device`,
+    }),
+    // Lets the CLI authenticate follow-up calls (e.g. /api/cli/provision-key)
+    // with `Authorization: Bearer <device-flow access_token>` instead of a
+    // cookie — the plugin maps the token to a session for getSession.
+    bearer(),
   ];
   if (emailEnabled) {
     plugins.push(

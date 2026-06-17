@@ -5,11 +5,11 @@ import { useState } from "react";
 import { DemoProvider, type DetailView } from "./demo-context";
 import { DemoShell } from "./demo-shell";
 import { DemoSidebar } from "./demo-sidebar";
-import { FoggyMock } from "./foggy-mock";
 import type { DemoTab } from "./mock-data";
 
 import { AgentDetail } from "./detail/agent-detail";
 import { EvalDetail } from "./detail/eval-detail";
+import { SessionDetail } from "./detail/session-detail";
 import { TraceDetail } from "./detail/trace-detail";
 import { WorkflowDetail } from "./detail/workflow-detail";
 
@@ -57,6 +57,8 @@ function DetailViewSwitch({ detail }: { detail: NonNullable<DetailView> }) {
       return <AgentDetail agentName={detail.id} />;
     case "workflow":
       return <WorkflowDetail workflowName={detail.id} />;
+    case "session":
+      return <SessionDetail sessionId={detail.id} />;
   }
 }
 
@@ -80,12 +82,9 @@ export function DashboardDemo() {
         closeDetail: () => setDetail(null),
       }}
     >
-      <div className="relative w-full">
-        <DemoShell sidebar={<DemoSidebar />}>
-          {detail ? <DetailViewSwitch detail={detail} /> : <TabView tab={tab} />}
-        </DemoShell>
-        <FoggyMock />
-      </div>
+      <DemoShell sidebar={<DemoSidebar />}>
+        {detail ? <DetailViewSwitch detail={detail} /> : <TabView tab={tab} />}
+      </DemoShell>
     </DemoProvider>
   );
 }

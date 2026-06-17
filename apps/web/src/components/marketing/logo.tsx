@@ -10,8 +10,8 @@ import { BrandMark } from "./brand-mark";
 export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn("flex items-center gap-2", className)}>
-      <BrandMark className="h-4 w-auto" />
-      <span className="font-display text-lg font-semibold tracking-tight">
+      <BrandMark className="h-3.5 w-auto" />
+      <span className="font-display text-lg font-semibold tracking-tight select-none">
         Foglamp
       </span>
     </span>

@@ -27,10 +27,7 @@ import { TooltipProvider } from "@foglamp/ui/components/tooltip";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAlertTriangle,
-  IconAlertTriangleFilled,
-  IconCoinFilled,
   IconGhostFilled,
-  IconStack2Filled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -59,7 +56,6 @@ import {
   EmptyState,
   NoProject,
   PageHeader,
-  StatCard,
   TableSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
@@ -70,7 +66,6 @@ import {
   formatCost,
   formatCount,
   formatDuration,
-  formatPercent,
   formatTokens,
 } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
@@ -206,48 +201,6 @@ export function AgentsClient() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatCard
-              icon={IconGhostFilled}
-              iconClassName="text-orange-300 dark:text-orange-700"
-              size="sm"
-              label="Agents"
-              value={formatCount(agentCount)}
-            />
-            <StatCard
-              icon={IconAlertTriangleFilled}
-              iconClassName="text-rose-300 dark:text-rose-700"
-              size="sm"
-              label="Errored agents"
-              value={
-                <>
-                  {formatCount(summary?.errorAgentCount ?? 0)}
-                  {agentCount ? (
-                    <span className="ml-1.5 text-sm font-normal text-muted-foreground">
-                      {formatPercent(
-                        (summary?.errorAgentCount ?? 0) / agentCount
-                      )}
-                    </span>
-                  ) : null}
-                </>
-              }
-            />
-            <StatCard
-              icon={IconStack2Filled}
-              iconClassName="text-fuchsia-300 dark:text-fuchsia-700"
-              size="sm"
-              label="Tokens"
-              value={formatTokens(summary?.totalTokens ?? 0)}
-            />
-            <StatCard
-              icon={IconCoinFilled}
-              iconClassName="text-yellow-300 dark:text-yellow-600"
-              size="sm"
-              label="Total cost"
-              value={formatCost(summary?.totalCost ?? 0)}
-            />
-          </section>
-
           <Toolbar>
             <SearchInput
               value={search}

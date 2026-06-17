@@ -31,6 +31,7 @@ import {
 	type TraceScore,
 } from "@/components/app/eval-scores";
 import { SpanTypeChip, spanTypeBar } from "@/components/app/span-type";
+import { ModelLogo, modelBrandColor } from "@/components/model-logo";
 import {
 	formatCost,
 	formatDuration,
@@ -366,12 +367,24 @@ export function TraceTimeline({
 							{ordered.map(({ span, depth }) => {
 								const offsetMs = toMs(span.startTime) - window.start;
 								const offset = (offsetMs / total) * 100;
-								const width = Math.max((span.durationMs / total) * 100, 1.5);
+								// Clamp to the remaining track so a span whose end rounds past
+								// the window — or one that hits the min-width floor near the end —
+								// can't spill the bar past the track's right edge.
+								const width = Math.min(
+									Math.max((span.durationMs / total) * 100, 1.5),
+									Math.max(100 - offset, 0),
+								);
 								const isError = span.status === "error";
 								const isAgent = span.spanType === "agent";
 								// Agent spans take their reproducible per-name color, matching the
 								// agent icon elsewhere, instead of the flat type palette.
 								const accent = isAgent ? agentColor(span.name) : null;
+								// LLM spans show the model's brand logo (instead of the generic
+								// sparkles chip), tinted with the vendor's brand color.
+								const isLlm = span.spanType === "llm" && !!span.modelId;
+								const modelColor = isLlm
+									? modelBrandColor(span.provider, span.modelId)
+									: null;
 								const ttftRel =
 									span.ttftMs != null ? offsetMs + span.ttftMs : null;
 								// Thinking phase: violet overlay across the reasoning window,
@@ -468,6 +481,25 @@ export function TraceTimeline({
 													style={{ backgroundColor: `${accent}26` }}
 												>
 													<AgentIcon name={span.name} className="size-3" />
+												</span>
+											) : isLlm ? (
+												<span
+													title={span.modelId ?? span.spanType}
+													className={cn(
+														"flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle",
+														!modelColor && "bg-muted",
+													)}
+													style={
+														modelColor
+															? { backgroundColor: `${modelColor}26` }
+															: undefined
+													}
+												>
+													<ModelLogo
+														provider={span.provider}
+														modelId={span.modelId}
+														className="size-3"
+													/>
 												</span>
 											) : (
 												<SpanTypeChip type={span.spanType} />

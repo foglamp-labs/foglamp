@@ -1,0 +1,45 @@
+/* Keyframes for the bento live widgets. Kept local to the marketing landing so
+   the app's shared globals stay clean. All usages are gated behind
+   `motion-safe:` so reduced-motion users get the static first frame. */
+
+/* Traces: a playhead that sweeps the waterfall left → right. */
+@keyframes bento-sweep {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+/* SDK: a terminal caret blink. */
+@keyframes bento-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Cost: a new receipt line streaming in at the top of the list. */
+@keyframes bento-stream {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

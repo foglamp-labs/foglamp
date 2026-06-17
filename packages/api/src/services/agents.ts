@@ -4,7 +4,6 @@ import {
   getTraceSpans,
   listAgents,
   listTraces,
-  queryAgentCostBreakdown,
   queryAgentNames,
   type SortDir,
 } from "@foglamp/clickhouse";
@@ -87,37 +86,6 @@ export async function getAgentNames(
     to: toClickHouseDateTime(input.to),
   });
   return rows.map((r) => r.agent_name);
-}
-
-/**
- * Per-dimension cost totals for one agent in a window — feeds the agent-page
- * cost donut. Dimensions sum to the agent's total priced cost.
- */
-export async function getAgentCostBreakdown(
-  db: Db,
-  ch: Ch,
-  userId: string,
-  input: { projectId: string; agentName: string; from: Date; to: Date },
-) {
-  await requireProjectAccess(db, userId, input.projectId);
-  const rows = await queryAgentCostBreakdown(ch, {
-    projectId: input.projectId,
-    agentName: input.agentName,
-    from: toClickHouseDateTime(input.from),
-    to: toClickHouseDateTime(input.to),
-  });
-  const r = rows[0];
-  return {
-    promptCost: r ? Number(r.prompt_cost) : 0,
-    completionCost: r ? Number(r.completion_cost) : 0,
-    requestCost: r ? Number(r.request_cost) : 0,
-    imageCost: r ? Number(r.image_cost) : 0,
-    webSearchCost: r ? Number(r.web_search_cost) : 0,
-    reasoningCost: r ? Number(r.internal_reasoning_cost) : 0,
-    cacheReadCost: r ? Number(r.cache_read_cost) : 0,
-    cacheWriteCost: r ? Number(r.cache_write_cost) : 0,
-    pricedSpanCount: num(r?.priced_span_count),
-  };
 }
 
 /**

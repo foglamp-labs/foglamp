@@ -418,4 +418,102 @@ GROUP BY org_id, day`,
       `ALTER TABLE spans ADD COLUMN IF NOT EXISTS rate_limit_tokens_reset_ms Nullable(UInt32)`,
     ],
   },
+  {
+    // Distinct LLM model ids per trace, so the traces list can show which model(s)
+    // a trace used without scanning the raw spans. `groupUniqArray` over llm spans
+    // with a non-empty model_id, kept as an AggregateFunction state and merged at
+    // read time. Expand-contract: add the column to the target table first, then
+    // MODIFY QUERY the MV in place so the live aggregate never gaps.
+    id: "0012_trace_models",
+    statements: [
+      `ALTER TABLE trace_summary ADD COLUMN IF NOT EXISTS models AggregateFunction(groupUniqArray, String)`,
+      modifyMaterializedViewQuery(
+        "trace_summary_mv",
+        `SELECT
+  project_id,
+  trace_id,
+  CAST(any(agent_name) AS String) AS agent_name,
+  CAST(any(workflow_name) AS String) AS workflow_name,
+  CAST(any(trace_name) AS String) AS trace_name,
+  any(workflow_run_id) AS workflow_run_id,
+  any(session_id) AS session_id,
+  min(start_time) AS trace_start,
+  max(end_time) AS trace_end,
+  toUInt64(count()) AS span_count,
+  toUInt64(countIf(span_type = 'llm')) AS llm_span_count,
+  toUInt64(countIf(span_type = 'tool')) AS tool_span_count,
+  toUInt64(countIf(status = 'error')) AS error_count,
+  sum(ifNull(spans.total_cost, CAST(0 AS ${SUMMED_DECIMAL}))) AS total_cost,
+  toUInt64(countIf(span_type = 'llm' AND spans.total_cost IS NOT NULL)) AS priced_span_count,
+  toUInt64(sum(input_tokens)) AS input_tokens,
+  toUInt64(sum(output_tokens)) AS output_tokens,
+  toUInt64(sum(total_tokens)) AS total_tokens,
+  groupUniqArrayStateIf(CAST(model_id AS String), span_type = 'llm' AND model_id != '') AS models
+FROM spans
+GROUP BY project_id, trace_id`,
+      ),
+    ],
+  },
+  {
+    // Official AI SDK step `performance` statistics (v7 beta/canary), used in
+    // preference to our derived numbers where they overlap:
+    //  • response_time_ms     — provider response wall-clock; also feeds
+    //    model_call_ms (preferred over the language-model-call derivation).
+    //  • effective_output_tps / effective_total_tps — full-response token rates.
+    //  • output_tps / input_tps — streaming-only post-first-chunk / prefill rates.
+    //  • chunk_jitter_*        — inter-output-chunk gap stats (ms); avg kept
+    //    fractional (Float32), the rest rounded to UInt32 at ingest.
+    // All Nullable: absent (not zero) on v4-v6 wrap, older v7, and non-llm spans.
+    //
+    // Rollups extend metrics_by_minute with TDigest quantiles for the headline
+    // scalars, gated by isNotNull so pre-feature/null rows are excluded (same
+    // pattern as ttft_quantiles). Caveat: chunk_jitter has no per-gap data here —
+    // the SDK only gives pre-aggregated per-step percentiles — so we roll up the
+    // per-step *median*, making chunk_jitter_median_quantiles a distribution of
+    // per-step medians, not a true distribution of all inter-chunk gaps.
+    // Expand-contract: ADD COLUMN to both tables first, then MODIFY QUERY the MV
+    // in place so the live aggregate never gaps.
+    id: "0013_step_performance",
+    statements: [
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS response_time_ms Nullable(UInt32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS effective_output_tps Nullable(Float32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS effective_total_tps Nullable(Float32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS output_tps Nullable(Float32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS input_tps Nullable(Float32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS chunk_jitter_min Nullable(UInt32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS chunk_jitter_p10 Nullable(UInt32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS chunk_jitter_median Nullable(UInt32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS chunk_jitter_avg Nullable(Float32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS chunk_jitter_p90 Nullable(UInt32)`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS chunk_jitter_max Nullable(UInt32)`,
+      `ALTER TABLE metrics_by_minute ADD COLUMN IF NOT EXISTS response_time_quantiles AggregateFunction(quantilesTDigest(0.5, 0.95, 0.99), UInt32)`,
+      `ALTER TABLE metrics_by_minute ADD COLUMN IF NOT EXISTS effective_output_tps_quantiles AggregateFunction(quantilesTDigest(0.5, 0.95, 0.99), Float32)`,
+      `ALTER TABLE metrics_by_minute ADD COLUMN IF NOT EXISTS effective_total_tps_quantiles AggregateFunction(quantilesTDigest(0.5, 0.95, 0.99), Float32)`,
+      `ALTER TABLE metrics_by_minute ADD COLUMN IF NOT EXISTS chunk_jitter_median_quantiles AggregateFunction(quantilesTDigest(0.5, 0.95, 0.99), Float32)`,
+      modifyMaterializedViewQuery(
+        "metrics_by_minute_mv",
+        `SELECT
+  project_id,
+  toStartOfMinute(start_time) AS bucket,
+  span_type,
+  model_id,
+  agent_name,
+  toUInt64(count()) AS span_count,
+  toUInt64(countIf(status = 'error')) AS error_count,
+  sum(ifNull(spans.total_cost, CAST(0 AS ${SUMMED_DECIMAL}))) AS total_cost,
+  toUInt64(countIf(spans.total_cost IS NOT NULL)) AS priced_span_count,
+  toUInt64(sum(input_tokens)) AS input_tokens,
+  toUInt64(sum(output_tokens)) AS output_tokens,
+  toUInt64(sum(total_tokens)) AS total_tokens,
+  quantilesTDigestState(0.5, 0.95, 0.99)(duration_ms) AS duration_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toUInt32(ifNull(ttft_ms, 0)), isNotNull(ttft_ms)) AS ttft_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toUInt32(ifNull(response_time_ms, 0)), isNotNull(response_time_ms)) AS response_time_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toFloat32(ifNull(effective_output_tps, 0)), isNotNull(effective_output_tps)) AS effective_output_tps_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toFloat32(ifNull(effective_total_tps, 0)), isNotNull(effective_total_tps)) AS effective_total_tps_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toFloat32(ifNull(chunk_jitter_median, 0)), isNotNull(chunk_jitter_median)) AS chunk_jitter_median_quantiles
+FROM spans
+GROUP BY project_id, bucket, span_type, model_id, agent_name`,
+      ),
+    ],
+  },
 ];

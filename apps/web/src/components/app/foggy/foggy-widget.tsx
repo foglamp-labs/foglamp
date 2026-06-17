@@ -69,7 +69,7 @@ const FOGGY_KBD_ID = "foggy-badge-kbd";
 // anchored to the inset's corner (its bottom-right is the inset corner); units
 // are px. Tweak `w`/`floor` to resize the shelf (a larger `floor` leaves more
 // gap below the button before the inset content begins).
-const NOTCH = { w: 165, h: 77, floor: 43 };
+const NOTCH = { w: 136, h: 77, floor: 43 };
 
 // The cut's inset-facing boundary: a short stub left along the top edge (to
 // overlap the inset's edge), a rounded turn into a vertical drop, a rounded
@@ -183,7 +183,7 @@ export function FoggyLauncher({ onOpen }: { onOpen: () => void }) {
           variant="ghost"
           size="sm"
           onClick={onOpen}
-          aria-label="Ask Foggy"
+          aria-label="Foggy"
           className="rounded-sm h-8 pl-2 active:scale-100"
         >
           <motion.span
@@ -194,7 +194,7 @@ export function FoggyLauncher({ onOpen }: { onOpen: () => void }) {
             <IconPacmanFilled className="size-4 text-[#0090FD]" />
           </motion.span>
           <motion.span layoutId={FOGGY_LABEL_ID} transition={MORPH}>
-            Ask Foggy
+            Foggy
           </motion.span>
           <motion.span
             layoutId={FOGGY_KBD_ID}
@@ -353,7 +353,7 @@ export function FoggyWidget({
                 <IconPacmanFilled className="size-4 text-[#0090FD]" />
               </motion.span>
               <motion.span layoutId={FOGGY_LABEL_ID} transition={MORPH}>
-                Ask Foggy
+                Foggy
               </motion.span>
               <motion.span
                 layoutId={FOGGY_KBD_ID}
@@ -441,7 +441,7 @@ export function FoggyWidget({
                       >
                         <IconPacmanFilled className="text-[#0090FD] size-6" />
                       </EmptyMedia>
-                      <EmptyTitle>Ask Foggy</EmptyTitle>
+                      <EmptyTitle>Foggy</EmptyTitle>
                       <EmptyDescription>
                         I can dig through this project&apos;s traces, costs, and
                         agents - or explain how Foglamp works.

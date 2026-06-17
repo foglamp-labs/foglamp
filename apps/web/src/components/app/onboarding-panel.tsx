@@ -7,6 +7,7 @@ import {
   IconExternalLink,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BorderBeam } from "border-beam";
 import { Button } from "@foglamp/ui/components/button";
 import {
   Card,
@@ -20,57 +21,18 @@ import { useEffect, useRef, useState } from "react";
 import { CopyIcon } from "@/components/app/copy-icon";
 import { useProject } from "@/components/app/project-context";
 import { useCopied } from "@/components/app/use-copied";
+import { buildKeyedPrompt, DOCS_URL } from "@/lib/agent-prompt";
 import { trpc } from "@/utils/trpc";
 
-const DOCS_URL = "https://docs.foglamp.dev/quickstart";
-// Markdown page written for coding agents — the canonical instrumentation
-// instructions: version-aware (wrap() for AI SDK v4–v6, fog.integration() for
-// v7), plus mapping rules, serverless flush, and verification.
-const AGENT_DOCS_URL = "https://docs.foglamp.dev/ai-instrument.md";
-const LLMS_INDEX_URL = "https://docs.foglamp.dev/llms.txt";
 const KEY_NAME = "Onboarding";
-
-// A soft rainbow gradient ring: a 1px gradient-filled wrapper that the opaque
-// card sits inside, so only the thin border shows the rainbow. The conic
-// gradient rotates slowly via the registered --rainbow-angle property.
-const RAINBOW_RING =
-  "rounded-3xl corner-squircle p-px animate-rainbow-spin bg-[conic-gradient(from_var(--rainbow-angle),rgba(244,114,182,0.55),rgba(167,139,250,0.55),rgba(96,165,250,0.55),rgba(110,231,183,0.55),rgba(253,224,71,0.55),rgba(252,165,165,0.55),rgba(244,114,182,0.55))]";
-
-// The prompt a user pastes into their coding agent. The key is inlined so it's
-// truly paste-and-go. Detailed instructions live in the agent-targeted docs
-// page (single source of truth); the prompt only sets up the key and points
-// the agent there, plus the llms.txt index as the deeper-docs escape hatch.
-function buildPrompt(apiKey: string): string {
-  return `Instrument this app with Foglamp tracing (observability for Vercel AI SDK apps).
-
-1. Install the \`foglamp\` package with this repo's package manager (npm/pnpm/yarn/bun).
-2. Add to .env:      FOGLAMP_API_KEY=${apiKey}
-3. Fetch ${AGENT_DOCS_URL} (written for coding agents) and follow it. First
-   check which Vercel AI SDK major this repo uses and take the matching path:
-   on v4–v6 wrap the \`ai\` module with \`wrap()\` from \`foglamp/wrap\`; on v7
-   attach \`fog.integration(...)\` to my generateText / streamText calls. Either
-   way, read my codebase and map each agent to \`agentName\`, any multi-step
-   pipeline to a shared \`workflowName\` + \`workflowRunId\`, and any conversation
-   thread to a \`sessionId\` — real user conversations only; a batch/cron/pipeline
-   run is a workflow, not a session (one-off calls get a \`traceName\`). Don't
-   just label everything with one name. Names (\`agentName\`/\`workflowName\`/\`traceName\`)
-   must be static string literals — anything dynamic (an id, slug, URL, date)
-   goes in \`metadata\`, \`workflowRunId\`, or \`sessionId\`, never in a name.
-4. Do NOT write smoke tests, scripts, or demo endpoints to produce a first
-   trace. When you're done, just tell me how to trigger my app's real AI flows
-   (which command to run, which page to hit) — I'll run them and watch the
-   traces land in Foglamp.
-
-Notes: don't upgrade my AI SDK version to instrument — Foglamp supports v4
-through v7, and the docs cover both paths. The SDK is a no-op until
-FOGLAMP_API_KEY is set, so it is safe to add in every environment. Full docs
-index: ${LLMS_INDEX_URL}`;
-}
 
 export function OnboardingPanel() {
   const { projectId } = useProject();
   const qc = useQueryClient();
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  // Brighten the beam while the copy button is hovered/focused, to draw the eye
+  // to the primary action. Drives the BorderBeam `strength` prop below.
+  const [copyActive, setCopyActive] = useState(false);
   const { copied, markCopied } = useCopied(2000);
   const mintedRef = useRef(false);
 
@@ -125,7 +87,7 @@ export function OnboardingPanel() {
     })();
   }, [projectId, keys.isLoading, keys.data, createKey]);
 
-  const prompt = revealedKey ? buildPrompt(revealedKey) : null;
+  const prompt = revealedKey ? buildKeyedPrompt(revealedKey) : null;
   const copy = () => {
     if (!prompt) return;
     void navigator.clipboard.writeText(prompt);
@@ -134,8 +96,17 @@ export function OnboardingPanel() {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <div className={RAINBOW_RING}>
-        <Card className="h-full">
+      <BorderBeam
+        size="pulse-inner"
+        colorVariant="colorful"
+        strength={copyActive ? 1 : 0.6}
+        borderRadius={16}
+      >
+        {/* The beam shapes its ring with clip-path: inset(round) — always a
+            circular arc, immune to corner-shape — so it can't be a squircle.
+            corner-round! drops the Card's default superellipse to a plain round
+            corner at the same 22px (rounded-3xl) radius so the edges align. */}
+        <Card className="h-full corner-round! rounded-2xl!">
           <CardHeader>
             <CardTitle className="flex items-center gap-[6px]">
               <IconClipboardCheckFilled className="size-4" />
@@ -150,6 +121,10 @@ export function OnboardingPanel() {
                   size="sm"
                   variant="default"
                   onClick={copy}
+                  onMouseEnter={() => setCopyActive(true)}
+                  onMouseLeave={() => setCopyActive(false)}
+                  onFocus={() => setCopyActive(true)}
+                  onBlur={() => setCopyActive(false)}
                   aria-label="Copy prompt"
                 >
                   <CopyIcon
@@ -166,32 +141,31 @@ export function OnboardingPanel() {
             </CardAction>
           </CardHeader>
         </Card>
-      </div>
+      </BorderBeam>
 
-      <div className={RAINBOW_RING}>
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-[6px]">
-              <IconBookFilled className="size-4" />
-              Old School
-            </CardTitle>
-            <CardDescription>
-              Prefer to wire it up by hand? Follow the full instrumentation
-              guide.
-            </CardDescription>
-            <CardAction className="self-center">
-              <Button
-                size="sm"
-                variant="secondary"
-                render={<a href={DOCS_URL} target="_blank" rel="noreferrer" />}
-              >
-                <IconExternalLink />
-                View the docs
-              </Button>
-            </CardAction>
-          </CardHeader>
-        </Card>
-      </div>
+      {/* No beam here, but match the beamed card's plain round corner so the
+          side-by-side pair stays visually consistent. */}
+      <Card className="h-full corner-round!">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-[6px]">
+            <IconBookFilled className="size-4" />
+            Old School
+          </CardTitle>
+          <CardDescription>
+            Prefer to wire it up by hand? Follow the full instrumentation guide.
+          </CardDescription>
+          <CardAction className="self-center">
+            <Button
+              size="sm"
+              variant="secondary"
+              render={<a href={DOCS_URL} target="_blank" rel="noreferrer" />}
+            >
+              <IconExternalLink />
+              View the docs
+            </Button>
+          </CardAction>
+        </CardHeader>
+      </Card>
     </div>
   );
 }

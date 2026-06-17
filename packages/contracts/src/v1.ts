@@ -121,6 +121,30 @@ export const spanSchema = z
     // v4-v6 wrap and in non-model spans.
     modelCallMs: z.number().int().nonnegative().optional(),
 
+    // Official AI SDK step `performance` statistics (v7 beta/canary only; absent on
+    // v4-v6 wrap, older v7, and non-model spans). `responseTimeMs` is the
+    // provider response wall-clock and also feeds `modelCallMs`. The TPS fields
+    // are floats (rates, not counts). `chunkJitter` is the inter-output-chunk
+    // gap distribution for streaming steps with >=2 chunks; values are ms and
+    // may be fractional (avg in particular), rounded to integers at ingest for
+    // the UInt32 columns (avg kept as a float).
+    responseTimeMs: z.number().int().nonnegative().optional(),
+    effectiveOutputTps: z.number().nonnegative().optional(),
+    effectiveTotalTps: z.number().nonnegative().optional(),
+    outputTps: z.number().nonnegative().optional(),
+    inputTps: z.number().nonnegative().optional(),
+    chunkJitter: z
+      .object({
+        min: z.number().nonnegative(),
+        p10: z.number().nonnegative(),
+        median: z.number().nonnegative(),
+        avg: z.number().nonnegative(),
+        p90: z.number().nonnegative(),
+        max: z.number().nonnegative(),
+      })
+      .strict()
+      .optional(),
+
     // OpenAI-style model build fingerprint (provider metadata). Lets a drift in
     // the served model weights be detected across otherwise-identical calls.
     systemFingerprint: z.string().max(256).optional(),

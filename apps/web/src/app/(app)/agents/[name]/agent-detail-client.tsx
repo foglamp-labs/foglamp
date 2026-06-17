@@ -79,7 +79,6 @@ import {
   thinTicks,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
-import { EvilDonutChart } from "@/components/evilcharts/charts/donut-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import { ModelLogo } from "@/components/model-logo";
 import { RelativeTime } from "@/components/app/relative-time";
@@ -106,19 +105,6 @@ const latencyConfig = {
   p50: { label: "p50", colors: themed("var(--chart-2)") },
   p95: { label: "p95", colors: themed("#0090FD") },
   p99: { label: "p99", colors: themed("#FF5513") },
-} satisfies ChartConfig;
-
-// One slice per OpenRouter cost dimension. Violet = reasoning everywhere in
-// the app (waterfall thinking segment, stat icons), so it stands out here too.
-const costBreakdownConfig = {
-  prompt: { label: "Prompt", colors: themed("#0090FD") },
-  completion: { label: "Completion", colors: themed("var(--chart-1)") },
-  reasoning: { label: "Reasoning", colors: themed("#8b5cf6") },
-  cacheRead: { label: "Cache read", colors: themed("#10b981") },
-  cacheWrite: { label: "Cache write", colors: themed("#0d9488") },
-  request: { label: "Requests", colors: themed("#FF5513") },
-  image: { label: "Images", colors: themed("#ec4899") },
-  webSearch: { label: "Web search", colors: themed("#eab308") },
 } satisfies ChartConfig;
 
 function stepIcon(spanType: string, modelId: string | null) {
@@ -193,17 +179,6 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
     placeholderData: (prev) => prev,
   });
 
-  const breakdown = useQuery({
-    ...trpc.agents.costBreakdown.queryOptions({
-      projectId: projectId!,
-      agentName,
-      from,
-      to,
-    }),
-    enabled,
-    placeholderData: (prev) => prev,
-  });
-
   // Reset paging + any open preview when the query that defines the result set
   // changes.
   useEffect(() => {
@@ -270,25 +245,6 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
         p99Abs: r.p99,
       })),
     [seriesData]
-  );
-  // Slice keys must match costBreakdownConfig; EvilDonutChart drops zero slices.
-  const costSlices = useMemo(() => {
-    const d = breakdown.data;
-    if (!d) return [];
-    return [
-      { key: "prompt", value: d.promptCost },
-      { key: "completion", value: d.completionCost },
-      { key: "reasoning", value: d.reasoningCost },
-      { key: "cacheRead", value: d.cacheReadCost },
-      { key: "cacheWrite", value: d.cacheWriteCost },
-      { key: "request", value: d.requestCost },
-      { key: "image", value: d.imageCost },
-      { key: "webSearch", value: d.webSearchCost },
-    ];
-  }, [breakdown.data]);
-  const costTotal = useMemo(
-    () => costSlices.reduce((sum, s) => sum + s.value, 0),
-    [costSlices]
   );
 
   const seriesTicks = useMemo(
@@ -390,7 +346,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
               iconClassName="text-yellow-300 dark:text-yellow-600"
               size="sm"
               label="Total cost"
-              value={formatCost(stats?.totalCost ?? null)}
+              value={formatCost(stats?.totalCost ?? null, 4)}
               hint={`${formatTokens(stats?.totalTokens ?? 0)} tokens`}
             />
           </section>
@@ -398,13 +354,8 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
           {/* Trend: span volume + LLM latency percentiles over the window. */}
           <section className="grid gap-4 lg:grid-cols-2">
             <Card size="sm">
-              <CardHeader className="flex flex-row items-end justify-between gap-4">
-                <div className="space-y-1.5">
-                  <CardTitle>Spans & errors</CardTitle>
-                  <CardDescription>
-                    Spans per bucket; errored spans overlaid.
-                  </CardDescription>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <CardTitle>Spans & errors</CardTitle>
                 <ChartLegend
                   config={volumeConfig}
                   selected={volumeSelected}
@@ -456,13 +407,8 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
             </Card>
 
             <Card size="sm">
-              <CardHeader className="flex flex-row items-end justify-between gap-4">
-                <div className="space-y-1.5">
-                  <CardTitle>LLM latency</CardTitle>
-                  <CardDescription>
-                    p50 / p95 / p99 per bucket (ms).
-                  </CardDescription>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <CardTitle>Latency</CardTitle>
                 <ChartLegend
                   config={latencyConfig}
                   selected={latencySelected}
@@ -495,7 +441,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                       tick={edgeTick}
                     />
                     <AreaChart.YAxis
-                      width={48}
+                      width={52}
                       tickFormatter={(v) => formatDuration(Number(v))}
                       dx={-4}
                     />
@@ -516,38 +462,6 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
               </CardContent>
             </Card>
           </section>
-
-          {/* Where the money goes: per-dimension cost split for the window. */}
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle>Cost breakdown</CardTitle>
-              <CardDescription>
-                Cost per pricing dimension across priced spans in this range.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="mt-2">
-              {!breakdown.isLoading &&
-              ((breakdown.data?.pricedSpanCount ?? 0) === 0 ||
-                costTotal <= 0) ? (
-                <EmptyState
-                  icon={IconChartAreaFilled}
-                  title="No priced spans in this range"
-                  description="Costs appear once spans with known model pricing land."
-                />
-              ) : (
-                <EvilDonutChart
-                  config={costBreakdownConfig}
-                  data={costSlices}
-                  isLoading={breakdown.isLoading}
-                  showLegend
-                  centerLabel={formatCost(costTotal)}
-                  centerSubLabel="total"
-                  valueFormatter={(value) => formatCost(Number(value))}
-                  className="h-[260px] w-full"
-                />
-              )}
-            </CardContent>
-          </Card>
 
           {/* Step flow for the selected trace. */}
           {activeTraceId && (
