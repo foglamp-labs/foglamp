@@ -7,17 +7,19 @@ import { useEffect } from "react";
 
 import { authClient } from "@/lib/auth-client";
 
-// Product analytics. A no-op when NEXT_PUBLIC_POSTHOG_KEY is unset (local dev /
-// self-host without analytics), so nothing loads or phones home. App Router
-// SPA pageviews + pageleave are captured automatically via posthog's `defaults`.
+// Product analytics. A no-op unless NEXT_PUBLIC_POSTHOG_KEY is set *and* we're a
+// production build — so local dev (`next dev`) and non-prod builds never load it
+// or phone home, even when a key is present in the env. App Router SPA pageviews
+// + pageleave are captured automatically via posthog's `defaults`.
 
 const POSTHOG_KEY = env.NEXT_PUBLIC_POSTHOG_KEY;
+const ENABLED = Boolean(POSTHOG_KEY) && process.env.NODE_ENV === "production";
 
 // Module-level guard so React Strict Mode's double-invoked effect inits once.
 let started = false;
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
-  if (!POSTHOG_KEY) return <>{children}</>;
+  if (!ENABLED) return <>{children}</>;
   return <PostHogInner>{children}</PostHogInner>;
 }
 
