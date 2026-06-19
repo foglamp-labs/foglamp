@@ -3,6 +3,38 @@ title: Changelog
 description: "What's new in Foglamp."
 ---
 
+<Update label="June 19, 2026">
+
+## New features
+
+**`npx foglamp login` CLI.** Authenticate from your terminal with the
+new device-authorization flow: run `npx foglamp login`, approve the
+code in your browser, and Foglamp mints an API key and writes
+`FOGLAMP_API_KEY` to your `.env`. Zero runtime dependencies — Node 18+
+built-ins only — so it drops cleanly into agent-driven setups. See the
+[Quickstart](/quickstart).
+
+**Animated API key reveal.** Newly created API keys now roll from the
+name you gave them into the real value on reveal, so it's obvious which
+key just appeared. The keys table also has pinned column widths and
+shows **Last used** before **Created**. See
+[Projects, keys & billing](/dashboard/account).
+
+## Updates
+
+**Dark-mode polish across the dashboard.** Refined shadows, borders,
+and hover states on cards, dialogs, and tables for better contrast and
+less visual noise in dark mode.
+
+## Bug fixes
+
+- Foggy's hidden composer now blurs when the panel closes, so
+  keystrokes stop landing in it and the `F` shortcut reopens the panel
+  reliably.
+- Product analytics no longer load in local and preview environments.
+
+</Update>
+
 <Update label="June 13, 2026">
 
 ## New features
