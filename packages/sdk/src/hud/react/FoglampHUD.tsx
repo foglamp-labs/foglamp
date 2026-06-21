@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "motion/react";
 
 import { formatCost, formatDuration, formatTokens, formatTps } from "./format";
 import { rows, type HudStep, type HudToolCall, type HudTrace, type RunStatus } from "./model";
@@ -11,30 +12,31 @@ import { useHudStream, type ConnStatus } from "./useHudStream";
 export interface FoglampHUDProps {
   /** Broker port — must match `foglamp({ hudPort })`. Default 8517. */
   port?: number;
-  /** Start with the panel open. Default false (launcher only). */
+  /** Start expanded (otherwise starts as the closed tab). Default false. */
   defaultOpen?: boolean;
-  /** Color theme. "system" follows the OS. Default "system". */
+  /** Color theme. "system" follows the host app (its `.dark` class) / OS. Default "system". */
   theme?: "light" | "dark" | "system";
-  /**
-   * Mask prompt/response/tool payloads on screen — set this before recording a
-   * demo or sharing your screen so inputs/outputs/errors never leak.
-   */
+  /** Mask prompt/response/tool payloads on screen — set before recording or screen-sharing. */
   redact?: boolean;
 }
 
+type Mode = "closed" | "pill" | "expanded";
+type StatusKind = "" | "run" | "err";
+
 const DEFAULT_PORT = 8517;
+// Matches the dashboard's stepped-dialog morph (apps/web evals-client).
+const MORPH = { type: "spring", stiffness: 400, damping: 38 } as const;
 
 /**
  * Floating overlay that streams live agent execution from the local Foglamp
  * broker. Renders into a Shadow DOM root appended to <body> so its styles are
- * fully isolated from (and can't be restyled by) the host app. Dev-only: it's
- * inert unless a broker is running (`foglamp({ hud: true })`).
+ * fully isolated from (and can't be restyled by) the host app. Dev-only: inert
+ * unless a broker is running (`foglamp({ hud: true })`).
  */
-export function FoglampHUD(props: FoglampHUDProps): React.ReactNode {
+export function FoglampHUD(props: FoglampHUDProps): ReactNode {
   const [mount, setMount] = useState<HTMLElement | null>(null);
   const hostRef = useRef<HTMLElement | null>(null);
 
-  // Create the shadow host once.
   useEffect(() => {
     if (typeof document === "undefined") return;
     const host = document.createElement("foglamp-hud");
@@ -53,45 +55,66 @@ export function FoglampHUD(props: FoglampHUDProps): React.ReactNode {
     };
   }, []);
 
-  // Reflect the resolved theme onto the host so :host([data-theme]) applies.
-  const theme = props.theme ?? "system";
+  const theme = useResolvedTheme(props.theme ?? "system");
   useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    if (theme !== "system") {
-      host.setAttribute("data-theme", theme);
-      return;
-    }
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => host.setAttribute("data-theme", mq.matches ? "dark" : "light");
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
+    hostRef.current?.setAttribute("data-theme", theme);
   }, [theme, mount]);
 
   if (!mount) return null;
   return createPortal(<HudApp {...props} />, mount);
 }
 
+/** Resolve the active theme, following the host app's `.dark`/`data-theme` and OS. */
+function useResolvedTheme(theme: "light" | "dark" | "system"): "light" | "dark" {
+  const [resolved, setResolved] = useState<"light" | "dark">("light");
+  useEffect(() => {
+    if (theme !== "system") {
+      setResolved(theme);
+      return;
+    }
+    const root = document.documentElement;
+    const compute = (): "light" | "dark" => {
+      if (root.classList.contains("dark")) return "dark";
+      if (root.classList.contains("light")) return "light";
+      const attr = root.getAttribute("data-theme");
+      if (attr === "dark" || attr === "light") return attr;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    };
+    setResolved(compute());
+    const mo = new MutationObserver(() => setResolved(compute()));
+    mo.observe(root, { attributes: true, attributeFilter: ["class", "data-theme"] });
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setResolved(compute());
+    mq.addEventListener("change", onChange);
+    return () => {
+      mo.disconnect();
+      mq.removeEventListener("change", onChange);
+    };
+  }, [theme]);
+  return resolved;
+}
+
 function HudApp(props: FoglampHUDProps) {
   const port = props.port ?? DEFAULT_PORT;
   const { state, conn } = useHudStream(port);
-  const [open, setOpen] = useState(props.defaultOpen ?? false);
+  const [mode, setMode] = useState<Mode>(props.defaultOpen ? "expanded" : "closed");
 
-  // Esc closes the panel.
+  // Esc steps back down a level.
   useEffect(() => {
-    if (!open) return;
+    if (mode === "closed") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      setMode((m) => (m === "expanded" ? "pill" : "closed"));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [mode]);
 
   const active = state.traces[0];
   const running = state.traces.some((t) => t.status === "running");
+  const status: StatusKind = running ? "run" : active?.status === "error" ? "err" : "";
 
-  // Tick while something runs so live durations advance.
+  // Tick while running so live durations advance.
   const [, force] = useState(0);
   useEffect(() => {
     if (!running) return;
@@ -99,68 +122,129 @@ function HudApp(props: FoglampHUDProps) {
     return () => clearInterval(id);
   }, [running]);
 
-  if (!open) {
-    return (
-      <Launcher
-        running={running}
-        lastError={active?.status === "error"}
-        count={state.traces.length}
-        onClick={() => setOpen(true)}
-      />
-    );
-  }
   return (
-    <Panel
-      trace={active}
-      conn={conn}
-      redact={props.redact ?? false}
-      onClose={() => setOpen(false)}
-    />
+    <Morph mode={mode}>
+      {mode === "closed" ? (
+        <ClosedTab onOpen={() => setMode("pill")} />
+      ) : mode === "pill" ? (
+        <Pill
+          count={state.traces.length}
+          status={status}
+          onExpand={() => setMode("expanded")}
+          onClose={() => setMode("closed")}
+        />
+      ) : (
+        <Panel
+          trace={active}
+          conn={conn}
+          status={status}
+          redact={props.redact ?? false}
+          onCollapse={() => setMode("pill")}
+        />
+      )}
+    </Morph>
   );
 }
 
-function Launcher({
-  running,
-  lastError,
-  count,
-  onClick,
-}: {
-  running: boolean;
-  lastError: boolean;
-  count: number;
-  onClick: () => void;
-}) {
-  const markClass = running ? "fl-mark run" : lastError ? "fl-mark err" : "fl-mark";
+/**
+ * Morphs the shell to fit its content as the mode changes. The single child is
+ * measured (offsetWidth/Height, snapped on first paint) and the shell springs
+ * to that size — same approach as the dashboard's stepped dialog. Content
+ * crossfades on each mode change.
+ */
+function Morph({ mode, children }: { mode: Mode; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ w: number; h: number }>();
+  const ready = useRef(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setSize({ w: el.offsetWidth, h: el.offsetHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    if (size) ready.current = true;
+  }, [size]);
+
   return (
-    <button type="button" className="fl-launcher" onClick={onClick} aria-label="Open Foglamp HUD">
-      <span className={markClass} />
-      <span>Foglamp</span>
-      {count > 0 && <span className="fl-count">{count}</span>}
+    <motion.div
+      className="fl-shell"
+      data-mode={mode}
+      animate={size ? { width: size.w, height: size.h } : undefined}
+      transition={ready.current ? MORPH : { duration: 0 }}
+    >
+      <div ref={ref} className="fl-measure">
+        <motion.div key={mode} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
+          {children}
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
+function ClosedTab({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button type="button" className="fl-tab" onClick={onOpen} aria-label="Open Foglamp HUD">
+      <BrandMark className="fl-brand" />
+      <ChevronUp />
     </button>
+  );
+}
+
+function Pill({
+  count,
+  status,
+  onExpand,
+  onClose,
+}: {
+  count: number;
+  status: StatusKind;
+  onExpand: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fl-pill">
+      <button type="button" className="fl-pill-main" onClick={onExpand} aria-label="Expand Foglamp HUD">
+        <BrandMark className="fl-brand" />
+        <span className="fl-pill-name">Foglamp</span>
+        {count > 0 && <span className="fl-count">{count}</span>}
+      </button>
+      <Diamond status={status} />
+      <button type="button" className="fl-pill-collapse" onClick={onClose} aria-label="Minimize">
+        <ChevronDown />
+      </button>
+    </div>
   );
 }
 
 function Panel({
   trace,
   conn,
+  status,
   redact,
-  onClose,
+  onCollapse,
 }: {
   trace: HudTrace | undefined;
   conn: ConnStatus;
+  status: StatusKind;
   redact: boolean;
-  onClose: () => void;
+  onCollapse: () => void;
 }) {
   return (
     <div className="fl-panel" role="dialog" aria-label="Foglamp HUD">
       <div className="fl-header">
-        <span className={`fl-conn ${conn === "open" ? "on" : conn === "closed" ? "off" : ""}`} />
+        <BrandMark className="fl-brand" />
         <div className="fl-title">
           <b>{trace ? trace.agentName ?? trace.name : "Foglamp"}</b>
           <span>{trace?.model ?? (conn === "open" ? "waiting for a run…" : "connecting…")}</span>
         </div>
-        <button type="button" className="fl-icon-btn" onClick={onClose} aria-label="Close">
-          ✕
+        <Diamond status={status} />
+        <button type="button" className="fl-icon-btn" onClick={onCollapse} aria-label="Collapse">
+          <ChevronDown />
         </button>
       </div>
 
@@ -251,8 +335,7 @@ function ToolRow({ tool, redact }: { tool: HudToolCall; redact: boolean }) {
 
 function Footer({ trace }: { trace: HudTrace }) {
   const t = trace.totals;
-  const outputTokens =
-    t?.outputTokens ?? trace.steps.reduce((sum, s) => sum + s.outputTokens, 0);
+  const outputTokens = t?.outputTokens ?? trace.steps.reduce((sum, s) => sum + s.outputTokens, 0);
   const durationMs = t?.durationMs ?? (trace.endedAt ?? Date.now()) - trace.startedAt;
   const hasError = trace.status === "error";
   return (
@@ -270,6 +353,60 @@ function Footer({ trace }: { trace: HudTrace }) {
         <span>{trace.status === "running" ? "running" : hasError ? "failed" : "done"}</span>
       </div>
     </div>
+  );
+}
+
+// ---- Vendored assets (Shadow DOM = no Tailwind / no app imports) ----------
+
+/** Foglamp brand mark — three overlapping circles; lead circle is theme-aware. */
+function BrandMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 96 48" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="24" cy="24" r="24" fill="var(--fl-brand-lead)" />
+      <circle cx="48" cy="24" r="24" fill="#0090FD" />
+      <circle cx="72" cy="24" r="24" fill="#FF5513" />
+    </svg>
+  );
+}
+
+// Eight squares around a diamond path; CSS fades them in sequence (loading-ui).
+const DIAMOND_RECTS: ReadonlyArray<readonly [number, number]> = [
+  [10.4, 1.4],
+  [16.76, 4.04],
+  [19.4, 10.4],
+  [16.76, 16.76],
+  [10.4, 19.4],
+  [4.04, 16.76],
+  [1.4, 10.4],
+  [4.04, 4.04],
+];
+
+function Diamond({ status }: { status: StatusKind }) {
+  return (
+    <span className={`fl-status ${status}`}>
+      <svg className="fl-diamond" viewBox="0 0 24 24" aria-hidden="true">
+        {DIAMOND_RECTS.map(([x, y], i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: fixed 8-element array
+          <rect key={i} x={x} y={y} width="3.2" height="3.2" rx="0.6" />
+        ))}
+      </svg>
+    </span>
+  );
+}
+
+function ChevronUp() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m6 15 6-6 6 6" />
+    </svg>
+  );
+}
+
+function ChevronDown() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
   );
 }
 
