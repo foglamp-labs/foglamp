@@ -2,7 +2,6 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { motion } from "motion/react";
 
 import { formatCost, formatDuration, formatTokens, formatTps } from "./format";
 import { rows, type HudStep, type HudToolCall, type HudTrace, type RunStatus } from "./model";
@@ -24,8 +23,6 @@ type Mode = "closed" | "pill" | "expanded";
 type StatusKind = "" | "run" | "err";
 
 const DEFAULT_PORT = 8517;
-// Matches the dashboard's stepped-dialog morph (apps/web evals-client).
-const MORPH = { type: "spring", stiffness: 400, damping: 38 } as const;
 
 /**
  * Floating overlay that streams live agent execution from the local Foglamp
@@ -147,10 +144,11 @@ function HudApp(props: FoglampHUDProps) {
 }
 
 /**
- * Morphs the shell to fit its content as the mode changes. The single child is
- * measured (offsetWidth/Height, snapped on first paint) and the shell springs
- * to that size — same approach as the dashboard's stepped dialog. Content
- * crossfades on each mode change.
+ * Morphs the shell to fit its content as the mode changes — same idea as the
+ * dashboard's stepped dialog, done with a plain CSS transition (no animation
+ * library, so the bundle stays dependency-free). The single child is measured
+ * (offsetWidth/Height) and the shell's width/height eased to it; the first
+ * measurement is snapped, later ones tween. Content crossfades per mode.
  */
 function Morph({ mode, children }: { mode: Mode; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -171,18 +169,17 @@ function Morph({ mode, children }: { mode: Mode; children: ReactNode }) {
   }, [size]);
 
   return (
-    <motion.div
+    <div
       className="fl-shell"
       data-mode={mode}
-      animate={size ? { width: size.w, height: size.h } : undefined}
-      transition={ready.current ? MORPH : { duration: 0 }}
+      style={size ? { width: size.w, height: size.h, transition: ready.current ? undefined : "none" } : undefined}
     >
       <div ref={ref} className="fl-measure">
-        <motion.div key={mode} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
+        <div key={mode} className="fl-content">
           {children}
-        </motion.div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 

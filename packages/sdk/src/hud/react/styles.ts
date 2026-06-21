@@ -62,7 +62,11 @@ button { font: inherit; border: none; background: none; cursor: pointer; color: 
   overflow: hidden;
   background: var(--fl-bg);
   box-shadow: var(--fl-shadow);
-  transition: border-radius 0.28s cubic-bezier(0.32,0.72,0,1), margin-bottom 0.28s cubic-bezier(0.32,0.72,0,1);
+  transition:
+    width 0.34s cubic-bezier(0.32,0.72,0,1),
+    height 0.34s cubic-bezier(0.32,0.72,0,1),
+    border-radius 0.28s cubic-bezier(0.32,0.72,0,1),
+    margin-bottom 0.28s cubic-bezier(0.32,0.72,0,1);
 }
 .fl-shell[data-mode="closed"]   { border-radius: 11px 11px 0 0; margin-bottom: 0; }
 .fl-shell[data-mode="pill"]     { border-radius: 9999px; margin-bottom: 18px; }
@@ -70,6 +74,9 @@ button { font: inherit; border: none; background: none; cursor: pointer; color: 
 
 /* The single measured child — its natural size is what the shell animates to. */
 .fl-measure { width: max-content; }
+/* Each mode's content crossfades in (keyed remount on mode change). */
+.fl-content { animation: fl-content-in 0.18s ease both; }
+@keyframes fl-content-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* ---- Closed: a small tab emerging from the bottom edge ---- */
 .fl-tab {
@@ -151,7 +158,7 @@ button { font: inherit; border: none; background: none; cursor: pointer; color: 
 @keyframes fl-flash { 0% { background: var(--fl-err-bg); } 35% { background: var(--fl-err); } 100% { background: var(--fl-err-bg); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .fl-dot.run, .fl-status.run .fl-diamond rect { animation: none; }
+  .fl-dot.run, .fl-status.run .fl-diamond rect, .fl-content { animation: none; }
   .fl-row, .fl-shell { transition: none; }
 }
 `;
