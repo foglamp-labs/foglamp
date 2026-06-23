@@ -498,21 +498,44 @@ function TraceTimeline({
   onScroll: () => void;
   followingRef: RefObject<boolean>;
 }) {
-  const now = Date.now();
+  // Freeze `now` whenever we're not live-following, so scrolling back to a past
+  // period shows a fully static chart (no axis creep) until you return to the edge.
+  const frozenNow = useRef(Date.now());
+  const liveNow = Date.now();
+  const now = followingRef.current ? liveNow : frozenNow.current;
+  if (followingRef.current) frozenNow.current = liveNow;
+
   const sessionStart = traces.length ? Math.min(...traces.map((t) => t.startedAt)) : now;
   const dataMs = Math.max(now - sessionStart, WINDOW_MS);
   const windowStart = now - dataMs; // left edge = oldest run (or 1 min back)
   const totalMs = dataMs + RIGHT_PAD_MS; // track spans the data + the right gutter
-  const trackPct = (totalMs / WINDOW_MS) * 100;
   const clusters = clusterRuns(traces);
-  // 15s vertical grid; `now` sits just shy of the right edge (the gutter).
-  const ticks: number[] = [];
-  for (let ago = 0; ago <= dataMs; ago += TICK_MS) ticks.push(ago);
-  const tickLeft = (ago: number) => ((dataMs - ago) / totalMs) * 100;
 
-  // Start at the right (latest); keep sticking there only while `following`
-  // (set false when the user scrolls back to a past period — see onChartScroll).
-  // Layout-effect so the scroll re-pins atomically with the track growth.
+  // Lay the track out in FIXED pixels (a constant px/ms scale), not % of a
+  // growing track. With %, each tick the content drifts sub-pixel while the
+  // integer scrollLeft steps — the two never agree and the chart "dances" ±1px.
+  // Fixed px + wall-clock-anchored grid lines hold everything still; only the
+  // scroll advances to follow `now`.
+  const [vw, setVw] = useState(0);
+  useIsoLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => setVw(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scrollRef]);
+  const pxPerMs = vw > 0 ? vw / WINDOW_MS : 0;
+  const trackW = totalMs * pxPerMs;
+  const x = (t: number) => (t - windowStart) * pxPerMs; // px from the track's left
+
+  // 15s grid at wall-clock-aligned times (fixed positions), labelled by age.
+  const ticks: number[] = [];
+  for (let g = Math.ceil(windowStart / TICK_MS) * TICK_MS; g <= now; g += TICK_MS) ticks.push(g);
+
+  // Follow the right edge while `following`; layout-effect re-pins atomically
+  // with the track growth (an async effect would leave a one-frame jump).
   const didInit = useRef(false);
   useIsoLayoutEffect(() => {
     const el = scrollRef.current;
@@ -524,37 +547,34 @@ function TraceTimeline({
       return;
     }
     if (followingRef.current) el.scrollLeft = max;
-  }, [scrollRef, totalMs, traces.length, followingRef]);
+  }, [scrollRef, trackW, traces.length, followingRef]);
 
   if (traces.length === 0) return null;
 
   return (
     <div className="fl-timeline">
       <div className="fl-tl-scroll" ref={scrollRef} onScroll={onScroll}>
-        <div className="fl-tl-inner" style={{ width: `${trackPct}%` }}>
+        <div className="fl-tl-inner" style={{ width: `${trackW}px` }}>
           <div className="fl-tl-track">
             <span className="fl-tl-axis" />
-            {ticks.map((ago) => (
-              <span
-                key={`g${ago}`}
-                className={`fl-tl-grid ${ago === 0 ? "now" : ""}`}
-                style={{ left: `${tickLeft(ago)}%` }}
-              />
+            {ticks.map((g) => (
+              <span key={`g${g}`} className="fl-tl-grid" style={{ left: `${x(g)}px` }} />
             ))}
+            <span className="fl-tl-grid now" style={{ left: `${x(now)}px` }} />
             {clusters.map((group) => {
-              const left = ((group[0]!.startedAt - windowStart) / totalMs) * 100;
+              const left = x(group[0]!.startedAt);
             if (group.length === 1) {
               const t = group[0]!;
               const key = t.agentName ?? t.name;
               const isErr = t.status === "error";
               const end = t.endedAt ?? now;
-              const width = ((end - t.startedAt) / totalMs) * 100;
+              const width = Math.max((end - t.startedAt) * pxPerMs, 0);
               return (
                 <button
                   key={t.traceId}
                   type="button"
                   className={`fl-tl-bar ${t.status === "running" ? "run" : ""}`}
-                  style={{ left: `${left}%`, width: `${width}%`, background: traceColor(t) }}
+                  style={{ left: `${left}px`, width: `${width}px`, background: traceColor(t) }}
                   onClick={() => onSelect(t.traceId)}
                   title={`${key} · ${formatDuration(end - t.startedAt)}`}
                 >
@@ -572,13 +592,13 @@ function TraceTimeline({
             const latest = group.reduce((a, b) => (b.startedAt > a.startedAt ? b : a));
             const names = group.map((t) => t.agentName ?? t.name).join(", ");
             const gEnd = Math.max(...group.map((t) => t.endedAt ?? now));
-            const cWidth = ((gEnd - group[0]!.startedAt) / totalMs) * 100;
+            const cWidth = Math.max((gEnd - group[0]!.startedAt) * pxPerMs, 0);
             return (
               <button
                 key={group.map((t) => t.traceId).join("|")}
                 type="button"
                 className="fl-tl-cluster"
-                style={{ left: `${left}%`, width: `${cWidth}%` }}
+                style={{ left: `${left}px`, width: `${cWidth}px` }}
                 onClick={() => onSelect(latest.traceId)}
                 title={`${group.length} runs · ${names}`}
               >
@@ -607,15 +627,16 @@ function TraceTimeline({
             })}
           </div>
           <div className="fl-tl-axislabels">
-            {ticks.map((ago) => (
-              <span
-                key={`l${ago}`}
-                className={`fl-tl-tick ${ago === 0 ? "now" : ""}`}
-                style={{ left: `${tickLeft(ago)}%` }}
-              >
-                {tickLabel(ago)}
-              </span>
-            ))}
+            {ticks
+              .filter((g) => now - g >= TICK_MS / 2) // skip marks hugging the now-tag
+              .map((g) => (
+                <span key={`l${g}`} className="fl-tl-tick" style={{ left: `${x(g)}px` }}>
+                  {tickLabel(now - g)}
+                </span>
+              ))}
+            <span className="fl-tl-tick now" style={{ left: `${x(now)}px` }}>
+              now
+            </span>
           </div>
         </div>
       </div>
@@ -639,46 +660,18 @@ function TraceList({
   onSelect: (id: string) => void;
   onCollapse: () => void;
 }) {
-  // The chart (horizontal time) and the list (vertical, newest-first) scroll in
-  // sync: chart's right edge = newest = list's top. Proportional + reversed,
-  // with a guard so the programmatic counter-scroll doesn't echo back.
+  // The chart and the list scroll independently (a previous chart↔list sync fed
+  // back into itself every tick and made the list jitter up/down). Live-follow
+  // only while the chart is parked at the right edge (now); scrolling it left to
+  // a past period sets `following` false, which both stops auto-advance and
+  // freezes `now` (see TraceTimeline) until you scroll back to the edge.
   const chartRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  const syncing = useRef(false);
-  // Live-follow only while parked at the right edge (now). Scrolling left to a
-  // past period sets this false, so the chart stops auto-advancing until you
-  // scroll back to the edge.
   const following = useRef(true);
   const onChartScroll = () => {
-    if (syncing.current) return;
     const c = chartRef.current;
-    const l = listRef.current;
-    if (!c || !l) return;
+    if (!c) return;
     const cMax = c.scrollWidth - c.clientWidth;
-    following.current = cMax - c.scrollLeft < 24;
-    const lMax = l.scrollHeight - l.clientHeight;
-    if (cMax <= 1 || lMax <= 1) return;
-    syncing.current = true;
-    l.scrollTop = (1 - c.scrollLeft / cMax) * lMax;
-    requestAnimationFrame(() => {
-      syncing.current = false;
-    });
-  };
-  const onListScroll = () => {
-    if (syncing.current) return;
-    const c = chartRef.current;
-    const l = listRef.current;
-    if (!c || !l) return;
-    // List is newest-first: at the top = newest = still following.
-    following.current = l.scrollTop < 24;
-    const cMax = c.scrollWidth - c.clientWidth;
-    const lMax = l.scrollHeight - l.clientHeight;
-    if (cMax <= 1 || lMax <= 1) return;
-    syncing.current = true;
-    c.scrollLeft = (1 - l.scrollTop / lMax) * cMax;
-    requestAnimationFrame(() => {
-      syncing.current = false;
-    });
+    following.current = cMax <= 1 || cMax - c.scrollLeft < 24;
   };
 
   return (
@@ -713,7 +706,7 @@ function TraceList({
         followingRef={following}
       />
 
-      <div className="fl-list" ref={listRef} onScroll={onListScroll}>
+      <div className="fl-list">
         {traces.length === 0 ? (
           <div className="fl-empty">
             <span className="fl-listening" aria-hidden="true">
