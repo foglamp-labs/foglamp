@@ -5,7 +5,7 @@ import {
   IconCirclesFilled,
   IconCoinFilled,
   IconGaugeFilled,
-  IconSitemap,
+  IconSitemapFilled,
 } from "@tabler/icons-react";
 import {
   Card,
@@ -486,7 +486,7 @@ export function OverviewTab() {
               key={w.name}
               onClick={() => openDetail({ type: "workflow", id: w.name })}
               renderIcon={(cls) => (
-                <IconSitemap className={cn(cls, "text-emerald-500")} />
+                <IconSitemapFilled className={cn(cls, "text-emerald-500")} />
               )}
               title={w.name}
               value={formatCost(w.cost, 3)}

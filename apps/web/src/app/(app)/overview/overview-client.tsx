@@ -7,7 +7,7 @@ import {
   IconCirclesFilled,
   IconCoinFilled,
   IconGaugeFilled,
-  IconSitemap,
+  IconSitemapFilled,
   IconUserFilled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
@@ -1067,7 +1067,7 @@ export function OverviewClient() {
                           : undefined
                       }
                       renderIcon={(cls) => (
-                        <IconSitemap className={cn(cls, "text-emerald-500")} />
+                        <IconSitemapFilled className={cn(cls, "text-emerald-500")} />
                       )}
                       title={w.workflowName ?? "Ungrouped"}
                       value={formatCost(w.totalCost, 3)}
