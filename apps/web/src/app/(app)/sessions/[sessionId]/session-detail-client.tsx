@@ -9,6 +9,7 @@ import {
   IconCoinFilled,
   IconGhostFilled,
   IconMessageOff,
+  IconPlayerStopFilled,
   IconSitemapFilled,
   IconUserFilled,
 } from "@tabler/icons-react";
@@ -219,6 +220,9 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                     {t.status === "error" && (
                       <span className="size-1.5 shrink-0 rounded-full bg-rose-500" />
                     )}
+                    {t.status === "aborted" && (
+                      <span className="size-1.5 shrink-0 rounded-full bg-amber-500" />
+                    )}
                     <span
                       className={cn(
                         "ml-auto tabular-nums",
@@ -267,11 +271,16 @@ function TurnBlock({
   costThresholds: number[];
 }) {
   const isError = turn.status === "error";
+  const isAborted = turn.status === "aborted";
   return (
     <div
       className={cn(
         "flex flex-col gap-4 border-l-2 pl-4",
-        isError ? "border-rose-500" : "border-transparent"
+        isError
+          ? "border-rose-500"
+          : isAborted
+            ? "border-amber-500"
+            : "border-transparent"
       )}
     >
       {/* Turn header: index, time, status, and a link to the full trace. */}
@@ -303,6 +312,12 @@ function TurnBlock({
           <Badge variant="rose">
             <IconAlertTriangle />
             Error
+          </Badge>
+        )}
+        {isAborted && (
+          <Badge variant="amber">
+            <IconPlayerStopFilled />
+            Aborted
           </Badge>
         )}
         <Link

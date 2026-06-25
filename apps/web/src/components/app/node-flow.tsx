@@ -16,8 +16,8 @@ export type FlowNode = {
   label: string;
   /** Optional muted second line (e.g. model id). */
   sublabel?: string | null;
-  /** Drives the pill colour. */
-  status: "ok" | "error";
+  /** Drives the pill colour. `aborted` (amber) is a clean cancellation. */
+  status: "ok" | "error" | "aborted";
   /** ClickHouse datetime / ISO string; rendered as a timestamp under the pill. */
   timestamp: string;
   /** Optional duration (ms) shown next to the timestamp. */
@@ -58,7 +58,9 @@ export function NodeFlow({
                   className={cn(
                     "relative flex size-12 items-center dark:text-emerald-600 text-emerald-400 justify-center rounded-3xl corner-squircle border dark:bg-background bg-neutral-50",
                     node.status === "error" &&
-                      "border-rose-500/40 dark:text-rose-600 text-rose-400"
+                      "border-rose-500/40 dark:text-rose-600 text-rose-400",
+                    node.status === "aborted" &&
+                      "border-amber-500/40 dark:text-amber-600 text-amber-400"
                   )}
                 >
                   {node.icon}
@@ -66,7 +68,13 @@ export function NodeFlow({
               </div>
 
               <Badge
-                variant={node.status === "error" ? "rose" : "emerald"}
+                variant={
+                  node.status === "error"
+                    ? "rose"
+                    : node.status === "aborted"
+                      ? "amber"
+                      : "emerald"
+                }
                 className="max-w-full mt-0.5"
               >
                 <span className="truncate">{node.label}</span>

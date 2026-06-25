@@ -13,6 +13,7 @@ import {
 	IconAlertTriangle,
 	IconPlayerPauseFilled,
 	IconPlayerPlayFilled,
+	IconPlayerStopFilled,
 } from "@tabler/icons-react";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -375,6 +376,9 @@ export function TraceTimeline({
 									Math.max(100 - offset, 0),
 								);
 								const isError = span.status === "error";
+								// Aborted: a clean cancellation (AI SDK onAbort), amber — distinct
+								// from an error, not counted toward error rate.
+								const isAborted = span.status === "aborted";
 								const isAgent = span.spanType === "agent";
 								// Agent spans take their reproducible per-name color, matching the
 								// agent icon elsewhere, instead of the flat type palette.
@@ -449,15 +453,20 @@ export function TraceTimeline({
 									engaged &&
 									elapsed >= offsetMs &&
 									elapsed <= offsetMs + span.durationMs;
-								// Bar fill: error → rose, agent → its accent (inline), else palette.
+								// Bar fill: error → rose, aborted → amber, agent → its accent
+								// (inline), else palette.
 								const barClass = isError
 									? "bg-rose-500"
-									: isAgent
-										? undefined
-										: spanTypeBar(span.spanType);
+									: isAborted
+										? "bg-amber-500"
+										: isAgent
+											? undefined
+											: spanTypeBar(span.spanType);
 								const barStyle =
-									!isError && accent ? { backgroundColor: accent } : undefined;
-								const hasBadges = isError || !!rowScores;
+									!isError && !isAborted && accent
+										? { backgroundColor: accent }
+										: undefined;
+								const hasBadges = isError || isAborted || !!rowScores;
 								return (
 									<button
 										key={span.spanId}
@@ -512,6 +521,12 @@ export function TraceTimeline({
 															<Badge variant="rose" className="shrink-0 gap-1">
 																<IconAlertTriangle className="size-3" />
 																error
+															</Badge>
+														)}
+														{isAborted && (
+															<Badge variant="amber" className="shrink-0 gap-1">
+																<IconPlayerStopFilled className="size-3" />
+																aborted
 															</Badge>
 														)}
 														{rowScores && (

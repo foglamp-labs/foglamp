@@ -295,6 +295,7 @@ export async function getWorkflowRunDetail(
 			durationMs: num(r.duration_ms),
 			spanCount: num(r.span_count),
 			errorCount: num(r.error_count),
+			abortedCount: num(r.aborted_count),
 			totalCost: decimalOrNull(r.total_cost),
 			totalTokens: num(r.total_tokens),
 		})),

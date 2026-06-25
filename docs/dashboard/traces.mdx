@@ -14,7 +14,8 @@ See the [data model](/concepts/data-model) for how traces and spans are defined.
 A paginated table (newest first) over the selected date range. Columns: trace
 id, name (`traceName`, falling back to `agentName`, else **Untitled trace**),
 span count, tokens, duration, cost, and when it ran. Errored traces carry a red
-badge. Click a row to open the trace.
+badge; cleanly **aborted** traces (see below) carry an amber one. Click a row to
+open the trace.
 
 ## Waterfall
 
@@ -30,6 +31,15 @@ and steps sit under their parent. Span types are colour-coded:
 
 The bar's offset and width are proportional to when the span started and how
 long it ran, so you can see serial vs. overlapping work at a glance.
+
+A span's **status** also tints its bar and badge: errored spans are red, and
+**aborted** spans are amber. An aborted span is a stream that was cancelled
+before it finished (AI SDK v7's `onAbort` — a caller cancellation, an
+`AbortSignal`, or a timeout). It's a first-class status, kept separate from
+errors: aborts are **excluded from error rate**, since a cancelled run isn't a
+failure. The steps that completed before the abort keep their own status. (This
+is distinct from an `abandoned` trace — one that never finished and is swept by
+[`maxTraceAgeMs`](/sdk/configuration) — which is recorded as an error.)
 
 ## Span detail
 

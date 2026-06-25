@@ -102,6 +102,7 @@ export async function getTraceList(
       spanCount: num(r.span_count),
       llmSpanCount: num(r.llm_span_count),
       errorCount: num(r.error_count),
+      abortedCount: num(r.aborted_count),
       totalCost: decimalOrNull(r.total_cost),
       pricedSpanCount: num(r.priced_span_count),
       totalTokens: num(r.total_tokens),

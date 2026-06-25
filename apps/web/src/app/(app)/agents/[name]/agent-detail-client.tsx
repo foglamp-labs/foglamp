@@ -280,7 +280,8 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
     icon: stepIcon(s.spanType, s.modelId),
     label: s.name,
     sublabel: s.modelId,
-    status: s.status === "error" ? "error" : "ok",
+    status:
+      s.status === "error" ? "error" : s.status === "aborted" ? "aborted" : "ok",
     timestamp: s.startTime,
     durationMs: s.durationMs,
   }));

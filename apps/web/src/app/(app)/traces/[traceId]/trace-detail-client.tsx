@@ -25,6 +25,7 @@ import {
 	IconCoinFilled,
 	IconListTree,
 	IconMessage2Filled,
+	IconPlayerStopFilled,
 	IconSitemapFilled,
 	IconSparklesFilled,
 	IconX,
@@ -135,6 +136,9 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 
 	const active = spans.find((s) => s.spanId === selected) ?? null;
 	const erroredSpans = spans.filter((s) => s.status === "error");
+	// Aborted spans (AI SDK onAbort) — a clean cancellation, surfaced apart from
+	// errors and never counted toward the error stat.
+	const abortedSpans = spans.filter((s) => s.status === "aborted");
 	// Eval scores for the selected span — shown in its inspector (the timeline
 	// row only carries compact pass/fail indicators).
 	const activeScores = useMemo(
@@ -399,6 +403,28 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 								/>
 							)}
 						</div>
+					)}
+
+					{abortedSpans.length > 0 && (
+						<button
+							type="button"
+							onClick={() => select(abortedSpans[0].spanId)}
+							className="flex flex-col w-full items-center gap-2 rounded-lg cursor-pointer bg-amber-500/10 dark:hover:bg-amber-500/20 shadow-(--custom-shadow-amber) px-3 py-2.5 text-left text-sm text-amber-700 transition-colors hover:bg-amber-500/20 dark:bg-amber-500/15 dark:text-amber-400"
+						>
+							<div className="flex w-full items-center gap-2">
+								<IconPlayerStopFilled className="size-4 shrink-0" />
+								<span className="font-medium">
+									{abortedSpans.length === 1
+										? "Run aborted"
+										: `${abortedSpans.length} spans aborted`}
+								</span>
+							</div>
+							{abortedSpans[0].errorMessage && (
+								<span className="w-full truncate text-left text-amber-700/80 dark:text-amber-400/80">
+									{abortedSpans[0].errorMessage}
+								</span>
+							)}
+						</button>
 					)}
 
 					<div className="flex items-start gap-6">

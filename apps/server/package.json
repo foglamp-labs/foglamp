@@ -12,14 +12,14 @@
     "start": "bun run dist/main.mjs"
   },
   "dependencies": {
-    "@ai-sdk/google": "4.0.0-beta.49",
+    "@ai-sdk/google": "4.0.0",
     "@foglamp/api": "workspace:*",
     "@foglamp/auth": "workspace:*",
     "@foglamp/db": "workspace:*",
     "@foglamp/env": "workspace:*",
     "@hono/trpc-server": "^0.4.0",
     "@trpc/server": "catalog:",
-    "ai": "7.0.0-beta.178",
+    "ai": "catalog:",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",

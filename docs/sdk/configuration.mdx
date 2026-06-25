@@ -32,7 +32,7 @@ const fog = foglamp({
 | `maxBatchTraces` | number | `50` | Flush early once this many traces are buffered. |
 | `maxBatchSpans` | number | `500` | Flush early once this many spans are buffered. |
 | `maxQueuedSpans` | number | `5000` | Hard cap on spans buffered in memory (e.g. when ingest is unreachable). Past it, the oldest traces are dropped and `onError` fires. |
-| `maxTraceAgeMs` | number | `600_000` | Traces still open after this (10 min) are finalized as `abandoned` on the next call, so a crashed generation can't leak its spans. |
+| `maxTraceAgeMs` | number | `600_000` | Traces still open after this (10 min) are finalized as `abandoned` (an error) on the next call, so a crashed generation can't leak its spans. A *cleanly* cancelled stream is different — AI SDK v7's `onAbort` finalizes it promptly with the first-class [`aborted` status](/dashboard/traces) instead of waiting for this timeout. |
 | `maxPayloadChars` | number | `100_000` | Per-field cap for `input`/`output`; longer values are truncated. |
 | `recordInputs` | boolean | `true` | Capture prompt/input text. |
 | `recordOutputs` | boolean | `true` | Capture completion/output text. |

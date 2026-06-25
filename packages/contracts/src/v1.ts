@@ -26,7 +26,7 @@ export const SPAN_TYPES = [
 export const spanTypeSchema = z.enum(SPAN_TYPES);
 export type SpanType = z.infer<typeof spanTypeSchema>;
 
-export const SPAN_STATUSES = ["ok", "error"] as const;
+export const SPAN_STATUSES = ["ok", "error", "aborted"] as const;
 export const spanStatusSchema = z.enum(SPAN_STATUSES);
 export type SpanStatus = z.infer<typeof spanStatusSchema>;
 

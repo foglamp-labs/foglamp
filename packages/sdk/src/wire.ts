@@ -17,7 +17,7 @@ export interface Customer {
 }
 
 export type SpanType = "agent" | "llm" | "tool" | "embedding" | "other";
-export type SpanStatus = "ok" | "error";
+export type SpanStatus = "ok" | "error" | "aborted";
 
 export interface Usage {
   inputTokens?: number;

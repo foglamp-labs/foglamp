@@ -568,4 +568,92 @@ ENGINE = ReplacingMergeTree(last_seen)
 ORDER BY (project_id, customer_id)`,
     ],
   },
+  {
+    // First-class `aborted` span status (AI SDK v7 onAbort). Aborts are tracked
+    // separately from errors — error_count stays `countIf(status = 'error')` so
+    // error rate is unpolluted; a parallel `aborted_count` makes aborts queryable
+    // at the rollup level. The `status` column is LowCardinality(String) with no
+    // enum, so it already accepts 'aborted' with no DDL change. Expand-contract:
+    // ADD COLUMN to each target table first, then MODIFY QUERY each MV in place so
+    // the live aggregate never gaps. MV→target mapping is by name (see 0014), so
+    // aborted_count can sit beside error_count in the SELECT.
+    id: "0015_aborted_status",
+    statements: [
+      `ALTER TABLE trace_summary ADD COLUMN IF NOT EXISTS aborted_count SimpleAggregateFunction(sum, UInt64)`,
+      `ALTER TABLE workflow_run_summary ADD COLUMN IF NOT EXISTS aborted_count SimpleAggregateFunction(sum, UInt64)`,
+      `ALTER TABLE metrics_by_minute ADD COLUMN IF NOT EXISTS aborted_count SimpleAggregateFunction(sum, UInt64)`,
+      modifyMaterializedViewQuery(
+        "trace_summary_mv",
+        `SELECT
+  project_id,
+  trace_id,
+  CAST(any(agent_name) AS String) AS agent_name,
+  CAST(any(workflow_name) AS String) AS workflow_name,
+  CAST(any(trace_name) AS String) AS trace_name,
+  any(workflow_run_id) AS workflow_run_id,
+  any(session_id) AS session_id,
+  any(customer_id) AS customer_id,
+  min(start_time) AS trace_start,
+  max(end_time) AS trace_end,
+  toUInt64(count()) AS span_count,
+  toUInt64(countIf(span_type = 'llm')) AS llm_span_count,
+  toUInt64(countIf(span_type = 'tool')) AS tool_span_count,
+  toUInt64(countIf(status = 'error')) AS error_count,
+  toUInt64(countIf(status = 'aborted')) AS aborted_count,
+  sum(ifNull(spans.total_cost, CAST(0 AS ${SUMMED_DECIMAL}))) AS total_cost,
+  toUInt64(countIf(span_type = 'llm' AND spans.total_cost IS NOT NULL)) AS priced_span_count,
+  toUInt64(sum(input_tokens)) AS input_tokens,
+  toUInt64(sum(output_tokens)) AS output_tokens,
+  toUInt64(sum(total_tokens)) AS total_tokens,
+  groupUniqArrayStateIf(CAST(model_id AS String), span_type = 'llm' AND model_id != '') AS models
+FROM spans
+GROUP BY project_id, trace_id`,
+      ),
+      modifyMaterializedViewQuery(
+        "workflow_run_summary_mv",
+        `SELECT
+  project_id,
+  workflow_run_id,
+  CAST(any(workflow_name) AS String) AS workflow_name,
+  min(start_time) AS run_start,
+  max(end_time) AS run_end,
+  uniqState(trace_id) AS trace_count,
+  toUInt64(count()) AS span_count,
+  toUInt64(countIf(span_type = 'llm')) AS llm_span_count,
+  toUInt64(countIf(status = 'error')) AS error_count,
+  toUInt64(countIf(status = 'aborted')) AS aborted_count,
+  sum(ifNull(spans.total_cost, CAST(0 AS ${SUMMED_DECIMAL}))) AS total_cost,
+  toUInt64(countIf(span_type = 'llm' AND spans.total_cost IS NOT NULL)) AS priced_span_count,
+  toUInt64(sum(total_tokens)) AS total_tokens
+FROM spans
+WHERE workflow_run_id != ''
+GROUP BY project_id, workflow_run_id`,
+      ),
+      modifyMaterializedViewQuery(
+        "metrics_by_minute_mv",
+        `SELECT
+  project_id,
+  toStartOfMinute(start_time) AS bucket,
+  span_type,
+  model_id,
+  agent_name,
+  toUInt64(count()) AS span_count,
+  toUInt64(countIf(status = 'error')) AS error_count,
+  toUInt64(countIf(status = 'aborted')) AS aborted_count,
+  sum(ifNull(spans.total_cost, CAST(0 AS ${SUMMED_DECIMAL}))) AS total_cost,
+  toUInt64(countIf(spans.total_cost IS NOT NULL)) AS priced_span_count,
+  toUInt64(sum(input_tokens)) AS input_tokens,
+  toUInt64(sum(output_tokens)) AS output_tokens,
+  toUInt64(sum(total_tokens)) AS total_tokens,
+  quantilesTDigestState(0.5, 0.95, 0.99)(duration_ms) AS duration_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toUInt32(ifNull(ttft_ms, 0)), isNotNull(ttft_ms)) AS ttft_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toUInt32(ifNull(response_time_ms, 0)), isNotNull(response_time_ms)) AS response_time_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toFloat32(ifNull(effective_output_tps, 0)), isNotNull(effective_output_tps)) AS effective_output_tps_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toFloat32(ifNull(effective_total_tps, 0)), isNotNull(effective_total_tps)) AS effective_total_tps_quantiles,
+  quantilesTDigestStateIf(0.5, 0.95, 0.99)(toFloat32(ifNull(chunk_jitter_median, 0)), isNotNull(chunk_jitter_median)) AS chunk_jitter_median_quantiles
+FROM spans
+GROUP BY project_id, bucket, span_type, model_id, agent_name`,
+      ),
+    ],
+  },
 ];

@@ -41,7 +41,11 @@ import {
 } from "@/components/app/trend-charts";
 import * as LineChart from "@/components/evilcharts/charts/line-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
-import { ModelLogo, modelBrandColor } from "@/components/model-logo";
+import {
+  ModelLogo,
+  modelBrandColor,
+  formatModelName,
+} from "@/components/model-logo";
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { useProject } from "@/components/app/project-context";
@@ -113,9 +117,6 @@ const volumeConfig = {
   errors: { label: "Errors", colors: themed("var(--destructive)") },
 } satisfies ChartConfig;
 
-/** Strip the "vendor/" prefix for a compact model label. */
-const shortModel = (id: string) =>
-  id.includes("/") ? id.slice(id.indexOf("/") + 1) : id;
 
 type LegendItem = {
   key: string;
@@ -482,14 +483,14 @@ export function OverviewClient() {
       const key = `m${i}`;
       const color = modelBrandColor(null, id) ?? MODEL_COLORS[i]!;
       config[key] = {
-        label: shortModel(id),
+        label: formatModelName(id),
         colors: themed(color),
         // Shows the brand logo (instead of a color swatch) in the tooltip.
         icon: () => <ModelLogo modelId={id} className="size-3.5" />,
       };
       items.push({
         key,
-        label: shortModel(id),
+        label: formatModelName(id),
         color,
         logo: <ModelLogo modelId={id} className="size-3.5" />,
       });
@@ -979,7 +980,7 @@ export function OverviewClient() {
                           className={cn(cls, "size-3")}
                         />
                       )}
-                      title={shortModel(m.modelId)}
+                      title={formatModelName(m.modelId)}
                       value={formatCost(m.totalCost, 3)}
                       fraction={(m.totalCost ?? 0) / maxModelCost}
                       color={
