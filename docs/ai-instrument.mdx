@@ -141,6 +141,11 @@ How to decide, concretely:
     () => handleTicket(ticket) // every instrumented call inside is attributed
   );
   ```
+
+  On **AI SDK v7**, calls a tool makes back into the model inherit the parent
+  call's workflow/session context automatically (see [SDK
+  overview](/sdk/overview#nested-calls-inside-tools)) — so `fog.run()` is mainly
+  for the *entry point* and for the v4–v6 [`wrap`](/sdk/wrap) path.
 - **Find the threads.** If the app has conversations (a chat, a support thread),
   pass its id as `sessionId` on every call serving that thread. A session is a
   **conversation** — a thread where a user goes back and forth. If no human is

@@ -30,6 +30,8 @@ export type TraceListRow = {
 	span_count: string;
 	llm_span_count: string;
 	error_count: string;
+	/** Spans with the first-class `aborted` status (tracked apart from errors). */
+	aborted_count: string;
 	total_cost: string;
 	priced_span_count: string;
 	total_tokens: string;
@@ -109,6 +111,7 @@ export function listTraces(
        sum(span_count) AS span_count,
        sum(llm_span_count) AS llm_span_count,
        sum(error_count) AS error_count,
+       sum(aborted_count) AS aborted_count,
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
        sum(total_tokens) AS total_tokens,
@@ -1558,6 +1561,7 @@ export function listTracesByWorkflowRun(
        sum(span_count) AS span_count,
        sum(llm_span_count) AS llm_span_count,
        sum(error_count) AS error_count,
+       sum(aborted_count) AS aborted_count,
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
        sum(total_tokens) AS total_tokens,

@@ -1,6 +1,6 @@
 {
   "name": "foglamp",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Two-line observability for the Vercel AI SDK — costs, latency, tokens, and traces.",
   "license": "MIT",
   "type": "module",

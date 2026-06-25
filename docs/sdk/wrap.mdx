@@ -88,6 +88,14 @@ Nested `run()`s merge inner-over-outer. Works on Node, Bun, Deno, and
 Vercel/Cloudflare edge runtimes (anywhere `node:async_hooks` exists). The v7
 collector has the same method: `fog.run()` layers under `fog.integration()`.
 
+<Note>
+  On the v7 `foglamp()` collector, a model call made inside a tool's `execute`
+  inherits the parent call's workflow/session context automatically (see [SDK
+  overview](/sdk/overview#nested-calls-inside-tools)). The `wrap` path has no
+  such hook, so on v4–v6 `fog.run()` is the way to share context across a tool
+  that calls back into the model.
+</Note>
+
 **`with()` is the TypeScript-first path** — it returns the wrapped functions
 and agent classes typed *exactly* as the AI SDK's originals, so generics,
 `Output.object` result types, and tool typings all survive. No type shims or

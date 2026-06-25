@@ -25,6 +25,7 @@ import {
   IconAlertTriangle,
   IconGhost,
   IconMessage2Filled,
+  IconPlayerStopFilled,
   IconSitemap,
   IconSitemapFilled,
 } from "@tabler/icons-react";
@@ -345,9 +346,12 @@ export function TracesClient() {
                           )
                         }
                         className={cn(
-                          // Left accent bar on errored traces — scannable at a glance.
-                          t.errorCount > 0 &&
-                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
+                          // Left accent bar — scannable at a glance. Errors win
+                          // over aborts (amber) when a trace has both.
+                          t.errorCount > 0
+                            ? "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
+                            : t.abortedCount > 0 &&
+                                "shadow-[inset_1px_0_0_0_var(--color-amber-500)]"
                         )}
                       >
                         <TableCell>
@@ -454,6 +458,15 @@ export function TracesClient() {
                                 <IconAlertTriangle />
                                 {t.errorCount}
                                 {t.errorCount === 1 ? "error" : "errors"}
+                              </Badge>
+                            )}
+                            {t.errorCount === 0 && t.abortedCount > 0 && (
+                              <Badge
+                                variant="amber"
+                                className="shrink-0 font-sans"
+                              >
+                                <IconPlayerStopFilled />
+                                aborted
                               </Badge>
                             )}
                           </div>

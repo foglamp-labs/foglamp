@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { Collector } from "./collector";
 import { resolveConfig } from "./config";
-import { mergeContext } from "./context";
+import { ambientContext, mergeContext } from "./context";
 import type { Transport } from "./transport";
 import type { Span, Trace } from "./wire";
 
@@ -502,6 +502,109 @@ describe("Collector customer attribution", () => {
     bound.onFinish!({ callId, text: "done" } as never);
 
     expect(traces[0]!.customer).toBeUndefined();
+  });
+});
+
+describe("Collector onAbort", () => {
+  test("finalizes immediately with root status 'aborted'; finished steps stay ok", () => {
+    const { collector, traces } = makeCollector();
+    const callId = "abort-1";
+    collector.onStart!({ callId, provider: "openai", modelId: "gpt-x" } as never);
+    collector.onStepStart!({ callId, stepNumber: 0 } as never);
+    collector.onStepFinish!({
+      callId,
+      stepNumber: 0,
+      usage: { inputTokens: 5, outputTokens: 7 },
+      finishReason: "stop",
+    } as never);
+    // Abort fires instead of onEnd/onError.
+    collector.onAbort!({ callId, reason: new Error("client cancelled") } as never);
+
+    expect(traces.length).toBe(1);
+    const trace = traces[0]!;
+    const root = trace.spans.find((s) => s.spanType === "agent")!;
+    expect(root.status).toBe("aborted");
+    expect(root.errorMessage).toBe("client cancelled");
+    // The step that finished before the abort genuinely succeeded.
+    expect(llmSpan(trace).status).toBe("ok");
+  });
+
+  test("abort with no reason → status 'aborted', no errorMessage", () => {
+    const { collector, traces } = makeCollector();
+    const callId = "abort-2";
+    collector.onStart!({ callId } as never);
+    collector.onAbort!({ callId } as never);
+
+    const root = traces[0]!.spans.find((s) => s.spanType === "agent")!;
+    expect(root.status).toBe("aborted");
+    expect(root.errorMessage).toBeUndefined();
+  });
+
+  test("a real error still wins over abort", () => {
+    const { collector, traces } = makeCollector();
+    const callId = "abort-3";
+    collector.onStart!({ callId } as never);
+    // onError attributes to the single open trace and finalizes it as error.
+    collector.onError!(new Error("boom") as never);
+    // A late/spurious abort for the same call no-ops (builder already gone).
+    collector.onAbort!({ callId, reason: "cancelled" } as never);
+
+    expect(traces.length).toBe(1);
+    const root = traces[0]!.spans.find((s) => s.spanType === "agent")!;
+    expect(root.status).toBe("error");
+    expect(root.errorMessage).toBe("boom");
+  });
+});
+
+describe("Collector context propagation (executeTool / executeLanguageModelCall)", () => {
+  test("executeTool runs execute within the trace's grouping context (no identity)", async () => {
+    const { collector } = makeCollector();
+    const callId = "exec-1";
+    const fog = collector.integration({
+      agentName: "outer-agent",
+      workflowName: "wf",
+      workflowRunId: "run-1",
+      sessionId: "sess-1",
+    });
+    fog.onStart!({ callId } as never);
+
+    let seen: ReturnType<typeof ambientContext>;
+    await fog.executeTool!({
+      callId,
+      toolCallId: "t1",
+      execute: async () => {
+        seen = ambientContext();
+        return "ok";
+      },
+    } as never);
+
+    // Grouping fields propagate…
+    expect(seen?.workflowName).toBe("wf");
+    expect(seen?.workflowRunId).toBe("run-1");
+    expect(seen?.sessionId).toBe("sess-1");
+    // …but identity does not, so a nested call keeps its own.
+    expect(seen?.agentName).toBeUndefined();
+    expect(seen?.traceName).toBeUndefined();
+  });
+
+  test("execute* return the value and propagate rejection; bare execute when no builder", async () => {
+    const { collector } = makeCollector();
+    // No onStart → no builder → bare passthrough, value preserved.
+    const v = await collector.executeLanguageModelCall!({
+      callId: "missing",
+      execute: async () => 42,
+    } as never);
+    expect(v).toBe(42);
+
+    await expect(
+      collector.executeTool!({
+        callId: "missing",
+        toolCallId: "t",
+        execute: async () => {
+          throw new Error("tool failed");
+        },
+      } as never),
+    ).rejects.toThrow("tool failed");
   });
 });
 

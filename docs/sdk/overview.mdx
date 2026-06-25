@@ -136,6 +136,41 @@ process.on("SIGTERM", async () => {
   </Card>
 </CardGroup>
 
+## Nested calls inside tools
+
+When a tool's `execute` function makes its own AI SDK call (a model call inside a
+tool — e.g. a sub-agent), the v7 collector **automatically propagates the parent
+call's grouping context** (`workflowName`, `workflowRunId`, `sessionId`,
+`customer`, `metadata`) into that nested call. So the inner call lands in the
+same workflow run as the outer one with no plumbing — you don't have to thread a
+`fog.run()` through your tool bodies.
+
+```ts
+const fog = foglamp();
+
+await generateText({
+  model,
+  tools: { researchAgent },          // its execute() calls generateText again
+  telemetry: {
+    integrations: [
+      fog.integration({
+        agentName: "planner",
+        workflowName: "deep-research",
+        workflowRunId: run.id,        // ← the nested call inherits this…
+      }),
+    ],
+  },
+});
+// …so the sub-agent's trace joins workflow run `run.id` automatically.
+```
+
+Only **grouping** context propagates — the inner call's **identity**
+(`agentName` / `traceName`) is not inherited, so a nested call keeps its own
+name. The nested call is still its own trace (a sibling in the run), not a child
+span of the tool. A more specific inner `fog.run()` or `fog.integration()` still
+wins. This is a v7-collector feature; on v4–v6 use [`fog.run()`](/sdk/wrap) to
+share context across nested calls.
+
 Next: tune batching and capture in [Configuration](/sdk/configuration), and make
 sure spans actually leave serverless functions in
 [Runtimes & flushing](/sdk/runtimes).

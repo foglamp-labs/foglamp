@@ -3,6 +3,33 @@ title: Changelog
 description: "What's new in Foglamp."
 ---
 
+<Update label="June 25, 2026">
+
+## New features
+
+**AI SDK v7 — stable.** The `foglamp()` collector now tracks AI SDK v7 stable
+(`ai@7.0.0`). No code changes needed on your side; the telemetry-integrations
+API is unchanged from the v7 beta.
+
+**First-class `aborted` status.** A stream that's cancelled before it finishes
+(via AI SDK v7's `onAbort` — a caller cancellation, an `AbortSignal`, or a
+timeout) is now recorded with a dedicated **`aborted`** status instead of being
+swept later as an error. It renders amber across the [traces](/dashboard/traces)
+view and is **excluded from error rate** — a cancelled run isn't a failure. The
+steps that finished before the abort keep their own status.
+
+**Automatic nested-trace context.** On the v7 collector, a model call made
+inside a tool's `execute` now inherits the parent call's workflow / session /
+customer / metadata automatically, so sub-agents land in the same workflow run
+with no `fog.run()` plumbing. See the [SDK
+overview](/sdk/overview#nested-calls-inside-tools).
+
+Self-hosters: run ClickHouse migrations before relying on aborted rollups (a new
+`aborted_count` column is added to the trace, workflow-run, and per-minute
+summaries); ingest accepts the `aborted` status after the contract upgrade.
+
+</Update>
+
 <Update label="June 23, 2026">
 
 ## New features

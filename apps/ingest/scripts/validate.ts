@@ -92,6 +92,16 @@ const payload: IngestPayload = {
           status: "error",
           errorMessage: "boom",
         },
+        {
+          spanId: "s_aborted",
+          parentSpanId: "s_root",
+          spanType: "tool",
+          name: "cancelled",
+          startTime: base + 565,
+          endTime: base + 580,
+          // First-class aborted status — must pass through ingest unchanged.
+          status: "aborted",
+        },
       ],
     },
   ],
@@ -100,11 +110,12 @@ const payload: IngestPayload = {
 // --- Pure transform assertions -------------------------------------------
 console.log("buildSpanRows (cost-at-ingest):");
 const rows = buildSpanRows({ payload, projectId: PID, orgId: "org_ingest", retentionDays: 14, table, rules: [], now: base });
-assert(rows.length === 3, "three rows built");
+assert(rows.length === 4, "four rows built");
 
 const root = rows.find((r) => r.span_id === "s_root")!;
 const llm = rows.find((r) => r.span_id === "s_llm")!;
 const tool = rows.find((r) => r.span_id === "s_tool")!;
+const aborted = rows.find((r) => r.span_id === "s_aborted")!;
 
 // prompt billable = 1000 - 200 cached = 800 * 0.0000025 = 0.002
 // completion = 500 * 0.00001 = 0.005 ; cacheRead = 200 * 0.00000125 = 0.00025
@@ -132,6 +143,7 @@ assert(llm.workflow_run_id === "run_ingest_1", "workflow_run_id denormalized");
 assert(root.total_cost === null, "agent root span has null cost (not double-counted)");
 assert(tool.total_cost === null, "tool span has null cost");
 assert(tool.status === "error", "tool error status carried");
+assert(aborted.status === "aborted", "aborted status passes through ingest");
 
 // --- Custom pricing override --------------------------------------------
 console.log("matchCustomPrice:");

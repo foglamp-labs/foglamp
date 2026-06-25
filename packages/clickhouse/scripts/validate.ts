@@ -179,6 +179,25 @@ const rows: SpanRow[] = [
     workflow_run_id: "run_1",
     session_id: "sess_1",
   },
+  {
+    ...blank,
+    project_id: PID,
+    trace_id: "trace_1",
+    span_id: "s_aborted",
+    parent_span_id: "s_root",
+    span_type: "tool",
+    name: "cancelled-tool",
+    start_time: base + 480,
+    end_time: base + 500,
+    duration_ms: 20,
+    // First-class aborted status — must roll up to aborted_count, NOT error_count.
+    status: "aborted",
+    trace_name: "support",
+    agent_name: "support",
+    workflow_name: "ticket-flow",
+    workflow_run_id: "run_1",
+    session_id: "sess_1",
+  },
 ];
 
 console.log("running migrations...");
@@ -205,17 +224,23 @@ assert(traces.length === 1, "one trace summarized");
 const t = traces[0]!;
 assert(t.agent_name === "support", `agent_name = ${t.agent_name}`);
 assert(t.workflow_run_id === "run_1", `workflow_run_id = ${t.workflow_run_id}`);
-assert(Number(t.span_count) === 3, `span_count = ${t.span_count}`);
+assert(Number(t.span_count) === 4, `span_count = ${t.span_count}`);
 assert(Number(t.llm_span_count) === 1, `llm_span_count = ${t.llm_span_count}`);
 assert(Number(t.error_count) === 1, `error_count = ${t.error_count}`);
+// Aborted spans roll up separately and never inflate error_count.
+assert(Number(t.aborted_count) === 1, `aborted_count = ${t.aborted_count}`);
 assert(Number(t.total_cost) === 0.0075, `total_cost = ${t.total_cost}`);
 assert(Number(t.priced_span_count) === 1, `priced_span_count = ${t.priced_span_count}`);
 assert(Number(t.total_tokens) === 1500, `total_tokens = ${t.total_tokens}`);
 
 console.log("trace detail (spans FINAL):");
 const spans = await getTraceSpans(client, { projectId: PID, traceId: "trace_1" });
-assert(spans.length === 3, "three spans returned, ordered");
+assert(spans.length === 4, "four spans returned, ordered");
 assert(spans[0]!.span_id === "s_root", "root span first by start_time");
+assert(
+  spans.find((s) => s.span_id === "s_aborted")?.status === "aborted",
+  "aborted span status round-trips",
+);
 assert(spans[1]!.ttft_ms === 120, "ttft preserved on llm span");
 assert(spans[1]!.metadata.env === "prod", "metadata map round-trips");
 assert(
@@ -328,7 +353,7 @@ console.log("org usage rollup (usage_by_org_day MV):");
 const dayFrom = new Date(base - 86_400_000).toISOString().slice(0, 10);
 const dayTo = new Date(base + 86_400_000).toISOString().slice(0, 10);
 const orgUsage = await queryOrgSpanUsage(client, { orgId: ORG, from: dayFrom, to: dayTo });
-assert(orgUsage === 3, `org span usage = ${orgUsage} (expected 3)`);
+assert(orgUsage === 4, `org span usage = ${orgUsage} (expected 4)`);
 
 console.log("retention extend on upgrade (updateOrgRetention):");
 await updateOrgRetention(client, ORG, 100); // rows are 30 → greatest(30,100)=100

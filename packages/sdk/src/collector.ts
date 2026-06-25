@@ -212,6 +212,11 @@ interface FinishView {
   // Object generation reports the parsed object here instead of `text`.
   object?: unknown;
 }
+interface AbortView {
+  callId?: string;
+  // The abort reason from the AbortSignal, when one is available.
+  reason?: unknown;
+}
 interface ToolStartView {
   callId?: string;
   toolCall?: { toolCallId?: string; toolName?: string; input?: unknown };
@@ -241,6 +246,10 @@ interface TraceBuilder {
   toolCatalog: string | undefined;
   finalOutput: string | undefined;
   error: string | undefined;
+  // Set when the operation was aborted (onAbort). Drives the root span's
+  // `aborted` status — distinct from `error`, and excluded from error rate.
+  aborted: boolean;
+  abortReason: string | undefined;
   spans: Span[];
   // Steps already recorded as llm spans, so a step is never double-counted when
   // both onStepEnd and the deprecated onStepFinish (or onObjectStepEnd /
@@ -330,6 +339,21 @@ function decimateSamples(
   for (let i = 0; i < max - 1; i++) out.push(samples[Math.floor(i * stride)]!);
   out.push(samples[samples.length - 1]!);
   return out;
+}
+
+// Grouping-only view of a context: the workflow/session/customer/metadata that
+// should flow into a tool-nested AI SDK call, but NOT the identity fields
+// (agentName/traceName) — the nested call is its own trace and sets its own
+// identity. Used by executeTool/executeLanguageModelCall to establish ambient
+// context for the duration of the wrapped execution.
+function groupingContext(ctx: IntegrationContext): IntegrationContext {
+  return {
+    workflowName: ctx.workflowName,
+    workflowRunId: ctx.workflowRunId,
+    sessionId: ctx.sessionId,
+    customer: ctx.customer,
+    metadata: ctx.metadata,
+  };
 }
 
 export class Collector implements Telemetry {
@@ -446,6 +470,8 @@ export class Collector implements Telemetry {
         toolCatalog,
         finalOutput: undefined,
         error: undefined,
+        aborted: false,
+        abortReason: undefined,
         spans: [],
         stepFinished: new Set(),
         stepStart: new Map(),
@@ -1046,6 +1072,69 @@ export class Collector implements Telemetry {
     });
   };
 
+  // onAbort: fired when a streaming generation is aborted before it completes
+  // (caller cancellation, AbortSignal, timeout). The SDK fires this instead of
+  // onEnd/onError, so without it the trace would only close via the abandoned-
+  // trace reaper (after maxTraceAgeMs) and be mislabeled as an error. We
+  // finalize immediately with a root `aborted` status; the steps that finished
+  // before the abort were already recorded by onStepEnd and keep their own
+  // status (they genuinely succeeded).
+  onAbort: NonNullable<Telemetry["onAbort"]> = (event) => {
+    this.guard(() => {
+      const e = event as AbortView;
+      if (!e.callId) return;
+      const builder = this.builders.get(e.callId);
+      if (!builder) return;
+      builder.aborted = true;
+      if (e.reason !== undefined) {
+        builder.abortReason = serialize(
+          e.reason instanceof Error ? e.reason.message : e.reason,
+          ERROR_MESSAGE_CAP,
+        );
+      }
+      this.finalize(e.callId, builder);
+    });
+  };
+
+  // Context-propagation hooks (AI SDK v7). The SDK calls these to run the model
+  // call / tool execution inside an integration-chosen async context. We use
+  // them to re-establish the trace's *grouping* context (workflow/session/
+  // customer/metadata) as ambient, so a model call made inside a tool's
+  // `execute` automatically joins the same workflow run as a sibling trace —
+  // no `fog.run()` plumbing inside the tool. Identity (agentName/traceName) is
+  // deliberately not propagated, so the nested call keeps its own identity, and
+  // a more specific inner `fog.run()`/`fog.integration()` still wins (inner-wins
+  // merge in runWithContext).
+  //
+  // These MUST always invoke and return `execute()` and let its rejection
+  // propagate, so they cannot use `this.guard()` (which swallows errors and
+  // returns void). Only our own bookkeeping is wrapped in try/catch.
+  executeLanguageModelCall: NonNullable<Telemetry["executeLanguageModelCall"]> = ({
+    callId,
+    execute,
+  }) => {
+    const ctx = this.propagationContext(callId);
+    return ctx ? runWithContext(ctx, execute) : execute();
+  };
+
+  executeTool: NonNullable<Telemetry["executeTool"]> = ({ callId, execute }) => {
+    const ctx = this.propagationContext(callId);
+    return ctx ? runWithContext(ctx, execute) : execute();
+  };
+
+  // The grouping context to propagate into a wrapped execution, or undefined
+  // when there's no open trace for the call (telemetry inactive, or embed/rerank
+  // which we skip) — in which case the caller runs `execute()` bare.
+  private propagationContext(callId: string | undefined): IntegrationContext | undefined {
+    try {
+      const builder = callId ? this.builders.get(callId) : undefined;
+      return builder ? groupingContext(builder.context) : undefined;
+    } catch (error) {
+      this.config.onError(error);
+      return undefined;
+    }
+  }
+
   // Best-effort errored entry for the HUD when a failure can't be attributed to
   // a trace (it fired before onStart). Carries the integration's label + the
   // error; no steps/tools/cost.
@@ -1185,6 +1274,12 @@ export class Collector implements Telemetry {
       ctx.traceName = builder.operationId ?? callId;
     }
 
+    // Status priority: a real error wins; otherwise an abort yields the
+    // first-class `aborted` status (excluded from error rate downstream); else
+    // `ok`. The detail message carries the error or the abort reason (if any).
+    const status: Span["status"] = builder.error ? "error" : builder.aborted ? "aborted" : "ok";
+    const statusMessage = builder.error ?? builder.abortReason;
+
     const endTime = Math.max(builder.endTime, builder.startTime);
     const root: Span = {
       spanId: `${callId}:root`,
@@ -1192,8 +1287,8 @@ export class Collector implements Telemetry {
       name: ctx.traceName ?? ctx.agentName ?? builder.operationId ?? "agent",
       startTime: builder.startTime,
       endTime,
-      status: builder.error ? "error" : "ok",
-      errorMessage: builder.error,
+      status,
+      errorMessage: statusMessage,
       provider: builder.provider,
       modelId: builder.modelId,
       input: builder.rootInput,
@@ -1226,7 +1321,7 @@ export class Collector implements Telemetry {
         type: "trace.end",
         ts: Date.now(),
         traceId: callId,
-        status: builder.error ? "error" : "ok",
+        status,
         trace,
         totals: totalsFromSpans(spans, null),
       });
