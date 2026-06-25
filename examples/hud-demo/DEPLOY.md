@@ -68,9 +68,11 @@ gcloud run deploy foglamp-hud --project foglamp-prod --region us-central1 \
   --image "$REPO/hud-demo:latest"
 ```
 
-To automate on push, add an `examples/hud-demo/**` path filter and a
-build/push/deploy step for `hud-demo` to `.github/workflows/deploy-gcp.yml` once
-the service exists.
+Pushes to `master` deploy automatically: `.github/workflows/deploy-gcp.yml`
+builds `--target hud-demo` and redeploys `foglamp-hud` whenever the diff touches
+`examples/hud-demo/**` (or a shared input — `packages/**`, `Dockerfile`,
+`bun.lock`). The manual commands above are only needed for the first deploy or an
+out-of-band push.
 
 ## Smoke test
 

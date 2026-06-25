@@ -14,6 +14,7 @@ on:
     paths:
       - "apps/server/**"
       - "apps/ingest/**"
+      - "examples/hud-demo/**"
       - "packages/**"
       - "Dockerfile"
       - "bun.lock"
@@ -40,10 +41,28 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Detect schema changes
+      # Decide what to (re)deploy from the diff. Shared inputs — packages/**,
+      # Dockerfile, bun.lock, and this workflow — rebuild everything; the
+      # app-specific dirs gate only their own service.
+      - name: Detect changes
         id: changes
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -q '^packages/db/src/migrations/'; then
+          files=$(git diff --name-only HEAD^ HEAD)
+          shared='^(packages/|Dockerfile$|bun\.lock$|\.github/workflows/deploy-gcp\.yml$)'
+
+          if echo "$files" | grep -qE "$shared|^apps/server/|^apps/ingest/"; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if echo "$files" | grep -qE "$shared|^examples/hud-demo/"; then
+            echo "hud=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hud=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if echo "$files" | grep -q '^packages/db/src/migrations/'; then
             echo "migrations=true" >> "$GITHUB_OUTPUT"
           else
             echo "migrations=false" >> "$GITHUB_OUTPUT"
@@ -61,18 +80,28 @@ jobs:
 
       - name: Build images
         run: |
-          docker build --target server  -t "$REPO/server:latest"  -t "$REPO/server:$GITHUB_SHA"  .
-          docker build --target ingest  -t "$REPO/ingest:latest"  -t "$REPO/ingest:$GITHUB_SHA"  .
+          if [ "${{ steps.changes.outputs.backend }}" = "true" ]; then
+            docker build --target server  -t "$REPO/server:latest"  -t "$REPO/server:$GITHUB_SHA"  .
+            docker build --target ingest  -t "$REPO/ingest:latest"  -t "$REPO/ingest:$GITHUB_SHA"  .
+          fi
           if [ "${{ steps.changes.outputs.migrations }}" = "true" ]; then
             docker build --target migrate -t "$REPO/migrate:latest" -t "$REPO/migrate:$GITHUB_SHA" .
+          fi
+          if [ "${{ steps.changes.outputs.hud }}" = "true" ]; then
+            docker build --target hud-demo -t "$REPO/hud-demo:latest" -t "$REPO/hud-demo:$GITHUB_SHA" .
           fi
 
       - name: Push images
         run: |
-          docker push --all-tags "$REPO/server"
-          docker push --all-tags "$REPO/ingest"
+          if [ "${{ steps.changes.outputs.backend }}" = "true" ]; then
+            docker push --all-tags "$REPO/server"
+            docker push --all-tags "$REPO/ingest"
+          fi
           if [ "${{ steps.changes.outputs.migrations }}" = "true" ]; then
             docker push --all-tags "$REPO/migrate"
+          fi
+          if [ "${{ steps.changes.outputs.hud }}" = "true" ]; then
+            docker push --all-tags "$REPO/hud-demo"
           fi
 
       - name: Run migrations
@@ -87,18 +116,34 @@ jobs:
       # Image-only updates: env vars, secrets, scaling carry over from the
       # live revision (same semantics as scripts/deploy-gcp.sh).
       - name: Deploy server
+        if: steps.changes.outputs.backend == 'true'
         run: |
           gcloud run deploy foglamp-server \
             --project "$PROJECT" --region "$REGION" \
             --image "$REPO/server:$GITHUB_SHA"
 
       - name: Deploy ingest
+        if: steps.changes.outputs.backend == 'true'
         run: |
           gcloud run deploy foglamp-ingest \
             --project "$PROJECT" --region "$REGION" \
             --image "$REPO/ingest:$GITHUB_SHA"
 
+      # Image-only update: single-instance / no-CPU-throttling / NODE_ENV carry
+      # over from the live revision (see examples/hud-demo/DEPLOY.md).
+      - name: Deploy hud-demo
+        if: steps.changes.outputs.hud == 'true'
+        run: |
+          gcloud run deploy foglamp-hud \
+            --project "$PROJECT" --region "$REGION" \
+            --image "$REPO/hud-demo:$GITHUB_SHA"
+
       - name: Verify
         run: |
-          curl -sf https://api.foglamp.dev/api/auth/ok
-          curl -sf -o /dev/null -w "ingest %{http_code}\n" https://ingest.foglamp.dev/health || true
+          if [ "${{ steps.changes.outputs.backend }}" = "true" ]; then
+            curl -sf https://api.foglamp.dev/api/auth/ok
+            curl -sf -o /dev/null -w "ingest %{http_code}\n" https://ingest.foglamp.dev/health || true
+          fi
+          if [ "${{ steps.changes.outputs.hud }}" = "true" ]; then
+            curl -sf -o /dev/null -w "hud %{http_code}\n" https://hud.foglamp.dev/ || true
+          fi
