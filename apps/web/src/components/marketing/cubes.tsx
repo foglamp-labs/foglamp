@@ -35,7 +35,7 @@ export function Cubes({
   maxAngle = 45,
   radius = 3,
   easing = "power3.out",
-  duration = { enter: 0.3, leave: 0.6 },
+  duration = { enter: 1, leave: 1 },
   cellGap,
   borderStyle = "1px solid #fff",
   faceColor = "#120F17",
@@ -116,7 +116,9 @@ export function Cubes({
       const rowCenter = (e.clientY - rect.top) / cellH;
 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => tiltAt(rowCenter, colCenter));
+      rafRef.current = requestAnimationFrame(() =>
+        tiltAt(rowCenter, colCenter)
+      );
 
       idleTimerRef.current = setTimeout(() => {
         userActiveRef.current = false;
@@ -153,7 +155,9 @@ export function Cubes({
       const rowCenter = (touch.clientY - rect.top) / cellH;
 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => tiltAt(rowCenter, colCenter));
+      rafRef.current = requestAnimationFrame(() =>
+        tiltAt(rowCenter, colCenter)
+      );
 
       idleTimerRef.current = setTimeout(() => {
         userActiveRef.current = false;
@@ -314,18 +318,19 @@ export function Cubes({
 
   return (
     <div
-      className={["default-animation", className].filter(Boolean).join(" ")}
+      className={["default-animation opacity-50", className]
+        .filter(Boolean)
+        .join(" ")}
       style={wrapperStyle}
     >
-      <div ref={sceneRef} className="default-animation--scene" style={sceneStyle}>
+      <div
+        ref={sceneRef}
+        className="default-animation--scene"
+        style={sceneStyle}
+      >
         {cells.map((_, r) =>
           cells.map((__, c) => (
-            <div
-              key={`${r}-${c}`}
-              className="cube"
-              data-row={r}
-              data-col={c}
-            >
+            <div key={`${r}-${c}`} className="cube" data-row={r} data-col={c}>
               <div className="cube-face cube-face--top" />
               <div className="cube-face cube-face--bottom" />
               <div className="cube-face cube-face--left" />

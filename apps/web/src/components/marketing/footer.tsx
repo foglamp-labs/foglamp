@@ -77,13 +77,15 @@ export function MarketingFooter() {
     <footer className="relative isolate bg-card/50 dark:shadow-(--custom-shadow)">
       {/* Subtle film-grain texture over the footer. feTurbulence fills the
           filter region with noise, grayscale strips its color, and
-          mix-blend-screen lets only the light specks ride on top. */}
+          mix-blend-screen lets only the light specks ride on top. The filter
+          region is pinned to the element box (x/y/width/height) — without it,
+          SVG's default -10% region bleeds noise above the footer's top border. */}
       <figure
         aria-hidden
         className="absolute inset-0 -z-10 pointer-events-none opacity-10 mix-blend-screen filter-[url('#noise-footer-fx')_grayscale(100%)]"
       >
         <svg className="size-full">
-          <filter id="noise-footer-fx">
+          <filter id="noise-footer-fx" x="0%" y="0%" width="100%" height="100%">
             <feTurbulence baseFrequency="0.8" />
           </filter>
         </svg>
