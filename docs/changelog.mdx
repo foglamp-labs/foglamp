@@ -3,6 +3,29 @@ title: Changelog
 description: "What's new in Foglamp."
 ---
 
+<Update label="June 26, 2026">
+
+## Updates
+
+**Customer on traces.** The [Traces](/dashboard/traces) table now shows a
+customer chip (avatar + name) next to the session/agent/workflow columns, and
+the trace detail page surfaces a matching customer badge — so you can spot
+which end-customer a run belongs to without leaving the trace. Powered by the
+[customer field](/concepts/data-model#customer) you set on the SDK call.
+
+**"Not identified" on the Overview Customers card.** The
+[Overview](/dashboard/overview) Customers card now includes a muted **Not
+identified** row that buckets unattributed spend, so calls without a `customer`
+tag are visible instead of disappearing. Avatars across the customers UI also
+pick up a filled glyph for better contrast.
+
+## Bug fixes
+
+- Shortened the **Clear filters** button on list-page filter bars to **Clear**,
+  so it stops wrapping in narrow toolbars.
+
+</Update>
+
 <Update label="June 25, 2026">
 
 ## New features
