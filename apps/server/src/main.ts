@@ -1,5 +1,6 @@
 import { trpcServer } from "@hono/trpc-server";
 import { startAlertEvaluator } from "@foglamp/api/alertCron";
+import { startPosterCleanup } from "@foglamp/api/posterCron";
 import { startQuotaWarnSweep } from "@foglamp/api/quotaCron";
 import { startScoringWorker } from "@foglamp/api/scoringCron";
 import { startStorageWatchSweep } from "@foglamp/api/storageCron";
@@ -19,6 +20,8 @@ import { cors } from "hono/cors";
 import { evlog, type AppEnv } from "./evlog";
 import { handleFoggy } from "./foggy";
 import { pruneFoggyRateLimits } from "./foggyRateLimit";
+import { handlePosterCreate, handlePosterGet } from "./poster";
+import { prunePosterRateLimits } from "./rateLimit";
 
 const app = new Hono<AppEnv>();
 const trustedAppOrigins = getTrustedAppOrigins(
@@ -89,6 +92,19 @@ app.post(
   handleFoggy,
 );
 
+// Codebase poster — public, anonymous. An agent uploads its poster JSON and
+// gets back a shareable foglamp.dev/poster/<slug> URL. Rate-limited by IP inside
+// the handler; bodyLimit guards payload size.
+app.post(
+  "/poster",
+  bodyLimit({
+    maxSize: 64 * 1024,
+    onError: (c) => c.json({ error: "payload too large" }, 413),
+  }),
+  handlePosterCreate,
+);
+app.get("/poster/:slug", handlePosterGet);
+
 app.get("/", (c) => {
   return c.text("OK");
 });
@@ -104,10 +120,13 @@ const stopQuotaWarnSweep = startQuotaWarnSweep();
 // ClickHouse storage watch: email platform admins when the DB grows past the
 // configured size threshold (every 4h by default).
 const stopStorageWatchSweep = startStorageWatchSweep();
+// Poster cleanup: delete expired anonymous codebase posters (daily).
+const stopPosterCleanup = startPosterCleanup();
 
-// Periodically shed stale foggy rate-limit entries (in-memory).
+// Periodically shed stale in-memory rate-limit entries (foggy + poster).
 const pruneTimer = setInterval(() => {
   pruneFoggyRateLimits();
+  prunePosterRateLimits();
 }, 60_000);
 pruneTimer.unref?.();
 
@@ -124,6 +143,7 @@ async function shutdown(signal: string): Promise<void> {
       stopScoringWorker(),
       stopQuotaWarnSweep(),
       stopStorageWatchSweep(),
+      stopPosterCleanup(),
     ]);
     log.emit({ outcome: "shutdown", signal });
   } catch (err) {

@@ -49,3 +49,6 @@ coverage
 .cache
 tmp
 temp
+
+# foglamp poster output (generated)
+.foglamp/

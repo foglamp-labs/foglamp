@@ -1,0 +1,415 @@
+/* Hosted codebase-poster styles. Ported from the v1 local renderer, but scoped
+   under `.poster-root` with a self-contained `data-theme` (so it doesn't depend
+   on or fight the site's next-themes). Fonts reuse the app's CSS variables
+   (--font-sans / --font-host-grotesk / --font-geist-mono from the root layout).
+   All visual decisions live here; the agent never touches any of it. */
+
+.poster-root {
+  /* surfaces — light (warm editorial paper) */
+  --paper: #faf8f3;
+  --panel: #ffffff;
+  --ink: #18181b;
+  --muted: #6b7280;
+  --faint: #9aa0aa;
+  --line: rgba(20, 20, 25, 0.09);
+  --line-strong: rgba(20, 20, 25, 0.14);
+  --node-bg: #ffffff;
+  --behind: #ece8df;
+  --brand-lead: #1e1e1e;
+  --dot: rgba(20, 20, 25, 0.055);
+  --board-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.35);
+
+  --poster-accent: #ff5513;
+  --poster-accent-2: #0090fd;
+  --k-entry: #64748b;
+  --k-cron: #f59e0b;
+  --k-agent: #ff5513;
+  --k-model: #0090fd;
+  --k-tool: #8b5cf6;
+  --k-store: #10b981;
+  --k-external: #f43f5e;
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 24px;
+  background: var(--behind);
+  color: var(--ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  transition: background 0.25s ease;
+}
+
+.poster-root[data-theme="dark"] {
+  --paper: #0c0c0e;
+  --panel: #141417;
+  --ink: #f3f3f5;
+  --muted: #8b8b93;
+  --faint: #5f5f68;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --node-bg: #17171b;
+  --behind: #050506;
+  --brand-lead: #ededed;
+  --dot: rgba(255, 255, 255, 0.05);
+  --board-shadow: 0 40px 100px -28px rgba(0, 0, 0, 0.8);
+}
+
+.poster-root *,
+.poster-root *::before,
+.poster-root *::after {
+  box-sizing: border-box;
+}
+
+.poster-stage {
+  transform-origin: center center;
+}
+
+/* The board: fixed design size, the html-to-image capture target */
+.poster-board {
+  display: flex;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: var(--board-shadow);
+  border: 1px solid var(--line);
+}
+
+.poster-root .favicon {
+  object-fit: contain;
+  border-radius: 5px;
+  display: block;
+}
+.poster-root .brand-lead {
+  fill: var(--brand-lead);
+}
+
+/* Left rail (1/4) */
+.poster-root .rail {
+  width: 440px;
+  flex: none;
+  padding: 56px 48px 44px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+.poster-root .rail-project-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+  overflow: hidden;
+}
+.poster-root .rail-project-icon .favicon {
+  width: 34px;
+  height: 34px;
+}
+.poster-root .rail-project-initial {
+  font-family: var(--font-host-grotesk), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--poster-accent);
+}
+.poster-root .rail-name {
+  font-family: var(--font-host-grotesk), var(--font-sans), sans-serif;
+  font-weight: 700;
+  font-size: 42px;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.poster-root .rail-tagline {
+  font-size: 15.5px;
+  line-height: 1.4;
+  color: var(--muted);
+  margin: 12px 0 0;
+  max-width: 30ch;
+}
+.poster-root .rail-date {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--faint);
+  margin-top: 16px;
+}
+
+.poster-root .stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 14px;
+  margin-top: 36px;
+  padding-top: 30px;
+  border-top: 1px solid var(--line);
+}
+.poster-root .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.poster-root .stat-value {
+  font-family: var(--font-host-grotesk), var(--font-sans), sans-serif;
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.poster-root .stat-label {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.poster-root .rail-section {
+  margin-top: 30px;
+}
+.poster-root .rail-section-title {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 14px;
+}
+
+.poster-root .rank {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.poster-root .rank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.poster-root .rank-num {
+  font-family: var(--font-host-grotesk), var(--font-sans), sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--poster-accent);
+  width: 14px;
+  text-align: center;
+}
+.poster-root .rank-icon,
+.poster-root .chip-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  color: var(--muted);
+}
+.poster-root .rank-label {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.poster-root .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.poster-root .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--paper);
+}
+.poster-root .chip-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+
+.poster-root .rail-foot {
+  margin-top: auto;
+  padding-top: 30px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.poster-root .rail-foot-mark {
+  height: 15px;
+  width: auto;
+}
+.poster-root .rail-foot-url {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Flow map (3/4) */
+.poster-root .map {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  background-image: radial-gradient(circle at center, var(--dot) 1.4px, transparent 1.4px);
+  background-size: 24px 24px;
+}
+.poster-root .map-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.poster-root .graph {
+  position: relative;
+  transform-origin: center center;
+  flex: none;
+}
+.poster-root .edges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.poster-root .edge-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  background: var(--paper);
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.poster-root .node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 14px;
+  background: var(--node-bg);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--kc);
+  border-radius: 13px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.poster-root .node-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--kc) 14%, transparent);
+  color: var(--kc);
+  overflow: hidden;
+}
+.poster-root .node-icon .favicon {
+  width: 18px;
+  height: 18px;
+}
+.poster-root .node-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.poster-root .node-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.poster-root .node-sub {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 9.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poster-root .legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 40px 22px;
+  border-top: 1px solid var(--line);
+}
+.poster-root .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.poster-root .legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--kc);
+}
+
+/* Controls (not captured) */
+.poster-root .controls {
+  display: flex;
+  gap: 10px;
+}
+.poster-root .ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+.poster-root .ctrl:hover {
+  background: color-mix(in srgb, var(--ink) 6%, var(--panel));
+}
+.poster-root .ctrl:active {
+  transform: translateY(1px);
+}
+.poster-root .ctrl:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.poster-root .ctrl-icon {
+  padding: 9px;
+}

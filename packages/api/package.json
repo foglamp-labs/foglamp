@@ -15,6 +15,7 @@
 		"@foglamp/auth": "workspace:*",
 		"@foglamp/billing": "workspace:*",
 		"@foglamp/clickhouse": "workspace:*",
+		"@foglamp/contracts": "workspace:*",
 		"@foglamp/cost": "workspace:*",
 		"@foglamp/db": "workspace:*",
 		"uuidv7": "^1.0.2",

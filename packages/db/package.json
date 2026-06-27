@@ -17,6 +17,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@foglamp/contracts": "workspace:*",
     "@foglamp/env": "workspace:*",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",

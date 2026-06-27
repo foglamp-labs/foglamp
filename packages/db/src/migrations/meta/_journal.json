@@ -50,6 +50,13 @@
       "when": 1781665019101,
       "tag": "0006_device_code",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782589110633,
+      "tag": "0007_jittery_mister_sinister",
+      "breakpoints": true
     }
   ]
 }

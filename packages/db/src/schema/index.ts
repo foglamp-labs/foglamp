@@ -7,3 +7,4 @@ export * from "./pricing";
 export * from "./workflowRun";
 export * from "./eval";
 export * from "./alert";
+export * from "./poster";
