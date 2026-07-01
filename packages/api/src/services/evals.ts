@@ -159,24 +159,29 @@ export async function createEval(db: Db, userId: string, input: EvalInput) {
       message: "A judge model is required for this preset",
     });
   }
-  const rows = await db
-    .insert(evalDefinition)
-    .values({
-      projectId: input.projectId,
-      name: input.name,
-      presetId: input.presetId,
-      scorerSource: preset.source,
-      targetLevel: input.targetLevel,
-      filters: input.filters,
-      sampleRate: String(input.sampleRate ?? 0.1),
-      model: preset.source === "llm" ? input.model : null,
-      config: input.config,
-      enabled: input.enabled ?? true,
-    })
-    .returning({ id: evalDefinition.id });
-  const id = rows[0]!.id;
-  // State row with watermark = now() → future-only scoring.
-  await db.insert(evalState).values({ evalId: id, status: "ok" });
+  // Definition + its 1:1 state row must land atomically — a crash between the
+  // two inserts leaves a stateless eval the scoring planner can't pick up.
+  const id = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(evalDefinition)
+      .values({
+        projectId: input.projectId,
+        name: input.name,
+        presetId: input.presetId,
+        scorerSource: preset.source,
+        targetLevel: input.targetLevel,
+        filters: input.filters,
+        sampleRate: String(input.sampleRate ?? 0.1),
+        model: preset.source === "llm" ? input.model : null,
+        config: input.config,
+        enabled: input.enabled ?? true,
+      })
+      .returning({ id: evalDefinition.id });
+    const evalId = rows[0]!.id;
+    // State row with watermark = now() → future-only scoring.
+    await tx.insert(evalState).values({ evalId, status: "ok" });
+    return evalId;
+  });
   return { id };
 }
 

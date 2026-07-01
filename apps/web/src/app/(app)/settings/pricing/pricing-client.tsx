@@ -42,7 +42,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { useDelayedLoading } from "@/components/app/data-table";
+import { useDelayedLoading } from "@/components/app/hooks";
 import {
 	EmptyState,
 	NoProject,

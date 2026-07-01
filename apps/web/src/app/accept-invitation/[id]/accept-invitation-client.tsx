@@ -2,7 +2,8 @@
 
 import { Button } from "@foglamp/ui/components/button";
 import { IconCodeAsterix } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
@@ -21,29 +22,34 @@ type LoadError = {
   message: string;
 };
 
+// A dead/wrong-account invitation is a logical outcome, not a transient failure,
+// so it's returned as data (never retried). A thrown network error stays an
+// error and keeps React Query's default retry + refetch-on-reconnect behavior.
+type LoadResult =
+  | { ok: true; invite: Invitation }
+  | { ok: false; error: LoadError };
+
 export function AcceptInvitationClient({
   invitationId,
 }: {
   invitationId: string;
 }) {
   const { data: session } = authClient.useSession();
-  const [invite, setInvite] = useState<Invitation | null>(null);
-  const [loadError, setLoadError] = useState<LoadError | null>(null);
   const [pending, setPending] = useState<"accept" | "decline" | null>(null);
   const [result, setResult] = useState<"accepted" | "declined" | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
+  const { data } = useQuery({
+    queryKey: ["invitation", invitationId],
+    queryFn: async (): Promise<LoadResult> => {
       const res = await authClient.organization.getInvitation({
         query: { id: invitationId },
       });
-      if (cancelled) return;
       if (res.error) {
         const message = res.error.message ?? "";
         const wrongAccount = /recipient|email/i.test(message);
-        setLoadError(
-          wrongAccount
+        return {
+          ok: false,
+          error: wrongAccount
             ? {
                 kind: "wrong-account",
                 message:
@@ -53,22 +59,24 @@ export function AcceptInvitationClient({
                 kind: "invalid",
                 message:
                   "This invitation is no longer valid. It may have expired, been revoked, or already been used.",
-              }
-        );
-        return;
+              },
+        };
       }
       const d = res.data;
-      setInvite({
-        email: d.email,
-        role: d.role,
-        organizationName: d.organizationName,
-        inviterEmail: d.inviterEmail,
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [invitationId]);
+      return {
+        ok: true,
+        invite: {
+          email: d.email,
+          role: d.role,
+          organizationName: d.organizationName,
+          inviterEmail: d.inviterEmail,
+        },
+      };
+    },
+  });
+
+  const invite = data?.ok ? data.invite : null;
+  const loadError = data && !data.ok ? data.error : null;
 
   const accept = async () => {
     setPending("accept");

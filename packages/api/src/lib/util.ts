@@ -83,3 +83,27 @@ export function finite(xs: number[] | undefined): number[] {
 export function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
+
+/**
+ * Map `fn` over `items` with at most `limit` in flight, preserving order.
+ * Used by the cron sweeps to run per-rule / per-org work concurrently instead
+ * of serially, without unbounded fan-out against ClickHouse.
+ */
+export async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < items.length) {
+      const idx = cursor++;
+      out[idx] = await fn(items[idx]!);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker),
+  );
+  return out;
+}

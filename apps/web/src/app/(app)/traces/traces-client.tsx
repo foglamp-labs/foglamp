@@ -46,10 +46,9 @@ import {
   Toolbar,
   cycleSortParam,
   parseSortParam,
-  useDebouncedValue,
-  useDelayedLoading,
   useUrlFilters,
 } from "@/components/app/data-table";
+import { useDebouncedValue, useDelayedLoading } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
   EmptyState,

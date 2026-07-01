@@ -4,7 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { decimalOrNull } from "../lib/util";
 import type { Db } from "../types";
-import { requireOrgRole, requireProjectAccess } from "./access";
+import { assertOrgRole, requireProjectAccess } from "./access";
 
 // Custom pricing rewrites cost data for every span in the project, so writes
 // are admin-gated like API keys and provider keys; reads stay member-level.
@@ -75,7 +75,7 @@ export async function createCustomPricing(
   input: { projectId: string; modelPattern: string; effectiveFrom?: Date } & PriceDims,
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
   const rows = await db
     .insert(customPricing)
     .values({
@@ -94,7 +94,7 @@ export async function updateCustomPricing(
   input: { id: string; projectId: string; modelPattern?: string } & PriceDims,
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
   const rows = await db
     .update(customPricing)
     .set({
@@ -122,7 +122,7 @@ export async function deleteCustomPricing(
   input: { id: string; projectId: string },
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
   await db
     .delete(customPricing)
     .where(

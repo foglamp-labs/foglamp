@@ -42,10 +42,9 @@ import {
   Toolbar,
   cycleSortParam,
   parseSortParam,
-  useDebouncedValue,
-  useDelayedLoading,
   useUrlFilters,
 } from "@/components/app/data-table";
+import { useDebouncedValue, useDelayedLoading } from "@/components/app/hooks";
 import { HEAT_SHADES, HeatCell, percentileBucket } from "@/components/app/heat-cell";
 import { pageWindow } from "@/components/app/trend-charts";
 import { Stat } from "@/components/app/stat";

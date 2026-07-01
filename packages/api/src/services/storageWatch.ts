@@ -75,9 +75,11 @@ export async function evaluateClickHouseStorage(
   const usedLabel = formatGb(totalBytes);
   const thresholdLabel = formatGb(threshold);
   const url = `${env.CORS_ORIGIN.replace(/\/$/, "")}/platform`;
-  for (const to of recipients) {
-    await sendStorageAlertEmail({ to, usedLabel, thresholdLabel, url });
-  }
+  await Promise.all(
+    recipients.map((to) =>
+      sendStorageAlertEmail({ to, usedLabel, thresholdLabel, url }),
+    ),
+  );
   log.info("storage.alerted", {
     totalBytes,
     threshold,

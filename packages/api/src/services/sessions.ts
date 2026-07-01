@@ -16,6 +16,9 @@ import { requireProjectAccess } from "./access";
 const RAW_INPUT_CAP = 4_000;
 // Max chars of the extracted user message shown in the conversation bubble.
 const USER_MESSAGE_CAP = 2_000;
+// Max turns rendered for one session. Applied to BOTH the content and metrics
+// fetches so their rows line up and the summed stats stay accurate.
+const SESSION_TURN_CAP = 500;
 
 export async function getSessionList(
   db: Db,
@@ -93,12 +96,20 @@ export async function getSessionDetail(
 ) {
   await requireProjectAccess(db, userId, input.projectId);
 
+  // Both fetches MUST share the same cap: `turns` comes from `content` while its
+  // per-turn metrics come from `metrics`. If the two limits diverge, turns past
+  // the smaller cap get zeroed metrics that still feed the summed session stats,
+  // silently understating total cost/tokens.
   const [content, metrics] = await Promise.all([
-    getSessionTurns(ch, { projectId: input.projectId, sessionId: input.sessionId }),
+    getSessionTurns(ch, {
+      projectId: input.projectId,
+      sessionId: input.sessionId,
+      limit: SESSION_TURN_CAP,
+    }),
     listTraces(ch, {
       projectId: input.projectId,
       sessionId: input.sessionId,
-      limit: 500,
+      limit: SESSION_TURN_CAP,
     }),
   ]);
 

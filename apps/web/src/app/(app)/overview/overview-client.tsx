@@ -49,7 +49,7 @@ import {
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { useProject } from "@/components/app/project-context";
-import { useDelayedLoading } from "@/components/app/data-table";
+import { useDelayedLoading } from "@/components/app/hooks";
 import { OnboardingPanel } from "@/components/app/onboarding-panel";
 import {
   CardSparkline,

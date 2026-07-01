@@ -49,9 +49,9 @@ import {
   SortableHead,
   ToggleChip,
   Toolbar,
-  useDelayedLoading,
   useTableSort,
 } from "@/components/app/data-table";
+import { useDelayedLoading } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
   type FlowNode,

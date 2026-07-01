@@ -9,6 +9,7 @@ import { generateApiKey, hashApiKey, keyPrefix, slugify } from "../lib/util";
 import type { Ch, Db } from "../types";
 import {
   ADMIN,
+  assertOrgRole,
   listAccessibleProjects,
   requireOrgRole,
   requireProjectAccess,
@@ -68,7 +69,7 @@ export async function updateProject(
   input: { projectId: string; name?: string; url?: string | null },
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
 
   const patch: { name?: string; url?: string | null } = {};
   if (input.name !== undefined) patch.name = input.name;
@@ -116,7 +117,7 @@ export async function createApiKey(
   input: { projectId: string; name: string },
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
 
   const key = generateApiKey();
   const rows = await db
@@ -160,7 +161,7 @@ export async function revokeApiKey(
   input: { projectId: string; keyId: string },
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
   const rows = await db
     .update(apiKey)
     .set({ revokedAt: new Date() })
@@ -183,7 +184,7 @@ export async function deleteApiKey(
   input: { projectId: string; keyId: string },
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
   await db
     .delete(apiKey)
     .where(and(eq(apiKey.id, input.keyId), eq(apiKey.projectId, input.projectId)));
@@ -202,7 +203,7 @@ export async function deleteProject(
   input: { projectId: string },
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
   await db.delete(project).where(eq(project.id, input.projectId));
   await deleteProjectData(ch, input.projectId); // async CH mutation
   return { id: input.projectId };

@@ -538,7 +538,7 @@ export type SessionTurnRow = {
  */
 export function getSessionTurns(
 	client: ClickHouseClient,
-	params: { projectId: string; sessionId: string },
+	params: { projectId: string; sessionId: string; limit?: number },
 ): Promise<SessionTurnRow[]> {
 	return rows<SessionTurnRow>(
 		client,
@@ -549,8 +549,13 @@ export function getSessionTurns(
        AND session_id = {sessionId:String}
        AND span_type = 'agent'
      ORDER BY start_time ASC, span_id ASC
-     LIMIT 1 BY trace_id`,
-		{ projectId: params.projectId, sessionId: params.sessionId },
+     LIMIT 1 BY trace_id
+     LIMIT {limit:UInt32}`,
+		{
+			projectId: params.projectId,
+			sessionId: params.sessionId,
+			limit: params.limit ?? 500,
+		},
 	);
 }
 

@@ -23,6 +23,7 @@ import { runCodeScorer } from "../evals/codeScorers";
 import { runJudge } from "../evals/judge";
 import { getPreset, type Preset } from "../evals/presets";
 import { decryptSecret } from "../lib/crypto";
+import { mapLimit } from "../lib/util";
 import type { Ch, Db, Log } from "../types";
 import type { ScoringTarget, SiblingSpan } from "../evals/types";
 
@@ -46,25 +47,6 @@ type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 // watermark advances no longer silently skips the window (the job survives and
 // is retried), and re-scoring a window is idempotent because scores collapse in
 // ClickHouse (ReplacingMergeTree on score_id = eval_id:target_id).
-
-async function mapLimit<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let cursor = 0;
-  const worker = async () => {
-    while (cursor < items.length) {
-      const idx = cursor++;
-      out[idx] = await fn(items[idx]!);
-    }
-  };
-  await Promise.all(
-    Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker),
-  );
-  return out;
-}
 
 function toScore(passed: boolean | null): number | null {
   return passed === null ? null : passed ? 1 : 0;

@@ -9,8 +9,12 @@ import { project } from "@foglamp/db/schema/project";
 import { env } from "@foglamp/env/server";
 import { eq } from "drizzle-orm";
 
-import { num, toClickHouseDateTime } from "../lib/util";
+import { mapLimit, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db, Log } from "../types";
+
+// Bounded fan-out for the alert sweep — enough to hide per-rule ClickHouse
+// latency without stampeding the cluster.
+const ALERT_EVAL_CONCURRENCY = 8;
 
 // Span-metrics read the metrics_by_minute rollup; eval-metrics read the
 // score rollup for a specific eval (rule.evalId).
@@ -138,7 +142,10 @@ export async function evaluateAlerts(db: Db, ch: Ch, log: Log): Promise<void> {
     .leftJoin(alertState, eq(alertState.ruleId, alertRule.id))
     .where(eq(alertRule.enabled, true));
 
-  for (const { rule, state, projectName } of rows) {
+  // Evaluate rules concurrently (bounded) — each does its own ClickHouse query,
+  // so a serial sweep was O(rules × CH latency). The per-rule try/catch keeps
+  // one failure from aborting the others.
+  await mapLimit(rows, ALERT_EVAL_CONCURRENCY, async ({ rule, state, projectName }) => {
     try {
       const from = new Date(now.getTime() - rule.windowSeconds * 1000);
       const metric = rule.metric as Metric;
@@ -150,7 +157,7 @@ export async function evaluateAlerts(db: Db, ch: Ch, log: Log): Promise<void> {
         // Eval-score alert: aggregate this eval's score rollup over the window.
         if (!rule.evalId) {
           log.error("alert.eval_metric_without_eval", { ruleId: rule.id });
-          continue;
+          return;
         }
         const sw = await queryScoreAlertWindow(ch, {
           projectId: rule.projectId,
@@ -231,20 +238,23 @@ export async function evaluateAlerts(db: Db, ch: Ch, log: Log): Promise<void> {
       if (notifyKind) {
         const conditionLabel = `${COMPARISON_SYMBOLS[comparison]} ${formatMetricValue(metric, threshold)}`;
         const baseUrl = env.CORS_ORIGIN.replace(/\/$/, "");
-        for (const channel of rule.channels) {
-          if (channel.type !== "email") continue;
-          await sendAlertEmail({
-            to: channel.to,
-            kind: notifyKind,
-            ruleName: rule.name,
-            projectName,
-            metricLabel: METRIC_LABELS[metric] ?? metric,
-            conditionLabel,
-            value: formatMetricValue(metric, value),
-            windowLabel: formatWindow(rule.windowSeconds),
-            url: `${baseUrl}/alerts`,
-          });
-        }
+        await Promise.all(
+          rule.channels
+            .filter((channel) => channel.type === "email")
+            .map((channel) =>
+              sendAlertEmail({
+                to: channel.to,
+                kind: notifyKind,
+                ruleName: rule.name,
+                projectName,
+                metricLabel: METRIC_LABELS[metric] ?? metric,
+                conditionLabel,
+                value: formatMetricValue(metric, value),
+                windowLabel: formatWindow(rule.windowSeconds),
+                url: `${baseUrl}/alerts`,
+              }),
+            ),
+        );
       }
     } catch (err) {
       // One bad rule (CH hiccup, email failure) must not abort the sweep.
@@ -253,5 +263,5 @@ export async function evaluateAlerts(db: Db, ch: Ch, log: Log): Promise<void> {
         error: err instanceof Error ? err.message : String(err),
       });
     }
-  }
+  });
 }

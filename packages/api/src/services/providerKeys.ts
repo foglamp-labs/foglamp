@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 
 import { encryptSecret, isSecretsConfigured } from "../lib/crypto";
 import type { Db } from "../types";
-import { ADMIN, requireOrgRole, requireProjectAccess } from "./access";
+import { ADMIN, assertOrgRole, requireProjectAccess } from "./access";
 
 export type ProviderName = "google" | "openai" | "anthropic";
 
@@ -40,7 +40,7 @@ export async function upsertProviderKey(
   input: { projectId: string; provider: ProviderName; key: string; label?: string },
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
   if (!isSecretsConfigured()) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
@@ -78,7 +78,7 @@ export async function deleteProviderKey(
   input: { projectId: string; provider: ProviderName },
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
-  await requireOrgRole(db, userId, proj.orgId, [...ADMIN]);
+  assertOrgRole(proj.role, ADMIN);
   await db
     .delete(providerCredential)
     .where(

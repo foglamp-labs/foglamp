@@ -656,4 +656,29 @@ GROUP BY project_id, bucket, span_type, model_id, agent_name`,
       ),
     ],
   },
+  {
+    // `org_id` (added in 0008) is filtered by the retention UPDATE
+    // (`ALTER TABLE spans UPDATE ... WHERE org_id = ?`) but is neither in the
+    // ORDER BY nor indexed, so that mutation rewrites every granule in every
+    // partition. A bloom_filter skip index lets ClickHouse prune granules whose
+    // org_id set can't match. MATERIALIZE builds it over existing parts (async
+    // background mutation); new inserts index automatically.
+    id: "0016_org_id_index",
+    statements: [
+      `ALTER TABLE spans ADD INDEX IF NOT EXISTS idx_org_id org_id TYPE bloom_filter GRANULARITY 1`,
+      `ALTER TABLE spans MATERIALIZE INDEX idx_org_id`,
+    ],
+  },
+  {
+    // The eval planner filters `ingested_at > watermark AND ingested_at <= now`
+    // on every tick. `ingested_at` is the ReplacingMergeTree version column but
+    // isn't in the ORDER BY, so the window can't prune — it scans every span for
+    // the project. A minmax index (better than bloom_filter for range queries)
+    // skips granules whose [min,max] ingested_at can't overlap the window.
+    id: "0017_ingested_at_index",
+    statements: [
+      `ALTER TABLE spans ADD INDEX IF NOT EXISTS idx_ingested_at ingested_at TYPE minmax GRANULARITY 4`,
+      `ALTER TABLE spans MATERIALIZE INDEX idx_ingested_at`,
+    ],
+  },
 ];

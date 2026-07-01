@@ -23,7 +23,7 @@ import { Streamdown } from "streamdown";
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CopyButton } from "@/components/app/copy-button";
 import { HEAT_SHADES } from "@/components/app/heat-cell";
-import { useDelayedLoading } from "@/components/app/data-table";
+import { useDelayedLoading } from "@/components/app/hooks";
 import { markdownComponents } from "@/components/app/markdown";
 import { navItem } from "@/components/app/nav";
 import {

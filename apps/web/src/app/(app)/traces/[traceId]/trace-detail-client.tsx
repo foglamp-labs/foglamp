@@ -40,7 +40,7 @@ import { AgentIcon } from "@/components/app/agent-icon";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { useShikiHtml } from "@/components/app/code-block";
 import { CopyButton } from "@/components/app/copy-button";
-import { useDelayedLoading } from "@/components/app/data-table";
+import { useDelayedLoading } from "@/components/app/hooks";
 import {
 	type EvalMeta,
 	ScoreRow,

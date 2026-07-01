@@ -59,7 +59,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ComponentType, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { useDelayedLoading } from "@/components/app/data-table";
+import { useDelayedLoading } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
   EmptyState,

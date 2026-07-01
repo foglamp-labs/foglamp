@@ -81,16 +81,29 @@ export async function getOrgPlan(orgId: string): Promise<OrgPlan> {
     return { plan: "unmetered", limits: UNLIMITED, ...calendarMonth() };
   }
 
-  const orgRows = await db
+  // One round-trip: org overrides LEFT JOINed with any active subscription.
+  // getOrgPlan runs on every write mutation, so we avoid the second query even
+  // though the override path (below) usually makes the subscription columns moot.
+  const rows = await db
     .select({
       planOverride: organization.planOverride,
       limitsOverride: organization.limitsOverride,
       overrideExpiresAt: organization.overrideExpiresAt,
+      subPlan: subscription.plan,
+      subPeriodStart: subscription.periodStart,
+      subPeriodEnd: subscription.periodEnd,
     })
     .from(organization)
+    .leftJoin(
+      subscription,
+      and(
+        eq(subscription.referenceId, organization.id),
+        inArray(subscription.status, ACTIVE_STATUSES),
+      ),
+    )
     .where(eq(organization.id, orgId))
     .limit(1);
-  const org = orgRows[0];
+  const org = rows[0];
 
   // 1. Enterprise / manual override (sales-led or timed comp grant) — wins
   // over everything while live. Expiry is checked at read time, so lapsed
@@ -107,28 +120,12 @@ export async function getOrgPlan(orgId: string): Promise<OrgPlan> {
   }
 
   // 2. Active subscription (Stripe-managed).
-  const subRows = await db
-    .select({
-      plan: subscription.plan,
-      status: subscription.status,
-      periodStart: subscription.periodStart,
-      periodEnd: subscription.periodEnd,
-    })
-    .from(subscription)
-    .where(
-      and(
-        eq(subscription.referenceId, orgId),
-        inArray(subscription.status, ACTIVE_STATUSES),
-      ),
-    )
-    .limit(1);
-  const sub = subRows[0];
-  if (sub && sub.plan === "pro") {
+  if (org && org.subPlan === "pro") {
     return {
       plan: "pro",
       limits: PLAN_LIMITS.pro,
-      periodStart: sub.periodStart ?? calendarMonth().periodStart,
-      periodEnd: sub.periodEnd ?? calendarMonth().periodEnd,
+      periodStart: org.subPeriodStart ?? calendarMonth().periodStart,
+      periodEnd: org.subPeriodEnd ?? calendarMonth().periodEnd,
     };
   }
 

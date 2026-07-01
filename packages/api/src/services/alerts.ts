@@ -89,8 +89,18 @@ export async function listAlerts(db: Db, userId: string, projectId: string) {
 export async function createAlert(db: Db, userId: string, input: AlertRuleInput) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
   // Eval-score alerts reference an eval — verify it's one the caller can access
-  // (prevents pointing an alert at another org's eval id).
-  if (input.evalId) await requireEvalAccess(db, userId, input.evalId);
+  // AND that it lives in this alert's project. Otherwise the evaluator queries
+  // ClickHouse with a mismatched (projectId, evalId) pair, finds no scores, and
+  // the alert silently fires (or never fires) forever.
+  if (input.evalId) {
+    const ev = await requireEvalAccess(db, userId, input.evalId);
+    if (ev.projectId !== input.projectId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Eval must belong to the same project as the alert",
+      });
+    }
+  }
 
   // Plan limit: cap alerts per org, counted across all its projects.
   const { limits } = await getOrgPlan(proj.orgId);
@@ -108,24 +118,30 @@ export async function createAlert(db: Db, userId: string, input: AlertRuleInput)
     }
   }
 
-  const rows = await db
-    .insert(alertRule)
-    .values({
-      projectId: input.projectId,
-      name: input.name,
-      metric: input.metric,
-      evalId: input.evalId,
-      filters: input.filters,
-      windowSeconds: input.windowSeconds,
-      threshold: String(input.threshold),
-      comparison: input.comparison,
-      enabled: input.enabled ?? true,
-      channels: input.channels,
-    })
-    .returning({ id: alertRule.id });
-  const id = rows[0]!.id;
-  // 1:1 state row so the evaluator can transition ok↔firing without a race.
-  await db.insert(alertState).values({ ruleId: id, status: "ok" });
+  // Rule + its 1:1 state row must land atomically — a crash between the two
+  // inserts would leave a stateless rule the evaluator misreads as "ok" and can
+  // emit a ghost "resolved" event for.
+  const id = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(alertRule)
+      .values({
+        projectId: input.projectId,
+        name: input.name,
+        metric: input.metric,
+        evalId: input.evalId,
+        filters: input.filters,
+        windowSeconds: input.windowSeconds,
+        threshold: String(input.threshold),
+        comparison: input.comparison,
+        enabled: input.enabled ?? true,
+        channels: input.channels,
+      })
+      .returning({ id: alertRule.id });
+    const ruleId = rows[0]!.id;
+    // 1:1 state row so the evaluator can transition ok↔firing without a race.
+    await tx.insert(alertState).values({ ruleId, status: "ok" });
+    return ruleId;
+  });
   return { id };
 }
 
@@ -134,8 +150,16 @@ export async function updateAlert(
   userId: string,
   input: { ruleId: string } & Partial<Omit<AlertRuleInput, "projectId">>,
 ) {
-  await requireRuleAccess(db, userId, input.ruleId);
-  if (input.evalId) await requireEvalAccess(db, userId, input.evalId);
+  const rule = await requireRuleAccess(db, userId, input.ruleId);
+  if (input.evalId) {
+    const ev = await requireEvalAccess(db, userId, input.evalId);
+    if (ev.projectId !== rule.projectId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Eval must belong to the same project as the alert",
+      });
+    }
+  }
   await db
     .update(alertRule)
     .set({

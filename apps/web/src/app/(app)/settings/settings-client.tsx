@@ -51,7 +51,7 @@ import { toast } from "sonner";
 import { AnimatedApiKey } from "@/components/app/animated-api-key";
 import { CopyIcon } from "@/components/app/copy-icon";
 import { useCopied } from "@/components/app/use-copied";
-import { useDelayedLoading } from "@/components/app/data-table";
+import { useDelayedLoading } from "@/components/app/hooks";
 import { EmptyState, TableSkeleton } from "@/components/app/page-parts";
 import { ApiKeysHeader } from "./header";
 import { useProject } from "@/components/app/project-context";

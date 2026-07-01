@@ -43,9 +43,9 @@ import {
   SortableHead,
   ToggleChip,
   Toolbar,
-  useDelayedLoading,
   useTableSort,
 } from "@/components/app/data-table";
+import { useDelayedLoading } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
   type FlowNode,
@@ -573,11 +573,9 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">
-                              {r.displayName ?? (
-                                <span className="font-mono text-xs text-muted-foreground">
-                                  {r.workflowRunId}
-                                </span>
-                              )}
+                              <span className="font-mono text-xs text-muted-foreground">
+                                {r.workflowRunId}
+                              </span>
                             </span>
                             {r.errorCount > 0 && (
                               <Badge

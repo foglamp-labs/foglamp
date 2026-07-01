@@ -3,7 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, use, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { trpc } from "@/utils/trpc";
 
@@ -70,20 +77,25 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, next);
   }, [projects, selected]);
 
-  const setProjectId = (id: string) => {
-    if (id === selected) return;
-    setSelected(id);
-    if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, id);
-    const [section, ...rest] = pathname.split("/").filter(Boolean);
-    if (
-      section &&
-      rest.length > 0 &&
-      PROJECT_SCOPED_SECTIONS.has(section) &&
-      !ORG_SCOPED_PATHS.has(pathname)
-    ) {
-      router.push(`/${section}` as Route);
-    }
-  };
+  // Must close over the CURRENT pathname/router — memoizing on stale values
+  // would send a project switch from a detail route to the wrong section.
+  const setProjectId = useCallback(
+    (id: string) => {
+      if (id === selected) return;
+      setSelected(id);
+      if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, id);
+      const [section, ...rest] = pathname.split("/").filter(Boolean);
+      if (
+        section &&
+        rest.length > 0 &&
+        PROJECT_SCOPED_SECTIONS.has(section) &&
+        !ORG_SCOPED_PATHS.has(pathname)
+      ) {
+        router.push(`/${section}` as Route);
+      }
+    },
+    [selected, pathname, router],
+  );
 
   const value = useMemo<ProjectContextValue>(() => {
     const project = projects.find((p) => p.id === selected) ?? null;
@@ -94,7 +106,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       setProjectId,
       isLoading,
     };
-  }, [projects, selected, isLoading]);
+  }, [projects, selected, isLoading, setProjectId]);
 
   return <ProjectContext value={value}>{children}</ProjectContext>;
 }

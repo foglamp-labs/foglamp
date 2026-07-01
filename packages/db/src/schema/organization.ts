@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { index, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 import { user } from "./auth";
@@ -72,7 +72,12 @@ export const invitation = pgTable(
     expiresAt: timestamp("expires_at").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("invitation_organizationId_idx").on(table.organizationId)],
+  (table) => [
+    index("invitation_organizationId_idx").on(table.organizationId),
+    // Sign-in resolves pending invites by lower(email) for users with no org
+    // yet; without this the lookup is a full scan on every such sign-in.
+    index("invitation_email_lower_idx").on(sql`lower(${table.email})`),
+  ],
 );
 
 export const organizationRelations = relations(organization, ({ many }) => ({

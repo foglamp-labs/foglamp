@@ -92,10 +92,9 @@ import {
 	SortableHead,
 	Toolbar,
 	sortRows,
-	useDelayedLoading,
 	useTableSort,
-	useTextFilter,
 } from "@/components/app/data-table";
+import { useDelayedLoading, useTextFilter } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
 	EmptyState,

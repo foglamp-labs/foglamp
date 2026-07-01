@@ -50,11 +50,8 @@ import { toast } from "sonner";
 
 import { CopyButton } from "@/components/app/copy-button";
 import { pageWindow } from "@/components/app/trend-charts";
-import {
-	SortableHead,
-	useDelayedLoading,
-	useTableSort,
-} from "@/components/app/data-table";
+import { SortableHead, useTableSort } from "@/components/app/data-table";
+import { useDelayedLoading } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
 	EmptyState,
