@@ -1,7 +1,6 @@
-// Resolve a favicon through the SAME-ORIGIN proxy (app/api/favicon/route.ts).
-// Never hit the external favicon service directly from the browser — a
-// cross-origin <img> taints the html-to-image export canvas and the logos
-// vanish from the downloaded PNG.
+// Resolve a favicon through the same-origin proxy (app/api/favicon/route.ts),
+// which fetches the upstream favicon service server-side and caches it — keeps
+// the browser on a single origin and avoids hammering the external service.
 
 export function faviconUrl(domain: string): string {
   return `/api/favicon?domain=${encodeURIComponent(domain)}`;

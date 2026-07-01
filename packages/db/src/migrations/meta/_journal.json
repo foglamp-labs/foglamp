@@ -64,6 +64,13 @@
       "when": 1782871461139,
       "tag": "0008_condemned_jack_power",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782872044351,
+      "tag": "0009_sudden_champions",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@foglamp/ui/lib/utils";
 import { useState, type ReactNode } from "react";
 
 import { faviconUrl } from "./favicon";
@@ -8,7 +9,7 @@ import { faviconUrl } from "./favicon";
 export function BrandMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 96 48" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="24" cy="24" r="24" className="brand-lead" />
+      <circle cx="24" cy="24" r="24" className="fill-foreground" />
       <circle cx="48" cy="24" r="24" fill="#0090FD" />
       <circle cx="72" cy="24" r="24" fill="#FF5513" />
     </svg>
@@ -16,17 +17,18 @@ export function BrandMark({ className }: { className?: string }) {
 }
 
 /**
- * A favicon image resolved through the same-origin proxy, with a glyph fallback
- * when there's no domain or the image fails to load.
+ * A favicon image resolved through the same-origin proxy, with a glyph/letter
+ * fallback when there's no domain or the image fails to load. Size and rounding
+ * come from `className`.
  */
 export function Favicon({
   domain,
   fallback,
-  size = 20,
+  className,
 }: {
   domain?: string;
   fallback: ReactNode;
-  size?: number;
+  className?: string;
 }) {
   const [failed, setFailed] = useState(false);
   if (!domain || failed) return <>{fallback}</>;
@@ -35,9 +37,7 @@ export function Favicon({
     <img
       src={faviconUrl(domain)}
       alt=""
-      width={size}
-      height={size}
-      className="favicon"
+      className={cn("corner-squircle object-contain", className)}
       onError={() => setFailed(true)}
     />
   );

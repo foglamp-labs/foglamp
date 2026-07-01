@@ -1,6 +1,6 @@
-// The fixed visual vocabulary for node kinds. The agent only tags a node with a
-// `kind`; the color and glyph are decided here — that's what keeps posters
-// consistent across every repo.
+// The fixed visual vocabulary for node kinds, expressed with the design system:
+// each kind maps to a Badge variant plus standard Tailwind palette classes for
+// the node's accent bar and icon tint. The agent only tags a node with a `kind`.
 
 import type { NodeKind } from "@foglamp/contracts/poster";
 import {
@@ -15,21 +15,69 @@ import {
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 
+type BadgeVariant = "outline" | "amber" | "orange" | "blue" | "violet" | "emerald" | "rose";
+
 export interface KindStyle {
   label: string;
-  /** CSS custom property holding this kind's accent color (see poster.css). */
-  colorVar: string;
   Glyph: ComponentType<IconProps>;
+  /** Badge variant used for inline embeds and the legend. */
+  badge: BadgeVariant;
+  /** Left accent bar background. */
+  bar: string;
+  /** Node icon chip (tint background + foreground). */
+  icon: string;
 }
 
 export const KIND_STYLES: Record<NodeKind, KindStyle> = {
-  entry: { label: "Entry", colorVar: "--k-entry", Glyph: IconBolt },
-  cron: { label: "Cron", colorVar: "--k-cron", Glyph: IconClockHour4 },
-  agent: { label: "Agent", colorVar: "--k-agent", Glyph: IconSparkles },
-  model: { label: "Model", colorVar: "--k-model", Glyph: IconBrain },
-  tool: { label: "Tool", colorVar: "--k-tool", Glyph: IconTool },
-  store: { label: "Store", colorVar: "--k-store", Glyph: IconDatabase },
-  external: { label: "External", colorVar: "--k-external", Glyph: IconWorld },
+  entry: {
+    label: "Entry",
+    Glyph: IconBolt,
+    badge: "outline",
+    bar: "bg-foreground/30",
+    icon: "bg-muted text-foreground",
+  },
+  cron: {
+    label: "Cron",
+    Glyph: IconClockHour4,
+    badge: "amber",
+    bar: "bg-amber-500",
+    icon: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  agent: {
+    label: "Agent",
+    Glyph: IconSparkles,
+    badge: "orange",
+    bar: "bg-orange-500",
+    icon: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  },
+  model: {
+    label: "Model",
+    Glyph: IconBrain,
+    badge: "blue",
+    bar: "bg-blue-500",
+    icon: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+  tool: {
+    label: "Tool",
+    Glyph: IconTool,
+    badge: "violet",
+    bar: "bg-violet-500",
+    icon: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  },
+  store: {
+    label: "Store",
+    Glyph: IconDatabase,
+    badge: "emerald",
+    bar: "bg-emerald-500",
+    icon: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  external: {
+    label: "External",
+    Glyph: IconWorld,
+    badge: "rose",
+    bar: "bg-rose-500",
+    icon: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  },
 };
 
 export const KIND_ORDER: NodeKind[] = [

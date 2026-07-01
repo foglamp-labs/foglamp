@@ -1,8 +1,8 @@
 import { getGoogleFavicon } from "@/lib/favicon";
 
-// Same-origin favicon proxy for the poster renderer. The board loads logos from
-// here (not directly from gstatic) so the html-to-image Download canvas stays
-// untainted — a cross-origin <img> would otherwise strip the logos from the PNG.
+// Same-origin favicon proxy for the poster renderer: fetches the upstream
+// favicon service server-side and re-serves it with a long cache, so the board
+// loads logos from this origin instead of hitting gstatic per render.
 export async function GET(req: Request): Promise<Response> {
   const domain = new URL(req.url).searchParams.get("domain");
   if (!domain) return new Response(null, { status: 400 });

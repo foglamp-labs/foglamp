@@ -10,8 +10,6 @@ import {
 	workflowRunSummary,
 	workflowRunTimeseries,
 } from "@foglamp/clickhouse";
-import { workflowRunName } from "@foglamp/db/schema/workflowRun";
-import { and, eq, inArray } from "drizzle-orm";
 
 import {
 	decimalOrNull,
@@ -134,29 +132,9 @@ export async function getWorkflowRunList(
 		offset: input.offset,
 	});
 
-	// Overlay user-assigned display names (absence → raw run id in the UI).
-	const ids = runs.map((r) => r.workflow_run_id).filter(Boolean);
-	const names =
-		ids.length > 0
-			? await db
-					.select({
-						workflowRunId: workflowRunName.workflowRunId,
-						name: workflowRunName.name,
-					})
-					.from(workflowRunName)
-					.where(
-						and(
-							eq(workflowRunName.projectId, input.projectId),
-							inArray(workflowRunName.workflowRunId, ids),
-						),
-					)
-			: [];
-	const nameById = new Map(names.map((n) => [n.workflowRunId, n.name]));
-
 	return runs.map((r) => ({
 		workflowRunId: r.workflow_run_id,
 		workflowName: r.workflow_name || null,
-		displayName: nameById.get(r.workflow_run_id) ?? null,
 		startTime: r.run_start,
 		endTime: r.run_end,
 		durationMs: num(r.duration_ms),
@@ -239,29 +217,7 @@ export async function getWorkflowRunTimeseries(
 	}));
 }
 
-/** Set/replace the display name for a run (upsert on (projectId, runId)). */
-export async function renameWorkflowRun(
-	db: Db,
-	userId: string,
-	input: { projectId: string; workflowRunId: string; name: string },
-) {
-	await requireProjectAccess(db, userId, input.projectId);
-	await db
-		.insert(workflowRunName)
-		.values({
-			projectId: input.projectId,
-			workflowRunId: input.workflowRunId,
-			name: input.name,
-			renamedBy: userId,
-		})
-		.onConflictDoUpdate({
-			target: [workflowRunName.projectId, workflowRunName.workflowRunId],
-			set: { name: input.name, renamedBy: userId },
-		});
-	return { workflowRunId: input.workflowRunId, name: input.name };
-}
-
-/** Traces inside one run (the run timeline), with its display name. */
+/** Traces inside one run (the run timeline). */
 export async function getWorkflowRunDetail(
 	db: Db,
 	ch: Ch,
@@ -270,21 +226,9 @@ export async function getWorkflowRunDetail(
 ) {
 	await requireProjectAccess(db, userId, input.projectId);
 
-	const nameRows = await db
-		.select({ name: workflowRunName.name })
-		.from(workflowRunName)
-		.where(
-			and(
-				eq(workflowRunName.projectId, input.projectId),
-				eq(workflowRunName.workflowRunId, input.workflowRunId),
-			),
-		)
-		.limit(1);
-
 	const traces = await listTracesByWorkflowRun(ch, input);
 	return {
 		workflowRunId: input.workflowRunId,
-		displayName: nameRows[0]?.name ?? null,
 		traces: traces.map((r) => ({
 			traceId: r.trace_id,
 			traceName: r.trace_name || null,

@@ -7,7 +7,6 @@ import {
 	getWorkflowRunList,
 	getWorkflowRunSummary,
 	getWorkflowRunTimeseries,
-	renameWorkflowRun,
 } from "../services/workflowRuns";
 
 const runSort = z
@@ -78,17 +77,5 @@ export const workflowRunsRouter = router({
 		.input(z.object({ projectId: z.string(), workflowRunId: z.string() }))
 		.query(({ ctx, input }) =>
 			getWorkflowRunDetail(ctx.db, ctx.ch, ctx.session.user.id, input),
-		),
-
-	rename: protectedProcedure
-		.input(
-			z.object({
-				projectId: z.string(),
-				workflowRunId: z.string(),
-				name: z.string().min(1).max(200),
-			}),
-		)
-		.mutation(({ ctx, input }) =>
-			renameWorkflowRun(ctx.db, ctx.session.user.id, input),
 		),
 });

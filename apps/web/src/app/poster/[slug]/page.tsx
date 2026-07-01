@@ -3,7 +3,7 @@ import { env } from "@foglamp/env/web";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { PosterBoard } from "@/components/poster/PosterBoard";
+import { PosterBoard } from "@/components/poster/poster-board";
 
 // SSR uses the internal server URL when set (private network), else the public one.
 const SERVER = env.INTERNAL_SERVER_URL ?? env.NEXT_PUBLIC_SERVER_URL;

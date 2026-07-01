@@ -1,53 +1,54 @@
 // Deterministic flow-map layout. The agent emits an unordered node-graph; dagre
 // turns it into a stable left-to-right layered diagram. Same input → same
-// coordinates every time, so the picture is reproducible, not improvised.
+// coordinates every time. Nodes carry their own width/height (they vary now that
+// agents embed their models/tools), so the caller sizes them and we lay out.
 
-import type { GraphEdge, GraphNode } from "@foglamp/contracts/poster";
+import type { GraphEdge } from "@foglamp/contracts/poster";
 import dagre from "dagre";
 
-export const NODE_W = 190;
-export const NODE_H = 62;
-
-export interface PlacedNode extends GraphNode {
-  x: number;
-  y: number;
+export interface SizedNode {
+  id: string;
+  width: number;
+  height: number;
 }
+
+export type PlacedNode<T extends SizedNode> = T & { x: number; y: number };
 
 export interface PlacedEdge extends GraphEdge {
   points: { x: number; y: number }[];
 }
 
-export interface Layout {
-  nodes: PlacedNode[];
+export interface Layout<T extends SizedNode> {
+  nodes: PlacedNode<T>[];
   edges: PlacedEdge[];
   width: number;
   height: number;
 }
 
-export function layoutGraph(nodes: GraphNode[], edges: GraphEdge[]): Layout {
+export function layoutGraph<T extends SizedNode>(nodes: T[], edges: GraphEdge[]): Layout<T> {
   const g = new dagre.graphlib.Graph();
   g.setGraph({
     rankdir: "LR",
-    nodesep: 26,
-    ranksep: 84,
-    marginx: 24,
-    marginy: 24,
+    nodesep: 28,
+    ranksep: 96,
+    marginx: 16,
+    marginy: 16,
     ranker: "network-simplex",
   });
   g.setDefaultEdgeLabel(() => ({}));
 
-  for (const n of nodes) g.setNode(n.id, { width: NODE_W, height: NODE_H });
+  for (const n of nodes) g.setNode(n.id, { width: n.width, height: n.height });
   for (const e of edges) g.setEdge(e.from, e.to);
 
   dagre.layout(g);
 
   const byId = new Map(nodes.map((n) => [n.id, n]));
-  const placed: PlacedNode[] = [];
+  const placed: PlacedNode<T>[] = [];
   for (const id of g.nodes()) {
     const node = byId.get(id);
     if (!node) continue;
     const { x, y } = g.node(id); // center coords
-    placed.push({ ...node, x: x - NODE_W / 2, y: y - NODE_H / 2 });
+    placed.push({ ...node, x: x - node.width / 2, y: y - node.height / 2 });
   }
 
   const placedEdges: PlacedEdge[] = edges.map((e) => {
@@ -61,8 +62,8 @@ export function layoutGraph(nodes: GraphNode[], edges: GraphEdge[]): Layout {
 
 /**
  * A small arrowhead "V" path at the target end of a polyline. Drawn as a plain
- * path (not an SVG <marker>) because html-to-image rasterizes markers
- * unreliably — they come out as solid black blobs in the exported PNG.
+ * path (rather than an SVG <marker>) so its stroke inherits the edge styling
+ * directly and renders consistently.
  */
 export function arrowHead(points: { x: number; y: number }[], len = 7): string {
   if (points.length < 2) return "";

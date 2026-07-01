@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { Logo } from "@/components/marketing/logo";
 import { POSTER_PROMPT } from "@/lib/poster-prompt";
-import { CopyButton } from "./CopyButton";
+import { CopyButton } from "./copy-button";
 
 export const metadata: Metadata = {
   title: "Codebase Poster · Foglamp",
