@@ -12,6 +12,7 @@ import { KIND_STYLES } from "./kinds";
 import {
   arrowHead,
   edgePath,
+  labelAnchor,
   type Layout,
   layoutGraph,
   type SizedNode,
@@ -88,7 +89,10 @@ export function FlowMap({
       const max = n.x + n.width;
       if (!cur) xs.set(key, { min, max });
       else
-        xs.set(key, { min: Math.min(cur.min, min), max: Math.max(cur.max, max) });
+        xs.set(key, {
+          min: Math.min(cur.min, min),
+          max: Math.max(cur.max, max),
+        });
     }
     return [...xs.values()].sort((a, b) => a.min - b.min);
   }, [layout]);
@@ -134,8 +138,7 @@ export function FlowMap({
       folded.nodes
         .filter(
           (n) =>
-            n.kind === focusKind ||
-            n.embeds.some((em) => em.kind === focusKind)
+            n.kind === focusKind || n.embeds.some((em) => em.kind === focusKind)
         )
         .map((n) => n.id)
     );
@@ -246,7 +249,7 @@ export function FlowMap({
         onPointerLeave={() => {
           drag.current = null;
         }}
-        className="absolute inset-0 cursor-grab touch-none overflow-hidden bg-[linear-gradient(color-mix(in_oklab,var(--border)_28%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--border)_28%,transparent)_1px,transparent_1px)] bg-size-[56px_56px] [background-position:center] active:cursor-grabbing"
+        className="absolute inset-0 cursor-grab touch-none overflow-hidden bg-[linear-gradient(color-mix(in_oklab,var(--border)_16%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--border)_16%,transparent)_1px,transparent_1px)] bg-size-[56px_56px] [background-position:center] active:cursor-grabbing"
       >
         {layout ? (
           <div
@@ -262,7 +265,7 @@ export function FlowMap({
               i % 2 === 1 ? (
                 <div
                   key={i}
-                  className="absolute rounded-2xl bg-foreground/[0.02]"
+                  className="absolute rounded-2xl dark:bg-neutral-900/70 bg-card/70"
                   style={{
                     left: lane.min - 18,
                     width: lane.max - lane.min + 36,
@@ -339,8 +342,9 @@ export function FlowMap({
             </svg>
 
             {layout.edges.map((e, i) => {
-              if (!e.label || e.points.length === 0) return null;
-              const mid = e.points[Math.floor(e.points.length / 2)]!;
+              if (!e.label) return null;
+              const mid = labelAnchor(e.points);
+              if (!mid) return null;
               const delay = delayAt(nodeById.get(e.from)?.x ?? 0) + 0.6;
               return (
                 <motion.span
@@ -392,14 +396,14 @@ export function FlowMap({
                       setTraceRoot((cur) => (cur === n.id ? null : n.id));
                     }}
                     className={cn(
-                      "border-overlay flex h-full flex-col overflow-hidden rounded-2xl corner-squircle bg-card text-card-foreground shadow-(--custom-shadow) transition-opacity duration-300",
+                      "border-overlay flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl corner-squircle bg-card text-card-foreground shadow-(--custom-shadow) transition-opacity duration-300",
                       dim && "opacity-25"
                     )}
                   >
-                    <div className="flex h-14 flex-none items-center gap-2.5 px-4">
+                    <div className="flex h-14 flex-none items-center gap-2.5 px-3">
                       <span
                         className={cn(
-                          "flex size-7 flex-none items-center justify-center rounded-md",
+                          "flex size-7 flex-none items-center justify-center rounded-md border border-border/15",
                           style.icon
                         )}
                       >
@@ -459,42 +463,43 @@ export function FlowMap({
                 </motion.div>
               );
             })}
-
-            {/* detail popover for the traced node */}
-            {tracedNode ? (
-              <motion.div
-                key={tracedNode.id}
-                className="border-overlay absolute z-30 w-60 rounded-xl bg-card p-3 shadow-(--custom-shadow)"
-                style={{
-                  left: tracedNode.x,
-                  top: tracedNode.y + tracedNode.height + 10,
-                }}
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  <span
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      KIND_STYLES[tracedNode.kind].bar
-                    )}
-                  />
-                  {KIND_STYLES[tracedNode.kind].label}
-                </div>
-                <div className="mt-1 text-sm font-medium">
-                  {tracedNode.label}
-                </div>
-                {tracedNode.detail ?? tracedNode.sub ? (
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {tracedNode.detail ?? tracedNode.sub}
-                  </p>
-                ) : null}
-              </motion.div>
-            ) : null}
           </div>
         ) : null}
       </div>
+
+      {/* Detail popover for the traced node. Rendered OUTSIDE the pan/zoom
+          transform (positioned in screen space) so nothing on the map — edges,
+          labels, pulses — can ever paint over it, and it stays readable at any
+          zoom level. */}
+      {tracedNode ? (
+        <motion.div
+          key={tracedNode.id}
+          className="border-overlay absolute z-30 w-60 rounded-xl bg-card p-3 shadow-(--custom-shadow)"
+          style={{
+            left: t.x + tracedNode.x * t.k,
+            top: t.y + (tracedNode.y + tracedNode.height + 10) * t.k,
+          }}
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <span
+              className={cn(
+                "size-1.5 rounded-full",
+                KIND_STYLES[tracedNode.kind].bar
+              )}
+            />
+            {KIND_STYLES[tracedNode.kind].label}
+          </div>
+          <div className="mt-1 text-sm font-medium">{tracedNode.label}</div>
+          {(tracedNode.detail ?? tracedNode.sub) ? (
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {tracedNode.detail ?? tracedNode.sub}
+            </p>
+          ) : null}
+        </motion.div>
+      ) : null}
     </section>
   );
 }

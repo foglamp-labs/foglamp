@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { CtaSection } from "@/components/marketing/landing/cta";
 import { PosterHero } from "./poster-hero";
+import { StoryVariants } from "./story-variants";
 
 export const metadata: Metadata = {
   title: "Codebase Poster",
@@ -19,6 +20,7 @@ export default function PosterLandingPage() {
   return (
     <div className="flex flex-col gap-24 pb-32">
       <PosterHero />
+      <StoryVariants />
       <CtaSection />
     </div>
   );

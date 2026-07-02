@@ -4,10 +4,19 @@
 // Same input → same coordinates. Async because elkjs is promise-based.
 
 import type { GraphEdge } from "@foglamp/contracts/poster";
-import type { ElkNode } from "elkjs/lib/elk-api";
-import ELK from "elkjs/lib/elk.bundled.js";
+import type { ELK, ElkNode } from "elkjs/lib/elk-api";
 
-const elk = new ELK();
+// elkjs probes for Worker at construction, which explodes during SSR/module
+// eval — so it's imported and constructed lazily, in the browser only
+// (layoutGraph is only ever called from a useEffect).
+let elkInstance: ELK | null = null;
+async function getElk(): Promise<ELK> {
+  if (!elkInstance) {
+    const { default: ELKCtor } = await import("elkjs/lib/elk.bundled.js");
+    elkInstance = new ELKCtor();
+  }
+  return elkInstance;
+}
 
 export interface SizedNode {
   id: string;
@@ -53,6 +62,7 @@ export async function layoutGraph<T extends SizedNode>(
       targets: [e.to],
     })),
   };
+  const elk = await getElk();
   const res = await elk.layout(graphInput);
 
   const childById = new Map((res.children ?? []).map((c) => [c.id, c]));
@@ -94,6 +104,36 @@ export function arrowHead(points: { x: number; y: number }[], len = 7): string {
   const a2x = p.x - len * Math.cos(ang + spread);
   const a2y = p.y - len * Math.sin(ang + spread);
   return `M ${a1x} ${a1y} L ${p.x} ${p.y} L ${a2x} ${a2y}`;
+}
+
+/**
+ * Where to hang an edge label: the midpoint of the polyline's LONGEST segment.
+ * Orthogonal routes bend right at node borders, so the naive "middle point of
+ * the array" lands labels on top of nodes; the longest segment is the open
+ * channel run where a label has room.
+ */
+export function labelAnchor(points: { x: number; y: number }[]): {
+  x: number;
+  y: number;
+} | null {
+  if (points.length === 0) return null;
+  if (points.length === 1) return points[0]!;
+  let best = 0;
+  let bestLen = -1;
+  for (let i = 0; i < points.length - 1; i++) {
+    const len = Math.hypot(
+      points[i + 1]!.x - points[i]!.x,
+      points[i + 1]!.y - points[i]!.y
+    );
+    if (len > bestLen) {
+      bestLen = len;
+      best = i;
+    }
+  }
+  return {
+    x: (points[best]!.x + points[best + 1]!.x) / 2,
+    y: (points[best]!.y + points[best + 1]!.y) / 2,
+  };
 }
 
 /** Orthogonal polyline → SVG path with rounded corners. */

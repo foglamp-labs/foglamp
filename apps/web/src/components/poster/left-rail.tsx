@@ -91,7 +91,7 @@ export function LeftRail({ data }: { data: PosterData }) {
   const { project, stats, topModels, topTools, topIntegrations } = data;
   const personality = derivePersonality(data);
   return (
-    <Card className="border-overlay absolute inset-y-6 left-6 z-20 w-80 overflow-y-auto">
+    <Card className="border-overlay absolute inset-y-6 left-6 z-20 w-80 overflow-y-auto rounded-[44px]">
       <CardContent className="flex h-full flex-col">
         {/* Personality card — Arc-style art block, deterministic per archetype. */}
         <div
@@ -100,12 +100,24 @@ export function LeftRail({ data }: { data: PosterData }) {
             personality.gradient
           )}
         >
+          {/* film grain — feTurbulence speckle; overlay blend so it reads on the
+              bright gradient (screen-only specks vanish on light backgrounds) */}
+          <figure
+            aria-hidden
+            className="pointer-events-none absolute inset-0 opacity-30 mix-blend-overlay filter-[url('#personality-noise-fx')_grayscale(100%)]"
+          >
+            <svg className="size-full">
+              <filter id="personality-noise-fx">
+                <feTurbulence baseFrequency="0.8" />
+              </filter>
+            </svg>
+          </figure>
           {/* pseudo-art: soft light + shade orbs, and a big rotated glyph */}
           <div className="absolute -top-8 -right-2 size-28 rounded-full bg-white/20 blur-2xl" />
           <div className="absolute -bottom-10 left-6 size-24 rounded-full bg-black/15 blur-2xl" />
           <div className="absolute top-4 left-1/2 size-10 rounded-full bg-white/10 blur-lg" />
-          <personality.Icon className="absolute -right-3 -bottom-5 size-24 rotate-12 text-white/20" />
-          <div className="absolute top-3 left-4 flex items-center gap-1.5 text-white">
+          <personality.Icon className="absolute -right-1 -bottom-7 size-24 rotate-12 text-white/20" />
+          <div className="absolute top-3 left-4 flex items-center gap-1 text-white">
             <personality.Icon className="size-3.5 drop-shadow" />
             <span className="font-display text-sm font-semibold tracking-tight drop-shadow">
               {personality.title}
@@ -116,15 +128,15 @@ export function LeftRail({ data }: { data: PosterData }) {
             href="https://foglamp.dev"
             target="_blank"
             rel="noopener noreferrer"
-            className="absolute top-3.5 right-4 text-white transition-opacity hover:opacity-80"
+            className="absolute top-4.5 right-4 text-white transition-opacity hover:opacity-80"
           >
             <BrandMark className="h-2.5 w-auto drop-shadow" />
           </a>
           {/* project identity lockup */}
-          <div className="absolute bottom-3 left-4 flex items-center gap-2 text-white">
+          <div className="absolute bottom-3 left-4 flex items-center gap-[7px] text-white">
             <Favicon
               domain={project.iconDomain}
-              className="size-4 rounded-sm"
+              className="size-3.5 rounded-md"
               fallback={
                 <span className="font-display text-base font-bold drop-shadow">
                   {project.name.charAt(0)}
@@ -137,7 +149,7 @@ export function LeftRail({ data }: { data: PosterData }) {
           </div>
         </div>
 
-        <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-5">
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-5 px-1">
           <Stat
             value={stats.agents}
             label="Agents"
@@ -165,7 +177,7 @@ export function LeftRail({ data }: { data: PosterData }) {
         </div>
 
         {topModels.length > 0 ? (
-          <section className="mt-5 border-t pt-7 border-muted">
+          <section className="mt-5 border-t pt-7 border-muted px-1">
             <SectionHeader
               label="Models"
               Icon={IconAiAgent}
@@ -192,7 +204,7 @@ export function LeftRail({ data }: { data: PosterData }) {
         ) : null}
 
         {topTools.length > 0 ? (
-          <section className="mt-8">
+          <section className="mt-8 px-1">
             <SectionHeader
               label="Tools"
               Icon={IconTool}
@@ -207,7 +219,7 @@ export function LeftRail({ data }: { data: PosterData }) {
         ) : null}
 
         {topIntegrations.length > 0 ? (
-          <section className="mt-8 pb-12">
+          <section className="mt-8 pb-12 px-1">
             <SectionHeader
               label="Integrations"
               Icon={IconSitemapFilled}

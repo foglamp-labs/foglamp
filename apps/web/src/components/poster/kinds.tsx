@@ -4,14 +4,14 @@
 
 import type { NodeKind } from "@foglamp/contracts/poster";
 import {
-  IconBolt,
-  IconBrain,
-  IconClockHour4,
-  IconDatabase,
+  IconBoltFilled,
+  IconClockFilled,
+  IconDatabaseFilled,
+  IconGhostFilled,
   type IconProps,
-  IconSparkles,
-  IconTool,
-  IconWorld,
+  IconSettingsFilled,
+  IconSparklesFilled,
+  IconWorldFilled,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 
@@ -33,7 +33,7 @@ export interface KindStyle {
 export const KIND_STYLES: Record<NodeKind, KindStyle> = {
   entry: {
     label: "Entry",
-    Glyph: IconBolt,
+    Glyph: IconBoltFilled,
     badge: "outline",
     bar: "bg-foreground/30",
     icon: "bg-muted text-foreground",
@@ -41,7 +41,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
   },
   cron: {
     label: "Cron",
-    Glyph: IconClockHour4,
+    Glyph: IconClockFilled,
     badge: "amber",
     bar: "bg-amber-500",
     icon: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
@@ -49,7 +49,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
   },
   agent: {
     label: "Agent",
-    Glyph: IconSparkles,
+    Glyph: IconGhostFilled,
     badge: "orange",
     bar: "bg-orange-500",
     icon: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
@@ -57,7 +57,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
   },
   model: {
     label: "Model",
-    Glyph: IconBrain,
+    Glyph: IconSparklesFilled,
     badge: "blue",
     bar: "bg-blue-500",
     icon: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
@@ -65,7 +65,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
   },
   tool: {
     label: "Tool",
-    Glyph: IconTool,
+    Glyph: IconSettingsFilled,
     badge: "violet",
     bar: "bg-violet-500",
     icon: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
@@ -73,7 +73,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
   },
   store: {
     label: "Store",
-    Glyph: IconDatabase,
+    Glyph: IconDatabaseFilled,
     badge: "emerald",
     bar: "bg-emerald-500",
     icon: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
@@ -81,7 +81,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
   },
   external: {
     label: "External",
-    Glyph: IconWorld,
+    Glyph: IconWorldFilled,
     badge: "rose",
     bar: "bg-rose-500",
     icon: "bg-rose-500/10 text-rose-600 dark:text-rose-400",

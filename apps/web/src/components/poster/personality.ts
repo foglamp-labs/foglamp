@@ -13,6 +13,8 @@ import {
   IconLeafFilled,
   IconSettingsFilled,
   IconSparklesFilled,
+  IconGhost2Filled,
+  IconGhostFilled,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 
@@ -35,7 +37,7 @@ export function derivePersonality(data: PosterData): Personality {
   if (stats.agents >= 5)
     return {
       title: "Tireless Orchestrator",
-      Icon: IconSparklesFilled,
+      Icon: IconGhostFilled,
       gradient: "from-orange-500 to-amber-400",
     };
   if (crons >= 3)
