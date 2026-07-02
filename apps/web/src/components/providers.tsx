@@ -21,6 +21,9 @@ const MARKETING_PATHS = new Set([
   "/pricing",
   "/privacy",
   "/terms",
+  // The poster LANDING page only — exact match, so /poster/[slug] (which has
+  // its own theme toggle) stays user-switchable.
+  "/poster",
 ]);
 
 function isMarketingPath(pathname: string): boolean {

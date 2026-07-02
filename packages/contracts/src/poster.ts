@@ -60,6 +60,8 @@ const GraphNode = z.object({
   domain: z.string().min(1).max(120).optional(),
   /** One short clarifying line (e.g. a model name under an agent). */
   sub: z.string().max(40).optional(),
+  /** Longer context shown on click (e.g. file path, schedule, what it does). */
+  detail: z.string().max(200).optional(),
 });
 export type GraphNode = z.infer<typeof GraphNode>;
 

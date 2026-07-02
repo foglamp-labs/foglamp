@@ -1,42 +1,55 @@
+"use client";
+
 import type { PosterData, RailItem } from "@foglamp/contracts/poster";
-import { Badge } from "@foglamp/ui/components/badge";
 import { Card, CardContent } from "@foglamp/ui/components/card";
-import { IconBox, IconPlug, type IconProps } from "@tabler/icons-react";
-import type { ComponentType } from "react";
+import { cn } from "@foglamp/ui/lib/utils";
+import NumberFlow from "@number-flow/react";
+import {
+  IconAiAgent,
+  IconBox,
+  IconGhostFilled,
+  IconPlug,
+  type IconProps,
+  IconSitemapFilled,
+  IconTool,
+} from "@tabler/icons-react";
+import { type ComponentType, useEffect, useState } from "react";
 
 import { BrandMark, Favicon } from "./brand";
+import { modelDomain } from "./favicon";
+import { derivePersonality } from "./personality";
 
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const months = [
-    "JAN",
-    "FEB",
-    "MAR",
-    "APR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AUG",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DEC",
-  ];
-  return `${months[(m ?? 1) - 1]} ${d} ${y}`;
-}
-
-function Stat({ value, label }: { value: number; label: string }) {
+function Stat({
+  value,
+  label,
+  Icon,
+  iconClassName,
+}: {
+  value: number;
+  label: string;
+  Icon: ComponentType<IconProps>;
+  iconClassName?: string;
+}) {
+  // Count up from 0 on mount (NumberFlow animates the transition).
+  const [display, setDisplay] = useState(0);
+  useEffect(() => setDisplay(value), [value]);
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs uppercase text-muted-foreground">{label}</span>
-      <span className="font-display text-2xl font-medium tabular-nums">
-        {value}
+    <div className="flex flex-col gap-1.5">
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Icon className={cn("size-[11px]", iconClassName)} />
+        <span className="leading-none">{label}</span>
+      </span>
+      {/* Invisible copy of the final value reserves the width, so the
+          count-up never shifts the layout. */}
+      <span className="relative font-display text-base font-medium tabular-nums">
+        <span className="invisible">{value}</span>
+        <NumberFlow value={display} className="absolute inset-0" />
       </span>
     </div>
   );
 }
 
-function Chip({
+function RailRow({
   item,
   FallbackIcon,
 }: {
@@ -44,74 +57,129 @@ function Chip({
   FallbackIcon: ComponentType<IconProps>;
 }) {
   return (
-    <Badge
-      variant="outline"
-      size="lg"
-      className="gap-1.5 font-normal normal-case"
-    >
+    <li className="flex items-center gap-2">
       <Favicon
         domain={item.domain}
         className="size-3.5 rounded-sm"
-        fallback={<FallbackIcon className="text-muted-foreground" />}
+        fallback={
+          <FallbackIcon className="size-3.5 text-muted-foreground" stroke={2} />
+        }
       />
-      {item.label}
-    </Badge>
+      <span className="text-sm font-medium">{item.label}</span>
+    </li>
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
+function SectionHeader({
+  label,
+  Icon,
+  iconClassName,
+}: {
+  label: string;
+  Icon: ComponentType<IconProps>;
+  iconClassName?: string;
+}) {
   return (
-    <h2 className="mb-3 text-xs uppercase text-muted-foreground">{children}</h2>
+    <h2 className="mb-3 flex items-center gap-1 text-xs text-muted-foreground">
+      <Icon className={cn("size-[11px] opacity-80", iconClassName)} />
+      <span className="leading-none">{label}</span>
+    </h2>
   );
 }
 
 export function LeftRail({ data }: { data: PosterData }) {
   const { project, stats, topModels, topTools, topIntegrations } = data;
+  const personality = derivePersonality(data);
   return (
-    <Card className="absolute inset-y-6 left-6 z-20 w-80 overflow-y-auto">
+    <Card className="border-overlay absolute inset-y-6 left-6 z-20 w-80 overflow-y-auto">
       <CardContent className="flex h-full flex-col">
-        <header className="flex flex-col gap-2">
-          <Favicon
-            domain={project.iconDomain}
-            className="size-8 rounded-xl"
-            fallback={
-              <span className="font-display text-2xl font-bold text-orange-500">
-                {project.name.charAt(0)}
-              </span>
-            }
-          />
-          <h1 className="font-display text-xl font-semibold tracking-tight">
-            {project.name}
-          </h1>
-          {project.tagline ? (
-            <p className="max-w-xs text-sm text-muted-foreground">
-              {project.tagline}
-            </p>
-          ) : null}
-        </header>
+        {/* Personality card — Arc-style art block, deterministic per archetype. */}
+        <div
+          className={cn(
+            "border-overlay relative mb-5 h-28 shrink-0 overflow-hidden rounded-2xl corner-squircle bg-linear-to-br",
+            personality.gradient
+          )}
+        >
+          {/* pseudo-art: soft light + shade orbs, and a big rotated glyph */}
+          <div className="absolute -top-8 -right-2 size-28 rounded-full bg-white/20 blur-2xl" />
+          <div className="absolute -bottom-10 left-6 size-24 rounded-full bg-black/15 blur-2xl" />
+          <div className="absolute top-4 left-1/2 size-10 rounded-full bg-white/10 blur-lg" />
+          <personality.Icon className="absolute -right-3 -bottom-5 size-24 rotate-12 text-white/20" />
+          <div className="absolute top-3 left-4 flex items-center gap-1.5 text-white">
+            <personality.Icon className="size-3.5 drop-shadow" />
+            <span className="font-display text-sm font-semibold tracking-tight drop-shadow">
+              {personality.title}
+            </span>
+          </div>
+          {/* foglamp brand mark */}
+          <a
+            href="https://foglamp.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute top-3.5 right-4 text-white transition-opacity hover:opacity-80"
+          >
+            <BrandMark className="h-2.5 w-auto drop-shadow" />
+          </a>
+          {/* project identity lockup */}
+          <div className="absolute bottom-3 left-4 flex items-center gap-2 text-white">
+            <Favicon
+              domain={project.iconDomain}
+              className="size-4 rounded-sm"
+              fallback={
+                <span className="font-display text-base font-bold drop-shadow">
+                  {project.name.charAt(0)}
+                </span>
+              }
+            />
+            <h1 className="font-display text-base font-semibold tracking-tight drop-shadow">
+              {project.name}
+            </h1>
+          </div>
+        </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-6 border-t pt-6 border-muted">
-          <Stat value={stats.agents} label="Agents" />
-          <Stat value={stats.models} label="Models" />
-          <Stat value={stats.tools} label="Tools" />
-          <Stat value={stats.integrations} label="Integrations" />
+        <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-5">
+          <Stat
+            value={stats.agents}
+            label="Agents"
+            Icon={IconGhostFilled}
+            iconClassName="mb-px opacity-70"
+          />
+          <Stat
+            value={stats.models}
+            label="Models"
+            Icon={IconAiAgent}
+            iconClassName="mb-px opacity-80"
+          />
+          <Stat
+            value={stats.tools}
+            label="Tools"
+            Icon={IconTool}
+            iconClassName="fill-current opacity-70 mb-px"
+          />
+          <Stat
+            value={stats.integrations}
+            label="Integrations"
+            Icon={IconSitemapFilled}
+            iconClassName="opacity-70 mb-px"
+          />
         </div>
 
         {topModels.length > 0 ? (
-          <section className="mt-8">
-            <SectionTitle>Models</SectionTitle>
+          <section className="mt-5 border-t pt-7 border-muted">
+            <SectionHeader
+              label="Models"
+              Icon={IconAiAgent}
+              iconClassName="mb-px opacity-80"
+            />
             <ol className="flex list-none flex-col gap-3">
               {topModels.map((m, i) => (
                 <li key={m.id} className="flex items-center gap-2">
-                  <span className="w-3 text-center font-display text-xs font-semibold text-muted-foreground/50">
-                    {i + 1}
-                  </span>
                   <Favicon
-                    domain={m.domain}
-                    className="size-4 rounded-sm"
+                    domain={modelDomain(m.label, m.domain)}
+                    className="size-3.5 rounded-sm"
                     fallback={
                       <IconBox
-                        className="size-4 text-muted-foreground"
+                        className="size-3.5 text-muted-foreground"
                         stroke={2}
                       />
                     }
@@ -125,29 +193,33 @@ export function LeftRail({ data }: { data: PosterData }) {
 
         {topTools.length > 0 ? (
           <section className="mt-8">
-            <SectionTitle>Tools</SectionTitle>
-            <div className="flex flex-wrap gap-1.5">
+            <SectionHeader
+              label="Tools"
+              Icon={IconTool}
+              iconClassName="fill-current opacity-70 mb-px"
+            />
+            <ul className="flex list-none flex-col gap-3">
               {topTools.map((t) => (
-                <Chip key={t.id} item={t} FallbackIcon={IconBox} />
+                <RailRow key={t.id} item={t} FallbackIcon={IconBox} />
               ))}
-            </div>
+            </ul>
           </section>
         ) : null}
 
         {topIntegrations.length > 0 ? (
-          <section className="mt-8">
-            <SectionTitle>Integrations</SectionTitle>
-            <div className="flex flex-wrap gap-1.5">
+          <section className="mt-8 pb-12">
+            <SectionHeader
+              label="Integrations"
+              Icon={IconSitemapFilled}
+              iconClassName="opacity-70 mb-px"
+            />
+            <ul className="flex list-none flex-col gap-3">
               {topIntegrations.map((t) => (
-                <Chip key={t.id} item={t} FallbackIcon={IconPlug} />
+                <RailRow key={t.id} item={t} FallbackIcon={IconPlug} />
               ))}
-            </div>
+            </ul>
           </section>
         ) : null}
-
-        <footer className="mt-auto pt-6">
-          <BrandMark className="h-3.5 w-auto" />
-        </footer>
       </CardContent>
     </Card>
   );

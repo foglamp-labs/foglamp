@@ -29,3 +29,12 @@
 .dark .shiki span {
   color: var(--shiki-dark);
 }
+
+/* Crisp 1px inner outline on top of any surface (theme-aware). */
+.border-overlay {
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
+}
+.dark .border-overlay {
+  outline-color: rgba(255, 255, 255, 0.1);
+}

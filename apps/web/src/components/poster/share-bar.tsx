@@ -1,8 +1,8 @@
 "use client";
 
 import type { NodeKind } from "@foglamp/contracts/poster";
-import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
+import { cn } from "@foglamp/ui/lib/utils";
 import { IconCircleCheckFilled, IconLink, IconMoon, IconSun } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTheme } from "next-themes";
@@ -31,7 +31,15 @@ function IconSwap({ swapKey, children }: { swapKey: string; children: ReactNode 
   );
 }
 
-export function ShareBar({ kinds }: { kinds: NodeKind[] }) {
+export function ShareBar({
+  kinds,
+  focusKind,
+  onFocusKind,
+}: {
+  kinds: NodeKind[];
+  focusKind: NodeKind | null;
+  onFocusKind: (kind: NodeKind) => void;
+}) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -50,18 +58,41 @@ export function ShareBar({ kinds }: { kinds: NodeKind[] }) {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+    <>
+      {/* Legend — floats bare on the canvas, top-right. Click to spotlight a kind. */}
       {kinds.length > 0 ? (
-        <div className="flex justify-end gap-1.5 rounded-full border bg-card/80 px-4 py-2 backdrop-blur">
-          {kinds.map((k) => (
-            <Badge key={k} variant={KIND_STYLES[k].badge} size="md">
-              {KIND_STYLES[k].label}
-            </Badge>
-          ))}
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
+          {kinds.map((k) => {
+            const active = focusKind === k;
+            const dimmed = focusKind !== null && !active;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => onFocusKind(k)}
+                className={cn(
+                  "flex cursor-pointer items-center gap-1 text-[10px] font-medium uppercase tracking-wider transition-all",
+                  active
+                    ? "text-foreground"
+                    : "text-muted-foreground/70 hover:text-foreground",
+                  dimmed && "opacity-40"
+                )}
+              >
+                <span
+                  className={cn(
+                    "size-1.5 rounded-full transition-transform",
+                    KIND_STYLES[k].bar,
+                    active ? "scale-125" : "opacity-80"
+                  )}
+                />
+                {KIND_STYLES[k].label}
+              </button>
+            );
+          })}
         </div>
       ) : null}
 
-      <div className="flex gap-2">
+      <div className="fixed bottom-6 right-6 z-50 flex gap-2">
         <Button variant="secondary" onClick={copyLink}>
           <IconSwap swapKey={copied ? "check" : "link"}>
             {copied ? (
@@ -83,6 +114,6 @@ export function ShareBar({ kinds }: { kinds: NodeKind[] }) {
           </IconSwap>
         </Button>
       </div>
-    </div>
+    </>
   );
 }

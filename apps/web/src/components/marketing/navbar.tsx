@@ -153,22 +153,22 @@ export function MarketingNavbar() {
               right next to the primary CTA. Icon-only to stay compact. */}
           <Button
             variant="ghost"
-            size="sm"
             aria-label="Foglamp on GitHub"
+            className="size-7.5"
             render={
               <a href={GITHUB_URL} target="_blank" rel="noreferrer noopener" />
             }
           >
-            <GithubLogo className="size-4" />
+            <GithubLogo className="size-4.5" />
           </Button>
           {loggedIn ? (
-            <Button size="sm" render={<Link href="/overview" />}>
+            <Button render={<Link href="/overview" />} className="h-7.5">
               Dashboard
               <IconCircleChevronRightFilled className="size-4.5 ml-0.5 opacity-90" />
             </Button>
           ) : (
             <>
-              <Button size="sm" render={<Link href="/login" />}>
+              <Button render={<Link href="/login" />} className="h-7.5">
                 Start monitoring
                 <IconCircleChevronRightFilled className="size-4.5 ml-0.5 opacity-90" />
               </Button>

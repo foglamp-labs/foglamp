@@ -57,7 +57,8 @@ small JSON object, then upload it to foglamp to get a **shareable link**
   "graph": {
     "nodes": [
       { "id": "chat", "label": "Dashboard chat", "kind": "entry", "sub": "/api/chat" },
-      { "id": "agent", "label": "Support agent", "kind": "agent", "sub": "streamText" },
+      { "id": "agent", "label": "Support agent", "kind": "agent", "sub": "streamText",
+        "detail": "src/agents/support.ts — answers tickets with order lookups (≤200, optional)" },
       { "id": "gpt4o", "label": "GPT-4o", "kind": "model", "domain": "openai.com" }
     ],
     "edges": [ { "from": "chat", "to": "agent" }, { "from": "agent", "to": "gpt4o", "label": "calls" } ]
@@ -76,7 +77,10 @@ small JSON object, then upload it to foglamp to get a **shareable link**
 - **`domain`** is a favicon domain (no scheme), e.g. `openai.com`, `anthropic.com`,
   `exa.ai`, `firecrawl.dev`, `clickhouse.com`. Add it to models, tools,
   integrations, and graph nodes whenever a recognizable company/product owns it.
-  Omit it for purely internal nodes (entries, crons, internal tools).
+  Omit it for purely internal nodes (entries, crons, internal tools). Use the
+  product domain for models (`gemini.google.com` for Gemini, `claude.ai` for Claude).
+- **`detail`** (optional, ≤200) is shown when a node is clicked — the file path
+  plus one sentence of what it does is ideal.
 - Every edge's `from`/`to` must reference an existing node `id`; ids unique.
 - Use today's date for `project.date`.
 - Favor the few flows that matter (e.g. `cron → agent → model + tools → store`)

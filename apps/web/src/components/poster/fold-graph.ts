@@ -19,6 +19,7 @@ export interface FoldedNode {
   kind: NodeKind;
   domain?: string;
   sub?: string;
+  detail?: string;
   /** Models and tools this node uses, rendered inline (models first). */
   embeds: Embed[];
 }
@@ -58,6 +59,7 @@ export function foldGraph(graph: PosterData["graph"]): FoldedGraph {
       kind: n.kind,
       domain: n.domain,
       sub: n.sub,
+      detail: n.detail,
       // models before tools
       embeds: (embedsByNode.get(n.id) ?? []).sort((a, b) =>
         a.kind === b.kind ? 0 : a.kind === "model" ? -1 : 1,

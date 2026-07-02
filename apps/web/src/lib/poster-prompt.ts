@@ -45,7 +45,8 @@ a map of how the codebase works and how it uses AI. You produce only the data
   "graph": {
     "nodes": [
       { "id": "chat", "label": "Dashboard chat", "kind": "entry", "sub": "/api/chat" },
-      { "id": "agent", "label": "Support agent", "kind": "agent", "sub": "streamText" },
+      { "id": "agent", "label": "Support agent", "kind": "agent", "sub": "streamText",
+        "detail": "src/agents/support.ts — answers tickets with order lookups (<=200, optional)" },
       { "id": "gpt4o", "label": "GPT-4o", "kind": "model", "domain": "openai.com" }
     ],
     "edges": [ { "from": "chat", "to": "agent" }, { "from": "agent", "to": "gpt4o", "label": "calls" } ]
@@ -60,7 +61,10 @@ a map of how the codebase works and how it uses AI. You produce only the data
   model, tool, store (DB/cache/index), external (3rd-party API).
 - domain is a favicon domain with no scheme (openai.com, anthropic.com, exa.ai,
   clickhouse.com). Add it to anything a recognizable company/product owns; omit it
-  for purely internal nodes (entries, crons, internal tools).
+  for purely internal nodes (entries, crons, internal tools). Use the product
+  domain for models (gemini.google.com for Gemini, claude.ai for Claude).
+- detail (optional, <=200) is shown when a node is clicked — the file path plus
+  one sentence of what it does is ideal.
 - Every edge's from/to must reference an existing node id; ids unique.
 - Use today's date for project.date.
 

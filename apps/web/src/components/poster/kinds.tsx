@@ -26,6 +26,8 @@ export interface KindStyle {
   bar: string;
   /** Node icon chip (tint background + foreground). */
   icon: string;
+  /** Raw color (Tailwind 500) for SVG strokes — edge pulses. */
+  hex: string;
 }
 
 export const KIND_STYLES: Record<NodeKind, KindStyle> = {
@@ -35,6 +37,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
     badge: "outline",
     bar: "bg-foreground/30",
     icon: "bg-muted text-foreground",
+    hex: "#64748b",
   },
   cron: {
     label: "Cron",
@@ -42,6 +45,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
     badge: "amber",
     bar: "bg-amber-500",
     icon: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    hex: "#f59e0b",
   },
   agent: {
     label: "Agent",
@@ -49,6 +53,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
     badge: "orange",
     bar: "bg-orange-500",
     icon: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    hex: "#f97316",
   },
   model: {
     label: "Model",
@@ -56,6 +61,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
     badge: "blue",
     bar: "bg-blue-500",
     icon: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    hex: "#3b82f6",
   },
   tool: {
     label: "Tool",
@@ -63,6 +69,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
     badge: "violet",
     bar: "bg-violet-500",
     icon: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    hex: "#8b5cf6",
   },
   store: {
     label: "Store",
@@ -70,6 +77,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
     badge: "emerald",
     bar: "bg-emerald-500",
     icon: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    hex: "#10b981",
   },
   external: {
     label: "External",
@@ -77,6 +85,7 @@ export const KIND_STYLES: Record<NodeKind, KindStyle> = {
     badge: "rose",
     bar: "bg-rose-500",
     icon: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+    hex: "#f43f5e",
   },
 };
 
