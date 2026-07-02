@@ -27,15 +27,26 @@ function toInsertRow(row: ScoreRow): Record<string, unknown> {
 }
 
 /**
- * Purge all rows for a project (spans + scores) — ClickHouse has no FKs, so a
- * Postgres project delete must call this. Async lightweight mutations; the
- * summary MVs are left (they're never queried for a deleted project).
+ * Purge all rows for a project — ClickHouse has no FKs, so a Postgres project
+ * delete must call this. Async lightweight mutations. Covers the raw tables
+ * plus every project-keyed MV target and the customers dimension table (they'd
+ * otherwise grow forever and inflate the platform disk-usage stats).
+ * usage_by_org_day is intentionally left: it's org-keyed billing history for
+ * usage that really happened.
  */
 export async function deleteProjectData(
   client: ClickHouseClient,
   projectId: string,
 ): Promise<void> {
-  for (const table of ["spans", "scores"]) {
+  for (const table of [
+    "spans",
+    "scores",
+    "trace_summary",
+    "workflow_run_summary",
+    "metrics_by_minute",
+    "score_metrics_by_minute",
+    "customers",
+  ]) {
     await client.command({
       query: `ALTER TABLE ${table} DELETE WHERE project_id = {projectId:String}`,
       query_params: { projectId },

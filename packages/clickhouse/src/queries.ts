@@ -2250,7 +2250,10 @@ export type PlatformErrorDayRow = {
 	error_count: string;
 };
 
-/** Platform-wide span error counts per day (status = 'error'), from raw spans. */
+/**
+ * Platform-wide span error counts per day, from the metrics_by_minute rollup —
+ * the raw spans table is a full cross-org scan at this (unfiltered) grain.
+ */
 export async function queryPlatformErrorsByDay(
 	client: ClickHouseClient,
 	from: string,
@@ -2258,11 +2261,11 @@ export async function queryPlatformErrorsByDay(
 	return rows<PlatformErrorDayRow>(
 		client,
 		`SELECT
-       toString(toDate(start_time)) AS day,
-       count() AS span_count,
-       countIf(status = 'error') AS error_count
-     FROM spans
-     WHERE start_time >= {from:Date}
+       toString(toDate(bucket)) AS day,
+       sum(span_count) AS span_count,
+       sum(error_count) AS error_count
+     FROM metrics_by_minute
+     WHERE bucket >= {from:Date}
      GROUP BY day
      ORDER BY day`,
 		{ from },

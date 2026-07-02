@@ -194,7 +194,11 @@ export async function deleteApiKey(
 /**
  * Delete a project: Postgres cascades remove its keys/alerts/evals/pricing/
  * workflow-run-names; ClickHouse has no FKs so its spans/scores are purged
- * explicitly. Admin+ only.
+ * explicitly. CH is purged *first*: if it fails, the project row survives and
+ * the delete can be retried — the reverse order would leave CH data orphaned
+ * forever with no re-trigger path once the row is gone. (The purge is
+ * idempotent, so a Postgres failure after it just means retrying a no-op.)
+ * Admin+ only.
  */
 export async function deleteProject(
   db: Db,
@@ -204,7 +208,7 @@ export async function deleteProject(
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
   assertOrgRole(proj.role, ADMIN);
-  await db.delete(project).where(eq(project.id, input.projectId));
   await deleteProjectData(ch, input.projectId); // async CH mutation
+  await db.delete(project).where(eq(project.id, input.projectId));
   return { id: input.projectId };
 }

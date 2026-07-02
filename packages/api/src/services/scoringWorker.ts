@@ -59,6 +59,12 @@ function toScore(passed: boolean | null): number | null {
 const JOB_LEASE_MS = 10 * 60 * 1000;
 const DONE_JOB_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Bounded fan-out for the planner sweep, mirroring the alert/quota sweeps —
+// each plan is a Postgres tx + a ClickHouse candidate query, so serial
+// planning is O(evals × latency). Per-eval work stays independent (each eval
+// has its own advisory lock + watermark).
+const EVAL_PLAN_CONCURRENCY = 8;
+
 /** Planner sweep: claim the next window for each enabled eval and enqueue jobs. */
 export async function evaluateEvals(db: Db, ch: Ch, log: Log): Promise<void> {
   const evals = await db
@@ -67,7 +73,7 @@ export async function evaluateEvals(db: Db, ch: Ch, log: Log): Promise<void> {
     .leftJoin(evalState, eq(evalState.evalId, evalDefinition.id))
     .where(eq(evalDefinition.enabled, true));
 
-  for (const { ev, st } of evals) {
+  await mapLimit(evals, EVAL_PLAN_CONCURRENCY, async ({ ev, st }) => {
     try {
       await planOneEval(db, ch, log, ev, st?.watermark ?? null);
     } catch (err) {
@@ -81,7 +87,7 @@ export async function evaluateEvals(db: Db, ch: Ch, log: Log): Promise<void> {
           set: { status: "error", lastError: message },
         });
     }
-  }
+  });
 
   // Done jobs are kept a week for the admin observability page, then dropped.
   await db

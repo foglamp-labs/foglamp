@@ -1,6 +1,7 @@
 import { env } from "@foglamp/env/server";
 import { db } from "@foglamp/db";
 import type { Context } from "hono";
+import { getConnInfo } from "hono/bun";
 
 import { createOrUpdatePoster, getPosterBySlug } from "@foglamp/api/services/posters";
 
@@ -9,10 +10,42 @@ import { checkPosterRateLimit } from "./rateLimit";
 
 const APP_BASE = env.CORS_ORIGIN.replace(/\/+$/, "");
 
+// Loopback / RFC1918 / link-local / CGNAT / ULA — i.e. "the direct peer is
+// local infrastructure (a proxy), not the client itself".
+function isPrivateIp(ip: string): boolean {
+  const v4 = ip.startsWith("::ffff:") ? ip.slice(7) : ip;
+  return (
+    /^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(v4) ||
+    v4 === "::1" ||
+    /^f[cde]/i.test(v4) ||
+    /^fe[89ab]/i.test(v4)
+  );
+}
+
+/**
+ * Client IP for rate limiting. Forwarding headers are client-controlled, so
+ * they're only consulted when the socket peer is a private address (i.e. we're
+ * actually behind a proxy) — a directly-connected client could otherwise spoof
+ * a fresh X-Forwarded-For per request and dodge the limiter entirely. Within
+ * X-Forwarded-For, the rightmost public entry wins: it's the one appended by
+ * the nearest trusted proxy, while leftmost entries are caller-supplied.
+ */
 function clientIp(c: Context<AppEnv>): string {
+  let sock: string | null = null;
+  try {
+    sock = getConnInfo(c).remote.address ?? null;
+  } catch {
+    // Not running under Bun's serve (e.g. tests) — fall through to headers.
+  }
+  if (sock && !isPrivateIp(sock)) return sock;
   const fwd = c.req.header("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]?.trim() || "anon";
-  return c.req.header("x-real-ip") || "anon";
+  if (fwd) {
+    const hops = fwd.split(",").map((s) => s.trim()).filter(Boolean);
+    for (let i = hops.length - 1; i >= 0; i--) {
+      if (!isPrivateIp(hops[i]!)) return hops[i]!;
+    }
+  }
+  return c.req.header("x-real-ip") || sock || "anon";
 }
 
 // POST /poster — anonymous create (or update with a matching editToken). The
