@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useTheme } from "next-themes";
 import { type ReactNode, useEffect, useState } from "react";
 
-import { KIND_STYLES } from "./kinds";
+import { LEGEND_GROUPS } from "./kinds";
 
 // Swap between two icons with the same spring blur/scale transition as
 // components/app/copy-icon.tsx. `swapKey` drives the enter/exit.
@@ -33,12 +33,12 @@ function IconSwap({ swapKey, children }: { swapKey: string; children: ReactNode 
 
 export function ShareBar({
   kinds,
-  focusKind,
-  onFocusKind,
+  focusKinds,
+  onFocusKinds,
 }: {
   kinds: NodeKind[];
-  focusKind: NodeKind | null;
-  onFocusKind: (kind: NodeKind) => void;
+  focusKinds: NodeKind[] | null;
+  onFocusKinds: (kinds: NodeKind[] | null) => void;
 }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -59,19 +59,24 @@ export function ShareBar({
 
   return (
     <>
-      {/* Legend — floats bare on the canvas, top-right. Click to spotlight a kind. */}
+      {/* Legend — bottom center, grouped categories. Hovering a group
+          spotlights every node of (or embedding) those kinds. */}
       {kinds.length > 0 ? (
-        <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
-          {kinds.map((k) => {
-            const active = focusKind === k;
-            const dimmed = focusKind !== null && !active;
+        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4">
+          {LEGEND_GROUPS.filter((g) =>
+            g.kinds.some((k) => kinds.includes(k))
+          ).map((g) => {
+            const active =
+              focusKinds !== null && g.kinds.some((k) => focusKinds.includes(k));
+            const dimmed = focusKinds !== null && !active;
             return (
               <button
-                key={k}
+                key={g.label}
                 type="button"
-                onClick={() => onFocusKind(k)}
+                onMouseEnter={() => onFocusKinds(g.kinds)}
+                onMouseLeave={() => onFocusKinds(null)}
                 className={cn(
-                  "flex cursor-pointer items-center gap-1 text-[10px] font-medium uppercase tracking-wider transition-all",
+                  "flex cursor-default items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider transition-all",
                   active
                     ? "text-foreground"
                     : "text-muted-foreground/70 hover:text-foreground",
@@ -81,11 +86,11 @@ export function ShareBar({
                 <span
                   className={cn(
                     "size-1.5 rounded-full transition-transform",
-                    KIND_STYLES[k].bar,
+                    g.dot,
                     active ? "scale-125" : "opacity-80"
                   )}
                 />
-                {KIND_STYLES[k].label}
+                {g.label}
               </button>
             );
           })}

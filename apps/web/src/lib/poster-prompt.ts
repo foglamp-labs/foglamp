@@ -54,8 +54,13 @@ a map of how the codebase works and how it uses AI. You produce only the data
 }
 
 ## Rules (these keep every poster consistent — do not break them)
-- Caps: topModels <= 3, topTools <= 5, topIntegrations <= 5, graph.nodes <= 18,
-  graph.edges <= 32. PRIORITIZE the most important items; do not dump everything.
+- Caps: topModels <= 3, topTools <= 5, topIntegrations <= 5, graph.nodes <= 24,
+  graph.edges <= 48. Aim for 14-22 nodes on a substantial codebase — the map
+  should feel rich, not sparse.
+- Give every distinct agent its OWN node when there are <= 10 agents; only
+  group agents when they are numerous and near-identical (then say so in sub,
+  e.g. "12 near-identical scrapers"). Chain agents with agent->agent edges when
+  one feeds the next — pipelines read better than hub-and-spoke.
 - Node labels <= 28 chars, sub <= 40, edge labels <= 24.
 - kind is one of: entry (trigger/route/page/CLI), cron (scheduled job), agent,
   model, tool, store (DB/cache/index), external (3rd-party API).

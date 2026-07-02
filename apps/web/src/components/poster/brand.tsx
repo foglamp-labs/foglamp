@@ -1,9 +1,15 @@
 "use client";
 
 import { cn } from "@foglamp/ui/lib/utils";
+import { IconSparklesFilled } from "@tabler/icons-react";
 import { useState, type ReactNode } from "react";
 
-import { faviconUrl } from "./favicon";
+import {
+  ClaudeLogo,
+  GeminiLogo,
+  OpenAILogo,
+} from "@/components/brand-logos";
+import { faviconUrl, modelDomain } from "./favicon";
 
 /** Foglamp brand mark — three overlapping circles (lead → blue → orange). */
 export function BrandMark({ className }: { className?: string }) {
@@ -40,6 +46,32 @@ export function Favicon({
       alt=""
       className={cn("corner-squircle object-contain", className)}
       onError={() => setFailed(true)}
+    />
+  );
+}
+
+/**
+ * A model's mark. Known models get the crisp local brand SVG (favicons ship on
+ * white tiles — Claude's starburst-in-a-box); anything else falls back to the
+ * favicon proxy, then a sparkle glyph.
+ */
+export function ModelIcon({
+  label,
+  domain,
+  className,
+}: {
+  label: string;
+  domain?: string;
+  className?: string;
+}) {
+  if (/claude|anthropic/i.test(label)) return <ClaudeLogo className={className} />;
+  if (/gemini/i.test(label)) return <GeminiLogo className={className} />;
+  if (/gpt|openai|^o\d/i.test(label)) return <OpenAILogo className={className} />;
+  return (
+    <Favicon
+      domain={modelDomain(label, domain)}
+      className={className}
+      fallback={<IconSparklesFilled className={className} />}
     />
   );
 }

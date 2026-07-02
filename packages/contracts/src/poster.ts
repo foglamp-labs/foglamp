@@ -112,8 +112,8 @@ export const PosterData = z
     /** The flow map. Capped so the deterministic layout always fits the canvas. */
     graph: z
       .object({
-        nodes: z.array(GraphNode).min(1).max(18),
-        edges: z.array(GraphEdge).max(32).default([]),
+        nodes: z.array(GraphNode).min(1).max(24),
+        edges: z.array(GraphEdge).max(48).default([]),
       })
       .refine(
         (g) => {

@@ -13,17 +13,17 @@ export function PosterBoard({ data }: { data: PosterData }) {
   const kinds = KIND_ORDER.filter((k) =>
     data.graph.nodes.some((n) => n.kind === k)
   );
-  // Clicking a legend item spotlights only that kind on the map.
-  const [focusKind, setFocusKind] = useState<NodeKind | null>(null);
+  // Hovering a legend group spotlights those kinds on the map.
+  const [focusKinds, setFocusKinds] = useState<NodeKind[] | null>(null);
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-neutral-100 text-foreground dark:bg-background">
       <LeftRail data={data} />
-      <FlowMap graph={data.graph} focusKind={focusKind} />
+      <FlowMap graph={data.graph} focusKinds={focusKinds} />
       <ShareBar
         kinds={kinds}
-        focusKind={focusKind}
-        onFocusKind={(k) => setFocusKind((cur) => (cur === k ? null : k))}
+        focusKinds={focusKinds}
+        onFocusKinds={setFocusKinds}
       />
     </div>
   );

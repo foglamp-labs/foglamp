@@ -69,8 +69,12 @@ small JSON object, then upload it to foglamp to get a **shareable link**
 ## Rules — these keep every poster consistent, do not break them
 
 - **Caps:** `topModels` ≤ 3, `topTools` ≤ 5, `topIntegrations` ≤ 5,
-  `graph.nodes` ≤ 18, `graph.edges` ≤ 32. **Prioritize** — pick the most
-  important, most-used items. Do not dump everything.
+  `graph.nodes` ≤ 24, `graph.edges` ≤ 48. Aim for 14–22 nodes on a substantial
+  codebase — the map should feel rich, not sparse.
+- Give every distinct agent its **own node** when there are ≤ 10 agents; only
+  group agents when they're numerous and near-identical (then say so in `sub`).
+  Chain agents with agent→agent edges when one feeds the next — pipelines read
+  better than hub-and-spoke.
 - **Node labels ≤ 28 chars**, `sub` ≤ 40, edge labels ≤ 24. Keep them tight.
 - **`kind`** is one of: `entry` (trigger/route/page/CLI), `cron` (scheduled job),
   `agent`, `model`, `tool`, `store` (DB/cache/index), `external` (3rd-party API).

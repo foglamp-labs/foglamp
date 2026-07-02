@@ -15,8 +15,9 @@ import {
 } from "@tabler/icons-react";
 import { type ComponentType, useEffect, useState } from "react";
 
-import { BrandMark, Favicon } from "./brand";
-import { modelDomain } from "./favicon";
+import { motion } from "motion/react";
+
+import { BrandMark, Favicon, ModelIcon } from "./brand";
 import { derivePersonality } from "./personality";
 
 function Stat({
@@ -116,9 +117,16 @@ export function LeftRail({ data }: { data: PosterData }) {
           <div className="absolute -top-8 -right-2 size-28 rounded-full bg-white/20 blur-2xl" />
           <div className="absolute -bottom-10 left-6 size-24 rounded-full bg-black/15 blur-2xl" />
           <div className="absolute top-4 left-1/2 size-10 rounded-full bg-white/10 blur-lg" />
-          <personality.Icon className="absolute -right-1 -bottom-7 size-24 rotate-12 text-white/20" />
+          <motion.span
+            className="absolute -right-1 -bottom-7"
+            initial={{ opacity: 0, scale: 0.5, rotate: -14 }}
+            animate={{ opacity: 1, scale: 1, rotate: 12 }}
+            transition={{ type: "spring", duration: 1.1, bounce: 0.3, delay: 0.35 }}
+          >
+            <personality.Icon className="size-24 text-white/20" />
+          </motion.span>
           <div className="absolute top-3 left-4 flex items-center gap-1 text-white">
-            <personality.Icon className="size-3.5 drop-shadow" />
+            <personality.Icon className="size-3.5 drop-shadow mb-px" />
             <span className="font-display text-sm font-semibold tracking-tight drop-shadow">
               {personality.title}
             </span>
@@ -138,7 +146,7 @@ export function LeftRail({ data }: { data: PosterData }) {
               domain={project.iconDomain}
               className="size-3.5 rounded-md"
               fallback={
-                <span className="font-display text-base font-bold drop-shadow">
+                <span className="flex size-3.5 items-center justify-center rounded-[4px] bg-white/25 font-display text-[9px] font-bold leading-none shadow-sm">
                   {project.name.charAt(0)}
                 </span>
               }
@@ -186,15 +194,10 @@ export function LeftRail({ data }: { data: PosterData }) {
             <ol className="flex list-none flex-col gap-3">
               {topModels.map((m, i) => (
                 <li key={m.id} className="flex items-center gap-2">
-                  <Favicon
-                    domain={modelDomain(m.label, m.domain)}
-                    className="size-3.5 rounded-sm"
-                    fallback={
-                      <IconBox
-                        className="size-3.5 text-muted-foreground"
-                        stroke={2}
-                      />
-                    }
+                  <ModelIcon
+                    label={m.label}
+                    domain={m.domain}
+                    className="size-3.5"
                   />
                   <span className="text-sm font-medium">{m.label}</span>
                 </li>

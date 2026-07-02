@@ -48,9 +48,10 @@ export async function layoutGraph<T extends SizedNode>(
       "elk.direction": "RIGHT",
       "elk.edgeRouting": "ORTHOGONAL",
       "elk.layered.mergeEdges": "true",
-      "elk.layered.spacing.nodeNodeBetweenLayers": "88",
-      "elk.spacing.nodeNode": "32",
-      "elk.spacing.edgeNode": "24",
+      // Big graphs get tighter channels so deep pipelines don't sprawl.
+      "elk.layered.spacing.nodeNodeBetweenLayers": nodes.length > 16 ? "52" : "88",
+      "elk.spacing.nodeNode": nodes.length > 16 ? "22" : "32",
+      "elk.spacing.edgeNode": nodes.length > 16 ? "16" : "24",
       "elk.spacing.edgeEdge": "14",
       "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
       "elk.padding": "[top=16,left=16,bottom=16,right=16]",

@@ -38,3 +38,16 @@
 .dark .border-overlay {
   outline-color: rgba(255, 255, 255, 0.1);
 }
+
+/* Poster map edge pulses — CSS-driven so dozens of edges don't each run a JS
+   animation loop. Offset matches the "4 156" dash pattern (one period = 160). */
+@keyframes poster-pulse {
+  to {
+    stroke-dashoffset: -160;
+  }
+}
+@keyframes poster-fade {
+  to {
+    opacity: 1;
+  }
+}

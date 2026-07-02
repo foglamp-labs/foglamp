@@ -1,7 +1,8 @@
 // Deterministic "personality" identity derived from the poster data — the
-// stats-as-identity hook (à la Arc's member card). Pure rules over data the
-// agent already emitted; same data → same card. Each archetype carries its own
-// palette + glyph so the rail's art block is unique per codebase shape.
+// stats-as-identity hook (à la Arc's member card). Every archetype is scored
+// on how *dominant* its trait is in this graph and the best score wins — a
+// first-match rule chain made almost everything an Orchestrator. Same data →
+// same card.
 
 import type { PosterData } from "@foglamp/contracts/poster";
 import {
@@ -10,11 +11,9 @@ import {
   IconBoltFilled,
   IconClockFilled,
   type IconProps,
+  IconGhostFilled,
   IconLeafFilled,
   IconSettingsFilled,
-  IconSparklesFilled,
-  IconGhost2Filled,
-  IconGhostFilled,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 
@@ -25,6 +24,44 @@ export interface Personality {
   gradient: string;
 }
 
+const ARCHETYPES = {
+  orchestrator: {
+    title: "Tireless Orchestrator",
+    Icon: IconGhostFilled,
+    gradient: "from-orange-500 to-amber-400",
+  },
+  scheduler: {
+    title: "Punctual Scheduler",
+    Icon: IconClockFilled,
+    gradient: "from-amber-500 to-yellow-400",
+  },
+  integrator: {
+    title: "Boundless Integrator",
+    Icon: IconAffiliateFilled,
+    gradient: "from-sky-500 to-cyan-400",
+  },
+  toolsmith: {
+    title: "Crafty Toolsmith",
+    Icon: IconSettingsFilled,
+    gradient: "from-violet-500 to-fuchsia-400",
+  },
+  archivist: {
+    title: "Meticulous Archivist",
+    Icon: IconArchiveFilled,
+    gradient: "from-emerald-500 to-teal-400",
+  },
+  minimalist: {
+    title: "Zen Minimalist",
+    Icon: IconLeafFilled,
+    gradient: "from-slate-500 to-zinc-400",
+  },
+  builder: {
+    title: "Steady Builder",
+    Icon: IconBoltFilled,
+    gradient: "from-blue-500 to-sky-400",
+  },
+} satisfies Record<string, Personality>;
+
 export function derivePersonality(data: PosterData): Personality {
   const { stats, graph } = data;
   const kindCount = (k: string) =>
@@ -32,47 +69,35 @@ export function derivePersonality(data: PosterData): Personality {
   const crons = kindCount("cron");
   const externals = kindCount("external");
   const stores = kindCount("store");
+  const nodes = Math.max(graph.nodes.length, 1);
 
-  // First matching rule wins, most distinctive shapes first.
-  if (stats.agents >= 5)
-    return {
-      title: "Tireless Orchestrator",
-      Icon: IconGhostFilled,
-      gradient: "from-orange-500 to-amber-400",
-    };
-  if (crons >= 3)
-    return {
-      title: "Punctual Scheduler",
-      Icon: IconClockFilled,
-      gradient: "from-amber-500 to-yellow-400",
-    };
-  if (externals >= 4)
-    return {
-      title: "Boundless Integrator",
-      Icon: IconAffiliateFilled,
-      gradient: "from-rose-500 to-orange-400",
-    };
-  if (stats.tools > stats.agents * 2 && stats.tools >= 4)
-    return {
-      title: "Crafty Toolsmith",
-      Icon: IconSettingsFilled,
-      gradient: "from-violet-500 to-fuchsia-400",
-    };
-  if (stores >= 3)
-    return {
-      title: "Meticulous Archivist",
-      Icon: IconArchiveFilled,
-      gradient: "from-emerald-500 to-teal-400",
-    };
-  if (stats.agents === 1 && stats.models === 1)
-    return {
-      title: "Zen Minimalist",
-      Icon: IconLeafFilled,
-      gradient: "from-slate-500 to-zinc-400",
-    };
-  return {
-    title: "Steady Builder",
-    Icon: IconBoltFilled,
-    gradient: "from-blue-500 to-sky-400",
-  };
+  // 0..~1.1 per archetype — ratios and saturation points chosen so a single
+  // huge count can't sweep every board.
+  const scores: [keyof typeof ARCHETYPES, number][] = [
+    // Agent-dense graphs. Saturates at 8 and is discounted when agents are a
+    // small share of an otherwise sprawling map.
+    [
+      "orchestrator",
+      Math.min(stats.agents / 8, 1) * 0.7 + (stats.agents / nodes) * 0.5,
+    ],
+    // Several scheduled jobs is genuinely rare and distinctive.
+    ["scheduler", Math.min(crons / 3, 1) * 1.1],
+    // A web of third-party services.
+    ["integrator", Math.min(externals / 5, 1) * 1.05],
+    // The toolbox outshines the agents.
+    [
+      "toolsmith",
+      stats.tools >= 3
+        ? Math.min(stats.tools / Math.max(stats.agents, 1), 2) * 0.55
+        : 0,
+    ],
+    // Data-heavy: several distinct stores.
+    ["archivist", Math.min(stores / 3, 1) * 1.05],
+    // Tiny, focused graphs.
+    ["minimalist", nodes <= 6 && stats.agents <= 2 ? 1 : 0],
+  ];
+
+  scores.sort((a, b) => b[1] - a[1]);
+  const [best, score] = scores[0]!;
+  return score >= 0.5 ? ARCHETYPES[best] : ARCHETYPES.builder;
 }

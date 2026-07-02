@@ -3,10 +3,9 @@
 import type { NodeKind, PosterData } from "@foglamp/contracts/poster";
 import { cn } from "@foglamp/ui/lib/utils";
 import { motion } from "motion/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { Favicon } from "./brand";
-import { modelDomain } from "./favicon";
+import { Favicon, ModelIcon } from "./brand";
 import { foldGraph, type FoldedNode } from "./fold-graph";
 import { KIND_STYLES } from "./kinds";
 import {
@@ -37,10 +36,10 @@ function nodeHeight(n: FoldedNode): number {
 
 export function FlowMap({
   graph,
-  focusKind,
+  focusKinds,
 }: {
   graph: PosterData["graph"];
-  focusKind: NodeKind | null;
+  focusKinds: NodeKind[] | null;
 }) {
   const folded = useMemo(() => foldGraph(graph), [graph]);
 
@@ -131,18 +130,18 @@ export function FlowMap({
     return { nodes, edges };
   }, [traceRoot, folded.edges]);
 
-  // Legend focus: a node matches if it IS the kind or embeds it.
+  // Legend focus (hover): a node matches if it IS one of the kinds or embeds one.
   const kindActive = useMemo(() => {
-    if (!focusKind) return null;
+    if (!focusKinds || focusKinds.length === 0) return null;
+    const kinds = new Set(focusKinds);
     return new Set(
       folded.nodes
         .filter(
-          (n) =>
-            n.kind === focusKind || n.embeds.some((em) => em.kind === focusKind)
+          (n) => kinds.has(n.kind) || n.embeds.some((em) => kinds.has(em.kind))
         )
         .map((n) => n.id)
     );
-  }, [focusKind, folded.nodes]);
+  }, [focusKinds, folded.nodes]);
 
   const nodeActive = (id: string) =>
     (!related || related.has(id)) &&
@@ -153,8 +152,15 @@ export function FlowMap({
     (!kindActive || kindActive.has(e.from) || kindActive.has(e.to)) &&
     (!trace || trace.edges.has(i));
 
+  // ─── Pan/zoom, imperatively ─────────────────────────────────────────────────
+  // The transform lives in a ref and is written straight to the DOM — running
+  // it through React state re-rendered the whole graph on every pointermove /
+  // wheel frame, which is what made big maps feel laggy.
   const viewportRef = useRef<HTMLDivElement>(null);
-  const [t, setT] = useState<Transform>({ x: 0, y: 0, k: 1 });
+  const graphRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const tRef = useRef<Transform>({ x: 0, y: 0, k: 1 });
+  const tracedPosRef = useRef<{ x: number; y: number } | null>(null);
   const fitted = useRef(false);
   const drag = useRef<{
     px: number;
@@ -164,8 +170,22 @@ export function FlowMap({
     moved: boolean;
   } | null>(null);
 
+  function applyTransform() {
+    const t = tRef.current;
+    const g = graphRef.current;
+    if (g) g.style.transform = `translate(${t.x}px, ${t.y}px) scale(${t.k})`;
+    const pop = popoverRef.current;
+    const pos = tracedPosRef.current;
+    if (pop && pos) {
+      pop.style.left = `${t.x + pos.x * t.k}px`;
+      pop.style.top = `${t.y + pos.y * t.k}px`;
+    }
+  }
+
   // Fit the graph into the visible area (right of the floating sidebar) once.
-  useEffect(() => {
+  // Capped at 1 — upscaling small graphs blows the cards past native size
+  // (fat borders/shadows) and reads as broken layout.
+  useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el || fitted.current || !layout || layout.width === 0) return;
     const padL = 432; // clear the sidebar
@@ -173,17 +193,28 @@ export function FlowMap({
     const padY = 56;
     const availW = Math.max(200, el.clientWidth - padL - padR);
     const availH = Math.max(200, el.clientHeight - padY * 2);
-    const k = clamp(
-      Math.min(availW / layout.width, availH / layout.height),
-      0.2,
-      1.4
-    );
-    setT({
-      x: padL + (availW - layout.width * k) / 2,
-      y: padY + (availH - layout.height * k) / 2,
-      k,
-    });
+    const kFit = Math.min(availW / layout.width, availH / layout.height);
+    if (kFit >= 0.45) {
+      // The whole graph fits at a readable size — center it.
+      const k = clamp(kFit, 0.3, 1);
+      tRef.current = {
+        x: padL + (availW - layout.width * k) / 2,
+        y: padY + (availH - layout.height * k) / 2,
+        k,
+      };
+    } else {
+      // Deep pipeline: fitting everything would be unreadably small. Fit the
+      // height at a readable scale and open on the START of the flow — the
+      // user pans right through the story.
+      const k = clamp((availH / layout.height) * 0.9, 0.5, 0.8);
+      tRef.current = {
+        x: padL + 16,
+        y: padY + (availH - layout.height * k) / 2,
+        k,
+      };
+    }
     fitted.current = true;
+    applyTransform();
   }, [layout]);
 
   // Wheel zoom (and trackpad pinch, which arrives as ctrlKey+wheel). Native
@@ -196,16 +227,16 @@ export function FlowMap({
       const rect = el.getBoundingClientRect();
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
-      setT((prev) => {
-        const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0018));
-        const k = clamp(prev.k * factor, 0.2, 3);
-        const ratio = k / prev.k;
-        return {
-          k,
-          x: cx - (cx - prev.x) * ratio,
-          y: cy - (cy - prev.y) * ratio,
-        };
-      });
+      const prev = tRef.current;
+      const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0018));
+      const k = clamp(prev.k * factor, 0.2, 3);
+      const ratio = k / prev.k;
+      tRef.current = {
+        k,
+        x: cx - (cx - prev.x) * ratio,
+        y: cy - (cy - prev.y) * ratio,
+      };
+      applyTransform();
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -216,8 +247,8 @@ export function FlowMap({
     drag.current = {
       px: e.clientX,
       py: e.clientY,
-      tx: t.x,
-      ty: t.y,
+      tx: tRef.current.x,
+      ty: tRef.current.y,
       moved: false,
     };
   }
@@ -225,19 +256,30 @@ export function FlowMap({
     const d = drag.current;
     if (!d) return;
     if (Math.hypot(e.clientX - d.px, e.clientY - d.py) > 4) d.moved = true;
-    setT((prev) => ({
-      ...prev,
+    tRef.current = {
+      ...tRef.current,
       x: d.tx + (e.clientX - d.px),
       y: d.ty + (e.clientY - d.py),
-    }));
+    };
+    applyTransform();
   }
   function endDrag() {
     // A stationary pointer-up on the canvas clears the trace.
-    if (drag.current && !drag.current.moved) setTraceRoot(null);
+    if (drag.current && !drag.current.moved) {
+      setTraceRoot(null);
+      tracedPosRef.current = null;
+    }
     drag.current = null;
   }
 
   const tracedNode = traceRoot ? nodeById.get(traceRoot) : null;
+  if (tracedNode) {
+    tracedPosRef.current = {
+      x: tracedNode.x,
+      y: tracedNode.y + tracedNode.height + 10,
+    };
+  }
+  const tNow = tRef.current;
 
   return (
     <section className="absolute inset-0 z-10">
@@ -253,11 +295,12 @@ export function FlowMap({
       >
         {layout ? (
           <div
-            className="absolute left-0 top-0 origin-top-left"
+            ref={graphRef}
+            className="absolute left-0 top-0 origin-top-left will-change-transform"
             style={{
               width: layout.width,
               height: layout.height,
-              transform: `translate(${t.x}px, ${t.y}px) scale(${t.k})`,
+              transform: `translate(${tNow.x}px, ${tNow.y}px) scale(${tNow.k})`,
             }}
           >
             {/* swimlanes — one faint band per alternating layer */}
@@ -265,7 +308,7 @@ export function FlowMap({
               i % 2 === 1 ? (
                 <div
                   key={i}
-                  className="absolute rounded-2xl dark:bg-neutral-900/70 bg-card/70"
+                  className="absolute rounded-2xl bg-foreground/[0.02]"
                   style={{
                     left: lane.min - 18,
                     width: lane.max - lane.min + 36,
@@ -304,25 +347,19 @@ export function FlowMap({
                       animate={{ pathLength: 1, opacity: 1 }}
                       transition={{ duration: 0.6, delay, ease: "easeOut" }}
                     />
-                    {/* traveling pulse, tinted by the source node's kind */}
-                    <motion.path
+                    {/* traveling pulse — pure CSS so N edges don't each run a
+                        JS animation loop; sparse dash so it doesn't pollute */}
+                    <path
                       d={d}
                       fill="none"
                       stroke={KIND_STYLES[sourceKind].hex}
                       strokeWidth={1.6}
                       strokeLinecap="round"
-                      strokeDasharray="5 72"
-                      strokeOpacity={0.7}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1, strokeDashoffset: [0, -77] }}
-                      transition={{
-                        opacity: { delay: delay + 0.7, duration: 0.4 },
-                        strokeDashoffset: {
-                          delay: delay + 0.7,
-                          duration: 2.4,
-                          repeat: Infinity,
-                          ease: "linear",
-                        },
+                      strokeDasharray="4 156"
+                      strokeOpacity={0.55}
+                      style={{
+                        opacity: 0,
+                        animation: `poster-fade 0.5s ease ${delay + 0.8}s forwards, poster-pulse 5.5s linear ${delay + 0.8}s infinite`,
                       }}
                     />
                     <motion.path
@@ -400,22 +437,31 @@ export function FlowMap({
                       dim && "opacity-25"
                     )}
                   >
-                    <div className="flex h-14 flex-none items-center gap-2.5 px-3">
+                    <div className="flex h-14 flex-none items-center gap-2.5 px-4">
                       <span
                         className={cn(
-                          "flex size-7 flex-none items-center justify-center rounded-md border border-border/15",
+                          "flex size-7 flex-none items-center justify-center rounded-md",
                           style.icon
                         )}
                       >
-                        <Favicon
-                          domain={
-                            n.kind === "model"
-                              ? modelDomain(n.label, n.domain)
-                              : n.domain
-                          }
-                          className="size-3.5 rounded-sm"
-                          fallback={<Glyph className="size-3.5" stroke={2} />}
-                        />
+                        {n.kind === "model" ? (
+                          <ModelIcon
+                            label={n.label}
+                            domain={n.domain}
+                            className="size-3.5"
+                          />
+                        ) : (
+                          <Favicon
+                            domain={n.domain}
+                            className="size-3.5 rounded-sm"
+                            fallback={
+                              <Glyph
+                                className={cn("size-3.5", style.glyphClass)}
+                                stroke={2}
+                              />
+                            }
+                          />
+                        )}
                       </span>
                       <span className="flex min-w-0 flex-col">
                         <span className="truncate text-sm font-medium leading-snug">
@@ -431,26 +477,34 @@ export function FlowMap({
                     {n.embeds.length > 0 ? (
                       <div className="mx-4 flex flex-1 flex-col items-start gap-2 border-t border-muted pt-2.5">
                         {n.embeds.map((em) => {
-                          const EmGlyph = KIND_STYLES[em.kind].Glyph;
+                          const emStyle = KIND_STYLES[em.kind];
+                          const EmGlyph = emStyle.Glyph;
                           return (
                             <span
                               key={em.id}
                               className="flex max-w-full items-center gap-1.5"
                             >
-                              <Favicon
-                                domain={
-                                  em.kind === "model"
-                                    ? modelDomain(em.label, em.domain)
-                                    : em.domain
-                                }
-                                className="size-3.5 rounded-sm"
-                                fallback={
-                                  <EmGlyph
-                                    className="size-3.5 text-muted-foreground"
-                                    stroke={2}
-                                  />
-                                }
-                              />
+                              {em.kind === "model" ? (
+                                <ModelIcon
+                                  label={em.label}
+                                  domain={em.domain}
+                                  className="size-3.5"
+                                />
+                              ) : (
+                                <Favicon
+                                  domain={em.domain}
+                                  className="size-3.5 rounded-sm"
+                                  fallback={
+                                    <EmGlyph
+                                      className={cn(
+                                        "size-3.5 text-muted-foreground",
+                                        emStyle.glyphClass
+                                      )}
+                                      stroke={2}
+                                    />
+                                  }
+                                />
+                              )}
                               <span className="truncate text-xs font-medium">
                                 {em.label}
                               </span>
@@ -468,16 +522,16 @@ export function FlowMap({
       </div>
 
       {/* Detail popover for the traced node. Rendered OUTSIDE the pan/zoom
-          transform (positioned in screen space) so nothing on the map — edges,
-          labels, pulses — can ever paint over it, and it stays readable at any
-          zoom level. */}
+          transform (positioned in screen space) so nothing on the map can
+          paint over it, and it stays readable at any zoom level. */}
       {tracedNode ? (
         <motion.div
           key={tracedNode.id}
+          ref={popoverRef}
           className="border-overlay absolute z-30 w-60 rounded-xl bg-card p-3 shadow-(--custom-shadow)"
           style={{
-            left: t.x + tracedNode.x * t.k,
-            top: t.y + (tracedNode.y + tracedNode.height + 10) * t.k,
+            left: tNow.x + tracedNode.x * tNow.k,
+            top: tNow.y + (tracedNode.y + tracedNode.height + 10) * tNow.k,
           }}
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
