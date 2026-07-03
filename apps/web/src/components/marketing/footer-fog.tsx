@@ -13,13 +13,13 @@ export function FooterFog() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-36 overflow-hidden opacity-35"
+      className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-40 overflow-hidden opacity-20"
       style={{
         // Dense at the very bottom, thinning out toward the copyright row.
         WebkitMaskImage:
-          "linear-gradient(to top, #000 0%, #000 40%, transparent 100%)",
+          "linear-gradient(to top, #000 0%, #000 20%, transparent 100%)",
         maskImage:
-          "linear-gradient(to top, #000 0%, #000 40%, transparent 100%)",
+          "linear-gradient(to top, #000 0%, #000 20%, transparent 100%)",
       }}
     >
       <motion.div
@@ -28,7 +28,7 @@ export function FooterFog() {
         animate={
           reduce
             ? undefined
-            : { x: ["-6%", "6%", "-6%"], y: ["-4%", "4%", "-4%"] }
+            : { x: ["-3%", "3%", "-3%"], y: ["-10%", "10%", "-10%"] }
         }
         transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
       >

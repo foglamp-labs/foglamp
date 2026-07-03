@@ -88,7 +88,7 @@ export function MarketingFooter() {
           </filter>
         </svg>
       </figure>
-      <div className="mx-auto max-w-7xl px-5 py-16 pb-12 sm:px-8">
+      <div className="mx-auto max-w-7xl px-5 py-16 pb-28 sm:px-8">
         {/* Trailing 1fr is a ghost column that keeps the link columns pulled
             toward the brand instead of spread across the full width. */}
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
@@ -104,6 +104,10 @@ export function MarketingFooter() {
             >
               <GithubLogo className="size-4" />
             </a>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <h3 className={headingClassName}></h3>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -129,7 +133,7 @@ export function MarketingFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex items-center gap-4">
+        <div className="mt-16 flex items-center gap-6">
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} Foglamp
           </p>

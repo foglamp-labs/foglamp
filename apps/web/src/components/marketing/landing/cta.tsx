@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 
 import { FilmGrain, FogBank } from "@/components/marketing/noise-overlay";
+import { AgentDetails } from "./cta-agent-details";
 import { CopyPromptButton } from "./copy-prompt-button";
 
 // The closing CTA: full-bleed, the copy quietly shrouded in drifting fog.
@@ -79,6 +80,14 @@ export function CtaSection() {
 
       {/* Film grain, above the fog. */}
       <FilmGrain id="cta-grain" className="z-20 opacity-[0.16] mix-blend-overlay" />
+
+      {/* The agent details sitting under the fog on the right — the thing
+          you'd see if the fog weren't there. Below the fog's z-index. */}
+      <div className="absolute inset-0 z-[5] mx-auto hidden w-full max-w-7xl items-center justify-end px-5 sm:px-8 lg:flex">
+        <div className="w-[45%] pr-4">
+          <AgentDetails />
+        </div>
+      </div>
 
       {/* Headline block: above the fog, always fully legible. */}
       <div className="relative z-30 mx-auto w-full max-w-7xl px-5 sm:px-8">

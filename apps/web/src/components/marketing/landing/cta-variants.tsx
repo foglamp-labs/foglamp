@@ -1,289 +1,270 @@
 "use client";
 
-// Bake-off: 7 takes on the "fog over an agent card, hover to clear it" idea
-// for the CTA's right side. Rendered together, labeled, so we can pick one —
-// then the winner stays and the rest get deleted. The current CtaSection
-// stays live above this section.
+// Bake-off, take two: each variant is the COMPLETE closing CTA — copy and
+// buttons on the left, bare agent details (no card) on the right — with a big
+// feathered fog cloud floating ABOVE the details, larger than the content
+// under it. Hovering the right side clears the fog, each variant its own way.
+// Pick one; the winner replaces CtaSection's right side and the rest die.
 
+import { Button } from "@foglamp/ui/components/button";
 import { cn } from "@foglamp/ui/lib/utils";
-import { IconGhostFilled } from "@tabler/icons-react";
+import { IconArrowBigRightFilled } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRef, useState } from "react";
 
-import { ClaudeLogo } from "@/components/brand-logos";
-import { FogBank } from "@/components/marketing/noise-overlay";
+import { FilmGrain, FogBank } from "@/components/marketing/noise-overlay";
+import { AgentDetails } from "./cta-agent-details";
+import { CopyPromptButton } from "./copy-prompt-button";
 
-// ─── The agent card being revealed (shared by every variant) ─────────────────
+// ─── The fog cloud ────────────────────────────────────────────────────────────
+// Oversized relative to the details it covers (extends ~10rem past on every
+// side) and feathered with a radial mask, so it has no edges at all — it's a
+// cloud sitting on the section, not a panel.
 
-const SPANS = [
-  { label: "plan", w: "34%", x: "0%", color: "#f97316" },
-  { label: "search_docs", w: "22%", x: "18%", color: "#8b5cf6" },
-  { label: "generateText", w: "48%", x: "34%", color: "#3b82f6" },
-  { label: "reply", w: "14%", x: "80%", color: "#22c55e" },
-];
-
-function AgentPeek({ animate = false }: { animate?: boolean }) {
-  return (
-    <div className="flex h-full w-full flex-col justify-between rounded-3xl corner-squircle border-overlay bg-card p-5 text-left shadow-(--custom-shadow)">
-      <div className="flex items-center gap-2.5">
-        <span className="flex size-8 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500">
-          <IconGhostFilled className="size-4" />
-        </span>
-        <span className="flex flex-col">
-          <span className="text-sm font-medium leading-tight">
-            support-agent
-          </span>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <ClaudeLogo className="size-3" /> Claude Haiku 4.5
-          </span>
-        </span>
-        <span className="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
-          passed
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        {SPANS.map((s, i) => (
-          <div key={s.label} className="flex items-center gap-2">
-            <span className="w-20 truncate font-mono text-[10px] text-muted-foreground">
-              {s.label}
-            </span>
-            <div className="relative h-2 flex-1">
-              <div
-                className={cn(
-                  "absolute top-0 h-2 rounded-full",
-                  animate &&
-                    "origin-left scale-x-0 transition-transform duration-500 group-hover:scale-x-100"
-                )}
-                style={{
-                  left: s.x,
-                  width: s.w,
-                  background: s.color,
-                  opacity: 0.75,
-                  transitionDelay: animate ? `${150 + i * 110}ms` : undefined,
-                }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-end justify-between">
-        <Stat label="cost" value="$0.0041" />
-        <Stat label="latency" value="2.3s" />
-        <Stat label="tokens" value="1,842" />
-        <Stat label="evals" value="94%" />
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="flex flex-col">
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </span>
-      <span className="font-display text-sm font-semibold tabular-nums">
-        {value}
-      </span>
-    </span>
-  );
-}
-
-// ─── Fog overlay building block ───────────────────────────────────────────────
-
-function FogCover({
+function FogCloud({
   id,
   className,
-  style,
+  innerStyle,
 }: {
   id: string;
   className?: string;
-  style?: React.CSSProperties;
+  /** Extra mask applied INSIDE the feather (e.g. the flashlight hole). */
+  innerStyle?: React.CSSProperties;
 }) {
   return (
     <div
       aria-hidden
       className={cn(
-        "pointer-events-none absolute inset-0 overflow-hidden rounded-3xl corner-squircle",
+        "pointer-events-none absolute -inset-x-40 -inset-y-24",
         className
       )}
-      style={style}
+      style={{
+        WebkitMaskImage:
+          "radial-gradient(58% 52% at 50% 50%, #000 30%, transparent 72%)",
+        maskImage:
+          "radial-gradient(58% 52% at 50% 50%, #000 30%, transparent 72%)",
+      }}
     >
-      <div className="absolute inset-0 bg-background/55 backdrop-blur-[3px]" />
-      <div className="absolute inset-[-20%] opacity-90" style={{ filter: "blur(10px)" }}>
-        <FogBank id={`${id}-a`} freq={0.012} seed={7} />
-      </div>
-      <div className="absolute inset-[-20%] opacity-70" style={{ filter: "blur(18px)" }}>
-        <FogBank id={`${id}-b`} freq={0.022} seed={29} octaves={5} />
+      {/* nested so a second mask (the hole) multiplies with the feather */}
+      <div className="absolute inset-0" style={innerStyle}>
+        <div className="absolute inset-0 bg-background/50 backdrop-blur-[3px]" />
+        <div
+          className="absolute inset-[-10%] opacity-90"
+          style={{ filter: "blur(12px)" }}
+        >
+          <FogBank id={`${id}-a`} freq={0.012} seed={7} />
+        </div>
+        <div
+          className="absolute inset-[-10%] opacity-70"
+          style={{ filter: "blur(20px)" }}
+        >
+          <FogBank id={`${id}-b`} freq={0.022} seed={29} octaves={5} />
+        </div>
       </div>
     </div>
   );
 }
 
+// ─── The complete CTA frame ───────────────────────────────────────────────────
+
+function CtaFrame({
+  gid,
+  children,
+}: {
+  gid: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className="relative isolate flex w-full flex-col justify-center overflow-hidden py-24 sm:py-28"
+      style={{ minHeight: "480px" }}
+    >
+      {/* faint dashboard grid */}
+      <div
+        aria-hidden
+        className="absolute inset-0 z-0 opacity-40 dark:opacity-30"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0)",
+          backgroundSize: "24px 24px",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 82% 72% at 50% 50%, #000 35%, transparent 100%)",
+          maskImage:
+            "radial-gradient(ellipse 82% 72% at 50% 50%, #000 35%, transparent 100%)",
+        }}
+      />
+
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-16 px-5 sm:px-8 lg:grid-cols-2">
+        <div className="max-w-xl">
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl">
+            Your agents are running in the fog.
+          </h2>
+          <p className="mt-3 max-w-md text-muted-foreground text-pretty">
+            What they cost, when they break, what they say. You can't see any
+            of it. One prompt turns the light on.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <CopyPromptButton />
+            <Button
+              render={<Link href="/login" />}
+              size="lg"
+              className="text-base"
+              variant="secondary"
+            >
+              Start free
+              <IconArrowBigRightFilled className="size-4 text-muted-foreground ml-0.5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* the reveal area: bare details + the fog cloud above them */}
+        <div className="hidden justify-center lg:flex">{children}</div>
+      </div>
+
+      <FilmGrain className="z-20 opacity-[0.14] mix-blend-overlay" id={gid} />
+    </section>
+  );
+}
+
 // ─── Variants ─────────────────────────────────────────────────────────────────
 
-// 1. Fade away: the whole blanket dissolves on hover.
+// 1. Fade away: the cloud dissolves in place.
 function VFade() {
   return (
-    <div className="group relative h-64">
-      <AgentPeek />
-      <FogCover
-        id="ctav1"
+    <div className="group relative">
+      <AgentDetails />
+      <FogCloud
+        id="cv1"
         className="transition-opacity duration-700 group-hover:opacity-0"
       />
     </div>
   );
 }
 
-// 2. Curtains: the fog parts, half sliding left, half sliding right.
-function VCurtains() {
+// 2. Drift off: the cloud slides away to the right and thins out, like wind
+// pushing it off the page.
+function VDrift() {
   return (
-    <div className="group relative h-64 overflow-hidden rounded-3xl corner-squircle">
-      <AgentPeek />
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-[60%] overflow-hidden transition-transform duration-700 ease-out group-hover:-translate-x-full">
-        <div className="absolute inset-0 bg-background/55 backdrop-blur-[3px]" />
-        <div className="absolute inset-[-30%] opacity-90" style={{ filter: "blur(10px)" }}>
-          <FogBank id="ctav2-a" freq={0.012} seed={7} />
-        </div>
-      </div>
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-[60%] overflow-hidden transition-transform duration-700 ease-out group-hover:translate-x-full">
-        <div className="absolute inset-0 bg-background/55 backdrop-blur-[3px]" />
-        <div className="absolute inset-[-30%] opacity-90" style={{ filter: "blur(10px)" }}>
-          <FogBank id="ctav2-b" freq={0.014} seed={29} />
-        </div>
-      </div>
+    <div className="group relative">
+      <AgentDetails />
+      <FogCloud
+        id="cv2"
+        className="transition-[transform,opacity] duration-1000 ease-out group-hover:translate-x-48 group-hover:opacity-0"
+      />
     </div>
   );
 }
 
-// 3. Flashlight: the cursor burns a hole through the fog wherever it goes.
-function VSpotlight() {
+// 3. Flashlight: the cursor pushes a hole through the cloud wherever it goes.
+function VFlashlight() {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  // The cloud is offset -inset-x-40/-inset-y-24 from this wrapper, so the
+  // cursor position needs that offset added to land in the cloud's own space.
   const mask = pos
-    ? `radial-gradient(140px at ${pos.x}px ${pos.y}px, transparent 0%, transparent 40%, #000 100%)`
+    ? `radial-gradient(180px at ${pos.x + 160}px ${pos.y + 96}px, transparent 0%, transparent 35%, #000 95%)`
     : undefined;
   return (
     <div
       ref={ref}
-      className="relative h-64"
+      className="group relative"
       onMouseMove={(e) => {
         const r = ref.current?.getBoundingClientRect();
         if (r) setPos({ x: e.clientX - r.left, y: e.clientY - r.top });
       }}
       onMouseLeave={() => setPos(null)}
     >
-      <AgentPeek />
-      <FogCover
-        id="ctav3"
-        style={{ WebkitMaskImage: mask, maskImage: mask }}
+      <AgentDetails />
+      <FogCloud
+        id="cv3"
+        innerStyle={
+          mask ? { WebkitMaskImage: mask, maskImage: mask } : undefined
+        }
       />
     </div>
   );
 }
 
-// 4. Lift: the fog rises off the card like morning fog burning away.
+// 4. Lift: the cloud rises and burns off, morning-fog style.
 function VLift() {
   return (
-    <div className="group relative h-64 overflow-hidden rounded-3xl corner-squircle">
-      <AgentPeek />
-      <FogCover
-        id="ctav4"
-        className="transition-transform duration-700 ease-out group-hover:-translate-y-full"
+    <div className="group relative">
+      <AgentDetails />
+      <FogCloud
+        id="cv4"
+        className="transition-[transform,opacity] duration-1000 ease-out group-hover:-translate-y-40 group-hover:opacity-0"
       />
     </div>
   );
 }
 
-// 5. Focus: the card starts blurred under the fog and sharpens as it clears.
+// 5. Focus: the details start soft-blurred and sharpen as the cloud clears.
 function VFocus() {
   return (
-    <div className="group relative h-64">
-      <div className="h-full blur-[5px] transition-[filter,transform] duration-700 group-hover:blur-0 group-hover:scale-[1.01]">
-        <AgentPeek />
+    <div className="group relative">
+      <div className="blur-[4px] transition-[filter] duration-700 group-hover:blur-0">
+        <AgentDetails />
       </div>
-      <FogCover
-        id="ctav5"
+      <FogCloud
+        id="cv5"
         className="transition-opacity duration-700 group-hover:opacity-0"
       />
     </div>
   );
 }
 
-// 6. Light on: the fog clears and the trace draws itself in, span by span.
+// 6. Light on: the cloud clears and the trace draws itself in, span by span.
 function VLightOn() {
   return (
-    <div className="group relative h-64">
-      <AgentPeek animate />
-      <FogCover
-        id="ctav6"
+    <div className="group relative">
+      <AgentDetails animateSpans />
+      <FogCloud
+        id="cv6"
         className="transition-opacity duration-500 group-hover:opacity-0"
       />
     </div>
   );
 }
 
-// 7. Tiles: each stat sits under its own patch of fog; clear them one by one.
-function VTiles() {
-  const tiles = [
-    { label: "cost", value: "$0.0041", sub: "this run" },
-    { label: "latency", value: "2.3s", sub: "p95 4.1s" },
-    { label: "evals", value: "94%", sub: "no PII, grounded" },
-  ];
+// 7. Thin out: the cloud never fully leaves — it shrinks toward the center and
+// goes translucent, so the details read through a wisp of fog.
+function VThin() {
   return (
-    <div className="grid h-64 grid-rows-3 gap-3">
-      {tiles.map((t, i) => (
-        <div key={t.label} className="group relative">
-          <div className="flex h-full items-center justify-between rounded-2xl corner-squircle border-overlay bg-card px-5 shadow-(--custom-shadow)">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              {t.label}
-            </span>
-            <span className="flex flex-col items-end">
-              <span className="font-display text-lg font-semibold tabular-nums">
-                {t.value}
-              </span>
-              <span className="text-xs text-muted-foreground">{t.sub}</span>
-            </span>
-          </div>
-          <FogCover
-            id={`ctav7-${i}`}
-            className="rounded-2xl transition-opacity duration-500 group-hover:opacity-0"
-          />
-        </div>
-      ))}
+    <div className="group relative">
+      <AgentDetails />
+      <FogCloud
+        id="cv7"
+        className="transition-[transform,opacity] duration-700 ease-out group-hover:scale-75 group-hover:opacity-25"
+      />
     </div>
   );
 }
 
-// ─── The bake-off section ─────────────────────────────────────────────────────
+// ─── The bake-off ─────────────────────────────────────────────────────────────
 
 const VARIANTS = [
   { n: 1, name: "Fade away", C: VFade },
-  { n: 2, name: "Curtains", C: VCurtains },
-  { n: 3, name: "Flashlight", C: VSpotlight },
+  { n: 2, name: "Drift off", C: VDrift },
+  { n: 3, name: "Flashlight", C: VFlashlight },
   { n: 4, name: "Lift", C: VLift },
   { n: 5, name: "Focus", C: VFocus },
   { n: 6, name: "Light on", C: VLightOn },
-  { n: 7, name: "Stat tiles", C: VTiles },
+  { n: 7, name: "Thin out", C: VThin },
 ];
 
 export function CtaVariants() {
   return (
-    <section className="mx-auto w-full max-w-7xl px-5 sm:px-8">
-      <p className="mb-8 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-        CTA bake-off: hover each card to clear the fog (temp, pick one)
-      </p>
-      <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
-        {VARIANTS.map(({ n, name, C }) => (
-          <div key={n}>
-            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              {n}. {name}
-            </p>
+    <div className="flex flex-col gap-4">
+      {VARIANTS.map(({ n, name, C }) => (
+        <div key={n}>
+          <p className="mx-auto w-full max-w-7xl px-5 text-xs font-medium uppercase tracking-widest text-muted-foreground sm:px-8">
+            {n}. {name}
+          </p>
+          <CtaFrame gid={`cta-frame-grain-${n}`}>
             <C />
-          </div>
-        ))}
-      </div>
-    </section>
+          </CtaFrame>
+        </div>
+      ))}
+    </div>
   );
 }
