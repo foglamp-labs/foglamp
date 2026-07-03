@@ -16,14 +16,29 @@ import type { ELK, ElkNode } from "elkjs/lib/elk-api";
 let elkInstance: ELK | null = null;
 async function getElk(): Promise<ELK> {
   if (!elkInstance) {
-    const [{ default: ELKCtor }, worker] = await Promise.all([
+    const [elkApi, worker] = (await Promise.all([
       import("elkjs/lib/elk-api.js"),
       // @ts-expect-error — no types for the worker entry
       import("elkjs/lib/elk-worker.min.js"),
-    ]);
-    const FakeWorker = (worker.default ?? worker).Worker;
+    ])) as [
+      { default: (new (opts: object) => ELK) | { default: new (opts: object) => ELK } },
+      Record<string, unknown>,
+    ];
+    // Both modules are CJS; depending on the bundler (turbopack, webpack,
+    // Vercel's nft trace) the constructor lands on the module, .default, or
+    // .default.default. Probe every shape instead of trusting one.
+    const ELKCtor = (
+      typeof elkApi.default === "function" ? elkApi.default : elkApi.default.default
+    ) as new (opts: object) => ELK;
+    const workerNs = worker as { Worker?: unknown; default?: { Worker?: unknown } };
+    const FakeWorker = (workerNs.Worker ??
+      workerNs.default?.Worker ??
+      workerNs.default) as new (url?: string) => Worker;
+    if (typeof FakeWorker !== "function") {
+      throw new Error("elk-worker module shape not recognized");
+    }
     elkInstance = new ELKCtor({
-      workerFactory: (url) => new FakeWorker(url),
+      workerFactory: (url?: string) => new FakeWorker(url),
     });
   }
   return elkInstance;
