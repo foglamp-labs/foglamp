@@ -23,13 +23,13 @@ import { GithubLogo } from "./github-logo";
 import { Logo } from "./logo";
 import { products } from "./products";
 import {
+  IconArrowBigRightFilled,
   IconChevronRight,
   IconChevronRightFilled,
   IconCircleChevronRightFilled,
 } from "@tabler/icons-react";
 
 const DOCS_URL = "https://docs.foglamp.dev";
-const HUD_URL = "https://hud.foglamp.dev";
 
 function ProductsMenu() {
   return (
@@ -140,7 +140,18 @@ export function MarketingNavbar() {
                   navigationMenuTriggerStyle(),
                   "text-muted-foreground"
                 )}
-                render={<a href={HUD_URL} target="_blank" />}
+                render={<Link href="/scan" />}
+              >
+                Scan
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink
+                className={cn(
+                  navigationMenuTriggerStyle(),
+                  "text-muted-foreground"
+                )}
+                render={<Link href="/hud" />}
               >
                 HUD
               </NavigationMenuLink>
@@ -148,7 +159,7 @@ export function MarketingNavbar() {
           </NavigationMenuList>
         </NavigationMenu>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           {/* Open-source signal: the same GitHub link as the footer, sitting
               right next to the primary CTA. Icon-only to stay compact. */}
           <Button
@@ -164,13 +175,11 @@ export function MarketingNavbar() {
           {loggedIn ? (
             <Button render={<Link href="/overview" />} className="h-7.5">
               Dashboard
-              <IconCircleChevronRightFilled className="size-4.5 ml-0.5 opacity-90" />
             </Button>
           ) : (
             <>
               <Button render={<Link href="/login" />} className="h-7.5">
                 Start monitoring
-                <IconCircleChevronRightFilled className="size-4.5 ml-0.5 opacity-90" />
               </Button>
             </>
           )}

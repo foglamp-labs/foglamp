@@ -32,7 +32,6 @@
     "dotenv": "catalog:",
     "elkjs": "^0.11.1",
     "foglamp": "workspace:*",
-    "gsap": "^3.15.0",
     "motion": "^12.40.0",
     "next": "^16.2.0",
     "next-themes": "catalog:",

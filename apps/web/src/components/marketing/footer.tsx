@@ -3,24 +3,24 @@ import Link from "next/link";
 
 import { GITHUB_URL } from "@/lib/links";
 
-import { Cubes } from "./cubes";
 import { GithubLogo } from "./github-logo";
 import { Logo } from "./logo";
+import { FogBank } from "./noise-overlay";
 import { products } from "./products";
 
 const DOCS_URL = "https://docs.foglamp.dev";
 
 type FooterLink = { label: string; href: string; external?: boolean };
 
-const productLinks: FooterLink[] = products.map((p) => ({
-  label: p.label,
-  href: p.href,
-}));
+const productLinks: FooterLink[] = [
+  { label: "Scan", href: "/scan" },
+  { label: "HUD", href: "/hud" },
+  ...products.map((p) => ({ label: p.label, href: p.href })),
+];
 
 const resourceLinks: FooterLink[] = [
   { label: "Pricing", href: "/pricing" },
   { label: "Docs", href: DOCS_URL, external: true },
-  { label: "GitHub", href: GITHUB_URL, external: true },
 ];
 
 const headingClassName = "text-sm font-medium tracking-wide text-foreground";
@@ -108,7 +108,7 @@ export function MarketingFooter() {
 
           <div className="flex flex-col gap-3">
             <h3 className={headingClassName}>Product</h3>
-            <ul className="grid grid-flow-col grid-rows-3 gap-x-8 gap-y-2.5">
+            <ul className="grid grid-flow-col grid-rows-4 gap-x-8 gap-y-2.5">
               {productLinks.map((link) => (
                 <li key={link.label}>
                   <FooterAnchor link={link} />
@@ -152,20 +152,18 @@ export function MarketingFooter() {
         </div>
       </div>
 
-      {/* Decorative cube field on the footer floor. The grid renders as a
-          full-width square; the .cubes-band wrapper clips it to its top ~20%,
-          so the cubes read as rising out of the footer surface. */}
-      <div className="cubes-band" aria-hidden>
-        <Cubes
-          className="cubes-band__grid"
-          gridSize={14}
-          maxAngle={45}
-          cellGap={0}
-          autoAnimate
-          borderStyle="1px solid var(--muted)"
-          faceColor="#131313"
-          rippleOnClick={false}
-        />
+      {/* A quiet fog floor: static turbulence haze rising from the bottom
+          edge, faded out well before the link columns. Echoes the CTA's fog
+          without any animation, so it's reduced-motion safe by construction. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-40 opacity-60"
+        style={{
+          WebkitMaskImage: "linear-gradient(to top, #000 20%, transparent)",
+          maskImage: "linear-gradient(to top, #000 20%, transparent)",
+        }}
+      >
+        <FogBank id="footer-fog" freq={0.013} seed={11} />
       </div>
     </footer>
   );
