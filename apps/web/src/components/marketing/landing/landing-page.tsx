@@ -56,7 +56,8 @@ const homepageJsonLd = {
 // the prompt-first story.
 export function LandingPage() {
   return (
-    <div className="flex flex-col gap-36 pb-42">
+    // No bottom padding: the CTA runs straight into the footer.
+    <div className="flex flex-col gap-36">
       <JsonLd data={homepageJsonLd} />
       <Hero />
       <DriftStory />

@@ -17,8 +17,8 @@ export function CtaSection() {
 
   return (
     <section
-      className="relative isolate flex w-full flex-col justify-center overflow-hidden py-24 sm:py-32"
-      style={{ minHeight: "520px" }}
+      className="relative isolate flex w-full flex-col justify-center overflow-hidden py-32 sm:py-44"
+      style={{ minHeight: "780px" }}
     >
       {/* Faint dashboard grid so the fog has a surface to sit on. */}
       <div
@@ -37,46 +37,63 @@ export function CtaSection() {
         }}
       />
 
-      {/* The fog blanket: drifting turbulence. Two nested masks (vertical on
-          the outer div, horizontal on the inner) multiply together, so the fog
-          feathers to zero well before every edge — no hard cuts anywhere. */}
+      {/* The fog: three drifting layers, each with its own soft radial blob
+          mask at a different spot and size — overlapping blobs instead of one
+          band, so the cloud reads organic rather than a strip. Everything
+          fades out well before the section edges. */}
       {!reduce && (
         <div
           className="absolute inset-0 z-10"
           aria-hidden
           style={{
+            // Thin the whole cloud out toward the left so the copy stays clear.
             WebkitMaskImage:
-              "linear-gradient(to bottom, transparent 4%, #000 38%, #000 60%, transparent 92%)",
-            maskImage:
-              "linear-gradient(to bottom, transparent 4%, #000 38%, #000 60%, transparent 92%)",
+              "linear-gradient(to right, transparent 4%, #000 42%)",
+            maskImage: "linear-gradient(to right, transparent 4%, #000 42%)",
           }}
         >
-          <div
-            className="absolute inset-0"
-            style={{
-              WebkitMaskImage:
-                "linear-gradient(to right, transparent 8%, #000 45%, #000 78%, transparent 99%)",
-              maskImage:
-                "linear-gradient(to right, transparent 8%, #000 45%, #000 78%, transparent 99%)",
-            }}
-          >
           <motion.div
-            className="absolute inset-[-20%] opacity-50"
-            style={{ filter: "blur(14px)" }}
+            className="absolute inset-[-15%] opacity-55"
+            style={{
+              filter: "blur(14px)",
+              WebkitMaskImage:
+                "radial-gradient(46% 44% at 66% 42%, #000 25%, transparent 74%)",
+              maskImage:
+                "radial-gradient(46% 44% at 66% 42%, #000 25%, transparent 74%)",
+            }}
             animate={{ x: ["-3%", "4%", "-3%"], y: ["-2%", "2%", "-2%"] }}
             transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
           >
             <FogBank id="fog-a" freq={0.011} seed={7} />
           </motion.div>
           <motion.div
-            className="absolute inset-[-20%] opacity-35"
-            style={{ filter: "blur(24px)" }}
+            className="absolute inset-[-15%] opacity-40"
+            style={{
+              filter: "blur(24px)",
+              WebkitMaskImage:
+                "radial-gradient(52% 50% at 52% 66%, #000 20%, transparent 72%)",
+              maskImage:
+                "radial-gradient(52% 50% at 52% 66%, #000 20%, transparent 72%)",
+            }}
             animate={{ x: ["3%", "-4%", "3%"], y: ["2%", "-3%", "2%"] }}
             transition={{ duration: 34, repeat: Infinity, ease: "easeInOut" }}
           >
             <FogBank id="fog-b" freq={0.02} seed={29} octaves={5} />
           </motion.div>
-          </div>
+          <motion.div
+            className="absolute inset-[-15%] opacity-35"
+            style={{
+              filter: "blur(20px)",
+              WebkitMaskImage:
+                "radial-gradient(38% 40% at 80% 24%, #000 20%, transparent 72%)",
+              maskImage:
+                "radial-gradient(38% 40% at 80% 24%, #000 20%, transparent 72%)",
+            }}
+            animate={{ x: ["-2%", "3%", "-2%"], y: ["3%", "-2%", "3%"] }}
+            transition={{ duration: 41, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <FogBank id="fog-c" freq={0.016} seed={53} octaves={4} />
+          </motion.div>
         </div>
       )}
 
