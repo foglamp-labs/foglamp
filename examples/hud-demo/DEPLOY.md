@@ -77,7 +77,16 @@ out-of-band push.
 ## Smoke test
 
 ```bash
-curl -sf https://hud.foglamp.dev/ -o /dev/null && echo "page ok"
-# SSE stream (should stay open and stream events):
+# `/` 302s to the canonical marketing page at foglamp.dev/hud:
+curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" https://hud.foglamp.dev/
+# SSE stream (should stay open and stream events; CORS `*` for foglamp.dev):
 curl -N https://hud.foglamp.dev/hud/events
 ```
+
+## Relationship to foglamp.dev/hud
+
+The marketing page at `foglamp.dev/hud` embeds `<FoglampHUD url="https://hud.foglamp.dev/hud/events" />`
+cross-origin and triggers `POST /api/storm` from the browser — that's why the
+SSE proxy and API routes send CORS headers, and why this service must stay
+always-on. This origin is no longer a standalone landing page; its root
+redirects to the marketing page.

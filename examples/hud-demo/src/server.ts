@@ -36,30 +36,56 @@ function clientIp(req: Request, server: { requestIP(r: Request): { address: stri
   );
 }
 
+// The stream and triggers are consumed cross-origin by foglamp.dev/hud (the
+// marketing playground). Public, read-only, no credentials — a wildcard is fine.
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, POST, OPTIONS",
+  "access-control-allow-headers": "content-type",
+} as const;
+
 Bun.serve({
   port: PORT,
   idleTimeout: 0, // don't drop the long-lived SSE proxy connection
   async fetch(req, server) {
     const url = new URL(req.url);
 
+    // CORS preflight for the cross-origin POSTs from foglamp.dev/hud.
+    if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+
     // Proxy the broker's SSE onto this origin so the browser can subscribe.
     // Same host → the loopback broker is reachable; Bun streams the response.
     if (req.method === "GET" && url.pathname === "/hud/events") {
-      return fetch(BROKER_SSE, { signal: req.signal });
+      const upstream = await fetch(BROKER_SSE, { signal: req.signal });
+      return new Response(upstream.body, {
+        status: upstream.status,
+        headers: {
+          ...Object.fromEntries(upstream.headers),
+          ...CORS,
+        },
+      });
     }
 
     if (req.method === "POST" && (url.pathname === "/api/run" || url.pathname === "/api/storm")) {
-      if (!allow(clientIp(req, server))) return new Response("slow down", { status: 429 });
+      if (!allow(clientIp(req, server)))
+        return new Response("slow down", { status: 429, headers: CORS });
       if (url.pathname === "/api/storm") runStorm();
       else {
         const id = url.searchParams.get("agent");
         if (id) runAgent(id).catch((e) => console.error("run failed:", e));
       }
-      return new Response("ok");
+      return new Response("ok", { headers: CORS });
+    }
+
+    // The canonical marketing page for the HUD lives on the main site now;
+    // the standalone demo root just points there. The SSE + API routes above
+    // keep serving on this origin.
+    if (req.method === "GET" && url.pathname === "/") {
+      return Response.redirect("https://foglamp.dev/hud", 302);
     }
 
     // Static assets from the Vite build; SPA fallback to index.html.
-    const rel = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\//, "");
+    const rel = url.pathname.replace(/^\//, "");
     const file = Bun.file(new URL(rel, DIST));
     if (await file.exists()) return new Response(file);
     return new Response(Bun.file(new URL("index.html", DIST)), {

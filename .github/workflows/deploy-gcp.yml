@@ -145,5 +145,9 @@ jobs:
             curl -sf -o /dev/null -w "ingest %{http_code}\n" https://ingest.foglamp.dev/health || true
           fi
           if [ "${{ steps.changes.outputs.hud }}" = "true" ]; then
+            # `/` now 302s to foglamp.dev/hud; the thing the marketing page
+            # depends on is the SSE stream, so probe that (bounded — it never
+            # ends on its own).
+            curl -s -o /dev/null --max-time 3 https://hud.foglamp.dev/hud/events || true
             curl -sf -o /dev/null -w "hud %{http_code}\n" https://hud.foglamp.dev/ || true
           fi
