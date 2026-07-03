@@ -1,214 +1,116 @@
 "use client";
 
+// The "how it works" band: before / after. A wall of illegible file paths on
+// the left, one prompt in the middle, a tiny scan map on the right. Full-bleed
+// section, no card wrapper.
+
 import {
+  IconArrowRight,
   IconClipboardTextFilled,
-  type IconProps,
-  IconLink,
+  IconGhostFilled,
   IconSparkles,
 } from "@tabler/icons-react";
 import { type MotionProps, motion, useReducedMotion } from "motion/react";
-import type { ComponentType } from "react";
-
-import { cn } from "@foglamp/ui/lib/utils";
-
-// The scan journey as a drift-story-style band: the left rail walks the three
-// beats, the right column shows what each beat actually looks like — the pasted
-// prompt, the agent working, and the shareable link landing.
-
-const BEATS = [
-  { t: "Step 1", text: "Paste one prompt." },
-  { t: "Step 2", text: "Your agent maps the repo." },
-  { t: "Then", text: "A link worth sharing.", accent: true },
-];
-
-type Ping = {
-  icon: ComponentType<IconProps>;
-  badge: string;
-  name: string;
-  meta: string;
-  text: string;
-  time: string;
-};
-
-const PINGS: Ping[] = [
-  {
-    icon: IconClipboardTextFilled,
-    badge: "bg-muted/30 text-foreground",
-    name: "You",
-    meta: "Claude Code · Cursor · any agent",
-    text: "“Analyze this repository and publish a shareable codebase scan…”",
-    time: "0:00",
-  },
-  {
-    icon: IconSparkles,
-    badge: "bg-orange-500/90 text-white",
-    name: "Your agent",
-    meta: "exploring",
-    text: "Found 6 agents, 1 model, 4 tools and the flows between them. No code or secrets leave — just the map.",
-    time: "1:12",
-  },
-  {
-    icon: IconLink,
-    badge: "bg-gradient-to-br from-orange-500 to-amber-400 text-white",
-    name: "foglamp.dev/scan/olwen-x7f2",
-    meta: "scan ready",
-    text: "Animated, interactive, and it unfurls on X, Slack — anywhere you drop the link.",
-    time: "1:30",
-  },
-];
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
+const FILE_WALL = [
+  "apps/server/src/ai/agents/brand-analysis/agent.ts",
+  "apps/server/src/routes/queue.ts",
+  "packages/db/src/schema/brand-mention.ts",
+  "apps/server/src/services/brightdata.ts",
+  "apps/web/src/app/dashboard/page.tsx",
+  "apps/server/src/ai/agents/content-creator/agent.ts",
+  "packages/api/src/services/cms/github.ts",
+  "apps/server/src/services/firecrawl.ts",
+  "apps/server/src/ai/models.ts",
+  "apps/server/vercel.json",
+  "apps/server/src/ai/agents/geo-strategy/agent.ts",
+  "packages/db/src/schema/content.ts",
+];
+
 export function ScanStory() {
   const reduce = useReducedMotion() ?? false;
-
   const reveal = (
     delay: number,
-    from: { x?: number; y?: number }
+    from: { x?: number; y?: number } = {}
   ): MotionProps =>
     reduce
       ? {}
       : {
-          initial: { opacity: 0, filter: "blur(0px)", ...from },
-          whileInView: { opacity: 1, x: 0, y: 0, filter: "blur(0px)" },
+          initial: { opacity: 0, ...from },
+          whileInView: { opacity: 1, x: 0, y: 0 },
           viewport: { once: true, margin: "-80px" },
-          transition: { duration: 0.6, ease: EASE, delay },
+          transition: { duration: 0.55, ease: EASE, delay },
         };
 
   return (
     <section className="mx-auto w-full max-w-7xl px-5 sm:px-8">
-      <div className="relative isolate overflow-hidden rounded-[64px] corner-squircle bg-card dark:bg-card/50 shadow-(--custom-shadow) px-2 py-3 sm:px-12 sm:py-24">
-        {/* Same film-grain texture as the landing's drift band. */}
-        <figure
-          aria-hidden
-          className="absolute inset-0 -z-10 pointer-events-none opacity-10 mix-blend-screen filter-[url('#scan-noise-fx')_grayscale(100%)]"
-        >
-          <svg className="size-full">
-            <filter id="scan-noise-fx">
-              <feTurbulence baseFrequency="0.8" />
-            </filter>
-          </svg>
-        </figure>
-        <div className="relative z-10 mx-auto grid max-w-5xl items-center gap-14 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)] lg:gap-20">
-          {/* Left: the three-beat rail (same choreography as DriftStory). */}
-          <ol className="font-display flex flex-col">
-            {BEATS.map((b, i) => {
-              const first = i === 0;
-              const last = i === BEATS.length - 1;
-              const STEP = 0.6;
-              const lineDelay = i * STEP;
-              const dotDelay = first
-                ? 0
-                : last
-                  ? i * STEP + STEP
-                  : i * STEP + STEP / 2;
+      <motion.h2
+        {...reveal(0)}
+        className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl"
+      >
+        One prompt, from repo to map.
+      </motion.h2>
+      <motion.p
+        {...reveal(0.08)}
+        className="mt-3 max-w-md text-muted-foreground text-pretty"
+      >
+        Your agent explores the codebase, draws the map and publishes it to a
+        link you can share.
+      </motion.p>
 
-              const lineMotion: MotionProps = reduce
-                ? {}
-                : {
-                    initial: { scaleY: 0 },
-                    whileInView: { scaleY: 1 },
-                    viewport: { once: true, margin: "-80px" },
-                    transition: {
-                      duration: STEP,
-                      ease: "linear",
-                      delay: lineDelay,
-                    },
-                  };
-              const dotMotion: MotionProps = reduce
-                ? {}
-                : {
-                    initial: { scale: 0, opacity: 0 },
-                    whileInView: { scale: 1, opacity: 1 },
-                    viewport: { once: true, margin: "-80px" },
-                    transition: {
-                      duration: 0.4,
-                      ease: "backOut",
-                      delay: dotDelay,
-                    },
-                  };
-
-              return (
-                <li key={b.t} className="flex min-h-24 items-center sm:min-h-28">
-                  <motion.span
-                    className={cn(
-                      "w-16 shrink-0 text-right text-xs font-medium tracking-wide text-muted-foreground/70 sm:w-20 sm:text-sm",
-                      b.accent && "text-orange-500 dark:text-orange-400"
-                    )}
-                    {...reveal(dotDelay, { y: 12 })}
-                  >
-                    {b.t}
-                  </motion.span>
-                  <span className="relative w-8 shrink-0 self-stretch sm:w-10">
-                    <motion.span
-                      aria-hidden
-                      className={cn(
-                        "absolute left-[calc(50%-0.5px)] w-px origin-top bg-border",
-                        first && "top-1/2 bottom-0",
-                        last && "top-0 bottom-1/2",
-                        !first && !last && "inset-y-0",
-                        b.accent && "bg-orange-500/40 dark:bg-orange-400/40"
-                      )}
-                      {...lineMotion}
-                    />
-                    <motion.span
-                      aria-hidden
-                      className={cn(
-                        "absolute top-1/2 left-1/2 -mt-1 -ml-1 size-2 rounded-full ring-4 ring-card",
-                        b.accent
-                          ? "bg-orange-500 shadow-[0_0_12px_2px_rgba(249,115,22,0.5)] dark:bg-orange-400"
-                          : "bg-foreground shadow-[0_0_10px_1px_rgba(255,255,255,0.22)]"
-                      )}
-                      {...dotMotion}
-                    />
-                  </span>
-                  <motion.span
-                    className="text-2xl font-medium tracking-tight text-balance text-foreground sm:text-3xl ml-2"
-                    {...reveal(dotDelay, { y: 12 })}
-                  >
-                    {b.text}
-                  </motion.span>
-                </li>
-              );
-            })}
-          </ol>
-
-          {/* Right: the journey, one card per beat. */}
-          <div className="flex flex-col gap-4">
-            {PINGS.map((p, i) => (
-              <motion.div
-                key={p.name}
-                className="flex items-start gap-3 rounded-[36px] corner-squircle dark:shadow-(--custom-shadow) bg-muted/50 p-3.5 shadow-sm backdrop-blur-sm"
-                {...reveal(1.6 + i * 0.4, { x: 4 })}
-              >
-                <span
-                  className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-3xl corner-squircle dark:shadow-(--custom-shadow)",
-                    p.badge
-                  )}
-                >
-                  <p.icon size={20} aria-hidden />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="truncate font-medium text-foreground">
-                      {p.name}
-                    </span>
-                    <span className="truncate text-muted-foreground">
-                      {p.meta}
-                    </span>
-                    <span className="ml-auto shrink-0 text-xs text-muted-foreground/50">
-                      {p.time}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-sm text-pretty text-muted-foreground">
-                    {p.text}
-                  </p>
-                </div>
-              </motion.div>
+      <div className="mt-14 grid items-center gap-10 lg:grid-cols-[1fr_auto_1fr]">
+        <motion.div {...reveal(0.1)} className="relative overflow-hidden">
+          <div className="flex flex-col gap-2 font-mono text-[11px] leading-relaxed text-muted-foreground/60 [mask-image:linear-gradient(to_bottom,#000_35%,transparent_95%)]">
+            {FILE_WALL.map((f) => (
+              <span key={f} className="truncate">
+                {f}
+              </span>
             ))}
           </div>
-        </div>
+          <p className="mt-3 text-sm font-medium text-muted-foreground">
+            What your repo looks like to everyone else
+          </p>
+        </motion.div>
+
+        <motion.div
+          {...reveal(0.3)}
+          className="mx-auto flex flex-col items-center gap-2"
+        >
+          <span className="flex h-9 items-center gap-2 rounded-full bg-orange-500/90 px-4 text-sm font-medium text-white shadow-(--custom-shadow)">
+            one prompt
+            <IconArrowRight className="size-4" />
+          </span>
+        </motion.div>
+
+        <motion.div {...reveal(0.5, { x: 10 })} className="relative">
+          <div className="relative h-44">
+            <span className="border-overlay absolute left-0 top-2 flex h-9 w-28 items-center gap-2 rounded-xl bg-background/80 px-2.5 text-xs font-medium shadow-(--custom-shadow)">
+              <IconClipboardTextFilled className="size-3.5 text-muted-foreground" />
+              Daily cron
+            </span>
+            <span className="border-overlay absolute left-24 top-16 flex h-9 w-32 items-center gap-2 rounded-xl bg-background/80 px-2.5 text-xs font-medium shadow-(--custom-shadow)">
+              <IconGhostFilled className="size-3.5 text-orange-500" />
+              Agents ×6
+            </span>
+            <span className="border-overlay absolute right-0 top-32 flex h-9 w-28 items-center gap-2 rounded-xl bg-background/80 px-2.5 text-xs font-medium shadow-(--custom-shadow)">
+              <IconSparkles className="size-3.5 text-emerald-500" />
+              Postgres
+            </span>
+            <svg className="absolute inset-0 size-full overflow-visible">
+              <path
+                d="M 112 24 L 140 24 L 140 84 L 96 84 M 224 84 L 250 84 L 250 146 L 232 146"
+                fill="none"
+                stroke="rgba(120,124,136,0.45)"
+                strokeWidth="1.5"
+              />
+            </svg>
+          </div>
+          <p className="mt-3 text-sm font-medium text-muted-foreground">
+            What it looks like as a scan
+          </p>
+        </motion.div>
       </div>
     </section>
   );

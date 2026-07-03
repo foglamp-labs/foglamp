@@ -41,9 +41,16 @@ function nodeHeight(n: FoldedNode): number {
 export function FlowMap({
   graph,
   focusKinds,
+  embedded = false,
 }: {
   graph: ScanData["graph"];
   focusKinds: NodeKind[] | null;
+  /**
+   * Marketing-embed mode: no pan/zoom/trace interactivity, no grid backdrop,
+   * and a tight fit with no sidebar clearance. The full-page viewer keeps the
+   * default.
+   */
+  embedded?: boolean;
 }) {
   const folded = useMemo(() => foldGraph(graph), [graph]);
 
@@ -182,9 +189,9 @@ export function FlowMap({
   useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el || fitted.current || !layout || layout.width === 0) return;
-    const padL = 432; // clear the sidebar
-    const padR = 48;
-    const padY = 56;
+    const padL = embedded ? 0 : 432; // clear the floating sidebar
+    const padR = embedded ? 0 : 48;
+    const padY = embedded ? 0 : 56;
     const availW = Math.max(200, el.clientWidth - padL - padR);
     const availH = Math.max(200, el.clientHeight - padY * 2);
     const kFit = Math.min(availW / layout.width, availH / layout.height);
@@ -209,13 +216,13 @@ export function FlowMap({
     }
     fitted.current = true;
     applyTransform();
-  }, [layout]);
+  }, [layout, embedded]);
 
   // Wheel zoom (and trackpad pinch, which arrives as ctrlKey+wheel). Native
   // listener so we can preventDefault (React's onWheel is passive).
   useEffect(() => {
     const el = viewportRef.current;
-    if (!el) return;
+    if (!el || embedded) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const rect = el.getBoundingClientRect();
@@ -234,7 +241,7 @@ export function FlowMap({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [embedded]);
 
   function onPointerDown(e: React.PointerEvent) {
     (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -279,13 +286,21 @@ export function FlowMap({
     <section className="absolute inset-0 z-10">
       <div
         ref={viewportRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerLeave={() => {
-          drag.current = null;
-        }}
-        className="absolute inset-0 cursor-grab touch-none overflow-hidden bg-[linear-gradient(color-mix(in_oklab,var(--border)_45%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--border)_45%,transparent)_1px,transparent_1px)] bg-size-[56px_56px] bg-center active:cursor-grabbing dark:bg-[linear-gradient(color-mix(in_oklab,var(--border)_10%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--border)_10%,transparent)_1px,transparent_1px)]"
+        onPointerDown={embedded ? undefined : onPointerDown}
+        onPointerMove={embedded ? undefined : onPointerMove}
+        onPointerUp={embedded ? undefined : endDrag}
+        onPointerLeave={
+          embedded
+            ? undefined
+            : () => {
+                drag.current = null;
+              }
+        }
+        className={cn(
+          "absolute inset-0 overflow-hidden",
+          !embedded &&
+            "cursor-grab touch-none bg-[linear-gradient(color-mix(in_oklab,var(--border)_45%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--border)_45%,transparent)_1px,transparent_1px)] bg-size-[56px_56px] bg-center active:cursor-grabbing dark:bg-[linear-gradient(color-mix(in_oklab,var(--border)_10%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--border)_10%,transparent)_1px,transparent_1px)]"
+        )}
       >
         {layout ? (
           <div
@@ -424,14 +439,19 @@ export function FlowMap({
                   }}
                 >
                   <div
-                    onPointerUp={(e) => {
-                      if (drag.current?.moved) return;
-                      e.stopPropagation();
-                      drag.current = null;
-                      setTraceRoot((cur) => (cur === n.id ? null : n.id));
-                    }}
+                    onPointerUp={
+                      embedded
+                        ? undefined
+                        : (e) => {
+                            if (drag.current?.moved) return;
+                            e.stopPropagation();
+                            drag.current = null;
+                            setTraceRoot((cur) => (cur === n.id ? null : n.id));
+                          }
+                    }
                     className={cn(
-                      "flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl corner-squircle bg-card text-card-foreground shadow-(--custom-shadow) transition-opacity duration-300",
+                      "flex h-full flex-col overflow-hidden rounded-3xl corner-squircle bg-card text-card-foreground shadow-(--custom-shadow) transition-opacity duration-300",
+                      !embedded && "cursor-pointer",
                       dim && "opacity-25"
                     )}
                   >

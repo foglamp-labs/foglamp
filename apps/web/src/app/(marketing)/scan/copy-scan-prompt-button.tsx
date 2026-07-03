@@ -69,8 +69,8 @@ export function CopyScanPromptButton({ className }: { className?: string }) {
         Copy scan prompt
         <CopyIcon
           copied={copied}
-          className="size-4 ml-1"
-          checkClassName="size-4 text-green-600 ml-1"
+          className="size-4 mt-px"
+          checkClassName="size-4 text-green-600 mt-px"
         />
       </Button>
     </BorderBeam>
