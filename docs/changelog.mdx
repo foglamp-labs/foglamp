@@ -3,6 +3,44 @@ title: Changelog
 description: "What's new in Foglamp."
 ---
 
+<Update label="July 3, 2026">
+
+## New features
+
+**Foglamp Scan.** Point a coding agent at any repo and get a shareable,
+unlisted `foglamp.dev/scan/<slug>` page that maps how the codebase works and
+uses AI — triggers, agents, models, tools, and stores laid out on an
+ELK-routed flow map with a scored **personality** card for the project. The
+page unfurls on socials with an OG image of the actual map, and the prompt is
+one copy-and-paste from [foglamp.dev/scan](https://foglamp.dev/scan). Anonymous,
+no account required; posters expire after 90 days.
+
+## Updates
+
+- The scan map now scores personalities on trait dominance (so different
+  codebases land on different cards), groups the legend by kind
+  (Triggers / Agents / Models / Tools / Stores / External) with a hover
+  spotlight, and uses brand marks for model nodes.
+- Pan and zoom on the scan map now write transforms straight to the DOM for
+  smooth interaction on large graphs, and deep pipelines open height-fit on
+  the start of the flow.
+- Inter is now self-hosted from the canonical `rsms/inter` v4.1 build across
+  the marketing site — restoring the `opsz` optical-size axis and OpenType
+  character variants that Google Fonts strips.
+
+## Bug fixes
+
+- Fixed a 500 on `/scan/<slug>` pages under Vercel's serverless runtime caused
+  by an `elkjs` module-interop shape mismatch — the layout engine is now
+  lazy-loaded and probes every export shape.
+- Fixed the OG image route occasionally 500ing on cold starts by caching and
+  retrying font loads.
+- Contained the marketing footer's film-grain filter to the footer box so
+  noise no longer bleeds above the top border, and softened the cube field on
+  the landing page.
+
+</Update>
+
 <Update label="June 26, 2026">
 
 ## Updates
