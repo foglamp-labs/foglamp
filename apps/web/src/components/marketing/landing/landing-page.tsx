@@ -1,4 +1,5 @@
 import { CtaSection } from "@/components/marketing/landing/cta";
+import { CtaVariants } from "@/components/marketing/landing/cta-variants";
 import { DriftStory } from "@/components/marketing/landing/drift-story";
 import { Hero } from "@/components/marketing/landing/hero";
 import { HowItWorks } from "@/components/marketing/landing/how-it-works";
@@ -62,6 +63,8 @@ export function LandingPage() {
       <DriftStory />
       <HowItWorks />
       <CtaSection />
+      {/* Temporary: 7 fog-reveal directions for the CTA's right side. */}
+      <CtaVariants />
     </div>
   );
 }
