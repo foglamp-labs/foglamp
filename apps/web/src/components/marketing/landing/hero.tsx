@@ -11,9 +11,35 @@ import Link from "next/link";
 import { type SVGProps, useEffect, useState } from "react";
 
 import { CopyPromptButton } from "./copy-prompt-button";
+import {
+  AnthropicLogo,
+  ClaudeLogo,
+  CohereLogo,
+  DeepSeekLogo,
+  GeminiLogo,
+  GrokLogo,
+  MetaLogo,
+  MistralLogo,
+  OpenAILogo,
+  PerplexityLogo,
+} from "@/components/brand-logos";
 import { FilmGrain } from "@/components/marketing/noise-overlay";
 import { HeroDemo } from "./hero-demo";
 import Image from "next/image";
+
+// Every provider the AI SDK speaks to — and so, every provider Foglamp sees.
+const PROVIDERS = [
+  { label: "OpenAI", Logo: OpenAILogo },
+  { label: "Anthropic", Logo: AnthropicLogo },
+  { label: "Claude", Logo: ClaudeLogo },
+  { label: "Gemini", Logo: GeminiLogo },
+  { label: "Mistral", Logo: MistralLogo },
+  { label: "Meta", Logo: MetaLogo },
+  { label: "DeepSeek", Logo: DeepSeekLogo },
+  { label: "Grok", Logo: GrokLogo },
+  { label: "Cohere", Logo: CohereLogo },
+  { label: "Perplexity", Logo: PerplexityLogo },
+];
 
 // interfere.com-style entrance: each element fades in while rising a touch and
 // sharpening from a soft blur, sequenced top-to-bottom. The dashboard follows
@@ -96,16 +122,19 @@ export function Hero() {
       {/* Subtle film-grain noise over the hero. A high-frequency feTurbulence
           fractal, desaturated and dropped to a low opacity with screen blending
           so it lifts the dark background without muddying the copy. */}
-      <FilmGrain id="hero-noise" className="-z-10 opacity-10 mix-blend-screen" />
+      <FilmGrain
+        id="hero-noise"
+        className="-z-10 opacity-10 mix-blend-screen"
+      />
 
       {/* Copy: left-aligned, sharing the dashboard's max-w-7xl left edge. */}
       <div className="mx-auto flex max-w-7xl justify-between items-end px-5 sm:px-8">
         <div className="flex-col">
           <motion.h1
             {...rise(0.15)}
-            className="font-display mt-6 md:text-5xl text-4xl font-semibold tracking-tight text-balance"
+            className="font-display mt-6 md:text-5xl text-4xl font-medium tracking-tight text-balance"
           >
-            Ship AI agents you can actually see
+            Ship AI agents like a pro
           </motion.h1>
           <motion.p
             {...rise(0.27)}
@@ -167,6 +196,24 @@ export function Hero() {
             circular-arc corners are matched by corner-round! on the demo frame
             (see DemoShell). borderRadius 16 == the frame's rounded-3xl. */}
         <BeamedDemo reduce={reduce} />
+      </motion.div>
+
+      {/* Provider strip: left-aligned under the demo, still inside the hero's
+          grain. A fact, not an ad. */}
+      <motion.div
+        {...rise(1.7)}
+        className="mx-auto mt-14 flex w-full max-w-7xl flex-col gap-5 px-5 sm:px-8"
+      >
+        <p className="text-sm text-muted-foreground">
+          Works with every model in the AI SDK.
+        </p>
+        <ul className="flex list-none flex-wrap items-center gap-x-7 gap-y-4">
+          {PROVIDERS.map(({ label, Logo }) => (
+            <li key={label} title={label} className="text-muted-foreground/70">
+              <Logo className="h-5 w-auto grayscale" aria-label={label} />
+            </li>
+          ))}
+        </ul>
       </motion.div>
     </section>
   );

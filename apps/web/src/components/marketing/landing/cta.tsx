@@ -34,33 +34,31 @@ export function CtaSection() {
         }}
       />
 
-      {/* The fog blanket: drifting turbulence over a uniform haze floor,
-          masked to thin out behind the copy and thicken to the right. */}
+      {/* The fog blanket: drifting turbulence, masked with a soft ellipse so
+          it fades out gently on every side (no hard band edges) and thins out
+          behind the copy on the left. */}
       {!reduce && (
         <div
           className="absolute inset-0 z-10"
           aria-hidden
           style={{
             WebkitMaskImage:
-              "linear-gradient(to right, transparent 5%, #000 52%)",
-            maskImage: "linear-gradient(to right, transparent 5%, #000 52%)",
+              "radial-gradient(85% 75% at 62% 50%, #000 25%, transparent 78%)",
+            maskImage:
+              "radial-gradient(85% 75% at 62% 50%, #000 25%, transparent 78%)",
           }}
         >
-          <div
-            className="absolute inset-0"
-            style={{ background: "rgba(78,82,96,0.11)" }}
-          />
           <motion.div
-            className="absolute inset-[-15%] opacity-80"
-            style={{ filter: "blur(8px)" }}
+            className="absolute inset-[-20%] opacity-50"
+            style={{ filter: "blur(14px)" }}
             animate={{ x: ["-3%", "4%", "-3%"], y: ["-2%", "2%", "-2%"] }}
             transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
           >
             <FogBank id="fog-a" freq={0.011} seed={7} />
           </motion.div>
           <motion.div
-            className="absolute inset-[-15%] opacity-60"
-            style={{ filter: "blur(16px)" }}
+            className="absolute inset-[-20%] opacity-35"
+            style={{ filter: "blur(24px)" }}
             animate={{ x: ["3%", "-4%", "3%"], y: ["2%", "-3%", "2%"] }}
             transition={{ duration: 34, repeat: Infinity, ease: "easeInOut" }}
           >
@@ -79,8 +77,8 @@ export function CtaSection() {
             Your agents are running in the fog.
           </h2>
           <p className="mt-3 max-w-md text-muted-foreground text-pretty">
-            Cost, latency, errors, eval scores. All there, all invisible. Copy
-            one prompt and turn the light on.
+            What they cost, when they break, what they say. You can't see any
+            of it. One prompt turns the light on.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <CopyPromptButton />
@@ -104,16 +102,6 @@ export function CtaSection() {
         style={{
           background:
             "radial-gradient(125% 130% at -8% 34%, var(--background) 16%, transparent 54%)",
-        }}
-      />
-
-      {/* Vignette: settles the section's edges back into the page. */}
-      <div
-        className="absolute inset-0 z-25 pointer-events-none"
-        aria-hidden
-        style={{
-          background:
-            "linear-gradient(to bottom, var(--background) 0%, transparent 18%, transparent 82%, var(--background) 100%)",
         }}
       />
     </section>

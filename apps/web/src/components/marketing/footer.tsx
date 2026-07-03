@@ -3,10 +3,9 @@ import Link from "next/link";
 
 import { GITHUB_URL } from "@/lib/links";
 
+import { FooterFog } from "./footer-fog";
 import { GithubLogo } from "./github-logo";
 import { Logo } from "./logo";
-import { FogBank } from "./noise-overlay";
-import { products } from "./products";
 
 const DOCS_URL = "https://docs.foglamp.dev";
 
@@ -15,7 +14,6 @@ type FooterLink = { label: string; href: string; external?: boolean };
 const productLinks: FooterLink[] = [
   { label: "Scan", href: "/scan" },
   { label: "HUD", href: "/hud" },
-  ...products.map((p) => ({ label: p.label, href: p.href })),
 ];
 
 const resourceLinks: FooterLink[] = [
@@ -91,7 +89,9 @@ export function MarketingFooter() {
         </svg>
       </figure>
       <div className="mx-auto max-w-7xl px-5 py-16 pb-12 sm:px-8">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1.5fr_1fr]">
+        {/* Trailing 1fr is a ghost column that keeps the link columns pulled
+            toward the brand instead of spread across the full width. */}
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div className="flex flex-col gap-4">
             <Logo />
             <p className="max-w-xs text-sm text-muted-foreground">
@@ -108,7 +108,7 @@ export function MarketingFooter() {
 
           <div className="flex flex-col gap-3">
             <h3 className={headingClassName}>Product</h3>
-            <ul className="grid grid-flow-col grid-rows-4 gap-x-8 gap-y-2.5">
+            <ul className="flex flex-col gap-2.5">
               {productLinks.map((link) => (
                 <li key={link.label}>
                   <FooterAnchor link={link} />
@@ -152,19 +152,7 @@ export function MarketingFooter() {
         </div>
       </div>
 
-      {/* A quiet fog floor: static turbulence haze rising from the bottom
-          edge, faded out well before the link columns. Echoes the CTA's fog
-          without any animation, so it's reduced-motion safe by construction. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-40 opacity-60"
-        style={{
-          WebkitMaskImage: "linear-gradient(to top, #000 20%, transparent)",
-          maskImage: "linear-gradient(to top, #000 20%, transparent)",
-        }}
-      >
-        <FogBank id="footer-fog" freq={0.013} seed={11} />
-      </div>
+      <FooterFog />
     </footer>
   );
 }

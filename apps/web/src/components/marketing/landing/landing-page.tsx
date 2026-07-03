@@ -2,7 +2,6 @@ import { CtaSection } from "@/components/marketing/landing/cta";
 import { DriftStory } from "@/components/marketing/landing/drift-story";
 import { Hero } from "@/components/marketing/landing/hero";
 import { HowItWorks } from "@/components/marketing/landing/how-it-works";
-import { SocialProof } from "@/components/marketing/landing/social-proof";
 import { JsonLd } from "@/components/marketing/json-ld";
 import { GITHUB_URL, SITE_URL } from "@/lib/links";
 
@@ -53,14 +52,13 @@ const homepageJsonLd = {
 
 // Shared landing content, rendered by both `/` (which redirects logged-in
 // users to the dashboard) and `/homepage` (which never redirects). The live
-// dashboard demo lives inside <Hero>; SocialProof under it is a factual
-// provider strip (no testimonial). HowItWorks tells the prompt-first story.
+// dashboard demo and the provider strip live inside <Hero>; HowItWorks tells
+// the prompt-first story.
 export function LandingPage() {
   return (
     <div className="flex flex-col gap-36 pb-42">
       <JsonLd data={homepageJsonLd} />
       <Hero />
-      <SocialProof />
       <DriftStory />
       <HowItWorks />
       <CtaSection />

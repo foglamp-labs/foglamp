@@ -21,7 +21,6 @@ import { GITHUB_URL } from "@/lib/links";
 
 import { GithubLogo } from "./github-logo";
 import { Logo } from "./logo";
-import { products } from "./products";
 import {
   IconArrowBigRightFilled,
   IconChevronRight,
@@ -31,6 +30,20 @@ import {
 
 const DOCS_URL = "https://docs.foglamp.dev";
 
+// The Product menu: each entry is a muted name over a one-line pitch.
+const PRODUCT_ITEMS = [
+  {
+    href: "/scan" as const,
+    name: "Scan",
+    pitch: "Turn your repo into a shareable map",
+  },
+  {
+    href: "/hud" as const,
+    name: "HUD",
+    pitch: "Watch your agents while you build",
+  },
+] as const;
+
 function ProductsMenu() {
   return (
     <NavigationMenuItem>
@@ -38,30 +51,22 @@ function ProductsMenu() {
         Product
       </NavigationMenuTrigger>
       <NavigationMenuContent>
-        <ul className="grid w-80 gap-1 p-1.5">
-          {products.map((product) => {
-            const Icon = product.icon;
-            return (
-              <li key={product.slug}>
-                <NavigationMenuLink
-                  render={<Link href={product.href} />}
-                  className="items-start gap-3 py-2"
-                >
-                  <span
-                    className={cn("mt-0.5 shrink-0", product.chipClassName)}
-                  >
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="flex flex-col gap-0.5">
-                    <span className="font-medium">{product.label}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {product.tagline}
-                    </span>
-                  </span>
-                </NavigationMenuLink>
-              </li>
-            );
-          })}
+        <ul className="grid w-72 gap-1 p-1.5">
+          {PRODUCT_ITEMS.map((item) => (
+            <li key={item.href}>
+              <NavigationMenuLink
+                render={<Link href={item.href} />}
+                className="flex-col items-start gap-0.5 px-3 py-2.5"
+              >
+                <span className="text-xs text-muted-foreground">
+                  {item.name}
+                </span>
+                <span className="font-medium text-foreground">
+                  {item.pitch}
+                </span>
+              </NavigationMenuLink>
+            </li>
+          ))}
         </ul>
       </NavigationMenuContent>
     </NavigationMenuItem>
@@ -111,7 +116,7 @@ export function MarketingNavbar() {
 
         <NavigationMenu className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:flex">
           <NavigationMenuList>
-            {/* <ProductsMenu /> */}
+            <ProductsMenu />
             <NavigationMenuItem>
               <NavigationMenuLink
                 className={cn(
@@ -132,28 +137,6 @@ export function MarketingNavbar() {
                 render={<a href={DOCS_URL} target="_blank" />}
               >
                 Docs
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <NavigationMenuLink
-                className={cn(
-                  navigationMenuTriggerStyle(),
-                  "text-muted-foreground"
-                )}
-                render={<Link href="/scan" />}
-              >
-                Scan
-              </NavigationMenuLink>
-            </NavigationMenuItem>
-            <NavigationMenuItem>
-              <NavigationMenuLink
-                className={cn(
-                  navigationMenuTriggerStyle(),
-                  "text-muted-foreground"
-                )}
-                render={<Link href="/hud" />}
-              >
-                HUD
               </NavigationMenuLink>
             </NavigationMenuItem>
           </NavigationMenuList>
