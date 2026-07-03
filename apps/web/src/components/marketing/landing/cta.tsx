@@ -34,20 +34,29 @@ export function CtaSection() {
         }}
       />
 
-      {/* The fog blanket: drifting turbulence, masked with a soft ellipse so
-          it fades out gently on every side (no hard band edges) and thins out
-          behind the copy on the left. */}
+      {/* The fog blanket: drifting turbulence. Two nested masks (vertical on
+          the outer div, horizontal on the inner) multiply together, so the fog
+          feathers to zero well before every edge — no hard cuts anywhere. */}
       {!reduce && (
         <div
           className="absolute inset-0 z-10"
           aria-hidden
           style={{
             WebkitMaskImage:
-              "radial-gradient(85% 75% at 62% 50%, #000 25%, transparent 78%)",
+              "linear-gradient(to bottom, transparent 2%, #000 38%, #000 62%, transparent 98%)",
             maskImage:
-              "radial-gradient(85% 75% at 62% 50%, #000 25%, transparent 78%)",
+              "linear-gradient(to bottom, transparent 2%, #000 38%, #000 62%, transparent 98%)",
           }}
         >
+          <div
+            className="absolute inset-0"
+            style={{
+              WebkitMaskImage:
+                "linear-gradient(to right, transparent 8%, #000 45%, #000 78%, transparent 99%)",
+              maskImage:
+                "linear-gradient(to right, transparent 8%, #000 45%, #000 78%, transparent 99%)",
+            }}
+          >
           <motion.div
             className="absolute inset-[-20%] opacity-50"
             style={{ filter: "blur(14px)" }}
@@ -64,6 +73,7 @@ export function CtaSection() {
           >
             <FogBank id="fog-b" freq={0.02} seed={29} octaves={5} />
           </motion.div>
+          </div>
         </div>
       )}
 
