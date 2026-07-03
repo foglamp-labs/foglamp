@@ -1,25 +1,17 @@
 "use client";
 
 import { Button } from "@foglamp/ui/components/button";
-import { IconCircleChevronRightFilled } from "@tabler/icons-react";
+import {
+  IconArrowBigRightFilled,
+  IconCircleChevronRightFilled,
+} from "@tabler/icons-react";
 import { BorderBeam } from "border-beam";
 import { type MotionProps, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { type SVGProps, useEffect, useState } from "react";
 
 import { CopyPromptButton } from "./copy-prompt-button";
-import {
-  AnthropicLogo,
-  ClaudeLogo,
-  CohereLogo,
-  DeepSeekLogo,
-  GeminiLogo,
-  GrokLogo,
-  MetaLogo,
-  MistralLogo,
-  OpenAILogo,
-  PerplexityLogo,
-} from "@/components/brand-logos";
+import { FilmGrain } from "@/components/marketing/noise-overlay";
 import { HeroDemo } from "./hero-demo";
 import Image from "next/image";
 
@@ -31,7 +23,7 @@ const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 // The border beam doesn't just appear — it powers on, counting its strength up
 // from 0 to its resting 0.4 in 0.01 steps so the frame's edge glows to life as
 // the chrome settles around it.
-const BEAM_STRENGTH = 0.3;
+const BEAM_STRENGTH = 0.2;
 const BEAM_STEP = 0.01;
 const BEAM_STEP_MS = 20;
 const BEAM_START_MS = 600;
@@ -100,7 +92,12 @@ export function Hero() {
   return (
     // overflow-x-clip keeps the soft blur on the wide dashboard from ever
     // nudging a horizontal scrollbar during its entrance.
-    <section className="relative w-full overflow-x-clip pt-28 pb-16 sm:pt-28">
+    <section className="relative isolate w-full overflow-x-clip pt-28 pb-16 sm:pt-28">
+      {/* Subtle film-grain noise over the hero. A high-frequency feTurbulence
+          fractal, desaturated and dropped to a low opacity with screen blending
+          so it lifts the dark background without muddying the copy. */}
+      <FilmGrain id="hero-noise" className="-z-10 opacity-10 mix-blend-screen" />
+
       {/* Copy: left-aligned, sharing the dashboard's max-w-7xl left edge. */}
       <div className="mx-auto flex max-w-7xl justify-between items-end px-5 sm:px-8">
         <div className="flex-col">
@@ -132,7 +129,7 @@ export function Hero() {
                 variant="secondary"
               >
                 Start free
-                <IconCircleChevronRightFilled className="size-5.5 ml-0.5 opacity-90" />
+                <IconArrowBigRightFilled className="size-4 text-muted-foreground ml-0.5" />
               </Button>
             </motion.div>
           </div>

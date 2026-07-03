@@ -185,7 +185,7 @@ const pricingJsonLd = {
   "@type": "Product",
   name: "Foglamp",
   description:
-    "Usage-based observability for AI agents — distributed traces, cost intelligence, evals, and alerts for every model call.",
+    "Usage-based observability for AI agents: distributed traces, cost intelligence, evals, and alerts for every model call.",
   brand: { "@type": "Brand", name: "Foglamp" },
   offers: {
     "@type": "AggregateOffer",

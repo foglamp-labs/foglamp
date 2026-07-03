@@ -24,7 +24,7 @@ export function AlertsTab() {
     <>
       <PageHeader
         title="Alerts"
-        description="Threshold rules on cost, latency, errors, and eval scores — checked every minute."
+        description="Threshold rules on cost, latency, errors, and eval scores, checked every minute."
         icon={navItem("/alerts")?.icon}
         iconClassName={navItem("/alerts")?.iconClassName}
       />

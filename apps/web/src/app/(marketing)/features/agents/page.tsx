@@ -26,7 +26,7 @@ export default function AgentsPage() {
       <ProductHero
         product={product}
         headline="See every agent's spend, speed, and health."
-        sub="Foglamp groups traffic by agent name automatically — so you can see which agents are slow, expensive, or failing, and watch the full call flow for each one."
+        sub="Foglamp groups traffic by agent name automatically, so you can see which agents are slow, expensive, or failing, and watch the full call flow for each one."
         visual={
           <FrameCard>
             <div className="mb-4 text-sm font-medium">
@@ -41,7 +41,7 @@ export default function AgentsPage() {
         accentClassName={ACCENT}
         eyebrow="Per-agent rollups"
         title="One row per agent. All the numbers."
-        description="Requests, error rate, p95 latency, spend, and eval pass rate — for every agentName seen in the last 24 hours. Spot the outlier in a glance."
+        description="Requests, error rate, p95 latency, spend, and eval pass rate for every agentName seen in the last 24 hours. Spot the outlier in a glance."
         bullets={[
           "Automatic grouping by agent name",
           "Spend, latency, errors, and eval pass rate per agent",

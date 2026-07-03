@@ -679,12 +679,12 @@ export const TRACE_MESSAGES: {
   {
     role: "user",
     content:
-      'Hey — my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
+      'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
   },
   {
     role: "assistant",
     content:
-      "I looked into order #48213 — it was held by an address-verification flag and cleared this morning. It's now packed and ships today, with delivery expected Tuesday. I've added expedited shipping at no charge for the delay.",
+      "I looked into order #48213. It was held by an address-verification flag and cleared this morning. It's now packed and ships today, with delivery expected Tuesday. I've added expedited shipping at no charge for the delay.",
   },
 ];
 
@@ -1206,9 +1206,9 @@ export const SESSION_TURNS: SessionTurn[] = [
     startTime: T(0),
     status: "ok",
     userMessage:
-      'Hey — my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
+      'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
     assistantOutput:
-      "I looked into order #48213 — it was held by an address-verification flag and cleared this morning. It's now packed and ships today, with delivery expected Tuesday.",
+      "I looked into order #48213. It was held by an address-verification flag and cleared this morning. It's now packed and ships today, with delivery expected Tuesday.",
     workflowName: "onboard-customer",
     totalCost: 0.0142,
     totalTokens: 2840,
@@ -1220,7 +1220,7 @@ export const SESSION_TURNS: SessionTurn[] = [
     status: "ok",
     userMessage: "Can you also add expedited shipping since it was delayed?",
     assistantOutput:
-      "Done — I've upgraded #48213 to expedited shipping at no charge for the delay. You'll get a new tracking number by email within the hour.",
+      "Done. I've upgraded #48213 to expedited shipping at no charge for the delay. You'll get a new tracking number by email within the hour.",
     workflowName: null,
     totalCost: 0.0098,
     totalTokens: 1960,
@@ -1242,9 +1242,9 @@ export const SESSION_TURNS: SessionTurn[] = [
     startTime: T(212, 540),
     status: "ok",
     userMessage:
-      "Never mind that error — just tell me the return window for damaged items.",
+      "Never mind that error, just tell me the return window for damaged items.",
     assistantOutput:
-      "Damaged items can be returned within 30 days of delivery for a full refund or replacement. I can start a claim for you the moment it arrives — just send a photo and I'll handle the rest.",
+      "Damaged items can be returned within 30 days of delivery for a full refund or replacement. I can start a claim for you the moment it arrives. Just send a photo and I'll handle the rest.",
     workflowName: "onboard-customer",
     totalCost: 0.0116,
     totalTokens: 2310,

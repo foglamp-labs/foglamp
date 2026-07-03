@@ -5,8 +5,6 @@ import {
   IconCalendar,
   IconChevronDown,
   IconChevronRight,
-  IconLayoutGrid,
-  IconLayoutList,
   IconSearch,
   type Icon,
 } from "@tabler/icons-react";

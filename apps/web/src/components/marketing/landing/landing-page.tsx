@@ -1,7 +1,7 @@
-import { BentoGrid } from "@/components/marketing/landing/bento";
 import { CtaSection } from "@/components/marketing/landing/cta";
 import { DriftStory } from "@/components/marketing/landing/drift-story";
 import { Hero } from "@/components/marketing/landing/hero";
+import { HowItWorks } from "@/components/marketing/landing/how-it-works";
 import { SocialProof } from "@/components/marketing/landing/social-proof";
 import { JsonLd } from "@/components/marketing/json-ld";
 import { GITHUB_URL, SITE_URL } from "@/lib/links";
@@ -38,7 +38,7 @@ const homepageJsonLd = {
       operatingSystem: "Web, Node.js",
       url: SITE_URL,
       description:
-        "Observability for AI agents: costs, latency, tokens, distributed traces, evals, and alerts for every generateText / streamText call — in two lines.",
+        "Observability for AI agents: costs, latency, tokens, distributed traces, evals, and alerts on every generateText and streamText call.",
       offers: {
         "@type": "AggregateOffer",
         priceCurrency: "USD",
@@ -53,9 +53,8 @@ const homepageJsonLd = {
 
 // Shared landing content, rendered by both `/` (which redirects logged-in
 // users to the dashboard) and `/homepage` (which never redirects). The live
-// dashboard demo lives inside <Hero> (stacked below the copy), so there's no
-// longer a standalone demo section. SocialProof sits right under the hero —
-// the model-logo strip is factual; its testimonial is a placeholder (see file).
+// dashboard demo lives inside <Hero>; SocialProof under it is a factual
+// provider strip (no testimonial). HowItWorks tells the prompt-first story.
 export function LandingPage() {
   return (
     <div className="flex flex-col gap-36 pb-42">
@@ -63,7 +62,7 @@ export function LandingPage() {
       <Hero />
       <SocialProof />
       <DriftStory />
-      <BentoGrid />
+      <HowItWorks />
       <CtaSection />
     </div>
   );

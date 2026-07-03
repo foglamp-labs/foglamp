@@ -29,7 +29,7 @@ export default function DistributedTracesPage() {
       <ProductHero
         product={product}
         headline="Waterfall every run, down to the token."
-        sub="Each trace is one top-level call, expanded into a full span tree — nested agents, tools, and LLM calls, with the exact prompt and response for every step."
+        sub="Each trace is one top-level call, expanded into a full span tree: nested agents, tools, and LLM calls, with the exact prompt and response for every step."
         visual={
           <FrameCard>
             <div className="mb-4 flex items-baseline justify-between">
@@ -47,7 +47,7 @@ export default function DistributedTracesPage() {
         accentClassName={ACCENT}
         eyebrow="The full tree"
         title="Nested spans, not flat logs."
-        description="Foglamp reconstructs parent/child relationships across agents, tools, and models — so a multi-hop run reads as one coherent waterfall instead of a pile of disconnected log lines."
+        description="Foglamp reconstructs parent/child relationships across agents, tools, and models, so a multi-hop run reads as one coherent waterfall instead of a pile of disconnected log lines."
         bullets={[
           "Agent → tool → LLM nesting preserved",
           "Per-span duration, tokens, and cost",
@@ -65,7 +65,7 @@ export default function DistributedTracesPage() {
         accentClassName={ACCENT}
         eyebrow="Replay"
         title="See the exact prompt and streamed response."
-        description="Open any span to read the full system prompt, messages, and the response as it streamed — including time-to-first-token. No more reproducing bugs blind."
+        description="Open any span to read the full system prompt, messages, and the response as it streamed, including time-to-first-token. No more reproducing bugs blind."
         bullets={[
           "Full prompt + response payload per span",
           "TTFT and token-by-token streaming replay",

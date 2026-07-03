@@ -24,7 +24,7 @@ export default function SdkPage() {
       <ProductHero
         product={product}
         headline="Two lines. Every call, instrumented."
-        sub="Wrap your model with foglamp(). Every generateText and streamText call is then traced, costed, and scored — with no prompt changes and no new infrastructure."
+        sub="Wrap your model with foglamp(). Every generateText and streamText call is then traced, costed, and scored, with no prompt changes and no new infrastructure."
         visual={
           <div className="mx-auto max-w-2xl">
             <CodeBlock code={INSTALL_CODE} filename="model.ts" />
@@ -36,7 +36,7 @@ export default function SdkPage() {
         accentClassName={ACCENT}
         eyebrow="Drop-in"
         title="Built for the code you already wrote."
-        description="Foglamp wraps the model object you already pass to generateText and streamText. Your prompts, tools, and control flow stay exactly as they are — you just get telemetry for free."
+        description="Foglamp wraps the model object you already pass to generateText and streamText. Your prompts, tools, and control flow stay exactly as they are. You just get telemetry for free."
         bullets={[
           "Works with generateText, streamText, and tools",
           "No prompt or business-logic changes",
@@ -57,7 +57,7 @@ export default function SdkPage() {
         title="Telemetry that stays out of the hot path."
         description="Spans are batched and flushed asynchronously, so instrumentation never blocks a response. Set one environment variable and you're streaming traces to your dashboard."
         bullets={[
-          "Async, batched span export — no added latency",
+          "Async, batched span export, no added latency",
           "Single FOGLAMP_API_KEY to authenticate",
           "Open standards under the hood",
         ]}

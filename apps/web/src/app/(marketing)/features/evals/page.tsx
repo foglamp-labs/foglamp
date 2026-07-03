@@ -26,7 +26,7 @@ export default function EvalsPage() {
       <ProductHero
         product={product}
         headline="Score every answer. Catch the regressions."
-        sub="Run code checks and LLM judges against live production traffic on a 0–1 scale — so quality is a number you watch, not a vibe you hope for."
+        sub="Run code checks and LLM judges against live production traffic on a 0-1 scale, so quality is a number you watch, not a vibe you hope for."
         visual={
           <FrameCard className="grid gap-6 sm:grid-cols-2">
             <ScoreGauge value={0.94} tint="var(--color-fuchsia-500)" />
@@ -39,7 +39,7 @@ export default function EvalsPage() {
         accentClassName={ACCENT}
         eyebrow="Two kinds of checks"
         title="Code checks and LLM judges, side by side."
-        description="Deterministic checks for the things that must be exactly right — valid JSON, no PII, schema conformance — and model-graded judges for the fuzzy stuff like tone and groundedness."
+        description="Deterministic checks for the things that must be exactly right (valid JSON, no PII, schema conformance) and model-graded judges for the fuzzy stuff like tone and groundedness."
         bullets={[
           "Code evals run inline, no model cost",
           "LLM judges grade tone, helpfulness, and groundedness",

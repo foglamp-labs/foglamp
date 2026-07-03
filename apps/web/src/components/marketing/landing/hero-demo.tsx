@@ -38,7 +38,7 @@ export function HeroDemo() {
             shadow stays visible where this placeholder's (sitting one layer
             below the sidebar) would be covered as the sidebar fades in. In dark
             mode the brief overlap of the two identical shadows is imperceptible. */}
-        <div className="m-2 ml-0 flex-1 rounded-xl corner-squircle bg-background dark:shadow-(--custom-shadow) max-md:ml-2" />
+        <div className="m-2 ml-0 flex-1 rounded-xl corner-squircle bg-background max-md:ml-2" />
       </div>
       <DashboardDemo />
     </div>

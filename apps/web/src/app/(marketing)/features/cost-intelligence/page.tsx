@@ -30,7 +30,7 @@ export default function CostIntelligencePage() {
       <ProductHero
         product={product}
         headline="Know exactly what every call costs."
-        sub="Foglamp prices every generateText and streamText call from real token usage — broken down by model, agent, and customer, in real time."
+        sub="Foglamp prices every generateText and streamText call from real token usage, broken down by model, agent, and customer, in real time."
         visual={
           <FrameCard>
             <div className="mb-4 flex items-baseline justify-between">
@@ -57,7 +57,7 @@ export default function CostIntelligencePage() {
         accentClassName={ACCENT}
         eyebrow="Attribution"
         title="Every dollar, attributed."
-        description="Stop guessing where spend goes. Foglamp splits cost across models, agents, workflows, and even individual customers — using live provider pricing so the numbers actually match your bill."
+        description="Stop guessing where spend goes. Foglamp splits cost across models, agents, workflows, and even individual customers, using live provider pricing so the numbers actually match your bill."
         bullets={[
           "Per-model, per-agent, and per-customer breakdowns",
           "Live pricing for OpenAI, Anthropic, and 100+ models",

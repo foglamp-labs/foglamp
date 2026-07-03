@@ -56,7 +56,7 @@ export default function AlertsPage() {
         accentClassName={ACCENT}
         eyebrow="Delivery"
         title="Routed to where your team already is."
-        description="Alerts land in email and Slack the instant they fire, with a direct link to the traces behind the spike — so the on-call path goes straight from notification to root cause."
+        description="Alerts land in email and Slack the instant they fire, with a direct link to the traces behind the spike, so the on-call path goes straight from notification to root cause."
         bullets={[
           "Email and Slack delivery",
           "Deep link from an alert to the offending traces",

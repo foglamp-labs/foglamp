@@ -19,7 +19,7 @@ export default function PrivacyPage() {
           handles personal data when you use the hosted Foglamp service at
           foglamp.dev. If you self-host Foglamp on your own infrastructure, we
           don&apos;t receive your data and this policy doesn&apos;t apply to
-          that deployment — your organization is the data controller.
+          that deployment. Your organization is the data controller.
         </p>
       }
       sections={[
@@ -31,19 +31,19 @@ export default function PrivacyPage() {
                 <strong>Account information.</strong> Your name and email
                 address when you sign up. If you sign in with Google, we
                 receive your name, email, and profile picture from your Google
-                account — nothing else.
+                account, nothing else.
               </p>
               <p>
                 <strong>Telemetry you send us.</strong> Foglamp is an
                 observability product: your applications send us traces, spans,
                 and metadata via the SDK, which can include LLM prompts,
                 completions, tool calls, token counts, and costs. You control
-                what your instrumentation sends; treat this data as yours — we
+                what your instrumentation sends; treat this data as yours. We
                 process it only to provide the service.
               </p>
               <p>
                 <strong>Billing information.</strong> Payments are processed by
-                Stripe. We never see or store your full card details — we keep
+                Stripe. We never see or store your full card details. We keep
                 only your subscription status and billing history.
               </p>
               <p>
@@ -92,20 +92,20 @@ export default function PrivacyPage() {
               <LegalList
                 items={[
                   <>
-                    <strong>Cloud hosting providers</strong> — run our servers
+                    <strong>Cloud hosting providers</strong>: run our servers
                     and databases where your data is stored.
                   </>,
                   <>
-                    <strong>Stripe</strong> — payment processing.
+                    <strong>Stripe</strong>: payment processing.
                   </>,
                   <>
-                    <strong>Resend</strong> — transactional email delivery.
+                    <strong>Resend</strong>: transactional email delivery.
                   </>,
                   <>
-                    <strong>PostHog</strong> — product analytics.
+                    <strong>PostHog</strong>: product analytics.
                   </>,
                   <>
-                    <strong>Google</strong> — only if you choose to sign in
+                    <strong>Google</strong>: only if you choose to sign in
                     with Google.
                   </>,
                 ]}
@@ -168,7 +168,7 @@ export default function PrivacyPage() {
               <a href="mailto:support@foglamp.dev">support@foglamp.dev</a>.
               Depending on where you live (e.g. the EU/EEA under GDPR or
               California under CCPA), you may have additional rights to access,
-              correct, delete, or port your data — email us and we&apos;ll
+              correct, delete, or port your data. Email us and we&apos;ll
               honor them.
             </p>
           ),

@@ -43,7 +43,7 @@ export default function TermsPage() {
               <p>
                 You must provide accurate information and keep your sign-in
                 method secure. You&apos;re responsible for activity under your
-                account and API keys — tell us promptly at{" "}
+                account and API keys. Tell us promptly at{" "}
                 <a href="mailto:support@foglamp.dev">support@foglamp.dev</a> if
                 you suspect unauthorized access. You must be at least 16 years
                 old to use the service.
@@ -60,8 +60,8 @@ export default function TermsPage() {
           body: (
             <>
               <p>
-                <strong>You own your data.</strong> The telemetry you send us —
-                traces, spans, prompts, completions, metadata — remains yours.
+                <strong>You own your data.</strong> The telemetry you send us
+                (traces, spans, prompts, completions, metadata) remains yours.
                 You grant us a limited license to host, process, and display it
                 solely to provide the service. We don&apos;t use it to train AI
                 models and we don&apos;t sell it. Our{" "}
@@ -136,7 +136,7 @@ export default function TermsPage() {
               without warranties of any kind, express or implied, including
               fitness for a particular purpose and non-infringement. We
               don&apos;t warrant that the service will be uninterrupted or
-              error-free. Foglamp is an observability tool — it does not make
+              error-free. Foglamp is an observability tool. It does not make
               decisions for you, and you remain responsible for your own
               applications and their outputs.
             </p>

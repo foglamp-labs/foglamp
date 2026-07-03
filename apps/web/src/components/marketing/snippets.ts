@@ -20,4 +20,4 @@ export const SETUP_PROMPT = `Add Foglamp observability to this Vercel AI SDK app
 2. Import { foglamp } from "@foglamp/ai-sdk".
 3. Wrap every model passed to generateText / streamText with foglamp(...), e.g. foglamp(openai("gpt-4o")).
 4. Read FOGLAMP_API_KEY from the environment; add it to .env.example.
-5. Don't change any prompts, tools, or business logic — only instrument the model.`;
+5. Don't change any prompts, tools, or business logic. Only instrument the model.`;

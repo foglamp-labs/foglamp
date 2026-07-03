@@ -15,7 +15,7 @@ import { buildLandingPrompt } from "@/lib/agent-prompt";
 // same effect (and ramp) the hero uses on its dashboard chrome — then powers
 // back off once the copied flag clears.
 
-const BEAM_TARGET = 1; // resting strength while a copy is fresh
+const BEAM_TARGET = 0.6; // resting strength while a copy is fresh
 const BEAM_STEP = 0.04;
 const BEAM_STEP_MS = 16;
 
@@ -68,16 +68,16 @@ export function CopyPromptButton({ className }: { className?: string }) {
     >
       <Button
         size="lg"
-        className={cn("text-base h-[37px] pl-4", className)}
+        className={cn("text-base h-[37px] pl-3.5", className)}
         onClick={copyPrompt}
         aria-label="Copy the coding-agent prompt"
       >
-        Copy agent prompt
         <CopyIcon
           copied={copied}
-          className="size-4 ml-1"
-          checkClassName="size-4 text-green-600 ml-1"
+          className="mb-px"
+          checkClassName="text-green-600 mb-px"
         />
+        Copy agent prompt
       </Button>
     </BorderBeam>
   );

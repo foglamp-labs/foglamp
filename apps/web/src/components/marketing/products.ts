@@ -39,7 +39,7 @@ export const products: Product[] = [
     slug: "cost-intelligence",
     href: "/features/cost-intelligence",
     label: "Cost intelligence",
-    tagline: "Know exactly what every call costs — by model, agent, customer.",
+    tagline: "Know exactly what every call costs, by model, agent, customer.",
     icon: IconCoin,
     activeIcon: IconCoinFilled,
     chipClassName:
