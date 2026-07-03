@@ -46,10 +46,15 @@ export function CtaSection() {
           className="absolute inset-0 z-10"
           aria-hidden
           style={{
-            // Thin the whole cloud out toward the left so the copy stays clear.
+            // Thin the whole cloud out toward the left so the copy stays
+            // clear, and hard-stop it well inside the section vertically so
+            // it never reaches the footer or the section above.
             WebkitMaskImage:
-              "linear-gradient(to right, transparent 4%, #000 42%)",
-            maskImage: "linear-gradient(to right, transparent 4%, #000 42%)",
+              "linear-gradient(to right, transparent 4%, #000 42%), linear-gradient(to bottom, transparent 10%, #000 32%, #000 68%, transparent 90%)",
+            maskImage:
+              "linear-gradient(to right, transparent 4%, #000 42%), linear-gradient(to bottom, transparent 10%, #000 32%, #000 68%, transparent 90%)",
+            WebkitMaskComposite: "source-in",
+            maskComposite: "intersect",
           }}
         >
           <motion.div
@@ -57,9 +62,9 @@ export function CtaSection() {
             style={{
               filter: "blur(14px)",
               WebkitMaskImage:
-                "radial-gradient(46% 44% at 66% 42%, #000 25%, transparent 74%)",
+                "radial-gradient(40% 30% at 66% 44%, #000 25%, transparent 74%)",
               maskImage:
-                "radial-gradient(46% 44% at 66% 42%, #000 25%, transparent 74%)",
+                "radial-gradient(40% 30% at 66% 44%, #000 25%, transparent 74%)",
             }}
             animate={{ x: ["-3%", "4%", "-3%"], y: ["-2%", "2%", "-2%"] }}
             transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
@@ -71,9 +76,9 @@ export function CtaSection() {
             style={{
               filter: "blur(24px)",
               WebkitMaskImage:
-                "radial-gradient(52% 50% at 52% 66%, #000 20%, transparent 72%)",
+                "radial-gradient(44% 34% at 54% 60%, #000 20%, transparent 72%)",
               maskImage:
-                "radial-gradient(52% 50% at 52% 66%, #000 20%, transparent 72%)",
+                "radial-gradient(44% 34% at 54% 60%, #000 20%, transparent 72%)",
             }}
             animate={{ x: ["3%", "-4%", "3%"], y: ["2%", "-3%", "2%"] }}
             transition={{ duration: 34, repeat: Infinity, ease: "easeInOut" }}
@@ -85,9 +90,9 @@ export function CtaSection() {
             style={{
               filter: "blur(20px)",
               WebkitMaskImage:
-                "radial-gradient(38% 40% at 80% 24%, #000 20%, transparent 72%)",
+                "radial-gradient(30% 26% at 78% 32%, #000 20%, transparent 72%)",
               maskImage:
-                "radial-gradient(38% 40% at 80% 24%, #000 20%, transparent 72%)",
+                "radial-gradient(30% 26% at 78% 32%, #000 20%, transparent 72%)",
             }}
             animate={{ x: ["-2%", "3%", "-2%"], y: ["3%", "-2%", "3%"] }}
             transition={{ duration: 41, repeat: Infinity, ease: "easeInOut" }}
