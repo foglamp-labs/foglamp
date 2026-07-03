@@ -60,7 +60,7 @@ export function CtaSection() {
           <motion.div
             className="absolute inset-[-15%] opacity-55"
             style={{
-              filter: "blur(14px)",
+              filter: "blur(4px)",
               WebkitMaskImage:
                 "radial-gradient(40% 30% at 66% 44%, #000 25%, transparent 74%)",
               maskImage:
@@ -74,7 +74,7 @@ export function CtaSection() {
           <motion.div
             className="absolute inset-[-15%] opacity-40"
             style={{
-              filter: "blur(24px)",
+              filter: "blur(14px)",
               WebkitMaskImage:
                 "radial-gradient(44% 34% at 54% 60%, #000 20%, transparent 72%)",
               maskImage:
@@ -83,7 +83,7 @@ export function CtaSection() {
             animate={{ x: ["3%", "-4%", "3%"], y: ["2%", "-3%", "2%"] }}
             transition={{ duration: 34, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-b" freq={0.02} seed={29} octaves={5} />
+            <FogBank id="fog-b" freq={0.02} seed={19} octaves={5} />
           </motion.div>
           <motion.div
             className="absolute inset-[-15%] opacity-35"
@@ -98,6 +98,37 @@ export function CtaSection() {
             transition={{ duration: 41, repeat: Infinity, ease: "easeInOut" }}
           >
             <FogBank id="fog-c" freq={0.016} seed={53} octaves={4} />
+          </motion.div>
+          {/* bottom-right filler */}
+          <motion.div
+            className="absolute inset-[-15%] opacity-45"
+            style={{
+              filter: "blur(18px)",
+              WebkitMaskImage:
+                "radial-gradient(38% 30% at 72% 76%, #000 22%, transparent 72%)",
+              maskImage:
+                "radial-gradient(38% 30% at 72% 76%, #000 22%, transparent 72%)",
+            }}
+            animate={{ x: ["2%", "-3%", "2%"], y: ["-2%", "3%", "-2%"] }}
+            transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <FogBank id="fog-d" freq={0.014} seed={83} octaves={4} />
+          </motion.div>
+          {/* a denser puff right on top of the agent details, so they read as
+              half-swallowed by the fog */}
+          <motion.div
+            className="absolute inset-[-15%] opacity-60"
+            style={{
+              filter: "blur(16px)",
+              WebkitMaskImage:
+                "radial-gradient(30% 24% at 68% 46%, #000 30%, transparent 70%)",
+              maskImage:
+                "radial-gradient(30% 24% at 68% 46%, #000 30%, transparent 70%)",
+            }}
+            animate={{ x: ["-2%", "2%", "-2%"], y: ["1%", "-2%", "1%"] }}
+            transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <FogBank id="fog-e" freq={0.018} seed={47} octaves={5} />
           </motion.div>
         </div>
       )}
@@ -115,13 +146,16 @@ export function CtaSection() {
             "linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent)",
         }}
       >
-        <FilmGrain id="cta-grain" className="opacity-[0.16] mix-blend-overlay" />
+        <FilmGrain
+          id="cta-grain"
+          className="opacity-[0.16] mix-blend-overlay"
+        />
       </div>
 
-      {/* The agent details sitting under the fog on the right — the thing
-          you'd see if the fog weren't there. Below the fog's z-index. */}
-      <div className="absolute inset-0 z-[5] mx-auto hidden w-full max-w-7xl items-center justify-end px-5 sm:px-8 lg:flex">
-        <div className="w-[45%] pr-4">
+      {/* The agent details sitting under the fog on the right — dimmed and
+          slightly soft, so they read as half-hidden behind the weather. */}
+      <div className="absolute inset-0 z-5 mx-auto hidden w-full max-w-7xl items-center justify-end px-5 sm:px-8 lg:flex">
+        <div className="w-[35%] pr-4 opacity-65 blur-[1.5px]">
           <AgentDetails />
         </div>
       </div>
@@ -133,8 +167,8 @@ export function CtaSection() {
             Your agents are running in the fog.
           </h2>
           <p className="mt-3 max-w-md text-muted-foreground text-pretty">
-            What they cost, when they break, what they say. You can't see any
-            of it. One prompt turns the light on.
+            What they cost, when they break, what they say. You can't see any of
+            it. One prompt turns the light on.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <CopyPromptButton />
