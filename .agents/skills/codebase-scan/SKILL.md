@@ -1,28 +1,28 @@
 ---
-name: codebase-poster
-description: Analyze a repository and publish a shareable foglamp codebase poster. Use when asked to "generate a codebase poster", "make a foglamp poster", "map how this repo uses AI", or "create a shareable architecture poster".
+name: codebase-scan
+description: Analyze a repository and publish a shareable foglamp codebase scan. Use when asked to "generate a codebase scan", "make a foglamp scan", "map how this repo uses AI", or "create a shareable architecture scan".
 metadata:
   author: foglamp
   version: "2.0.0"
 ---
 
-# Codebase Poster
+# Codebase Scan
 
 Analyze the current repository, describe how it works and how it uses AI as a
 small JSON object, then upload it to foglamp to get a **shareable link**
-(`foglamp.dev/poster/<slug>`) that unfurls on socials. You produce only the
-**data** — a fixed renderer draws the poster. Do not write any HTML or CSS.
+(`foglamp.dev/scan/<slug>`) that unfurls on socials. You produce only the
+**data** — a fixed renderer draws the scan. Do not write any HTML or CSS.
 
 ## Steps
 
 1. **Investigate** the repo (see "How to investigate" below) and build the JSON
-   described in "Output contract". Write it to `.foglamp/poster.json`.
+   described in "Output contract". Write it to `.foglamp/scan.json`.
 2. **Get consent.** Tell the user plainly: *"This uploads a high-level summary of
    your architecture (models, tools, integrations, and main flows — no code or
    secrets) to foglamp.dev and creates a public, unlisted link."* Only continue
    if they're OK with it.
 3. **Upload** with `curl` (see "Publish"). Capture the JSON response.
-4. **Save credentials** to `.foglamp/poster.lock.json` (so a later run updates the
+4. **Save credentials** to `.foglamp/scan.lock.json` (so a later run updates the
    same URL instead of making a new one). Ensure `.foglamp/` is gitignored — the
    edit token is a secret.
 5. **Open** the returned `url` in the browser and give it to the user.
@@ -38,7 +38,7 @@ small JSON object, then upload it to foglamp to get a **shareable link**
    jobs (crons / queues / workers), the agents, the models and tools they use,
    and the datastores/services they read and write.
 
-## Output contract — write EXACTLY this shape to `.foglamp/poster.json`
+## Output contract — write EXACTLY this shape to `.foglamp/scan.json`
 
 ```jsonc
 {
@@ -66,15 +66,18 @@ small JSON object, then upload it to foglamp to get a **shareable link**
 }
 ```
 
-## Rules — these keep every poster consistent, do not break them
+## Rules — these keep every scan consistent, do not break them
 
-- **Caps:** `topModels` ≤ 3, `topTools` ≤ 5, `topIntegrations` ≤ 5,
+- **Caps:** `topModels` ≤ 3, `topTools` ≤ 10, `topIntegrations` ≤ 10,
   `graph.nodes` ≤ 24, `graph.edges` ≤ 48. Aim for 14–22 nodes on a substantial
   codebase — the map should feel rich, not sparse.
 - Give every distinct agent its **own node** when there are ≤ 10 agents; only
-  group agents when they're numerous and near-identical (then say so in `sub`).
-  Chain agents with agent→agent edges when one feeds the next — pipelines read
-  better than hub-and-spoke.
+  merge agents into one node when they're numerous and near-identical (then say
+  so in `sub`). Chain agents with agent→agent edges when one feeds the next.
+- **`group`** (optional, ≤24): tag sequential pipeline stages with a shared
+  group name (e.g. `"Setup pipeline"`) — those nodes render as one labeled
+  vertical stack, keeping deep chains compact. Use 2–3 groups of 3–6 nodes for
+  long pipelines; leave hub-and-spoke nodes ungrouped.
 - **Node labels ≤ 28 chars**, `sub` ≤ 40, edge labels ≤ 24. Keep them tight.
 - **`kind`** is one of: `entry` (trigger/route/page/CLI), `cron` (scheduled job),
   `agent`, `model`, `tool`, `store` (DB/cache/index), `external` (3rd-party API).
@@ -92,33 +95,33 @@ small JSON object, then upload it to foglamp to get a **shareable link**
 
 ## Publish
 
-First run (no `.foglamp/poster.lock.json` yet) — upload the poster directly:
+First run (no `.foglamp/scan.lock.json` yet) — upload the scan directly:
 
 ```bash
-curl -sS -X POST https://api.foglamp.dev/poster \
+curl -sS -X POST https://api.foglamp.dev/scan \
   -H 'content-type: application/json' \
-  --data @.foglamp/poster.json
+  --data @.foglamp/scan.json
 ```
 
-Update run (a `.foglamp/poster.lock.json` exists) — send the data plus the saved
+Update run (a `.foglamp/scan.lock.json` exists) — send the data plus the saved
 `editToken` so the **same URL** is updated:
 
 ```bash
-jq -n --slurpfile d .foglamp/poster.json \
-      --arg t "$(jq -r .editToken .foglamp/poster.lock.json)" \
+jq -n --slurpfile d .foglamp/scan.json \
+      --arg t "$(jq -r .editToken .foglamp/scan.lock.json)" \
       '{data: $d[0], editToken: $t}' \
-| curl -sS -X POST https://api.foglamp.dev/poster \
+| curl -sS -X POST https://api.foglamp.dev/scan \
     -H 'content-type: application/json' --data @-
 ```
 
 The response is JSON: `{ "slug", "url", "editToken", "expiresAt" }`. Save it:
 
 ```bash
-# write the response to .foglamp/poster.lock.json (slug, url, editToken)
+# write the response to .foglamp/scan.lock.json (slug, url, editToken)
 ```
 
 Then open `url` and share it with the user. If the response is an error (e.g. a
-422 with `details`), fix `.foglamp/poster.json` to satisfy the rules above and retry.
+422 with `details`), fix `.foglamp/scan.json` to satisfy the rules above and retry.
 
 > Self-hosting foglamp? Replace `api.foglamp.dev` with your server's URL.
 ```

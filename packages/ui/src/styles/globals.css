@@ -85,6 +85,10 @@
     0px 0px 0px 1px rgba(139, 92, 246, 0.25),
     0px 1px 2px -1px rgba(139, 92, 246, 0.18),
     0px 2px 4px 0px rgba(139, 92, 246, 0.12);
+  /* Outline buttons: same as --custom-shadow in light; dark overrides below. */
+  --custom-outline-shadow:
+    0px 0px 0px 1px rgba(0, 0, 0, 0.06), 0px 1px 2px -1px rgba(0, 0, 0, 0.06),
+    0px 2px 4px 0px rgba(0, 0, 0, 0.04);
 }
 
 .dark {
@@ -124,6 +128,13 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.1),
     0 2px 2px 0 rgba(0, 0, 0, 0.1), 0 4px 4px 0 rgba(0, 0, 0, 0.1),
     0 8px 8px 0 rgba(0, 0, 0, 0.1);
+  /* Dark outline buttons: the light-mode feel translated — a crisp 1px edge
+     from an inset highlight ring (instead of a border), a brighter top bevel,
+     and soft drop shadows for lift. */
+  --custom-outline-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045), 0 0 0 1px rgba(0, 0, 0, 0.14),
+    0 1px 2px -1px rgba(0, 0, 0, 0.14), 0 2px 4px 0 rgba(0, 0, 0, 0.08);
   --custom-shadow-primary:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.45),
     0 0 0 1px rgba(255, 255, 255, 0.55), 0 1px 2px 0 rgba(0, 0, 0, 0.5);

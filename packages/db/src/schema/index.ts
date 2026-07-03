@@ -6,4 +6,4 @@ export * from "./apiKey";
 export * from "./pricing";
 export * from "./eval";
 export * from "./alert";
-export * from "./poster";
+export * from "./scan";

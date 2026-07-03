@@ -11,7 +11,7 @@ import type { ComponentType } from "react";
 
 import { cn } from "@foglamp/ui/lib/utils";
 
-// The poster journey as a drift-story-style band: the left rail walks the three
+// The scan journey as a drift-story-style band: the left rail walks the three
 // beats, the right column shows what each beat actually looks like — the pasted
 // prompt, the agent working, and the shareable link landing.
 
@@ -36,7 +36,7 @@ const PINGS: Ping[] = [
     badge: "bg-muted/30 text-foreground",
     name: "You",
     meta: "Claude Code · Cursor · any agent",
-    text: "“Analyze this repository and publish a shareable codebase poster…”",
+    text: "“Analyze this repository and publish a shareable codebase scan…”",
     time: "0:00",
   },
   {
@@ -50,8 +50,8 @@ const PINGS: Ping[] = [
   {
     icon: IconLink,
     badge: "bg-gradient-to-br from-orange-500 to-amber-400 text-white",
-    name: "foglamp.dev/poster/olwen-x7f2",
-    meta: "poster ready",
+    name: "foglamp.dev/scan/olwen-x7f2",
+    meta: "scan ready",
     text: "Animated, interactive, and it unfurls on X, Slack — anywhere you drop the link.",
     time: "1:30",
   },
@@ -59,7 +59,7 @@ const PINGS: Ping[] = [
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-export function PosterStory() {
+export function ScanStory() {
   const reduce = useReducedMotion() ?? false;
 
   const reveal = (
@@ -81,10 +81,10 @@ export function PosterStory() {
         {/* Same film-grain texture as the landing's drift band. */}
         <figure
           aria-hidden
-          className="absolute inset-0 -z-10 pointer-events-none opacity-10 mix-blend-screen filter-[url('#poster-noise-fx')_grayscale(100%)]"
+          className="absolute inset-0 -z-10 pointer-events-none opacity-10 mix-blend-screen filter-[url('#scan-noise-fx')_grayscale(100%)]"
         >
           <svg className="size-full">
-            <filter id="poster-noise-fx">
+            <filter id="scan-noise-fx">
               <feTurbulence baseFrequency="0.8" />
             </filter>
           </svg>

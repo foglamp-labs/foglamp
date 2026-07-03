@@ -1,10 +1,10 @@
-// Deterministic "personality" identity derived from the poster data — the
+// Deterministic "personality" identity derived from the scan data — the
 // stats-as-identity hook (à la Arc's member card). Every archetype is scored
 // on how *dominant* its trait is in this graph and the best score wins — a
 // first-match rule chain made almost everything an Orchestrator. Same data →
 // same card.
 
-import type { PosterData } from "@foglamp/contracts/poster";
+import type { ScanData } from "@foglamp/contracts/scan";
 import {
   IconAffiliateFilled,
   IconArchiveFilled,
@@ -28,41 +28,45 @@ const ARCHETYPES = {
   orchestrator: {
     title: "Tireless Orchestrator",
     Icon: IconGhostFilled,
-    gradient: "from-orange-500 to-amber-400",
+    gradient:
+      "from-orange-400 to-amber-300 dark:from-orange-700 dark:to-amber-600",
   },
   scheduler: {
     title: "Punctual Scheduler",
     Icon: IconClockFilled,
-    gradient: "from-amber-500 to-yellow-400",
+    gradient:
+      "from-amber-400 to-yellow-300 dark:from-amber-700 dark:to-yellow-600",
   },
   integrator: {
     title: "Boundless Integrator",
     Icon: IconAffiliateFilled,
-    gradient: "from-sky-500 to-cyan-400",
+    gradient: "from-sky-400 to-cyan-300 dark:from-sky-700 dark:to-cyan-600",
   },
   toolsmith: {
     title: "Crafty Toolsmith",
     Icon: IconSettingsFilled,
-    gradient: "from-violet-500 to-fuchsia-400",
+    gradient:
+      "from-violet-400 to-fuchsia-300 dark:from-violet-700 dark:to-fuchsia-600",
   },
   archivist: {
     title: "Meticulous Archivist",
     Icon: IconArchiveFilled,
-    gradient: "from-emerald-500 to-teal-400",
+    gradient:
+      "from-emerald-400 to-teal-300 dark:from-emerald-700 dark:to-teal-600",
   },
   minimalist: {
     title: "Zen Minimalist",
     Icon: IconLeafFilled,
-    gradient: "from-slate-500 to-zinc-400",
+    gradient: "from-slate-400 to-zinc-300 dark:from-slate-700 dark:to-zinc-600",
   },
   builder: {
     title: "Steady Builder",
     Icon: IconBoltFilled,
-    gradient: "from-blue-500 to-sky-400",
+    gradient: "from-blue-400 to-sky-300 dark:from-blue-700 dark:to-sky-600",
   },
 } satisfies Record<string, Personality>;
 
-export function derivePersonality(data: PosterData): Personality {
+export function derivePersonality(data: ScanData): Personality {
   const { stats, graph } = data;
   const kindCount = (k: string) =>
     graph.nodes.filter((n) => n.kind === k).length;

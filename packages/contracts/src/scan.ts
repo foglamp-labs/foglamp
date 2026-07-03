@@ -1,8 +1,8 @@
-// @foglamp/contracts — the codebase-poster contract.
+// @foglamp/contracts — the codebase-scan contract.
 //
 // Single source of truth shared by: the renderer (apps/web), the create/read
 // service (packages/api), the DB row type (packages/db), and the extractor
-// prompt/skill. The "every poster looks consistent" property comes from the
+// prompt/skill. The "every scan looks consistent" property comes from the
 // *caps* here — the agent is forced to prioritize (top 3 models, top 5 tools,
 // ≤18 nodes, short labels) rather than dump everything, so the fixed layout
 // never overflows.
@@ -10,7 +10,7 @@
 // The agent never picks colors, icons, or positions. It emits canonical
 // `domain`s (e.g. "openai.com", "exa.ai") that the renderer turns into real
 // logos via the favicon service, and a typed node-graph that a deterministic
-// dagre layout draws. Same data in → same poster out.
+// dagre layout draws. Same data in → same scan out.
 
 import { z } from "zod";
 
@@ -62,6 +62,9 @@ const GraphNode = z.object({
   sub: z.string().max(40).optional(),
   /** Longer context shown on click (e.g. file path, schedule, what it does). */
   detail: z.string().max(200).optional(),
+  /** Pipeline stage this node belongs to (e.g. "Setup pipeline"). Nodes sharing
+   *  a group render as one labeled vertical stack. */
+  group: z.string().min(1).max(24).optional(),
 });
 export type GraphNode = z.infer<typeof GraphNode>;
 
@@ -73,7 +76,7 @@ const GraphEdge = z.object({
 });
 export type GraphEdge = z.infer<typeof GraphEdge>;
 
-export const PosterData = z
+export const ScanData = z
   .object({
     /** Schema version so the renderer can evolve without breaking old files. */
     version: z.literal(1),
@@ -90,7 +93,7 @@ export const PosterData = z
       tagline: z.string().max(80).optional(),
       /** Favicon domain for the project icon (e.g. the project's site). */
       iconDomain: z.string().max(120).optional(),
-      /** ISO date (YYYY-MM-DD) the poster was generated. */
+      /** ISO date (YYYY-MM-DD) the scan was generated. */
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
     }),
 
@@ -104,10 +107,10 @@ export const PosterData = z
 
     /** The most-used models, ranked. Max 3 so the rail list stays tidy. */
     topModels: z.array(RailItem).max(3).default([]),
-    /** The most-used tools. Max 5. */
-    topTools: z.array(RailItem).max(5).default([]),
-    /** Third-party integrations. Max 5. */
-    topIntegrations: z.array(RailItem).max(5).default([]),
+    /** The most-used tools. Max 10 — the rail scrolls. */
+    topTools: z.array(RailItem).max(10).default([]),
+    /** Third-party integrations. Max 10 — the rail scrolls. */
+    topIntegrations: z.array(RailItem).max(10).default([]),
 
     /** The flow map. Capped so the deterministic layout always fits the canvas. */
     graph: z
@@ -128,11 +131,11 @@ export const PosterData = z
   })
   .strict();
 
-export type PosterData = z.infer<typeof PosterData>;
+export type ScanData = z.infer<typeof ScanData>;
 
 export interface ValidateOk {
   ok: true;
-  data: PosterData;
+  data: ScanData;
 }
 export interface ValidateErr {
   ok: false;
@@ -141,12 +144,12 @@ export interface ValidateErr {
 }
 
 /**
- * Validate an unknown value (typically `JSON.parse` of an uploaded poster)
+ * Validate an unknown value (typically `JSON.parse` of an uploaded scan)
  * against the contract. Returns either the parsed, typed data or a flat list of
  * friendly error strings.
  */
-export function validatePoster(input: unknown): ValidateOk | ValidateErr {
-  const res = PosterData.safeParse(input);
+export function validateScan(input: unknown): ValidateOk | ValidateErr {
+  const res = ScanData.safeParse(input);
   if (res.success) return { ok: true, data: res.data };
   const errors = res.error.issues.map((issue) => {
     const path = issue.path.join(".") || "(root)";

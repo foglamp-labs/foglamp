@@ -58,13 +58,13 @@ function VariantLabel({ n, name }: { n: number; name: string }) {
 
 const TERM_LINES: { text: string; cls?: string }[] = [
   { text: "❯ claude", cls: "text-muted-foreground" },
-  { text: "> paste the foglamp poster prompt…", cls: "text-foreground" },
+  { text: "> paste the foglamp scan prompt…", cls: "text-foreground" },
   { text: "⏺ Exploring apps/, packages/, supabase/…" },
   { text: "⏺ Found 6 agents · 1 model · 4 tools · 13 integrations" },
-  { text: "⏺ Writing .foglamp/poster.json ✓" },
-  { text: "⏺ POST api.foglamp.dev/poster → 201 ✓" },
+  { text: "⏺ Writing .foglamp/scan.json ✓" },
+  { text: "⏺ POST api.foglamp.dev/scan → 201 ✓" },
   {
-    text: "➜ https://foglamp.dev/poster/olwen-x7f2",
+    text: "➜ https://foglamp.dev/scan/olwen-x7f2",
     cls: "text-orange-400 font-medium",
   },
   { text: "opened in your browser — go share it", cls: "text-muted-foreground" },
@@ -151,14 +151,14 @@ function VariantChat() {
             {...reveal(0.2, { x: 12 })}
             className="ml-auto max-w-sm rounded-3xl corner-squircle rounded-br-md bg-orange-500/90 px-4 py-3 text-sm text-white shadow-(--custom-shadow)"
           >
-            Analyze this repository and publish a shareable codebase poster
+            Analyze this repository and publish a shareable codebase scan
           </motion.div>
           <motion.div
             {...reveal(0.5, { x: -12 })}
             className="mr-auto max-w-sm rounded-3xl corner-squircle rounded-bl-md bg-muted/60 px-4 py-3 text-sm text-foreground shadow-sm"
           >
             Mapped it — 6 agents, 1 model, 4 tools, and every flow between
-            them. Here&apos;s your poster:
+            them. Here&apos;s your scan:
           </motion.div>
           <motion.a
             {...reveal(0.85, { y: 10 })}
@@ -171,9 +171,9 @@ function VariantChat() {
               </span>
             </div>
             <div className="px-4 py-2.5">
-              <p className="text-xs font-medium">Olwen — Codebase Poster</p>
+              <p className="text-xs font-medium">Olwen — Codebase Scan</p>
               <p className="text-xs text-muted-foreground">
-                foglamp.dev/poster/olwen-x7f2
+                foglamp.dev/scan/olwen-x7f2
               </p>
             </div>
           </motion.a>
@@ -229,7 +229,7 @@ function VariantPanels() {
         <div className="flex items-center gap-2">
           <span className="border-overlay flex h-7 items-center gap-1.5 rounded-full bg-background/80 px-3 text-xs text-muted-foreground">
             <IconLink className="size-3" />
-            foglamp.dev/poster/…
+            foglamp.dev/scan/…
           </span>
           <IconBrandX className="size-4 text-muted-foreground" />
           <IconBrandSlack className="size-4 text-muted-foreground" />
@@ -336,7 +336,7 @@ function VariantBeforeAfter() {
             </svg>
           </div>
           <p className="mt-3 text-sm font-medium text-muted-foreground">
-            What it looks like as a poster
+            What it looks like as a scan
           </p>
         </motion.div>
       </div>
@@ -345,7 +345,7 @@ function VariantBeforeAfter() {
 }
 
 // ─── 5. Unfurl showcase ───────────────────────────────────────────────────────
-// The social payoff: an X post + Slack message with the poster unfurling.
+// The social payoff: an X post + Slack message with the scan unfurling.
 
 function VariantUnfurl() {
   const reveal = useReveal();
@@ -397,7 +397,7 @@ function VariantUnfurl() {
                 </span>
               </div>
               <div className="bg-background/60 px-3.5 py-2 text-xs text-muted-foreground">
-                foglamp.dev/poster/olwen-x7f2
+                foglamp.dev/scan/olwen-x7f2
               </div>
             </div>
           </motion.div>

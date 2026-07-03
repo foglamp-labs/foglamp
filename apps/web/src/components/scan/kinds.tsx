@@ -2,7 +2,7 @@
 // each kind maps to standard Tailwind palette classes for the node's icon tint,
 // legend dot, and pulse stroke. The agent only tags a node with a `kind`.
 
-import type { NodeKind } from "@foglamp/contracts/poster";
+import type { NodeKind } from "@foglamp/contracts/scan";
 import {
   IconBoltFilled,
   IconClockFilled,
@@ -91,7 +91,11 @@ export const KIND_ORDER: NodeKind[] = [
   "external",
 ];
 
-/** Legend groups — fewer, friendlier categories than the raw kinds. */
+/**
+ * Legend groups — only the categories that exist as NODES after folding.
+ * Models and tools are folded into their agents' cards, so listing them here
+ * would just re-highlight the same agent nodes.
+ */
 export const LEGEND_GROUPS: {
   label: string;
   kinds: NodeKind[];
@@ -99,8 +103,6 @@ export const LEGEND_GROUPS: {
 }[] = [
   { label: "Triggers", kinds: ["entry", "cron"], dot: "bg-amber-500" },
   { label: "Agents", kinds: ["agent"], dot: "bg-orange-500" },
-  { label: "Models", kinds: ["model"], dot: "bg-blue-500" },
-  { label: "Tools", kinds: ["tool"], dot: "bg-violet-500" },
   { label: "Stores", kinds: ["store"], dot: "bg-emerald-500" },
   { label: "External", kinds: ["external"], dot: "bg-sky-500" },
 ];

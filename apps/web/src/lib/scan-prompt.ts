@@ -1,20 +1,20 @@
-// The extractor prompt served at GET /poster/prompt and shown on the /poster
-// landing page. Mirrors .agents/skills/codebase-poster/SKILL.md — keep in sync.
+// The extractor prompt served at GET /scan/prompt and shown on the /scan
+// landing page. Mirrors .agents/skills/codebase-scan/SKILL.md — keep in sync.
 // Agent-agnostic: paste into any coding agent (Claude Code, Cursor, …).
 
-export const POSTER_ENDPOINT = "https://api.foglamp.dev/poster";
+export const SCAN_ENDPOINT = "https://api.foglamp.dev/scan";
 
-export const POSTER_PROMPT = `Analyze THIS repository and publish a shareable "codebase poster" to foglamp —
+export const SCAN_PROMPT = `Analyze THIS repository and publish a shareable "codebase scan" to foglamp —
 a map of how the codebase works and how it uses AI. You produce only the data
-(a small JSON object); a fixed renderer draws the poster. Write no HTML or CSS.
+(a small JSON object); a fixed renderer draws the scan. Write no HTML or CSS.
 
 ## Steps
-1. Investigate the repo and build the JSON below. Write it to .foglamp/poster.json.
+1. Investigate the repo and build the JSON below. Write it to .foglamp/scan.json.
 2. Tell the user plainly: "This uploads a high-level summary of your architecture
    (models, tools, integrations, and main flows — no code or secrets) to
    foglamp.dev and creates a public, unlisted link." Continue only if they agree.
 3. Upload it (see "Publish") and capture the JSON response.
-4. Save the response to .foglamp/poster.lock.json (so a later run updates the same
+4. Save the response to .foglamp/scan.lock.json (so a later run updates the same
    URL). Make sure .foglamp/ is gitignored — the edit token is a secret.
 5. Open the returned url and give it to the user.
 
@@ -28,7 +28,7 @@ a map of how the codebase works and how it uses AI. You produce only the data
   (crons/queues/workers), the agents, the models/tools they use, and the
   datastores/services they read and write.
 
-## Output contract — write EXACTLY this shape to .foglamp/poster.json
+## Output contract — write EXACTLY this shape to .foglamp/scan.json
 {
   "version": 1,
   "project": {
@@ -53,14 +53,18 @@ a map of how the codebase works and how it uses AI. You produce only the data
   }
 }
 
-## Rules (these keep every poster consistent — do not break them)
-- Caps: topModels <= 3, topTools <= 5, topIntegrations <= 5, graph.nodes <= 24,
+## Rules (these keep every scan consistent — do not break them)
+- Caps: topModels <= 3, topTools <= 10, topIntegrations <= 10, graph.nodes <= 24,
   graph.edges <= 48. Aim for 14-22 nodes on a substantial codebase — the map
   should feel rich, not sparse.
 - Give every distinct agent its OWN node when there are <= 10 agents; only
-  group agents when they are numerous and near-identical (then say so in sub,
-  e.g. "12 near-identical scrapers"). Chain agents with agent->agent edges when
-  one feeds the next — pipelines read better than hub-and-spoke.
+  merge agents into one node when they are numerous and near-identical (then
+  say so in sub, e.g. "12 near-identical scrapers"). Chain agents with
+  agent->agent edges when one feeds the next.
+- group (optional, <=24): tag sequential pipeline stages with a shared group
+  name (e.g. "Setup pipeline") — those nodes render as one labeled vertical
+  stack, keeping deep chains compact. Use 2-3 groups of 3-6 nodes for long
+  pipelines; leave hub-and-spoke nodes ungrouped.
 - Node labels <= 28 chars, sub <= 40, edge labels <= 24.
 - kind is one of: entry (trigger/route/page/CLI), cron (scheduled job), agent,
   model, tool, store (DB/cache/index), external (3rd-party API).
@@ -74,18 +78,18 @@ a map of how the codebase works and how it uses AI. You produce only the data
 - Use today's date for project.date.
 
 ## Publish
-First run (no .foglamp/poster.lock.json):
-  curl -sS -X POST ${POSTER_ENDPOINT} \\
-    -H 'content-type: application/json' --data @.foglamp/poster.json
+First run (no .foglamp/scan.lock.json):
+  curl -sS -X POST ${SCAN_ENDPOINT} \\
+    -H 'content-type: application/json' --data @.foglamp/scan.json
 
-Update run (a .foglamp/poster.lock.json exists) — keep the same URL:
-  jq -n --slurpfile d .foglamp/poster.json \\
-        --arg t "$(jq -r .editToken .foglamp/poster.lock.json)" \\
+Update run (a .foglamp/scan.lock.json exists) — keep the same URL:
+  jq -n --slurpfile d .foglamp/scan.json \\
+        --arg t "$(jq -r .editToken .foglamp/scan.lock.json)" \\
         '{data: $d[0], editToken: $t}' \\
-  | curl -sS -X POST ${POSTER_ENDPOINT} \\
+  | curl -sS -X POST ${SCAN_ENDPOINT} \\
       -H 'content-type: application/json' --data @-
 
 The response is JSON: { "slug", "url", "editToken", "expiresAt" }. Save it to
-.foglamp/poster.lock.json, then open url. On a 422 error, fix .foglamp/poster.json
+.foglamp/scan.lock.json, then open url. On a 422 error, fix .foglamp/scan.json
 to satisfy the rules and retry.
 `;

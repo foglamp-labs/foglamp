@@ -17,14 +17,14 @@ import {
   GeminiLogo,
   OpenAILogo,
 } from "@/components/brand-logos";
-import { Favicon } from "@/components/poster/brand";
-import { edgePath } from "@/components/poster/layout";
-import { CopyPosterPromptButton } from "./copy-poster-prompt-button";
+import { Favicon } from "@/components/scan/brand";
+import { edgePath } from "@/components/scan/layout";
+import { CopyScanPromptButton } from "./copy-scan-prompt-button";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 // ─── Decorative mini-map ──────────────────────────────────────────────────────
-// A hand-placed slice of a real poster — entries/crons feeding three agents
+// A hand-placed slice of a real scan — entries/crons feeding three agents
 // with real model + tool logos (Claude/Gemini/GPT, Exa/Firecrawl/Parallel),
 // all writing to Postgres. Same edgePath + pulses as the real map.
 
@@ -294,7 +294,7 @@ function MiniMap({ reduce }: { reduce: boolean }) {
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
-export function PosterHero() {
+export function ScanHero() {
   const reduce = useReducedMotion() ?? false;
   const rise = (delay: number): MotionProps =>
     reduce
@@ -318,7 +318,7 @@ export function PosterHero() {
             {...rise(0.05)}
             className="text-sm font-medium tracking-wide text-orange-500"
           >
-            Codebase Poster
+            Codebase Scan
           </motion.p>
           <motion.h1
             {...rise(0.15)}
@@ -337,11 +337,11 @@ export function PosterHero() {
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <motion.div {...rise(0.39)}>
-              <CopyPosterPromptButton />
+              <CopyScanPromptButton />
             </motion.div>
             <motion.div {...rise(0.49)}>
               <Button
-                render={<Link href="/poster/prompt" target="_blank" />}
+                render={<Link href="/scan/prompt" target="_blank" />}
                 size="lg"
                 className="text-base"
                 variant="secondary"

@@ -4,17 +4,18 @@ import { cn } from "@foglamp/ui/lib/utils";
 import { IconSparklesFilled } from "@tabler/icons-react";
 import { useState, type ReactNode } from "react";
 
-import {
-  ClaudeLogo,
-  GeminiLogo,
-  OpenAILogo,
-} from "@/components/brand-logos";
+import { ClaudeLogo, GeminiLogo, OpenAILogo } from "@/components/brand-logos";
 import { faviconUrl, modelDomain } from "./favicon";
 
 /** Foglamp brand mark — three overlapping circles (lead → blue → orange). */
 export function BrandMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 96 48" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg
+      viewBox="0 0 96 48"
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
       {/* lead circle follows currentColor so callers can set it (e.g. white on the art card) */}
       <circle cx="24" cy="24" r="24" className="fill-current" />
       <circle cx="48" cy="24" r="24" fill="#0090FD" />
@@ -64,9 +65,11 @@ export function ModelIcon({
   domain?: string;
   className?: string;
 }) {
-  if (/claude|anthropic/i.test(label)) return <ClaudeLogo className={className} />;
+  if (/claude|anthropic/i.test(label))
+    return <ClaudeLogo className={className} />;
   if (/gemini/i.test(label)) return <GeminiLogo className={className} />;
-  if (/gpt|openai|^o\d/i.test(label)) return <OpenAILogo className={className} />;
+  if (/gpt|openai|^o\d/i.test(label))
+    return <OpenAILogo className={className} />;
   return (
     <Favicon
       domain={modelDomain(label, domain)}

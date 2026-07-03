@@ -1,6 +1,6 @@
 import { trpcServer } from "@hono/trpc-server";
 import { startAlertEvaluator } from "@foglamp/api/alertCron";
-import { startPosterCleanup } from "@foglamp/api/posterCron";
+import { startScanCleanup } from "@foglamp/api/scanCron";
 import { startQuotaWarnSweep } from "@foglamp/api/quotaCron";
 import { startScoringWorker } from "@foglamp/api/scoringCron";
 import { startStorageWatchSweep } from "@foglamp/api/storageCron";
@@ -20,8 +20,8 @@ import { cors } from "hono/cors";
 import { evlog, type AppEnv } from "./evlog";
 import { handleFoggy } from "./foggy";
 import { pruneFoggyRateLimits } from "./foggyRateLimit";
-import { handlePosterCreate, handlePosterGet } from "./poster";
-import { prunePosterRateLimits } from "./rateLimit";
+import { handleScanCreate, handleScanGet } from "./scan";
+import { pruneScanRateLimits } from "./rateLimit";
 
 const app = new Hono<AppEnv>();
 const trustedAppOrigins = getTrustedAppOrigins(
@@ -92,18 +92,29 @@ app.post(
   handleFoggy,
 );
 
-// Codebase poster — public, anonymous. An agent uploads its poster JSON and
-// gets back a shareable foglamp.dev/poster/<slug> URL. Rate-limited by IP inside
+// Codebase scan — public, anonymous. An agent uploads its scan JSON and
+// gets back a shareable foglamp.dev/scan/<slug> URL. Rate-limited by IP inside
 // the handler; bodyLimit guards payload size.
+app.post(
+  "/scan",
+  bodyLimit({
+    maxSize: 64 * 1024,
+    onError: (c) => c.json({ error: "payload too large" }, 413),
+  }),
+  handleScanCreate,
+);
+app.get("/scan/:slug", handleScanGet);
+// Legacy aliases from when the product was called "poster" — agents with an
+// old prompt or lock file still resolve.
 app.post(
   "/poster",
   bodyLimit({
     maxSize: 64 * 1024,
     onError: (c) => c.json({ error: "payload too large" }, 413),
   }),
-  handlePosterCreate,
+  handleScanCreate,
 );
-app.get("/poster/:slug", handlePosterGet);
+app.get("/poster/:slug", handleScanGet);
 
 app.get("/", (c) => {
   return c.text("OK");
@@ -120,13 +131,13 @@ const stopQuotaWarnSweep = startQuotaWarnSweep();
 // ClickHouse storage watch: email platform admins when the DB grows past the
 // configured size threshold (every 4h by default).
 const stopStorageWatchSweep = startStorageWatchSweep();
-// Poster cleanup: delete expired anonymous codebase posters (daily).
-const stopPosterCleanup = startPosterCleanup();
+// Scan cleanup: delete expired anonymous codebase scans (daily).
+const stopScanCleanup = startScanCleanup();
 
-// Periodically shed stale in-memory rate-limit entries (foggy + poster).
+// Periodically shed stale in-memory rate-limit entries (foggy + scan).
 const pruneTimer = setInterval(() => {
   pruneFoggyRateLimits();
-  prunePosterRateLimits();
+  pruneScanRateLimits();
 }, 60_000);
 pruneTimer.unref?.();
 
@@ -143,7 +154,7 @@ async function shutdown(signal: string): Promise<void> {
       stopScoringWorker(),
       stopQuotaWarnSweep(),
       stopStorageWatchSweep(),
-      stopPosterCleanup(),
+      stopScanCleanup(),
     ]);
     log.emit({ outcome: "shutdown", signal });
   } catch (err) {

@@ -3,10 +3,10 @@ import { db } from "@foglamp/db";
 import type { Context } from "hono";
 import { getConnInfo } from "hono/bun";
 
-import { createOrUpdatePoster, getPosterBySlug } from "@foglamp/api/services/posters";
+import { createOrUpdateScan, getScanBySlug } from "@foglamp/api/services/scans";
 
 import type { AppEnv } from "./evlog";
-import { checkPosterRateLimit } from "./rateLimit";
+import { checkScanRateLimit } from "./rateLimit";
 
 const APP_BASE = env.CORS_ORIGIN.replace(/\/+$/, "");
 
@@ -48,11 +48,11 @@ function clientIp(c: Context<AppEnv>): string {
   return c.req.header("x-real-ip") || sock || "anon";
 }
 
-// POST /poster — anonymous create (or update with a matching editToken). The
-// agent curls its `.foglamp/poster.json` here and gets back a shareable URL.
-export async function handlePosterCreate(c: Context<AppEnv>): Promise<Response> {
+// POST /scan — anonymous create (or update with a matching editToken). The
+// agent curls its `.foglamp/scan.json` here and gets back a shareable URL.
+export async function handleScanCreate(c: Context<AppEnv>): Promise<Response> {
   const ip = clientIp(c);
-  const limit = await checkPosterRateLimit(ip);
+  const limit = await checkScanRateLimit(ip);
   if (!limit.allowed) {
     c.header("Retry-After", String(Math.ceil(limit.retryAfterMs / 1000)));
     return c.json({ error: "rate limited — try again later" }, 429);
@@ -65,26 +65,26 @@ export async function handlePosterCreate(c: Context<AppEnv>): Promise<Response> 
     return c.json({ error: "invalid JSON body" }, 400);
   }
 
-  // Accept either the bare PosterData or { data, editToken }.
+  // Accept either the bare ScanData or { data, editToken }.
   const wrapped =
     body && typeof body === "object" && "data" in body
       ? (body as { data: unknown; editToken?: string })
       : { data: body };
 
-  const outcome = await createOrUpdatePoster(db, {
+  const outcome = await createOrUpdateScan(db, {
     data: wrapped.data,
     editToken: wrapped.editToken ?? null,
   });
 
   if (!outcome.ok) {
-    return c.json({ error: "poster data is invalid", details: outcome.errors }, 422);
+    return c.json({ error: "scan data is invalid", details: outcome.errors }, 422);
   }
 
   const { slug, editToken, expiresAt, updated } = outcome.result;
   return c.json(
     {
       slug,
-      url: `${APP_BASE}/poster/${slug}`,
+      url: `${APP_BASE}/scan/${slug}`,
       editToken,
       expiresAt: expiresAt.toISOString(),
       updated,
@@ -93,12 +93,12 @@ export async function handlePosterCreate(c: Context<AppEnv>): Promise<Response> 
   );
 }
 
-// GET /poster/:slug — returns the poster JSON (consumed by the web page + OG
+// GET /scan/:slug — returns the scan JSON (consumed by the web page + OG
 // image). Public; null/expired → 404.
-export async function handlePosterGet(c: Context<AppEnv>): Promise<Response> {
+export async function handleScanGet(c: Context<AppEnv>): Promise<Response> {
   const slug = c.req.param("slug");
   if (!slug) return c.json({ error: "not found" }, 404);
-  const data = await getPosterBySlug(db, slug);
+  const data = await getScanBySlug(db, slug);
   if (!data) return c.json({ error: "not found" }, 404);
   return c.json(data);
 }

@@ -4,7 +4,7 @@
 // busy graphs dramatically. Edges to model/tool nodes are dropped; structural
 // edges (entry→agent, agent→store, agent→external, …) are kept.
 
-import type { GraphEdge, NodeKind, PosterData } from "@foglamp/contracts/poster";
+import type { GraphEdge, NodeKind, ScanData } from "@foglamp/contracts/scan";
 
 export interface Embed {
   id: string;
@@ -20,6 +20,7 @@ export interface FoldedNode {
   domain?: string;
   sub?: string;
   detail?: string;
+  group?: string;
   /** Models and tools this node uses, rendered inline (models first). */
   embeds: Embed[];
 }
@@ -31,7 +32,7 @@ export interface FoldedGraph {
 
 const FOLDED: ReadonlySet<NodeKind> = new Set<NodeKind>(["model", "tool"]);
 
-export function foldGraph(graph: PosterData["graph"]): FoldedGraph {
+export function foldGraph(graph: ScanData["graph"]): FoldedGraph {
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
   const embedsByNode = new Map<string, Embed[]>();
 
@@ -60,6 +61,7 @@ export function foldGraph(graph: PosterData["graph"]): FoldedGraph {
       domain: n.domain,
       sub: n.sub,
       detail: n.detail,
+      group: n.group,
       // models before tools
       embeds: (embedsByNode.get(n.id) ?? []).sort((a, b) =>
         a.kind === b.kind ? 0 : a.kind === "model" ? -1 : 1,

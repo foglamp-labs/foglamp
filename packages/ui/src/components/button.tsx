@@ -12,7 +12,7 @@ const buttonVariants = cva(
         default:
           "bg-neutral-800 dark:bg-neutral-200 shadow-[var(--custom-shadow-primary)] text-primary-foreground hover:bg-primary/80 dark:hover:bg-primary/90",
         outline:
-          "shadow-(--custom-shadow) bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-input/10 dark:hover:bg-input/50",
+          "shadow-(--custom-outline-shadow) bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-card dark:hover:bg-muted",
         secondary:
           "bg-secondary shadow-[var(--custom-shadow-secondary)] text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
@@ -30,10 +30,10 @@ const buttonVariants = cva(
       },
       size: {
         default:
-          "h-8 gap-1.5 px-3 in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-2.5 has-[>svg:last-child]:pr-2.5",
+          "h-8 gap-[5px] px-3 in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-2.5 has-[>svg:last-child]:pr-2.5",
         xs: "h-6 gap-[4px] rounded-full px-2.5 text-xs in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-1.5 has-[>svg:last-child]:pr-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-7 gap-[5px] rounded-full px-3 in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2",
-        lg: "h-9 gap-1.5 px-3 has-[>svg:first-child]:pl-2.5 has-[>svg:last-child]:pr-2.5",
+        lg: "h-9 gap-[5px] px-3 has-[>svg:first-child]:pl-2.5 has-[>svg:last-child]:pr-2.5",
         icon: "size-8",
         "icon-xs":
           "size-6 rounded-full in-data-[slot=button-group]:rounded-full [&_svg:not([class*='size-'])]:size-3",

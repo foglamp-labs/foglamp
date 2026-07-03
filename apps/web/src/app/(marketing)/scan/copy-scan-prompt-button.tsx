@@ -8,11 +8,11 @@ import { useEffect, useRef, useState } from "react";
 
 import { CopyIcon } from "@/components/app/copy-icon";
 import { useCopied } from "@/components/app/use-copied";
-import { POSTER_PROMPT } from "@/lib/poster-prompt";
+import { SCAN_PROMPT } from "@/lib/scan-prompt";
 
-// The poster page's "paste into your coding agent" button — same power-on
+// The scan page's "paste into your coding agent" button — same power-on
 // BorderBeam as the landing page's CopyPromptButton, but it copies the
-// codebase-poster extraction prompt.
+// codebase-scan extraction prompt.
 
 const BEAM_TARGET = 1;
 const BEAM_STEP = 0.04;
@@ -44,7 +44,7 @@ function useCopyBeam(active: boolean, reduce: boolean) {
   return strength;
 }
 
-export function CopyPosterPromptButton({ className }: { className?: string }) {
+export function CopyScanPromptButton({ className }: { className?: string }) {
   const reduce = useReducedMotion() ?? false;
   const { copied, markCopied } = useCopied(2000);
   const strength = useCopyBeam(copied, reduce);
@@ -61,12 +61,12 @@ export function CopyPosterPromptButton({ className }: { className?: string }) {
         size="lg"
         className={cn("text-base h-[37px] pl-4", className)}
         onClick={() => {
-          void navigator.clipboard.writeText(POSTER_PROMPT);
+          void navigator.clipboard.writeText(SCAN_PROMPT);
           markCopied();
         }}
-        aria-label="Copy the poster prompt"
+        aria-label="Copy the scan prompt"
       >
-        Copy poster prompt
+        Copy scan prompt
         <CopyIcon
           copied={copied}
           className="size-4 ml-1"

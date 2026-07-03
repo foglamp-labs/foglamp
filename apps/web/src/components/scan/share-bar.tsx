@@ -1,9 +1,16 @@
 "use client";
 
-import type { NodeKind } from "@foglamp/contracts/poster";
+import type { NodeKind } from "@foglamp/contracts/scan";
 import { Button } from "@foglamp/ui/components/button";
 import { cn } from "@foglamp/ui/lib/utils";
-import { IconCircleCheckFilled, IconLink, IconMoon, IconSun } from "@tabler/icons-react";
+import {
+  IconCircleCheckFilled,
+  IconLink,
+  IconMoon,
+  IconShare,
+  IconShare2,
+  IconSun,
+} from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTheme } from "next-themes";
 import { type ReactNode, useEffect, useState } from "react";
@@ -12,7 +19,13 @@ import { LEGEND_GROUPS } from "./kinds";
 
 // Swap between two icons with the same spring blur/scale transition as
 // components/app/copy-icon.tsx. `swapKey` drives the enter/exit.
-function IconSwap({ swapKey, children }: { swapKey: string; children: ReactNode }) {
+function IconSwap({
+  swapKey,
+  children,
+}: {
+  swapKey: string;
+  children: ReactNode;
+}) {
   return (
     <span className="relative inline-flex">
       <AnimatePresence mode="popLayout" initial={false}>
@@ -31,15 +44,8 @@ function IconSwap({ swapKey, children }: { swapKey: string; children: ReactNode 
   );
 }
 
-export function ShareBar({
-  kinds,
-  focusKinds,
-  onFocusKinds,
-}: {
-  kinds: NodeKind[];
-  focusKinds: NodeKind[] | null;
-  onFocusKinds: (kinds: NodeKind[] | null) => void;
-}) {
+// Copy-link + theme toggle, rendered in the left column under the rail.
+export function ScanActions() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -58,6 +64,41 @@ export function ShareBar({
   }
 
   return (
+    <div className="flex gap-2 w-fit">
+      <Button variant="outline" className="flex-1 w-fit" onClick={copyLink}>
+        <IconSwap swapKey={copied ? "check" : "link"}>
+          {copied ? (
+            <IconCircleCheckFilled className="text-green-600 dark:text-green-400" />
+          ) : (
+            <IconShare2 />
+          )}
+        </IconSwap>
+        Copy link
+      </Button>
+      <Button
+        variant="outline"
+        size="icon"
+        aria-label="Toggle theme"
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+      >
+        <IconSwap swapKey={isDark ? "sun" : "moon"}>
+          {isDark ? <IconSun /> : <IconMoon />}
+        </IconSwap>
+      </Button>
+    </div>
+  );
+}
+
+export function ShareBar({
+  kinds,
+  focusKinds,
+  onFocusKinds,
+}: {
+  kinds: NodeKind[];
+  focusKinds: NodeKind[] | null;
+  onFocusKinds: (kinds: NodeKind[] | null) => void;
+}) {
+  return (
     <>
       {/* Legend — bottom center, grouped categories. Hovering a group
           spotlights every node of (or embedding) those kinds. */}
@@ -67,7 +108,8 @@ export function ShareBar({
             g.kinds.some((k) => kinds.includes(k))
           ).map((g) => {
             const active =
-              focusKinds !== null && g.kinds.some((k) => focusKinds.includes(k));
+              focusKinds !== null &&
+              g.kinds.some((k) => focusKinds.includes(k));
             const dimmed = focusKinds !== null && !active;
             return (
               <button
@@ -96,29 +138,6 @@ export function ShareBar({
           })}
         </div>
       ) : null}
-
-      <div className="fixed bottom-6 right-6 z-50 flex gap-2">
-        <Button variant="secondary" onClick={copyLink}>
-          <IconSwap swapKey={copied ? "check" : "link"}>
-            {copied ? (
-              <IconCircleCheckFilled className="text-green-600 dark:text-green-400" />
-            ) : (
-              <IconLink />
-            )}
-          </IconSwap>
-          Copy link
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          aria-label="Toggle theme"
-          onClick={() => setTheme(isDark ? "light" : "dark")}
-        >
-          <IconSwap swapKey={isDark ? "sun" : "moon"}>
-            {isDark ? <IconSun /> : <IconMoon />}
-          </IconSwap>
-        </Button>
-      </div>
     </>
   );
 }
