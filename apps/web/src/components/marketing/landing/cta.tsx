@@ -28,10 +28,12 @@ export function CtaSection() {
           backgroundImage:
             "radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0)",
           backgroundSize: "24px 24px",
+          // Fully faded before the section edges — a mask that still has
+          // alpha at the boundary reads as a hard line across the page.
           WebkitMaskImage:
-            "radial-gradient(ellipse 82% 72% at 50% 50%, #000 35%, transparent 100%)",
+            "radial-gradient(ellipse 75% 58% at 50% 50%, #000 25%, transparent 82%)",
           maskImage:
-            "radial-gradient(ellipse 82% 72% at 50% 50%, #000 35%, transparent 100%)",
+            "radial-gradient(ellipse 75% 58% at 50% 50%, #000 25%, transparent 82%)",
         }}
       />
 
@@ -44,9 +46,9 @@ export function CtaSection() {
           aria-hidden
           style={{
             WebkitMaskImage:
-              "linear-gradient(to bottom, transparent 2%, #000 38%, #000 62%, transparent 98%)",
+              "linear-gradient(to bottom, transparent 4%, #000 38%, #000 60%, transparent 92%)",
             maskImage:
-              "linear-gradient(to bottom, transparent 2%, #000 38%, #000 62%, transparent 98%)",
+              "linear-gradient(to bottom, transparent 4%, #000 38%, #000 60%, transparent 92%)",
           }}
         >
           <div
@@ -78,8 +80,21 @@ export function CtaSection() {
         </div>
       )}
 
-      {/* Film grain, above the fog. */}
-      <FilmGrain id="cta-grain" className="z-20 opacity-[0.16] mix-blend-overlay" />
+      {/* Film grain, above the fog — feathered vertically so the texture
+          doesn't stop dead at the section boundary (that step reads as a hard
+          line across the page). */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-20"
+        style={{
+          WebkitMaskImage:
+            "linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent)",
+          maskImage:
+            "linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent)",
+        }}
+      >
+        <FilmGrain id="cta-grain" className="opacity-[0.16] mix-blend-overlay" />
+      </div>
 
       {/* The agent details sitting under the fog on the right — the thing
           you'd see if the fog weren't there. Below the fog's z-index. */}
