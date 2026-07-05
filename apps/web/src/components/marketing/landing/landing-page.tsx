@@ -62,7 +62,7 @@ export function LandingPage() {
       <Hero />
       <DriftStory />
       <HowItWorks />
-      <CtaSection />
+      {/* <CtaSection /> */}
     </div>
   );
 }

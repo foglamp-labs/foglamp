@@ -48,9 +48,8 @@ export function FogBank({
   seed: number;
   octaves?: number;
   /**
-   * Slowly breathe the turbulence frequency and drift the tint (SMIL). The
-   * texture itself churns instead of only sliding around. Callers should gate
-   * this on reduced motion.
+   * Slowly drift the fog's tint between a cool and a warmer grey (SMIL).
+   * Callers should gate this on reduced motion.
    */
   shimmer?: boolean;
 }) {
@@ -68,16 +67,7 @@ export function FogBank({
           seed={seed}
           stitchTiles="stitch"
           result="noise"
-        >
-          {shimmer ? (
-            <animate
-              attributeName="baseFrequency"
-              values={`${freq};${freq * 1.35};${freq}`}
-              dur="34s"
-              repeatCount="indefinite"
-            />
-          ) : null}
-        </feTurbulence>
+        />
         {/* Single-line `values` — the browser normalises this SVG attribute to
             single spaces, so a multi-line string mismatches on hydration. */}
         <feColorMatrix in="noise" type="matrix" values={TINT_COOL}>
