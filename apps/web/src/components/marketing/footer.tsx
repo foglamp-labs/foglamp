@@ -156,7 +156,7 @@ export function MarketingFooter() {
         </div>
       </div>
 
-      <FooterFog />
+      {/* <FooterFog /> */}
     </footer>
   );
 }

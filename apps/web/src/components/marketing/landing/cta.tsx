@@ -21,7 +21,7 @@ export function CtaSection() {
       style={{ minHeight: "780px" }}
     >
       {/* Faint dashboard grid so the fog has a surface to sit on. */}
-      <div
+      {/* <div
         aria-hidden
         className="absolute inset-0 z-0 opacity-40 dark:opacity-30"
         style={{
@@ -35,7 +35,7 @@ export function CtaSection() {
           maskImage:
             "radial-gradient(ellipse 75% 58% at 50% 50%, #000 25%, transparent 82%)",
         }}
-      />
+      /> */}
 
       {/* The fog: three drifting layers, each with its own soft radial blob
           mask at a different spot and size — overlapping blobs instead of one
@@ -58,7 +58,7 @@ export function CtaSection() {
           }}
         >
           <motion.div
-            className="absolute inset-[-15%] opacity-55"
+            className="absolute inset-[-15%] opacity-3"
             style={{
               filter: "blur(4px)",
               WebkitMaskImage:
@@ -69,10 +69,10 @@ export function CtaSection() {
             animate={{ x: ["-3%", "4%", "-3%"], y: ["-2%", "2%", "-2%"] }}
             transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-a" freq={0.011} seed={7} />
+            <FogBank id="fog-a" freq={0.011} seed={7} shimmer />
           </motion.div>
           <motion.div
-            className="absolute inset-[-15%] opacity-40"
+            className="absolute inset-[-15%] opacity-20"
             style={{
               filter: "blur(14px)",
               WebkitMaskImage:
@@ -83,10 +83,10 @@ export function CtaSection() {
             animate={{ x: ["3%", "-4%", "3%"], y: ["2%", "-3%", "2%"] }}
             transition={{ duration: 34, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-b" freq={0.02} seed={19} octaves={5} />
+            <FogBank id="fog-b" freq={0.02} seed={19} octaves={5} shimmer />
           </motion.div>
           <motion.div
-            className="absolute inset-[-15%] opacity-35"
+            className="absolute inset-[-15%] opacity-25"
             style={{
               filter: "blur(20px)",
               WebkitMaskImage:
@@ -97,22 +97,22 @@ export function CtaSection() {
             animate={{ x: ["-2%", "3%", "-2%"], y: ["3%", "-2%", "3%"] }}
             transition={{ duration: 41, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-c" freq={0.016} seed={53} octaves={4} />
+            <FogBank id="fog-c" freq={0.016} seed={53} octaves={4} shimmer />
           </motion.div>
           {/* bottom-right filler */}
           <motion.div
-            className="absolute inset-[-15%] opacity-45"
+            className="absolute inset-[-15%] opacity-35"
             style={{
               filter: "blur(18px)",
               WebkitMaskImage:
-                "radial-gradient(38% 30% at 72% 76%, #000 22%, transparent 72%)",
+                "radial-gradient(38% 30% at 72% 70%, #000 22%, transparent 72%)",
               maskImage:
-                "radial-gradient(38% 30% at 72% 76%, #000 22%, transparent 72%)",
+                "radial-gradient(38% 30% at 72% 70%, #000 22%, transparent 72%)",
             }}
             animate={{ x: ["2%", "-3%", "2%"], y: ["-2%", "3%", "-2%"] }}
             transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-d" freq={0.014} seed={83} octaves={4} />
+            <FogBank id="fog-d" freq={0.014} seed={83} octaves={4} shimmer />
           </motion.div>
           {/* a denser puff right on top of the agent details, so they read as
               half-swallowed by the fog */}
@@ -128,7 +128,7 @@ export function CtaSection() {
             animate={{ x: ["-2%", "2%", "-2%"], y: ["1%", "-2%", "1%"] }}
             transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-e" freq={0.018} seed={47} octaves={5} />
+            <FogBank id="fog-e" freq={0.018} seed={47} octaves={5} shimmer />
           </motion.div>
         </div>
       )}
@@ -155,7 +155,7 @@ export function CtaSection() {
       {/* The agent details sitting under the fog on the right — dimmed and
           slightly soft, so they read as half-hidden behind the weather. */}
       <div className="absolute inset-0 z-5 mx-auto hidden w-full max-w-7xl items-center justify-end px-5 sm:px-8 lg:flex">
-        <div className="w-[35%] pr-4 opacity-65 blur-[1.5px]">
+        <div className="w-[35%] pr-4 opacity-10 blur-[2px]">
           <AgentDetails />
         </div>
       </div>
