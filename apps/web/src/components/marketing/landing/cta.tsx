@@ -2,8 +2,9 @@
 
 import { Button } from "@foglamp/ui/components/button";
 import { IconArrowBigRightFilled } from "@tabler/icons-react";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useInView, useReducedMotion } from "motion/react";
 import Link from "next/link";
+import { useRef } from "react";
 
 import { FilmGrain, FogBank } from "@/components/marketing/noise-overlay";
 import { AgentDetails } from "./cta-agent-details";
@@ -14,9 +15,14 @@ import { CopyPromptButton } from "./copy-prompt-button";
 
 export function CtaSection() {
   const reduce = useReducedMotion() ?? false;
+  // The fog only exists while the section is near the viewport — five
+  // drifting blurred layers animating off-screen is pure wasted CPU/GPU.
+  const ref = useRef<HTMLElement>(null);
+  const inView = useInView(ref, { margin: "30% 0px 30% 0px" });
 
   return (
     <section
+      ref={ref}
       className="relative isolate flex w-full flex-col justify-center overflow-hidden py-32 sm:py-44"
       style={{ minHeight: "780px" }}
     >
@@ -41,7 +47,7 @@ export function CtaSection() {
           mask at a different spot and size — overlapping blobs instead of one
           band, so the cloud reads organic rather than a strip. Everything
           fades out well before the section edges. */}
-      {!reduce && (
+      {!reduce && inView && (
         <div
           className="absolute inset-0 z-10"
           aria-hidden
@@ -62,9 +68,9 @@ export function CtaSection() {
             style={{
               filter: "blur(4px)",
               WebkitMaskImage:
-                "radial-gradient(40% 30% at 66% 44%, #000 25%, transparent 74%)",
+                "radial-gradient(40% 30% at 26% 44%, #000 5%, transparent 74%)",
               maskImage:
-                "radial-gradient(40% 30% at 66% 44%, #000 25%, transparent 74%)",
+                "radial-gradient(40% 30% at 26% 44%, #000 5%, transparent 74%)",
             }}
             animate={{ x: ["-3%", "4%", "-3%"], y: ["-2%", "2%", "-2%"] }}
             transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
@@ -74,7 +80,7 @@ export function CtaSection() {
           <motion.div
             className="absolute inset-[-15%] opacity-20"
             style={{
-              filter: "blur(14px)",
+              filter: "blur(5px)",
               WebkitMaskImage:
                 "radial-gradient(44% 34% at 54% 60%, #000 20%, transparent 72%)",
               maskImage:
@@ -86,9 +92,9 @@ export function CtaSection() {
             <FogBank id="fog-b" freq={0.02} seed={19} octaves={5} shimmer />
           </motion.div>
           <motion.div
-            className="absolute inset-[-15%] opacity-25"
+            className="absolute inset-[-15%] opacity-5"
             style={{
-              filter: "blur(20px)",
+              filter: "blur(10px)",
               WebkitMaskImage:
                 "radial-gradient(30% 26% at 78% 32%, #000 20%, transparent 72%)",
               maskImage:
@@ -119,7 +125,7 @@ export function CtaSection() {
           <motion.div
             className="absolute inset-[-15%] opacity-60"
             style={{
-              filter: "blur(16px)",
+              filter: "blur(12px)",
               WebkitMaskImage:
                 "radial-gradient(30% 24% at 68% 46%, #000 30%, transparent 70%)",
               maskImage:
