@@ -51,3 +51,41 @@
     opacity: 1;
   }
 }
+
+/* Marketing fog drift — CSS keyframes instead of JS-driven Motion so the
+   transform animates on the compositor: the blurred/masked layers rasterize
+   once and only their transforms change, keeping the main thread free (the
+   JS version made every hover on the page feel laggy). will-change pins the
+   layer; translate percentages are relative to the (oversized) layer. */
+@keyframes fog-drift-a {
+  0%, 100% { transform: translate(-3%, -2%); }
+  50% { transform: translate(4%, 2%); }
+}
+@keyframes fog-drift-b {
+  0%, 100% { transform: translate(3%, 2%); }
+  50% { transform: translate(-4%, -3%); }
+}
+@keyframes fog-drift-c {
+  0%, 100% { transform: translate(-2%, 3%); }
+  50% { transform: translate(3%, -2%); }
+}
+@keyframes fog-drift-d {
+  0%, 100% { transform: translate(2%, -2%); }
+  50% { transform: translate(-3%, 3%); }
+}
+@keyframes fog-drift-e {
+  0%, 100% { transform: translate(-2%, 1%); }
+  50% { transform: translate(2%, -2%); }
+}
+@keyframes fog-drift-footer {
+  0%, 100% { transform: translate(-3%, -10%); }
+  50% { transform: translate(3%, 10%); }
+}
+.fog-layer {
+  will-change: transform;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fog-layer { animation: none; }
+}

@@ -45,6 +45,15 @@ export const metadata: Metadata = {
   },
   description:
     "The missing observability layer for AI agents built on the Vercel AI SDK. Costs, latency, tokens, distributed traces, evals, and alerts for every generateText / streamText call — in two lines.",
+  // Swap in a visually distinct favicon during local development so dev tabs
+  // are unmistakable. NODE_ENV is "development" under `next dev` and
+  // "production" for builds/deploys, so no extra env config is needed.
+  icons: {
+    icon:
+      process.env.NODE_ENV === "development"
+        ? "/favicon-dev.ico"
+        : "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

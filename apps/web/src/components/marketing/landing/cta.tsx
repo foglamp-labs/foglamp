@@ -2,7 +2,7 @@
 
 import { Button } from "@foglamp/ui/components/button";
 import { IconArrowBigRightFilled } from "@tabler/icons-react";
-import { motion, useInView, useReducedMotion } from "motion/react";
+import { useInView, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRef } from "react";
 
@@ -63,79 +63,79 @@ export function CtaSection() {
             maskComposite: "intersect",
           }}
         >
-          <motion.div
-            className="absolute inset-[-15%] opacity-3"
+          <div
+            className="fog-layer absolute inset-[-15%] opacity-3"
             style={{
               filter: "blur(4px)",
+              animationName: "fog-drift-a",
+              animationDuration: "26s",
               WebkitMaskImage:
                 "radial-gradient(40% 30% at 26% 44%, #000 5%, transparent 74%)",
               maskImage:
                 "radial-gradient(40% 30% at 26% 44%, #000 5%, transparent 74%)",
             }}
-            animate={{ x: ["-3%", "4%", "-3%"], y: ["-2%", "2%", "-2%"] }}
-            transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
           >
             <FogBank id="fog-a" freq={0.011} seed={7}/>
-          </motion.div>
-          <motion.div
-            className="absolute inset-[-15%] opacity-20"
+          </div>
+          <div
+            className="fog-layer absolute inset-[-15%] opacity-20"
             style={{
               filter: "blur(5px)",
+              animationName: "fog-drift-b",
+              animationDuration: "34s",
               WebkitMaskImage:
                 "radial-gradient(44% 34% at 54% 60%, #000 20%, transparent 72%)",
               maskImage:
                 "radial-gradient(44% 34% at 54% 60%, #000 20%, transparent 72%)",
             }}
-            animate={{ x: ["3%", "-4%", "3%"], y: ["2%", "-3%", "2%"] }}
-            transition={{ duration: 34, repeat: Infinity, ease: "easeInOut" }}
           >
             <FogBank id="fog-b" freq={0.02} seed={19} octaves={5}/>
-          </motion.div>
-          <motion.div
-            className="absolute inset-[-15%] opacity-5"
+          </div>
+          <div
+            className="fog-layer absolute inset-[-15%] opacity-5"
             style={{
               filter: "blur(10px)",
+              animationName: "fog-drift-c",
+              animationDuration: "41s",
               WebkitMaskImage:
                 "radial-gradient(30% 26% at 78% 32%, #000 20%, transparent 72%)",
               maskImage:
                 "radial-gradient(30% 26% at 78% 32%, #000 20%, transparent 72%)",
             }}
-            animate={{ x: ["-2%", "3%", "-2%"], y: ["3%", "-2%", "3%"] }}
-            transition={{ duration: 41, repeat: Infinity, ease: "easeInOut" }}
           >
             <FogBank id="fog-c" freq={0.016} seed={53} octaves={4}/>
-          </motion.div>
+          </div>
           {/* bottom-right filler */}
-          <motion.div
-            className="absolute inset-[-15%] opacity-35"
+          <div
+            className="fog-layer absolute inset-[-15%] opacity-35"
             style={{
               filter: "blur(18px)",
+              animationName: "fog-drift-d",
+              animationDuration: "30s",
               WebkitMaskImage:
                 "radial-gradient(38% 30% at 72% 70%, #000 22%, transparent 72%)",
               maskImage:
                 "radial-gradient(38% 30% at 72% 70%, #000 22%, transparent 72%)",
             }}
-            animate={{ x: ["2%", "-3%", "2%"], y: ["-2%", "3%", "-2%"] }}
-            transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
           >
             <FogBank id="fog-d" freq={0.014} seed={83} octaves={4}/>
-          </motion.div>
+          </div>
           {/* a denser puff right on top of the agent details, so they read as
               half-swallowed by the fog */}
-          <motion.div
-            className="absolute inset-[-15%] opacity-60"
+          <div
+            className="fog-layer absolute inset-[-15%] opacity-60"
             style={{
               filter: "blur(12px)",
+              animationName: "fog-drift-e",
+              animationDuration: "24s",
               WebkitMaskImage:
                 "radial-gradient(30% 24% at 68% 46%, #000 30%, transparent 70%)",
               maskImage:
                 "radial-gradient(30% 24% at 68% 46%, #000 30%, transparent 70%)",
             }}
-            animate={{ x: ["-2%", "2%", "-2%"], y: ["1%", "-2%", "1%"] }}
-            transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
           >
             <FogBank id="fog-e" freq={0.018} seed={47} octaves={5}/>
-          </motion.div>
+          </div>
         </div>
       )}
 
