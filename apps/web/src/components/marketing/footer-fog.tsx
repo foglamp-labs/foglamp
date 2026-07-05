@@ -38,7 +38,7 @@ export function FooterFog() {
           }
           transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
         >
-          <FogBank id="footer-fog" freq={0.014} seed={11} shimmer={!reduce} />
+          <FogBank id="footer-fog" freq={0.014} seed={11} />
         </motion.div>
       ) : null}
     </div>

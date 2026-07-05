@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@foglamp/ui/lib/utils";
-import { motion, useReducedMotion } from "motion/react";
 
 // Shared atmospheric textures for marketing sections. Two flavors:
 // - FilmGrain: a static feTurbulence speckle applied to the element itself via
@@ -40,21 +39,12 @@ export function FogBank({
   freq,
   seed,
   octaves = 4,
-  shimmer = false,
 }: {
   id: string;
   freq: number;
   seed: number;
   octaves?: number;
-  /**
-   * Slowly drift the fog toward a warmer grey and back. Implemented as a
-   * compositor-only opacity fade on a tint overlay (NOT an SVG filter
-   * animation — animating the filter re-rasterizes the turbulence every
-   * frame and melts CPUs). Callers should gate this on reduced motion.
-   */
-  shimmer?: boolean;
 }) {
-  const reduce = useReducedMotion() ?? false;
   return (
     <div aria-hidden className="absolute inset-0 overflow-hidden">
       {/* The turbulence is rasterized at quarter resolution and scaled up 4x.
@@ -82,17 +72,6 @@ export function FogBank({
         </filter>
         <rect width="100%" height="100%" filter={`url(#${id})`} />
       </svg>
-      {/* Warm tint drift: a soft-light color wash whose opacity breathes.
-          Opacity animation composites on the GPU; the fog raster is untouched. */}
-      {shimmer && !reduce ? (
-        <motion.div
-          className="absolute inset-0 mix-blend-soft-light"
-          style={{ background: "rgb(214,190,160)" }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.35, 0] }}
-          transition={{ duration: 21, repeat: Infinity, ease: "easeInOut" }}
-        />
-      ) : null}
     </div>
   );
 }

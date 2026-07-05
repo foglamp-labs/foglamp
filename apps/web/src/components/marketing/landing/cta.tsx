@@ -75,7 +75,7 @@ export function CtaSection() {
             animate={{ x: ["-3%", "4%", "-3%"], y: ["-2%", "2%", "-2%"] }}
             transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-a" freq={0.011} seed={7} shimmer />
+            <FogBank id="fog-a" freq={0.011} seed={7}/>
           </motion.div>
           <motion.div
             className="absolute inset-[-15%] opacity-20"
@@ -89,7 +89,7 @@ export function CtaSection() {
             animate={{ x: ["3%", "-4%", "3%"], y: ["2%", "-3%", "2%"] }}
             transition={{ duration: 34, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-b" freq={0.02} seed={19} octaves={5} shimmer />
+            <FogBank id="fog-b" freq={0.02} seed={19} octaves={5}/>
           </motion.div>
           <motion.div
             className="absolute inset-[-15%] opacity-5"
@@ -103,7 +103,7 @@ export function CtaSection() {
             animate={{ x: ["-2%", "3%", "-2%"], y: ["3%", "-2%", "3%"] }}
             transition={{ duration: 41, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-c" freq={0.016} seed={53} octaves={4} shimmer />
+            <FogBank id="fog-c" freq={0.016} seed={53} octaves={4}/>
           </motion.div>
           {/* bottom-right filler */}
           <motion.div
@@ -118,7 +118,7 @@ export function CtaSection() {
             animate={{ x: ["2%", "-3%", "2%"], y: ["-2%", "3%", "-2%"] }}
             transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-d" freq={0.014} seed={83} octaves={4} shimmer />
+            <FogBank id="fog-d" freq={0.014} seed={83} octaves={4}/>
           </motion.div>
           {/* a denser puff right on top of the agent details, so they read as
               half-swallowed by the fog */}
@@ -134,7 +134,7 @@ export function CtaSection() {
             animate={{ x: ["-2%", "2%", "-2%"], y: ["1%", "-2%", "1%"] }}
             transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
           >
-            <FogBank id="fog-e" freq={0.018} seed={47} octaves={5} shimmer />
+            <FogBank id="fog-e" freq={0.018} seed={47} octaves={5}/>
           </motion.div>
         </div>
       )}
