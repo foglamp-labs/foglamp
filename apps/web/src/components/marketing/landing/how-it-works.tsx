@@ -2,6 +2,8 @@
 // no demo (the hero already has one) — just type and drawings.
 // Arts: chat input (copy), diff (agent wires it), dashboard (see everything).
 
+import { ClaudeCodeLogo, CodexLogo } from "@/components/brand-logos";
+
 // ─── Step illustrations ───────────────────────────────────────────────────────
 // 320x150 viewBox, theme colors, one accent per drawing. The "card" of each
 // drawing is a real div carrying the house Card shadow (--custom-shadow); the
@@ -10,95 +12,30 @@
 
 function PromptArt() {
   return (
-    <div aria-hidden className="relative aspect-296/150 w-full">
-      {/* the input, as a real surface so it casts the Card shadow */}
-      <div
-        className="absolute inset-x-0 rounded-full corner-squircle bg-card shadow-(--custom-shadow)"
-        style={{ top: "37.3%", height: "37.3%" }}
-      />
-      <svg
-        viewBox="12 0 296 150"
-        preserveAspectRatio="none"
-        className="absolute inset-0 h-full w-full"
-      >
-        {/* floating file chip above the input */}
-        <rect
-          x="14"
-          y="18"
-          width="92"
-          height="22"
-          rx="11"
-          fill="var(--muted)"
-          opacity="0.45"
-        />
-        <circle cx="29" cy="29" r="4" fill="#f97316" opacity="0.85" />
-        <rect
-          x="40"
-          y="26"
-          width="54"
-          height="6"
-          rx="3"
-          fill="var(--muted-foreground)"
-          opacity="0.5"
-        />
+    <div
+      aria-hidden
+      className="flex aspect-296/126 w-full flex-col justify-center gap-4"
+    >
+      {/* floating file chip above the input */}
+      <div className="flex h-7 w-fit items-center gap-2 rounded-full bg-muted/45 px-3">
+        <span className="size-2 rounded-full bg-orange-500/85" />
+        <span className="h-1.5 w-14 rounded-full bg-muted-foreground/50" />
+      </div>
 
-        {/* prompt text */}
-        <rect
-          x="36"
-          y="78"
-          width="150"
-          height="7"
-          rx="3.5"
-          fill="var(--muted-foreground)"
-          opacity="0.55"
-        />
-        <rect
-          x="194"
-          y="78"
-          width="26"
-          height="7"
-          rx="3.5"
-          fill="var(--muted-foreground)"
-          opacity="0.3"
-        />
-        {/* caret */}
-        <rect x="228" y="74" width="2.5" height="15" fill="#f97316">
-          <animate
-            attributeName="opacity"
-            values="1;0;1"
-            dur="1.2s"
-            repeatCount="indefinite"
-          />
-        </rect>
+      {/* the input, styled like a real field with the Card shadow */}
+      <div className="flex h-13 items-center gap-2 rounded-full corner-squircle bg-card pl-5 pr-2 shadow-(--custom-shadow)">
+        <span className="h-1.5 w-32 rounded-full bg-muted-foreground/55" />
+        <span className="h-1.5 w-6 rounded-full bg-muted-foreground/30" />
+        <span className="h-4 w-0.5 animate-pulse bg-orange-500" />
+        {/* send: the house default button, carrying the agent logos */}
+        <span className="ml-auto flex h-9 items-center gap-2 rounded-full bg-neutral-800 px-3.5 text-primary-foreground shadow-[var(--custom-shadow-primary)] dark:bg-neutral-200">
+          <ClaudeCodeLogo className="size-4" />
+          <CodexLogo className="size-4" />
+        </span>
+      </div>
 
-        {/* send */}
-        <defs>
-          <linearGradient id="hiw-p-send" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#fb923c" />
-            <stop offset="1" stopColor="#ea580c" />
-          </linearGradient>
-        </defs>
-        <circle cx="280" cy="84" r="17" fill="url(#hiw-p-send)" />
-        <path
-          d="M 280 92 v -15 m 0 0 l -5.5 5.5 m 5.5 -5.5 l 5.5 5.5"
-          stroke="#fff"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-        />
-
-        {/* reflection line under the input */}
-        <rect
-          x="110"
-          y="126"
-          width="100"
-          height="7"
-          rx="3.5"
-          fill="var(--muted)"
-          opacity="0.35"
-        />
-      </svg>
+      {/* reflection line under the input */}
+      <div className="mx-auto h-1.5 w-24 rounded-full bg-muted/35" />
     </div>
   );
 }
@@ -372,7 +309,10 @@ export function HowItWorks() {
       <div className="mt-16 grid gap-12 md:grid-cols-3 md:gap-20">
         {STEPS.map((step) => (
           <div key={step.n}>
-            <step.Art />
+            {/* arts sit a little narrower than the text column */}
+            <div className="w-11/12">
+              <step.Art />
+            </div>
             <h3 className="mt-5 font-display text-lg font-semibold tracking-tight">
               <span className="mr-2 text-muted-foreground/60">{step.n}</span>
               {step.title}
