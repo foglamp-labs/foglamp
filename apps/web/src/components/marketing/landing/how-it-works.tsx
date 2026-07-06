@@ -1,221 +1,150 @@
 // How it works, in three steps, each with a small line illustration. No cards,
 // no demo (the hero already has one) — just type and drawings.
+// Arts: chat input (copy), diff (agent wires it), dashboard (see everything).
 
 // ─── Step illustrations ───────────────────────────────────────────────────────
-// Hand-drawn SVGs in theme colors: muted strokes, one accent per drawing.
+// 320x150 viewBox, theme colors, one accent per drawing.
 
 function PromptArt() {
   return (
-    <svg viewBox="0 0 240 110" className="h-28 w-full" aria-hidden>
-      {/* prompt window */}
+    <svg viewBox="0 0 320 150" className="h-36 w-full sm:h-40" aria-hidden>
+      {/* floating file chip above the input */}
+      <rect x="14" y="18" width="92" height="22" rx="11" fill="var(--muted)" opacity="0.45" />
+      <circle cx="29" cy="29" r="4" fill="#f97316" opacity="0.85" />
+      <rect x="40" y="26" width="54" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.5" />
+
+      {/* the input */}
       <rect
-        x="8"
-        y="10"
-        width="224"
-        height="90"
-        rx="14"
+        x="12"
+        y="56"
+        width="296"
+        height="56"
+        rx="28"
         fill="var(--card)"
         stroke="var(--border)"
+        strokeWidth="1.2"
       />
-      {/* prompt text lines */}
-      <rect x="26" y="30" width="150" height="7" rx="3.5" fill="var(--muted)" />
-      <rect x="26" y="46" width="180" height="7" rx="3.5" fill="var(--muted)" />
-      <rect x="26" y="62" width="120" height="7" rx="3.5" fill="var(--muted)" />
-      {/* the copy chip */}
-      <g>
-        <rect
-          x="150"
-          y="72"
-          width="64"
-          height="20"
-          rx="10"
-          fill="#f97316"
-          opacity="0.9"
-        />
-        <text
-          x="182"
-          y="86"
-          textAnchor="middle"
-          fontSize="10"
-          fontWeight="600"
-          fill="#fff"
-        >
-          copy
-        </text>
-      </g>
+      {/* prompt text */}
+      <rect x="36" y="78" width="150" height="7" rx="3.5" fill="var(--muted-foreground)" opacity="0.55" />
+      <rect x="194" y="78" width="26" height="7" rx="3.5" fill="var(--muted-foreground)" opacity="0.3" />
+      {/* caret */}
+      <rect x="228" y="74" width="2.5" height="15" fill="#f97316">
+        <animate attributeName="opacity" values="1;0;1" dur="1.2s" repeatCount="indefinite" />
+      </rect>
+
+      {/* send */}
+      <defs>
+        <linearGradient id="hiw-p-send" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fb923c" />
+          <stop offset="1" stopColor="#ea580c" />
+        </linearGradient>
+      </defs>
+      <circle cx="280" cy="84" r="17" fill="url(#hiw-p-send)" />
+      <path
+        d="M 280 92 v -15 m 0 0 l -5.5 5.5 m 5.5 -5.5 l 5.5 5.5"
+        stroke="#fff"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+
+      {/* reflection line under the input */}
+      <rect x="110" y="126" width="100" height="7" rx="3.5" fill="var(--muted)" opacity="0.35" />
     </svg>
   );
 }
 
 function WireArt() {
   return (
-    <svg viewBox="0 0 240 110" className="h-28 w-full" aria-hidden>
+    <svg viewBox="0 0 320 150" className="h-36 w-full sm:h-40" aria-hidden>
       <rect
-        x="8"
-        y="10"
-        width="224"
-        height="90"
-        rx="14"
+        x="12"
+        y="12"
+        width="296"
+        height="126"
+        rx="18"
         fill="var(--card)"
         stroke="var(--border)"
+        strokeWidth="1.2"
       />
-      {/* untouched code lines */}
-      <rect x="26" y="26" width="130" height="6" rx="3" fill="var(--muted)" />
-      <rect x="26" y="40" width="170" height="6" rx="3" fill="var(--muted)" />
-      {/* the two added lines */}
-      <g opacity="0.9">
-        <rect
-          x="20"
-          y="52"
-          width="200"
-          height="14"
-          rx="4"
-          fill="#22c55e"
-          opacity="0.12"
-        />
-        <text x="27" y="63" fontSize="10" fontWeight="700" fill="#22c55e">
-          +
-        </text>
-        <rect
-          x="40"
-          y="56"
-          width="120"
-          height="6"
-          rx="3"
-          fill="#22c55e"
-          opacity="0.7"
-        />
-        <rect
-          x="20"
-          y="68"
-          width="200"
-          height="14"
-          rx="4"
-          fill="#22c55e"
-          opacity="0.12"
-        />
-        <text x="27" y="79" fontSize="10" fontWeight="700" fill="#22c55e">
-          +
-        </text>
-        <rect
-          x="40"
-          y="72"
-          width="88"
-          height="6"
-          rx="3"
-          fill="#22c55e"
-          opacity="0.7"
-        />
+      {/* file tab */}
+      <rect x="28" y="26" width="86" height="18" rx="9" fill="var(--muted)" opacity="0.55" />
+      <circle cx="42" cy="35" r="3.5" fill="#3b82f6" opacity="0.8" />
+      <rect x="52" y="32" width="52" height="6" rx="3" fill="var(--muted-foreground)" opacity="0.5" />
+
+      {/* context line */}
+      <rect x="46" y="58" width="170" height="7" rx="3.5" fill="var(--muted)" />
+      <rect x="30" y="58" width="8" height="7" rx="3" fill="var(--muted)" opacity="0.4" />
+
+      {/* added lines */}
+      <g>
+        <rect x="24" y="73" width="272" height="19" rx="6" fill="#22c55e" opacity="0.1" />
+        <text x="32" y="87" fontSize="12" fontWeight="700" fill="#22c55e">+</text>
+        <rect x="48" y="79" width="58" height="7" rx="3.5" fill="#22c55e" opacity="0.8" />
+        <rect x="112" y="79" width="46" height="7" rx="3.5" fill="#f97316" opacity="0.85" />
+        <rect x="164" y="79" width="70" height="7" rx="3.5" fill="#22c55e" opacity="0.45" />
       </g>
-      <rect x="26" y="88" width="100" height="6" rx="3" fill="var(--muted)" />
+      <g>
+        <rect x="24" y="95" width="272" height="19" rx="6" fill="#22c55e" opacity="0.1" />
+        <text x="32" y="109" fontSize="12" fontWeight="700" fill="#22c55e">+</text>
+        <rect x="48" y="101" width="38" height="7" rx="3.5" fill="#22c55e" opacity="0.8" />
+        <rect x="92" y="101" width="64" height="7" rx="3.5" fill="#8b5cf6" opacity="0.65" />
+        <rect x="162" y="101" width="30" height="7" rx="3.5" fill="#22c55e" opacity="0.45" />
+      </g>
+
+      {/* trailing context */}
+      <rect x="46" y="122" width="120" height="7" rx="3.5" fill="var(--muted)" />
+      <rect x="30" y="122" width="8" height="7" rx="3" fill="var(--muted)" opacity="0.4" />
     </svg>
   );
 }
 
 function LightArt() {
   return (
-    <svg viewBox="0 0 240 110" className="h-28 w-full" aria-hidden>
+    <svg viewBox="0 0 320 150" className="h-36 w-full sm:h-40" aria-hidden>
       <rect
-        x="8"
-        y="10"
-        width="224"
-        height="90"
-        rx="14"
+        x="12"
+        y="12"
+        width="296"
+        height="126"
+        rx="18"
         fill="var(--card)"
         stroke="var(--border)"
+        strokeWidth="1.2"
       />
-      {/* tiny stat tiles */}
-      <rect
-        x="24"
-        y="24"
-        width="60"
-        height="26"
-        rx="8"
-        fill="var(--muted)"
-        opacity="0.5"
-      />
-      <rect
-        x="90"
-        y="24"
-        width="60"
-        height="26"
-        rx="8"
-        fill="var(--muted)"
-        opacity="0.5"
-      />
-      <rect
-        x="156"
-        y="24"
-        width="60"
-        height="26"
-        rx="8"
-        fill="var(--muted)"
-        opacity="0.5"
-      />
-      <rect
-        x="30"
-        y="32"
-        width="26"
-        height="4"
-        rx="2"
-        fill="var(--muted-foreground)"
-        opacity="0.6"
-      />
-      <rect
-        x="96"
-        y="32"
-        width="30"
-        height="4"
-        rx="2"
-        fill="var(--muted-foreground)"
-        opacity="0.6"
-      />
-      <rect
-        x="162"
-        y="32"
-        width="22"
-        height="4"
-        rx="2"
-        fill="var(--muted-foreground)"
-        opacity="0.6"
-      />
-      <rect
-        x="30"
-        y="40"
-        width="16"
-        height="4"
-        rx="2"
-        fill="#f97316"
-        opacity="0.8"
-      />
-      <rect
-        x="96"
-        y="40"
-        width="20"
-        height="4"
-        rx="2"
-        fill="#3b82f6"
-        opacity="0.8"
-      />
-      <rect
-        x="162"
-        y="40"
-        width="14"
-        height="4"
-        rx="2"
-        fill="#22c55e"
-        opacity="0.8"
-      />
-      {/* sparkline */}
+      {/* stat tiles */}
+      {[
+        { x: 26, label: 30, bar: 22, color: "#f97316" },
+        { x: 122, label: 36, bar: 28, color: "#3b82f6" },
+        { x: 218, label: 26, bar: 18, color: "#22c55e" },
+      ].map((t) => (
+        <g key={t.x}>
+          <rect x={t.x} y="26" width="76" height="34" rx="9" fill="var(--muted)" opacity="0.4" />
+          <rect x={t.x + 10} y="35" width={t.label} height="4.5" rx="2.25" fill="var(--muted-foreground)" opacity="0.6" />
+          <rect x={t.x + 10} y="46" width={t.bar} height="5.5" rx="2.75" fill={t.color} opacity="0.9" />
+        </g>
+      ))}
+
+      {/* area chart */}
+      <defs>
+        <linearGradient id="hiw-s-area" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f97316" stopOpacity="0.28" />
+          <stop offset="1" stopColor="#f97316" stopOpacity="0" />
+        </linearGradient>
+      </defs>
       <path
-        d="M 24 86 L 52 80 L 78 84 L 106 70 L 134 76 L 162 62 L 190 68 L 216 58"
+        d="M 26 122 C 56 118 70 104 96 108 S 140 92 166 96 S 224 78 252 82 L 294 74 L 294 128 L 26 128 Z"
+        fill="url(#hiw-s-area)"
+      />
+      <path
+        d="M 26 122 C 56 118 70 104 96 108 S 140 92 166 96 S 224 78 252 82 L 294 74"
         fill="none"
         stroke="#f97316"
-        strokeWidth="2"
+        strokeWidth="2.2"
         strokeLinecap="round"
-        opacity="0.85"
       />
-      <circle cx="216" cy="58" r="3.5" fill="#f97316" />
+      <circle cx="294" cy="74" r="4.5" fill="#f97316" stroke="var(--card)" strokeWidth="2" />
     </svg>
   );
 }
