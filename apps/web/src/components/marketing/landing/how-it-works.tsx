@@ -10,14 +10,14 @@
 
 function PromptArt() {
   return (
-    <div aria-hidden className="relative aspect-[32/15] w-full">
+    <div aria-hidden className="relative aspect-296/150 w-full">
       {/* the input, as a real surface so it casts the Card shadow */}
       <div
-        className="absolute rounded-full corner-squircle bg-card shadow-(--custom-shadow)"
-        style={{ left: "3.75%", right: "3.75%", top: "37.3%", height: "37.3%" }}
+        className="absolute inset-x-0 rounded-full corner-squircle bg-card shadow-(--custom-shadow)"
+        style={{ top: "37.3%", height: "37.3%" }}
       />
       <svg
-        viewBox="0 0 320 150"
+        viewBox="12 0 296 150"
         preserveAspectRatio="none"
         className="absolute inset-0 h-full w-full"
       >
@@ -105,14 +105,11 @@ function PromptArt() {
 
 function WireArt() {
   return (
-    <div aria-hidden className="relative aspect-[32/15] w-full">
+    <div aria-hidden className="relative aspect-296/126 w-full">
       {/* the frame, as a real surface so it casts the Card shadow */}
-      <div
-        className="absolute overflow-hidden rounded-3xl corner-squircle bg-card shadow-(--custom-shadow)"
-        style={{ left: "3.75%", right: "3.75%", top: "8%", bottom: "8%" }}
-      />
+      <div className="absolute inset-0 overflow-hidden rounded-3xl corner-squircle bg-card shadow-(--custom-shadow)" />
       <svg
-        viewBox="0 0 320 150"
+        viewBox="12 12 296 126"
         preserveAspectRatio="none"
         className="absolute inset-0 h-full w-full"
       >
@@ -265,14 +262,11 @@ function WireArt() {
 
 function LightArt() {
   return (
-    <div aria-hidden className="relative aspect-[32/15] w-full">
+    <div aria-hidden className="relative aspect-296/126 w-full">
       {/* the frame, as a real surface so it casts the Card shadow */}
-      <div
-        className="absolute overflow-hidden rounded-3xl corner-squircle bg-card shadow-(--custom-shadow)"
-        style={{ left: "3.75%", right: "3.75%", top: "8%", bottom: "8%" }}
-      />
+      <div className="absolute inset-0 overflow-hidden rounded-3xl corner-squircle bg-card shadow-(--custom-shadow)" />
       <svg
-        viewBox="0 0 320 150"
+        viewBox="12 12 296 126"
         preserveAspectRatio="none"
         className="absolute inset-0 h-full w-full"
       >
