@@ -75,7 +75,7 @@ export function CtaSection() {
                 "radial-gradient(40% 30% at 26% 44%, #000 5%, transparent 74%)",
             }}
           >
-            <FogBank id="fog-a" freq={0.011} seed={7}/>
+            <FogBank id="fog-a" freq={0.011} seed={7} />
           </div>
           <div
             className="fog-layer absolute inset-[-15%] opacity-20"
@@ -89,7 +89,7 @@ export function CtaSection() {
                 "radial-gradient(44% 34% at 54% 60%, #000 20%, transparent 72%)",
             }}
           >
-            <FogBank id="fog-b" freq={0.02} seed={19} octaves={5}/>
+            <FogBank id="fog-b" freq={0.02} seed={19} octaves={5} />
           </div>
           <div
             className="fog-layer absolute inset-[-15%] opacity-5"
@@ -103,7 +103,7 @@ export function CtaSection() {
                 "radial-gradient(30% 26% at 78% 32%, #000 20%, transparent 72%)",
             }}
           >
-            <FogBank id="fog-c" freq={0.016} seed={53} octaves={4}/>
+            <FogBank id="fog-c" freq={0.016} seed={53} octaves={4} />
           </div>
           {/* bottom-right filler */}
           <div
@@ -118,7 +118,7 @@ export function CtaSection() {
                 "radial-gradient(38% 30% at 72% 70%, #000 22%, transparent 72%)",
             }}
           >
-            <FogBank id="fog-d" freq={0.014} seed={83} octaves={4}/>
+            <FogBank id="fog-d" freq={0.014} seed={83} octaves={4} />
           </div>
           {/* a denser puff right on top of the agent details, so they read as
               half-swallowed by the fog */}
@@ -134,7 +134,7 @@ export function CtaSection() {
                 "radial-gradient(30% 24% at 68% 46%, #000 30%, transparent 70%)",
             }}
           >
-            <FogBank id="fog-e" freq={0.018} seed={47} octaves={5}/>
+            <FogBank id="fog-e" freq={0.018} seed={47} octaves={5} />
           </div>
         </div>
       )}
@@ -161,7 +161,7 @@ export function CtaSection() {
       {/* The agent details sitting under the fog on the right — dimmed and
           slightly soft, so they read as half-hidden behind the weather. */}
       <div className="absolute inset-0 z-5 mx-auto hidden w-full max-w-7xl items-center justify-end px-5 sm:px-8 lg:flex">
-        <div className="w-[35%] pr-4 opacity-10 blur-[2px]">
+        <div className="w-[40%] pr-12 opacity-10 blur-[2px]">
           <AgentDetails />
         </div>
       </div>

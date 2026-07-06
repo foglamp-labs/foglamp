@@ -2,6 +2,7 @@ import { CtaSection } from "@/components/marketing/landing/cta";
 import { DriftStory } from "@/components/marketing/landing/drift-story";
 import { Hero } from "@/components/marketing/landing/hero";
 import { HowItWorks } from "@/components/marketing/landing/how-it-works";
+import { HowItWorksVariants } from "@/components/marketing/landing/how-it-works-variants";
 import { JsonLd } from "@/components/marketing/json-ld";
 import { GITHUB_URL, SITE_URL } from "@/lib/links";
 
@@ -62,6 +63,8 @@ export function LandingPage() {
       <Hero />
       <DriftStory />
       <HowItWorks />
+      {/* Temporary: illustration bake-off for the how-it-works arts. */}
+      <HowItWorksVariants />
       <CtaSection />
     </div>
   );
