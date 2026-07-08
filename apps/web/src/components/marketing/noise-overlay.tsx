@@ -85,12 +85,11 @@ export function HeroGrain({ id }: { id: string }) {
       aria-hidden
       className="pointer-events-none absolute inset-0 -z-10"
       style={{
-        WebkitMaskImage:
-          "linear-gradient(to bottom, #000 78%, transparent 97%)",
-        maskImage: "linear-gradient(to bottom, #000 78%, transparent 97%)",
+        WebkitMaskImage: "linear-gradient(to top, #000 78%, transparent 97%)",
+        maskImage: "linear-gradient(to top, #000 78%, transparent 97%)",
       }}
     >
-      <FilmGrain id={id} className="opacity-10 mix-blend-screen" />
+      <FilmGrain id={id} className="opacity-15 mix-blend-screen" />
     </div>
   );
 }
