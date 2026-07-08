@@ -72,7 +72,7 @@ export function FlowMap({
         height: nodeHeight(n),
       })
     );
-    layoutGraph(sized, folded.edges).then((l) => {
+    layoutGraph(sized, folded.edges, { compact: embedded }).then((l) => {
       if (!cancelled) setLayout(l);
     });
     return () => {
@@ -197,7 +197,9 @@ export function FlowMap({
     const kFit = Math.min(availW / layout.width, availH / layout.height);
     if (kFit >= 0.45) {
       // The whole graph fits at a readable size — center it.
-      const k = clamp(kFit, 0.3, 1);
+      // Embeds may upscale a little — a small demo graph should fill its
+      // marketing slot. The full viewer never upscales (fat borders).
+      const k = clamp(kFit, 0.3, embedded ? 1.35 : 1);
       tRef.current = {
         x: padL + (availW - layout.width * k) / 2,
         y: padY + (availH - layout.height * k) / 2,

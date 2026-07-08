@@ -84,7 +84,11 @@ const GROUP_PAD = { top: 46, right: 16, bottom: 16, left: 16 };
 
 export async function layoutGraph<T extends SizedNode>(
   nodes: T[],
-  edges: GraphEdge[]
+  edges: GraphEdge[],
+  opts: {
+    /** Tighter layer gaps for small marketing embeds. */
+    compact?: boolean;
+  } = {}
 ): Promise<Layout<T>> {
   const elk = await getElk();
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
@@ -199,7 +203,11 @@ export async function layoutGraph<T extends SizedNode>(
       "elk.direction": "RIGHT",
       "elk.edgeRouting": "ORTHOGONAL",
       "elk.layered.mergeEdges": "true",
-      "elk.layered.spacing.nodeNodeBetweenLayers": dense ? "110" : "150",
+      "elk.layered.spacing.nodeNodeBetweenLayers": opts.compact
+        ? "80"
+        : dense
+          ? "110"
+          : "150",
       "elk.spacing.nodeNode": dense ? "22" : "32",
       "elk.spacing.edgeNode": dense ? "16" : "24",
       "elk.spacing.edgeEdge": "14",

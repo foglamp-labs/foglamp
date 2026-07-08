@@ -20,7 +20,7 @@ export default function HudPage() {
   return (
     <div className="flex flex-col gap-36">
       {/* Hero */}
-      <section className="relative isolate w-full overflow-x-clip pt-28">
+      <section className="relative isolate w-full overflow-x-clip pt-28 pb-40">
         <HeroGrain id="hud-noise" />
         <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
           <p className="text-sm font-medium tracking-wide text-orange-500">
@@ -29,7 +29,7 @@ export default function HudPage() {
           <h1 className="font-display mt-4 max-w-2xl text-4xl font-semibold tracking-tight text-balance md:text-5xl">
             See your agents while you build.
           </h1>
-          <p className="mt-5 max-w-md text-lg text-muted-foreground text-pretty">
+          <p className="mt-5 max-w-lg text-lg text-muted-foreground text-pretty">
             The dashboard watches production. The HUD watches your dev loop:
             every call, tool step and retry, live in the corner of your app.
           </p>

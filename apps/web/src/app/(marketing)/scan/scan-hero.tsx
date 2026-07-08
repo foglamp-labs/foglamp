@@ -22,7 +22,13 @@ const FlowMap = dynamic(
 // Postgres. Rendered by the same pipeline as a real scan.
 const DEMO_GRAPH: ScanData["graph"] = {
   nodes: [
-    { id: "chat", label: "Chat", kind: "entry", sub: "/api/chat" },
+    {
+      id: "app",
+      label: "Next.js app",
+      kind: "entry",
+      sub: "/api/chat",
+      domain: "nextjs.org",
+    },
     { id: "cron", label: "Daily cron", kind: "cron", sub: "digest, evals" },
     {
       id: "support",
@@ -36,21 +42,19 @@ const DEMO_GRAPH: ScanData["graph"] = {
       kind: "agent",
       sub: "deep dives",
     },
-    { id: "judge", label: "Eval judge", kind: "agent", sub: "scores answers" },
     {
-      id: "claude",
-      label: "Claude Opus 4.8",
+      id: "fable",
+      label: "Claude Fable 5",
       kind: "model",
       domain: "claude.ai",
     },
+    { id: "gpt", label: "GPT-5.5", kind: "model", domain: "openai.com" },
     {
-      id: "gemini",
-      label: "Gemini 3 Pro",
-      kind: "model",
-      domain: "gemini.google.com",
+      id: "firecrawl",
+      label: "Firecrawl",
+      kind: "tool",
+      domain: "firecrawl.dev",
     },
-    { id: "gpt", label: "GPT-5.2", kind: "model", domain: "openai.com" },
-    { id: "firecrawl", label: "Firecrawl", kind: "tool", domain: "firecrawl.dev" },
     { id: "exa", label: "Exa", kind: "tool", domain: "exa.ai" },
     { id: "parallel", label: "Parallel", kind: "tool", domain: "parallel.ai" },
     {
@@ -62,20 +66,18 @@ const DEMO_GRAPH: ScanData["graph"] = {
     },
   ],
   edges: [
-    { from: "chat", to: "support" },
-    { from: "chat", to: "research" },
-    { from: "cron", to: "judge" },
-    { from: "support", to: "claude" },
+    { from: "app", to: "support" },
+    { from: "app", to: "research" },
+    { from: "cron", to: "research" },
+    { from: "support", to: "fable" },
     { from: "support", to: "firecrawl" },
-    { from: "research", to: "gemini" },
+    { from: "research", to: "gpt" },
     { from: "research", to: "exa" },
     { from: "research", to: "parallel" },
-    { from: "judge", to: "gpt" },
     { from: "support", to: "postgres" },
     { from: "research", to: "postgres" },
-    { from: "judge", to: "postgres" },
   ],
-};
+}
 
 export function ScanHero() {
   const reduce = useReducedMotion() ?? false;
@@ -89,7 +91,7 @@ export function ScanHero() {
         };
 
   return (
-    <section className="relative isolate w-full overflow-x-clip pt-28 pb-10">
+    <section className="relative isolate w-full overflow-x-clip pt-28 pb-40">
       {/* Same grain treatment as the landing hero. */}
       <HeroGrain id="scan-hero-noise" />
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-12 px-5 sm:px-8">
@@ -104,15 +106,14 @@ export function ScanHero() {
             {...rise(0.15)}
             className="font-display mt-4 text-4xl font-semibold tracking-tight text-balance md:text-5xl"
           >
-            Map your codebase. Share it.
+            Map your project. Share it.
           </motion.h1>
           <motion.p
             {...rise(0.27)}
-            className="mt-5 max-w-md text-lg text-muted-foreground text-pretty"
+            className="mt-5 max-w-lg text-lg text-muted-foreground text-pretty"
           >
             One prompt turns your repo into a beautiful, interactive map of how
-            it uses AI.{" "}
-            <span className="text-primary">No install, no account.</span>
+            it uses AI. No install, no account.
           </motion.p>
 
           <motion.div
@@ -127,7 +128,7 @@ export function ScanHero() {
         <motion.div
           {...rise(0.5)}
           aria-hidden
-          className="relative hidden h-[440px] min-w-0 flex-1 lg:block"
+          className="relative hidden h-[620px] min-w-0 flex-1 lg:block"
         >
           <FlowMap graph={DEMO_GRAPH} focusKinds={null} embedded />
         </motion.div>
