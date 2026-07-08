@@ -75,3 +75,22 @@ export function FogBank({
     </div>
   );
 }
+
+// The landing hero's grain treatment, shared by the product-page heroes:
+// the film grain over the whole section, fading out toward the bottom so the
+// texture ends with the content instead of cutting at the section edge.
+export function HeroGrain({ id }: { id: string }) {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 -z-10"
+      style={{
+        WebkitMaskImage:
+          "linear-gradient(to bottom, #000 78%, transparent 97%)",
+        maskImage: "linear-gradient(to bottom, #000 78%, transparent 97%)",
+      }}
+    >
+      <FilmGrain id={id} className="opacity-10 mix-blend-screen" />
+    </div>
+  );
+}

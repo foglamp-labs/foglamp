@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function ScanLandingPage() {
   return (
-    <div className="flex flex-col gap-24 pb-32">
+    <div className="flex flex-col gap-36">
       <ScanHero />
       <ScanStory />
       <CtaSection />

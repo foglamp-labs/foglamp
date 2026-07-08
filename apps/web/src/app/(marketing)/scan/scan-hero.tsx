@@ -4,7 +4,7 @@ import type { ScanData } from "@foglamp/contracts/scan";
 import { type MotionProps, motion, useReducedMotion } from "motion/react";
 import dynamic from "next/dynamic";
 
-import { FilmGrain } from "@/components/marketing/noise-overlay";
+import { HeroGrain } from "@/components/marketing/noise-overlay";
 import { CopyScanPromptButton } from "./copy-scan-prompt-button";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
@@ -90,13 +90,8 @@ export function ScanHero() {
 
   return (
     <section className="relative isolate w-full overflow-x-clip pt-28 pb-10">
-      {/* Same film-grain treatment as the main hero. */}
-      <FilmGrain id="scan-hero-noise" className="-z-10 opacity-10 mix-blend-screen" />
-      {/* faint map grid behind the hero, fading out downward */}
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10 bg-[linear-gradient(color-mix(in_oklab,var(--border)_28%,transparent)_1px,transparent_1px),linear-gradient(90deg,color-mix(in_oklab,var(--border)_28%,transparent)_1px,transparent_1px)] bg-size-[56px_56px] [background-position:center] [mask-image:linear-gradient(to_bottom,#000_20%,transparent_90%)]"
-      />
+      {/* Same grain treatment as the landing hero. */}
+      <HeroGrain id="scan-hero-noise" />
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-12 px-5 sm:px-8">
         <div className="max-w-xl shrink-0">
           <motion.p
