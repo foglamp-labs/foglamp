@@ -28,8 +28,8 @@ function PromptArt() {
         <span className="h-1.5 w-6 rounded-full bg-muted-foreground/30" />
         <span className="h-4 w-0.5 animate-pulse bg-orange-500" />
         {/* send: the house default button, carrying the agent logos */}
-        <span className="ml-auto flex h-9 items-center gap-2 rounded-full bg-neutral-800 px-3.5 text-primary-foreground shadow-[var(--custom-shadow-primary)] dark:bg-neutral-200">
-          <ClaudeCodeLogo className="size-4" />
+        <span className="ml-auto flex h-9 items-center gap-2 rounded-full bg-neutral-800 px-3.5 text-primary-foreground shadow-(--custom-shadow-primary) dark:bg-neutral-200">
+          <ClaudeCodeLogo className="size-5" />
           <CodexLogo className="size-4" />
         </span>
       </div>
