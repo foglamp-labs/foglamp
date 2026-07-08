@@ -11,34 +11,80 @@ import Link from "next/link";
 import { type SVGProps, useEffect, useState } from "react";
 
 import { CopyPromptButton } from "./copy-prompt-button";
-import {
-  AnthropicLogo,
-  ClaudeLogo,
-  CohereLogo,
-  DeepSeekLogo,
-  GeminiLogo,
-  GrokLogo,
-  MetaLogo,
-  MistralLogo,
-  OpenAILogo,
-  PerplexityLogo,
-} from "@/components/brand-logos";
 import { FilmGrain } from "@/components/marketing/noise-overlay";
 import { HeroDemo } from "./hero-demo";
 import Image from "next/image";
 
-// Every provider the AI SDK speaks to — and so, every provider Foglamp sees.
-const PROVIDERS = [
-  { label: "OpenAI", Logo: OpenAILogo },
-  { label: "Anthropic", Logo: AnthropicLogo },
-  { label: "Claude", Logo: ClaudeLogo },
-  { label: "Gemini", Logo: GeminiLogo },
-  { label: "Mistral", Logo: MistralLogo },
-  { label: "Meta", Logo: MetaLogo },
-  { label: "DeepSeek", Logo: DeepSeekLogo },
-  { label: "Grok", Logo: GrokLogo },
-  { label: "Cohere", Logo: CohereLogo },
-  { label: "Perplexity", Logo: PerplexityLogo },
+// Projects running on Foglamp. Olwen and Option ship real marks (dark
+// line-art, inverted for dark mode); the rest are wordmarks, each in its own
+// type voice so they read as distinct brands.
+const TRUSTED: { label: string; node: React.ReactNode }[] = [
+  {
+    label: "Olwen",
+    node: (
+      <span className="flex items-center gap-2">
+        <Image
+          src="/trusted/olwen.png"
+          alt=""
+          width={1024}
+          height={1024}
+          className="size-6 dark:invert"
+        />
+        <span className="font-display text-lg font-semibold tracking-tight">
+          Olwen
+        </span>
+      </span>
+    ),
+  },
+  {
+    label: "Option",
+    node: (
+      <span className="flex items-center gap-2">
+        <Image
+          src="/trusted/option.svg"
+          alt=""
+          width={1000}
+          height={1000}
+          className="size-5 dark:invert"
+        />
+        <span className="font-display text-lg font-semibold tracking-tight">
+          Option
+        </span>
+      </span>
+    ),
+  },
+  {
+    label: "LKPR",
+    node: (
+      <span className="font-serif text-lg font-medium tracking-[0.3em]">
+        LKPR
+      </span>
+    ),
+  },
+  {
+    label: "Mainline",
+    node: (
+      <span className="font-mono text-base font-semibold tracking-tight">
+        mainline
+      </span>
+    ),
+  },
+  {
+    label: "KA'A",
+    node: (
+      <span className="text-xl font-black tracking-tight">
+        KA&rsquo;A
+      </span>
+    ),
+  },
+  {
+    label: "LVargas",
+    node: (
+      <span className="text-sm font-semibold uppercase tracking-[0.25em]">
+        LVargas
+      </span>
+    ),
+  },
 ];
 
 // interfere.com-style entrance: each element fades in while rising a touch and
@@ -198,19 +244,21 @@ export function Hero() {
         <BeamedDemo reduce={reduce} />
       </motion.div>
 
-      {/* Provider strip: left-aligned under the demo, still inside the hero's
-          grain. A fact, not an ad. */}
+      {/* Trusted-by strip: left-aligned under the demo, still inside the
+          hero's grain. Real projects running on Foglamp, all monochrome. */}
       <motion.div
         {...rise(1.7)}
         className="mx-auto mt-14 flex w-full max-w-7xl flex-col gap-5 px-5 sm:px-8"
       >
-        <p className="text-sm text-muted-foreground">
-          Works with every model in the AI SDK.
-        </p>
-        <ul className="flex list-none flex-wrap items-center gap-x-7 gap-y-4">
-          {PROVIDERS.map(({ label, Logo }) => (
-            <li key={label} title={label} className="text-muted-foreground/70">
-              <Logo className="h-5 w-auto grayscale" aria-label={label} />
+        <p className="text-sm text-muted-foreground">Trusted by</p>
+        <ul className="flex list-none flex-wrap items-center gap-x-10 gap-y-5">
+          {TRUSTED.map(({ label, node }) => (
+            <li
+              key={label}
+              title={label}
+              className="text-muted-foreground/80 grayscale"
+            >
+              {node}
             </li>
           ))}
         </ul>
