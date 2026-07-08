@@ -28,11 +28,29 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
           alt=""
           width={1024}
           height={1024}
-          className="size-6 dark:invert"
+          // Blend modes drop the artwork's solid ground on any page bg: the
+          // white square multiplies away in light mode; inverted, the black
+          // square screens away in dark mode. Only the face lines remain.
+          className="size-6 mix-blend-multiply dark:invert dark:mix-blend-screen"
         />
         <span className="font-display text-lg font-semibold tracking-tight">
           Olwen
         </span>
+      </span>
+    ),
+  },
+  {
+    label: "MOTIM",
+    node: (
+      <span className="flex items-center text-xl font-black tracking-tight">
+        M
+        <svg viewBox="0 0 24 24" className="mx-px size-4" aria-hidden>
+          <path
+            d="M7.05 2.81a2.2 2.2 0 0 1 3.11 0L12 4.65l1.84-1.84a2.2 2.2 0 0 1 3.11 0l4.24 4.24a2.2 2.2 0 0 1 0 3.11L19.35 12l1.84 1.84a2.2 2.2 0 0 1 0 3.11l-4.24 4.24a2.2 2.2 0 0 1-3.11 0L12 19.35l-1.84 1.84a2.2 2.2 0 0 1-3.11 0l-4.24-4.24a2.2 2.2 0 0 1 0-3.11L4.65 12 2.81 10.16a2.2 2.2 0 0 1 0-3.11l4.24-4.24z"
+            fill="currentColor"
+          />
+        </svg>
+        TIM
       </span>
     ),
   },
@@ -45,11 +63,9 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
           alt=""
           width={1000}
           height={1000}
-          className="size-5 dark:invert"
+          className="size-4.5 dark:invert"
         />
-        <span className="font-display text-lg font-semibold tracking-tight">
-          Option
-        </span>
+        <span className="text-lg font-semibold tracking-normal">Option</span>
       </span>
     ),
   },
@@ -248,10 +264,10 @@ export function Hero() {
           hero's grain. Real projects running on Foglamp, all monochrome. */}
       <motion.div
         {...rise(1.7)}
-        className="mx-auto mt-14 flex w-full max-w-7xl flex-col gap-5 px-5 sm:px-8"
+        className="mx-auto mt-14 flex w-full max-w-7xl flex-wrap items-center gap-x-14 gap-y-5 px-5 sm:px-8"
       >
         <p className="text-sm text-muted-foreground">Trusted by</p>
-        <ul className="flex list-none flex-wrap items-center gap-x-10 gap-y-5">
+        <ul className="contents list-none">
           {TRUSTED.map(({ label, node }) => (
             <li
               key={label}
