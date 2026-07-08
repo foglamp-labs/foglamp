@@ -32,7 +32,7 @@ export function FilmGrain({
 }
 
 // The fog's cool blue-grey tint, as an feColorMatrix `values` string.
-const TINT_COOL = "0 0 0 0 0.20 0 0 0 0 0.21 0 0 0 0 0.27 0 0 0 0.6 0.04";
+const TINT_COOL = "0 0 0 0 0.20 0 0 0 0 0.21 0 0 0 0 0.23 0 0 0 0.6 0.04";
 
 export function FogBank({
   id,
