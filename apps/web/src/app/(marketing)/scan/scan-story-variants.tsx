@@ -1,22 +1,21 @@
 "use client";
 
-// Bake-off, take two: ten genuinely different section concepts for the scan
-// page's middle act. Each has its own headline, copy and body. Pick one; the
+// Bake-off, take three: six interactive/animated concepts for the scan page's
+// middle act, each playing on a different idea of "scanning". Pick one; the
 // winner replaces scan-story.tsx and this file dies.
 
 import { cn } from "@foglamp/ui/lib/utils";
 import {
-  IconArrowRight,
-  IconCheck,
   IconGhostFilled,
-  IconLink,
   IconWorld,
 } from "@tabler/icons-react";
-import type { ReactNode } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { type PointerEvent, type ReactNode, useRef, useState } from "react";
 
-import { ClaudeCodeLogo, CodexLogo } from "@/components/brand-logos";
+import { OlwenLogo, OptionLogo } from "@/components/brand-logos";
+import { FogBank } from "@/components/marketing/noise-overlay";
 
-// ─── shared bits ──────────────────────────────────────────────────────────────
+// ─── shared ───────────────────────────────────────────────────────────────────
 
 function Frame({
   n,
@@ -45,44 +44,190 @@ function Frame({
   );
 }
 
-// A tiny three-node map used by several variants.
-function MiniMap({ className }: { className?: string }) {
+type Chip = {
+  x: number;
+  y: number;
+  label: string;
+  dot: string;
+  Icon?: typeof IconGhostFilled;
+};
+
+// Node chips laid out on a 0-100 coordinate grid, reused by several bodies.
+const CHIPS: Chip[] = [
+  { x: 6, y: 22, label: "Next.js app", dot: "bg-slate-500" },
+  { x: 4, y: 70, label: "Daily cron", dot: "bg-amber-500" },
+  { x: 40, y: 14, label: "Research agent", dot: "bg-orange-500", Icon: IconGhostFilled },
+  { x: 42, y: 62, label: "Support agent", dot: "bg-orange-500", Icon: IconGhostFilled },
+  { x: 78, y: 26, label: "Postgres", dot: "bg-emerald-500" },
+  { x: 80, y: 74, label: "Resend", dot: "bg-sky-500" },
+];
+
+const EDGES: [number, number][] = [
+  [0, 2],
+  [1, 3],
+  [2, 4],
+  [3, 4],
+  [2, 5],
+];
+
+function ChipCard({ chip }: { chip: Chip }) {
   return (
-    <div className={cn("relative h-40 w-72", className)} aria-hidden>
-      <svg
-        className="absolute inset-0 overflow-visible"
-        width="288"
-        height="160"
-      >
-        <path
-          d="M 96 36 C 130 40, 100 80, 128 84"
-          fill="none"
-          stroke="color-mix(in oklab, var(--border) 65%, var(--muted-foreground) 35%)"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M 232 92 C 260 96, 240 128, 256 130"
-          fill="none"
-          stroke="color-mix(in oklab, var(--border) 65%, var(--muted-foreground) 35%)"
-          strokeWidth="1.5"
-        />
-      </svg>
-      <span className="border-overlay absolute left-0 top-3 flex h-10 items-center gap-2 rounded-xl bg-card px-3 text-xs font-medium shadow-(--custom-shadow)">
-        <span className="size-2 rounded-full bg-slate-500/80" /> Next.js app
-      </span>
-      <span className="border-overlay absolute left-32 top-16 flex h-10 items-center gap-2 rounded-xl bg-card px-3 text-xs font-medium shadow-(--custom-shadow)">
-        <IconGhostFilled className="size-3.5 text-orange-500" /> Agents ×4
-      </span>
-      <span className="border-overlay absolute right-0 bottom-2 flex h-10 items-center gap-2 rounded-xl bg-card px-3 text-xs font-medium shadow-(--custom-shadow)">
-        <span className="size-2 rounded-full bg-emerald-500/80" /> Postgres
-      </span>
+    <span className="border-overlay flex items-center gap-2 rounded-xl bg-card px-3 py-2 text-xs font-medium whitespace-nowrap shadow-(--custom-shadow)">
+      {chip.Icon ? (
+        <chip.Icon className="size-3.5 text-orange-500" />
+      ) : (
+        <span className={cn("size-2 rounded-full", chip.dot)} />
+      )}
+      {chip.label}
+    </span>
+  );
+}
+
+// A full node map on an absolute coordinate plane. `w`/`h` in px.
+function NodeMap({ w, h, showEdges = true }: { w: number; h: number; showEdges?: boolean }) {
+  const px = (c: Chip) => ({ left: `${c.x}%`, top: `${c.y}%` });
+  return (
+    <div className="relative" style={{ width: w, height: h }} aria-hidden>
+      {showEdges ? (
+        <svg className="absolute inset-0 overflow-visible" width={w} height={h}>
+          {EDGES.map(([a, b], i) => {
+            const A = CHIPS[a]!;
+            const B = CHIPS[b]!;
+            const ax = (A.x / 100) * w + 60;
+            const ay = (A.y / 100) * h + 16;
+            const bx = (B.x / 100) * w;
+            const by = (B.y / 100) * h + 16;
+            const mx = (ax + bx) / 2;
+            return (
+              <path
+                key={i}
+                d={`M ${ax} ${ay} C ${mx} ${ay}, ${mx} ${by}, ${bx} ${by}`}
+                fill="none"
+                stroke="color-mix(in oklab, var(--border) 65%, var(--muted-foreground) 35%)"
+                strokeWidth={1.4}
+              />
+            );
+          })}
+        </svg>
+      ) : null}
+      {CHIPS.map((c) => (
+        <span key={c.label} className="absolute" style={px(c)}>
+          <ChipCard chip={c} />
+        </span>
+      ))}
     </div>
   );
 }
 
 const URL_TEXT = "foglamp.dev/scan/olwen-x7f2";
 
-// ─── 1. Your repo has a shape ─────────────────────────────────────────────────
+// ─── 1. Scanner beam ──────────────────────────────────────────────────────────
+// A beam sweeps across a field of dim "file" dots; the nodes light up in its
+// wake, then it keeps sweeping for ambiance. The literal reading of "scan".
+
+function Scanner({ reduce }: { reduce: boolean }) {
+  return (
+    <div className="border-overlay relative h-80 w-full overflow-hidden rounded-3xl corner-squircle bg-card shadow-(--custom-shadow)">
+      <div
+        className="absolute inset-0 opacity-60"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, color-mix(in oklab, var(--muted-foreground) 40%, transparent) 1px, transparent 1.5px)",
+          backgroundSize: "22px 22px",
+        }}
+      />
+      <NodeMapReveal reduce={reduce} />
+      {!reduce && (
+        <>
+          <motion.div
+            className="absolute inset-y-0 w-40"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, color-mix(in oklab, #f97316 22%, transparent), transparent)",
+              filter: "blur(3px)",
+            }}
+            animate={{ x: ["-12%", "112%"] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: "linear" }}
+          />
+          <motion.div
+            className="absolute inset-y-0 w-px bg-orange-500/70"
+            animate={{ left: ["-2%", "102%"] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: "linear" }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function NodeMapReveal({ reduce }: { reduce: boolean }) {
+  return (
+    <div className="absolute inset-8">
+      <div className="relative h-full w-full">
+        {CHIPS.map((c) => (
+          <motion.span
+            key={c.label}
+            className="absolute"
+            style={{ left: `${c.x}%`, top: `${c.y}%` }}
+            initial={reduce ? false : { opacity: 0.12, filter: "blur(3px)" }}
+            whileInView={{ opacity: 1, filter: "blur(0px)" }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 + (c.x / 100) * 4 }}
+          >
+            <ChipCard chip={c} />
+          </motion.span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── 2. Cursor flashlight through the fog ─────────────────────────────────────
+// The map sits under a bank of fog; the cursor is the only light. Ties the
+// scan directly to Foglamp's fog language.
+
+function Flashlight({ reduce }: { reduce: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const mask = pos
+    ? `radial-gradient(180px at ${pos.x}px ${pos.y}px, transparent 0%, transparent 42%, #000 78%)`
+    : "none";
+  return (
+    <div
+      ref={ref}
+      onPointerMove={(e) => {
+        const r = ref.current?.getBoundingClientRect();
+        if (r) setPos({ x: e.clientX - r.left, y: e.clientY - r.top });
+      }}
+      onPointerLeave={() => setPos(null)}
+      className="border-overlay relative h-80 w-full overflow-hidden rounded-3xl corner-squircle bg-card shadow-(--custom-shadow)"
+    >
+      <div className="absolute inset-8">
+        <NodeMap w={640} h={240} />
+      </div>
+      {!reduce && (
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{ WebkitMaskImage: mask, maskImage: mask }}
+        >
+          <div className="absolute inset-0 bg-background/55 backdrop-blur-[2px]" />
+          <div className="absolute inset-[-20%] opacity-90" style={{ filter: "blur(10px)" }}>
+            <FogBank id="sv-fog-a" freq={0.012} seed={7} />
+          </div>
+          <div className="absolute inset-[-20%] opacity-70" style={{ filter: "blur(18px)" }}>
+            <FogBank id="sv-fog-b" freq={0.022} seed={29} octaves={5} />
+          </div>
+        </div>
+      )}
+      <span className="pointer-events-none absolute bottom-4 left-5 text-xs text-muted-foreground">
+        move your cursor over the fog
+      </span>
+    </div>
+  );
+}
+
+// ─── 3. Drag: repo → map ──────────────────────────────────────────────────────
 
 const FILES = [
   "apps/server/src/ai/agents/brand-analysis/agent.ts",
@@ -93,342 +238,284 @@ const FILES = [
   "apps/server/src/ai/agents/content-creator/agent.ts",
   "packages/api/src/services/cms/github.ts",
   "apps/server/src/ai/models.ts",
+  "apps/server/vercel.json",
+  "apps/server/src/ai/agents/geo-strategy/agent.ts",
 ];
 
-function V1() {
+function DragReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pct, setPct] = useState(52);
+  const dragging = useRef(false);
+  const set = (clientX: number) => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return;
+    setPct(Math.min(92, Math.max(8, ((clientX - r.left) / r.width) * 100)));
+  };
+  const onDown = (e: PointerEvent) => {
+    dragging.current = true;
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    set(e.clientX);
+  };
   return (
-    <div className="grid items-center gap-10 lg:grid-cols-[1fr_auto_1fr]">
-      <div className="flex flex-col gap-2 font-mono text-[11px] leading-relaxed text-muted-foreground/60 [mask-image:linear-gradient(to_bottom,#000_40%,transparent)]">
-        {FILES.map((f) => (
-          <span key={f} className="truncate">
-            {f}
-          </span>
-        ))}
+    <div
+      ref={ref}
+      onPointerDown={onDown}
+      onPointerMove={(e) => dragging.current && set(e.clientX)}
+      onPointerUp={() => (dragging.current = false)}
+      className="border-overlay relative h-80 w-full cursor-ew-resize touch-none select-none overflow-hidden rounded-3xl corner-squircle bg-card shadow-(--custom-shadow)"
+    >
+      {/* map (bottom layer) */}
+      <div className="absolute inset-8 flex items-center">
+        <NodeMap w={640} h={240} />
       </div>
-      <IconArrowRight className="mx-auto size-6 text-muted-foreground/50 max-lg:rotate-90" />
-      <MiniMap className="justify-self-end" />
-    </div>
-  );
-}
-
-// ─── 2. Show and tell ─────────────────────────────────────────────────────────
-
-function V2() {
-  const LINES = [
-    { t: "❯ claude", c: "text-muted-foreground" },
-    { t: "> paste the scan prompt…", c: "text-foreground" },
-    { t: "⏺ Exploring apps/, packages/, supabase/…", c: "text-muted-foreground" },
-    { t: "⏺ Found 6 agents · 2 models · 4 tools", c: "text-muted-foreground" },
-    { t: `➜ ${URL_TEXT}`, c: "text-orange-400 font-medium" },
-  ];
-  return (
-    <div className="max-w-2xl rounded-3xl corner-squircle bg-card p-6 font-mono text-sm shadow-(--custom-shadow)">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex gap-1.5">
-          <span className="size-2.5 rounded-full bg-red-500/70" />
-          <span className="size-2.5 rounded-full bg-amber-500/70" />
-          <span className="size-2.5 rounded-full bg-green-500/70" />
-        </div>
-        <span className="text-xs text-muted-foreground">1m 52s</span>
-      </div>
-      <div className="flex flex-col gap-2">
-        {LINES.map((l) => (
-          <span key={l.t} className={l.c}>
-            {l.t}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── 3. Made to be shared ─────────────────────────────────────────────────────
-
-function V3() {
-  return (
-    <div className="max-w-xl rounded-3xl corner-squircle bg-card p-5 shadow-(--custom-shadow)">
-      <div className="flex items-center gap-2.5">
-        <span className="flex size-8 items-center justify-center rounded-full bg-muted font-display text-xs font-bold">
-          G
-        </span>
-        <div className="flex flex-col leading-tight">
-          <span className="text-sm font-medium">gustavo</span>
-          <span className="text-xs text-muted-foreground">2:41 PM</span>
-        </div>
-      </div>
-      <p className="mt-3 text-sm">
-        our whole AI stack in one picture{" "}
-        <span className="text-orange-500 underline decoration-orange-500/30">
-          {URL_TEXT}
-        </span>
-      </p>
-      <div className="mt-3 overflow-hidden rounded-xl border border-border/60">
-        <div className="flex h-36 items-center justify-center bg-background">
-          <MiniMap className="scale-75" />
-        </div>
-        <div className="border-t border-border/60 px-4 py-2.5">
-          <p className="text-xs font-medium">Olwen • Foglamp Scan</p>
-          <p className="text-xs text-muted-foreground">
-            A living map of how Olwen uses AI.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── 4. The agent does the drawing ────────────────────────────────────────────
-
-function V4() {
-  return (
-    <div className="flex max-w-xl flex-col gap-4">
-      <div className="self-end rounded-2xl rounded-br-md bg-muted px-4 py-2.5 text-sm">
-        *pastes the scan prompt*
-      </div>
-      <div className="flex items-start gap-3">
-        <span className="mt-1 flex size-7 items-center justify-center rounded-lg bg-orange-500/10">
-          <ClaudeCodeLogo className="size-4" />
-        </span>
-        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <span>
-            Explored 214 files. Your app has 6 agents on 2 models, plus
-            Firecrawl, Exa and Parallel.
-          </span>
-          <span>Here is the map:</span>
-          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-orange-500/10 px-4 py-2 font-mono text-sm text-orange-500">
-            <IconLink className="size-4" />
-            {URL_TEXT}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── 5. What is actually calling the model? ───────────────────────────────────
-
-function V5() {
-  const FOUND = [
-    { label: "6 agents", note: "one you forgot existed" },
-    { label: "2 models", note: "Fable 5, GPT-5.5" },
-    { label: "4 tools", note: "one calling prod" },
-    { label: "13 integrations", note: "3 undocumented" },
-  ];
-  return (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      {FOUND.map((f) => (
-        <div key={f.label}>
-          <div className="flex items-center gap-2">
-            <IconCheck className="size-4 text-emerald-500" />
-            <span className="font-display text-xl font-semibold">
-              {f.label}
+      {/* files (top layer, clipped to the left of the handle) */}
+      <div
+        className="absolute inset-0 bg-card"
+        style={{ clipPath: `inset(0 ${100 - pct}% 0 0)` }}
+      >
+        <div className="absolute inset-8 flex flex-col gap-2 font-mono text-[11px] leading-relaxed text-muted-foreground/60">
+          {FILES.map((f) => (
+            <span key={f} className="truncate">
+              {f}
             </span>
+          ))}
+        </div>
+      </div>
+      {/* handle */}
+      <div
+        className="absolute inset-y-0 w-px bg-orange-500/60"
+        style={{ left: `${pct}%` }}
+      >
+        <span className="absolute top-1/2 left-1/2 flex size-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white shadow-(--custom-shadow)">
+          ⇆
+        </span>
+      </div>
+      <span className="pointer-events-none absolute bottom-4 left-5 text-xs text-muted-foreground">
+        your repo
+      </span>
+      <span className="pointer-events-none absolute bottom-4 right-5 text-xs text-muted-foreground">
+        the scan
+      </span>
+    </div>
+  );
+}
+
+// ─── 4. Radar ─────────────────────────────────────────────────────────────────
+
+const BLIPS = [
+  { x: 72, y: 30, r: 0.9 },
+  { x: 30, y: 22, r: 0.7 },
+  { x: 78, y: 66, r: 1.1 },
+  { x: 24, y: 70, r: 0.75 },
+  { x: 58, y: 82, r: 1.0 },
+];
+
+function Radar({ reduce }: { reduce: boolean }) {
+  return (
+    <div className="border-overlay relative mx-auto flex h-80 w-full max-w-3xl items-center justify-center overflow-hidden rounded-3xl corner-squircle bg-card shadow-(--custom-shadow)">
+      <div className="relative size-64">
+        {[0, 1, 2].map((i) =>
+          reduce ? (
+            <div
+              key={i}
+              className="absolute inset-0 rounded-full border border-orange-500/20"
+              style={{ transform: `scale(${0.4 + i * 0.3})` }}
+            />
+          ) : (
+            <motion.div
+              key={i}
+              className="absolute inset-0 rounded-full border border-orange-500/40"
+              initial={{ scale: 0.15, opacity: 0.6 }}
+              animate={{ scale: 1, opacity: 0 }}
+              transition={{
+                duration: 3,
+                delay: i,
+                repeat: Infinity,
+                ease: "easeOut",
+              }}
+            />
+          )
+        )}
+        <span className="absolute top-1/2 left-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-orange-500/15 text-orange-500">
+          <IconGhostFilled className="size-4" />
+        </span>
+        {BLIPS.map((bp, i) => (
+          <motion.span
+            key={i}
+            className="absolute size-2.5 rounded-full bg-orange-500"
+            style={{ left: `${bp.x}%`, top: `${bp.y}%` }}
+            initial={reduce ? false : { opacity: 0, scale: 0 }}
+            animate={{ opacity: [0, 1, 0.5], scale: 1 }}
+            transition={{
+              duration: 2.4,
+              delay: bp.r,
+              repeat: Infinity,
+              repeatDelay: 0.6,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── 5. A wall of real scans (marquee) ────────────────────────────────────────
+
+type ScanCard = { name: string; mark: ReactNode; tag: string };
+const SCANS: ScanCard[] = [
+  {
+    name: "Olwen",
+    mark: <OlwenLogo className="size-5" />,
+    tag: "12 agents · Gemini",
+  },
+  {
+    name: "Option",
+    mark: <OptionLogo className="size-4" />,
+    tag: "5 agents · Claude",
+  },
+  {
+    name: "LKPR",
+    mark: <span className="font-serif text-sm tracking-widest">LKPR</span>,
+    tag: "14 agents · 6 models",
+  },
+  {
+    name: "Mainline",
+    mark: <span className="font-mono text-sm font-semibold">mainline</span>,
+    tag: "7 agents · Haiku",
+  },
+];
+
+function MarqueeRow({ reduce }: { reduce: boolean }) {
+  const cards = [...SCANS, ...SCANS];
+  return (
+    <div className="relative w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,#000_8%,#000_92%,transparent)]">
+      <motion.div
+        className="flex w-max gap-5"
+        animate={reduce ? undefined : { x: ["0%", "-50%"] }}
+        transition={{ duration: 24, repeat: Infinity, ease: "linear" }}
+      >
+        {cards.map((s, i) => (
+          <div
+            key={i}
+            className="border-overlay flex w-64 shrink-0 flex-col gap-3 rounded-3xl corner-squircle bg-card p-4 shadow-(--custom-shadow)"
+          >
+            <div className="flex items-center gap-2 text-muted-foreground">
+              {s.mark}
+              <span className="text-sm font-medium text-foreground">{s.name}</span>
+            </div>
+            <div className="relative h-24 overflow-hidden rounded-xl bg-background/60">
+              <div className="scale-[0.42] origin-top-left">
+                <NodeMap w={560} h={210} />
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground">{s.tag}</span>
           </div>
-          <p className="mt-1 pl-6 text-sm text-muted-foreground">{f.note}</p>
-        </div>
-      ))}
+        ))}
+      </motion.div>
     </div>
   );
 }
 
-// ─── 6. No install. No account. ───────────────────────────────────────────────
+// ─── 6. The scan receipt ──────────────────────────────────────────────────────
 
-function V6() {
-  const STATS = [
-    { v: "1", l: "prompt" },
-    { v: "~2", l: "minutes" },
-    { v: "0", l: "installs" },
-    { v: "∞", l: "shares" },
+function Receipt() {
+  const ITEMS = [
+    ["Agents", "6"],
+    ["Models", "2"],
+    ["Tools", "4"],
+    ["Integrations", "13"],
+    ["Data stores", "1"],
   ];
   return (
-    <div className="flex flex-wrap gap-14">
-      {STATS.map((s) => (
-        <div key={s.l} className="flex flex-col">
-          <span className="font-display text-6xl font-semibold tracking-tight">
-            {s.v}
-          </span>
-          <span className="mt-1 text-sm text-muted-foreground">{s.l}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── 7. The diagram you never drew ────────────────────────────────────────────
-
-function V7() {
-  return (
-    <div className="grid items-center gap-10 lg:grid-cols-2">
-      <div className="max-w-md">
-        <div className="rounded-2xl border border-dashed border-border p-5">
-          <p className="font-mono text-xs text-muted-foreground/70">
-            docs/architecture.md
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground line-through decoration-muted-foreground/40">
-            TODO: add a diagram of the AI pipeline
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground/50">
-            last updated 14 months ago
-          </p>
-        </div>
+    <div className="w-80 rounded-t-xl bg-card p-6 font-mono text-sm shadow-(--custom-shadow) [mask:radial-gradient(6px_at_bottom,transparent_98%,#000)_bottom_/_16px_100%_repeat-x]">
+      <p className="text-center text-xs tracking-[0.3em] text-muted-foreground">
+        FOGLAMP SCAN
+      </p>
+      <p className="mt-1 text-center text-xs text-muted-foreground/60">
+        olwen · main · {new Date().getFullYear()}
+      </p>
+      <div className="my-4 border-t border-dashed border-border" />
+      <div className="flex flex-col gap-2">
+        {ITEMS.map(([k, v]) => (
+          <div key={k} className="flex justify-between">
+            <span className="text-muted-foreground">{k}</span>
+            <span className="tabular-nums">{v}</span>
+          </div>
+        ))}
       </div>
-      <MiniMap />
-    </div>
-  );
-}
-
-// ─── 8. Paste. Wait. Share. ───────────────────────────────────────────────────
-
-function V8() {
-  const WORDS = [
-    { w: "Paste.", d: "Into Claude Code, Codex, or Cursor." },
-    { w: "Wait.", d: "About two minutes, while it explores." },
-    { w: "Share.", d: "A live link, unlisted, yours." },
-  ];
-  return (
-    <div className="grid gap-10 md:grid-cols-3">
-      {WORDS.map((x) => (
-        <div key={x.w}>
-          <span className="font-display text-5xl font-semibold tracking-tight">
-            {x.w}
-          </span>
-          <p className="mt-3 max-w-2xs text-sm text-muted-foreground">{x.d}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── 9. Works with the agent you already use ──────────────────────────────────
-
-function V9() {
-  return (
-    <div className="flex flex-wrap items-center gap-6">
-      <span className="border-overlay flex h-14 items-center gap-3 rounded-2xl bg-card px-5 text-base font-medium shadow-(--custom-shadow)">
-        <ClaudeCodeLogo className="size-5" /> Claude Code
-      </span>
-      <span className="border-overlay flex h-14 items-center gap-3 rounded-2xl bg-card px-5 text-base font-medium shadow-(--custom-shadow)">
-        <CodexLogo className="size-5" /> Codex
-      </span>
-      <span className="text-sm text-muted-foreground">
-        or any agent that can read a repo and run curl.
-      </span>
-    </div>
-  );
-}
-
-// ─── 10. A map that stays alive ───────────────────────────────────────────────
-
-function V10() {
-  return (
-    <div className="max-w-2xl overflow-hidden rounded-3xl corner-squircle bg-card shadow-(--custom-shadow)">
-      <div className="flex items-center gap-3 border-b border-border/60 px-4 py-2.5">
-        <div className="flex gap-1.5">
-          <span className="size-2.5 rounded-full bg-red-500/70" />
-          <span className="size-2.5 rounded-full bg-amber-500/70" />
-          <span className="size-2.5 rounded-full bg-green-500/70" />
-        </div>
-        <span className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-muted/60 py-1 font-mono text-xs text-muted-foreground">
-          <IconWorld className="size-3.5" />
-          {URL_TEXT}
-        </span>
+      <div className="my-4 border-t border-dashed border-border" />
+      <div className="flex justify-between font-semibold">
+        <span>Mapped</span>
+        <span>1m 52s</span>
       </div>
-      <div className="flex h-56 items-center justify-center bg-background/60">
-        <MiniMap />
-      </div>
-      <div className="flex items-center justify-between border-t border-border/60 px-5 py-3">
-        <span className="text-xs text-muted-foreground">
-          Updated 2 days ago, same URL since March.
-        </span>
-        <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-500">
-          <IconCheck className="size-3.5" /> up to date
-        </span>
-      </div>
+      <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-orange-500">
+        <IconWorld className="size-3.5" />
+        {URL_TEXT}
+      </p>
     </div>
   );
 }
 
 // ─── The bake-off ─────────────────────────────────────────────────────────────
 
-const VARIANTS = [
+const VARIANTS: {
+  n: number;
+  name: string;
+  title: string;
+  sub: string;
+  render: (reduce: boolean) => ReactNode;
+}[] = [
   {
     n: 1,
-    name: "Your repo has a shape",
-    title: "Your repo has a shape. Nobody can see it.",
-    sub: "To everyone else it is ten thousand files. The scan turns it into one picture: who calls what, which agents run, where the data lands.",
-    C: V1,
+    name: "Scanner beam",
+    title: "Point it at your repo. Watch the AI light up.",
+    sub: "The prompt sweeps your codebase and surfaces every agent, model and tool it finds. Literally a scan.",
+    render: (r) => <Scanner reduce={r} />,
   },
   {
     n: 2,
-    name: "Show and tell",
-    title: "Two minutes to show and tell.",
-    sub: "Paste the prompt, let your agent read the repo, get a link. That is the whole workflow.",
-    C: V2,
+    name: "Flashlight through the fog",
+    title: "Your AI stack is hiding in plain sight.",
+    sub: "It is all in there, spread across files nobody opens together. The scan is the light. Move your cursor.",
+    render: (r) => <Flashlight reduce={r} />,
   },
   {
     n: 3,
-    name: "Made to be shared",
-    title: "Made to be posted.",
-    sub: "Every scan is a live page with a proper unfurl. Drop it in Slack, on X, in your README, and the map speaks for itself.",
-    C: V3,
+    name: "Drag: repo to map",
+    title: "One is unreadable. The other you can share.",
+    sub: "Same codebase, two views. Drag the handle to turn a wall of files into a map.",
+    render: () => <DragReveal />,
   },
   {
     n: 4,
-    name: "The agent does the drawing",
-    title: "Your agent does the drawing.",
-    sub: "You do not document anything. The agent reads the code, finds the AI, and publishes the map for you.",
-    C: V4,
+    name: "Radar",
+    title: "It finds the agents you forgot you shipped.",
+    sub: "AI creeps into a codebase one PR at a time. The scan pings all of it, including the parts off everyone's radar.",
+    render: (r) => <Radar reduce={r} />,
   },
   {
     n: 5,
-    name: "The audit",
-    title: "So, what is actually calling the model?",
-    sub: "Repos accumulate AI the way attics accumulate boxes. The scan finds all of it, including the parts nobody remembers shipping.",
-    C: V5,
+    name: "Wall of real scans",
+    title: "See what other repos look like.",
+    sub: "Every scan is a live, shareable page. Here are a few, drawn straight from the code.",
+    render: (r) => <MarqueeRow reduce={r} />,
   },
   {
     n: 6,
-    name: "The numbers",
-    title: "No install. No account. No excuses.",
-    sub: "The cheapest way to see your AI stack. It costs one prompt.",
-    C: V6,
-  },
-  {
-    n: 7,
-    name: "The diagram you never drew",
-    title: "The architecture diagram you never drew.",
-    sub: "Every team means to draw one. The scan draws it from the code itself, so it is never out of date and nobody had to open Figma.",
-    C: V7,
-  },
-  {
-    n: 8,
-    name: "Paste. Wait. Share.",
-    title: "The whole manual fits in three words.",
-    sub: "There is no step four.",
-    C: V8,
-  },
-  {
-    n: 9,
-    name: "Your agent, not ours",
-    title: "Works with the agent you already pay for.",
-    sub: "The scan is just a prompt. Your own coding agent does the work, with the repo access it already has.",
-    C: V9,
-  },
-  {
-    n: 10,
-    name: "A map that stays alive",
-    title: "A map that stays alive.",
-    sub: "Run the prompt again after a refactor and the same URL updates. Your architecture doc is now a living page.",
-    C: V10,
+    name: "The scan receipt",
+    title: "An itemized look at your AI.",
+    sub: "Every model call, tool and integration, counted. One prompt, about two minutes, one link.",
+    render: () => <Receipt />,
   },
 ];
 
 export function ScanStoryVariants() {
+  const reduce = useReducedMotion() ?? false;
   return (
     <div className="flex flex-col gap-32">
-      {VARIANTS.map(({ n, name, title, sub, C }) => (
+      {VARIANTS.map(({ n, name, title, sub, render }) => (
         <Frame key={n} n={n} name={name} title={title} sub={sub}>
-          <C />
+          {render(reduce)}
         </Frame>
       ))}
     </div>
