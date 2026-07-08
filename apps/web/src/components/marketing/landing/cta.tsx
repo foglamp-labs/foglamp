@@ -23,7 +23,7 @@ export function CtaSection() {
   return (
     <section
       ref={ref}
-      className="relative isolate flex w-full flex-col justify-center overflow-hidden py-32 sm:py-44"
+      className="relative isolate flex w-full flex-col justify-center overflow-hidden py-32 sm:py-44 mb-12"
       style={{ minHeight: "780px" }}
     >
       {/* Faint dashboard grid so the fog has a surface to sit on. */}
@@ -161,7 +161,7 @@ export function CtaSection() {
       {/* The agent details sitting under the fog on the right — dimmed and
           slightly soft, so they read as half-hidden behind the weather. */}
       <div className="absolute inset-0 z-5 mx-auto hidden w-full max-w-7xl items-center justify-end px-5 sm:px-8 lg:flex">
-        <div className="w-[40%] pr-12 opacity-10 blur-[2px]">
+        <div className="w-[40%] pr-12 opacity-30 blur-[3px]">
           <AgentDetails />
         </div>
       </div>

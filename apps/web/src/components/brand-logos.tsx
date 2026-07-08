@@ -365,3 +365,47 @@ export function CodexLogo(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+// Olwen's line-art face, ported from its repo (src/icons/olwen.tsx) — stroke
+// paths in currentColor so it tints like the text next to it. Stroke width is
+// heavier than the source's default: at strip sizes the 24-unit stroke of the
+// original (drawn for size-24 renders) would vanish.
+export function OlwenLogo(props: SVGProps<SVGSVGElement>) {
+  const paths = [
+    "M 210 170 C 170 250, 175 470, 220 640 C 265 780, 390 870, 512 880 C 634 870, 759 780, 804 640 C 849 470, 854 250, 814 170",
+    "M 225 282 C 295 232, 375 232, 442 275",
+    "M 582 275 C 649 232, 729 232, 799 282",
+    "M 255 380 C 300 338, 365 338, 408 378",
+    "M 616 378 C 659 338, 724 338, 769 380",
+    "M 498 299 C 505 387, 505 462, 505 530 C 505 552, 518 540, 545 540",
+    "M 430 605 C 470 640, 554 640, 594 605",
+  ];
+  return (
+    <svg {...props} viewBox="0 0 1024 1024" fill="none">
+      <title>Olwen</title>
+      {paths.map((d) => (
+        <path
+          key={d}
+          d={d}
+          stroke="currentColor"
+          strokeWidth={60}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
+// Option's mark (public/logo.svg in its repo), recolored to currentColor.
+export function OptionLogo(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...props} viewBox="0 0 1000 1000" fill="currentColor">
+      <title>Option</title>
+      <path d="M47.3164 69.4682C47.3164 57.8877 56.7171 48.4999 68.3134 48.4999H278.02C295.415 48.4999 309.516 62.5817 309.516 79.9523V213.873H68.3134C56.7171 213.873 47.3164 204.485 47.3164 192.905V69.4682Z" />
+      <path d="M575.401 73.6746C575.401 62.0941 584.802 52.7063 596.398 52.7063H927.003C938.6 52.7063 948 62.0941 948 73.6746V197.111C948 208.692 938.6 218.079 927.003 218.079H596.398C584.802 218.079 575.401 208.691 575.401 197.111V73.6746Z" />
+      <path d="M520.178 784.531H899.381C910.977 784.531 920.378 793.919 920.378 805.5V928.936C920.378 940.517 910.977 949.904 899.381 949.904H541.175C529.579 949.904 520.178 940.517 520.178 928.936V784.531Z" />
+      <path d="M278.021 51.8393C288.604 47.1056 301.053 51.8239 305.826 62.3779L671.092 870.024C675.865 880.578 671.155 892.971 660.572 897.704L547.764 948.161C537.181 952.894 524.732 948.176 519.959 937.622L154.693 129.976C149.92 119.422 154.63 107.029 165.213 102.296L278.021 51.8393Z" />
+    </svg>
+  );
+}

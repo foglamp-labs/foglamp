@@ -298,7 +298,7 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section className="mx-auto w-full max-w-7xl px-5 sm:px-8">
+    <section className="mx-auto w-full max-w-7xl px-5 sm:px-8 -mb-24">
       <h2 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
         Set up in one prompt.
       </h2>

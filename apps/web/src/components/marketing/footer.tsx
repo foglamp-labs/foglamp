@@ -25,7 +25,7 @@ const headingClassName = "text-sm font-medium tracking-wide text-foreground";
 
 function FooterAnchor({ link }: { link: FooterLink }) {
   const className =
-    "text-sm text-muted-foreground transition-colors hover:text-foreground";
+    "text-sm text-muted-foreground transition-colors duration-100 hover:text-foreground";
   if (link.external) {
     return (
       <a href={link.href} className={className}>
@@ -100,7 +100,7 @@ export function MarketingFooter() {
             <a
               href={GITHUB_URL}
               aria-label="Foglamp on GitHub"
-              className="text-muted-foreground transition-colors hover:text-foreground mt-2"
+              className="text-muted-foreground transition-colors duration-100 hover:text-foreground mt-2 w-fit"
             >
               <GithubLogo className="size-4" />
             </a>
@@ -143,13 +143,13 @@ export function MarketingFooter() {
           </span>
           <Link
             href="/privacy"
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="text-xs text-muted-foreground transition-colors duration-100 hover:text-foreground"
           >
             Privacy
           </Link>
           <Link
             href="/terms"
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="text-xs text-muted-foreground transition-colors duration-100 hover:text-foreground"
           >
             Terms
           </Link>

@@ -11,28 +11,20 @@ import Link from "next/link";
 import { type SVGProps, useEffect, useState } from "react";
 
 import { CopyPromptButton } from "./copy-prompt-button";
+import { OlwenLogo, OptionLogo } from "@/components/brand-logos";
 import { FilmGrain } from "@/components/marketing/noise-overlay";
 import { HeroDemo } from "./hero-demo";
 import Image from "next/image";
 
-// Projects running on Foglamp. Olwen and Option ship real marks (dark
-// line-art, inverted for dark mode); the rest are wordmarks, each in its own
-// type voice so they read as distinct brands.
+// Projects running on Foglamp. Olwen and Option use their real marks as
+// currentColor components (from brand-logos), so every lockup tints exactly
+// like its text; the rest are wordmarks, each in its own type voice.
 const TRUSTED: { label: string; node: React.ReactNode }[] = [
   {
     label: "Olwen",
     node: (
       <span className="flex items-center gap-2">
-        <Image
-          src="/trusted/olwen.png"
-          alt=""
-          width={1024}
-          height={1024}
-          // Blend modes drop the artwork's solid ground on any page bg: the
-          // white square multiplies away in light mode; inverted, the black
-          // square screens away in dark mode. Only the face lines remain.
-          className="size-6 mix-blend-multiply dark:invert dark:mix-blend-screen"
-        />
+        <OlwenLogo className="size-6" />
         <span className="font-display text-lg font-semibold tracking-tight">
           Olwen
         </span>
@@ -44,11 +36,18 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
     node: (
       <span className="flex items-center text-xl font-black tracking-tight">
         M
-        <svg viewBox="0 0 24 24" className="mx-px size-4" aria-hidden>
-          <path
-            d="M7.05 2.81a2.2 2.2 0 0 1 3.11 0L12 4.65l1.84-1.84a2.2 2.2 0 0 1 3.11 0l4.24 4.24a2.2 2.2 0 0 1 0 3.11L19.35 12l1.84 1.84a2.2 2.2 0 0 1 0 3.11l-4.24 4.24a2.2 2.2 0 0 1-3.11 0L12 19.35l-1.84 1.84a2.2 2.2 0 0 1-3.11 0l-4.24-4.24a2.2 2.2 0 0 1 0-3.11L4.65 12 2.81 10.16a2.2 2.2 0 0 1 0-3.11l4.24-4.24z"
-            fill="currentColor"
-          />
+        {/* the O: a circle with the brand X knocked out of it */}
+        <svg viewBox="0 0 24 24" className="mx-[2px] size-[1.05em]" aria-hidden>
+          <mask id="motim-o-x">
+            <rect width="24" height="24" fill="#fff" />
+            <path
+              d="M 8.4 8.4 L 15.6 15.6 M 15.6 8.4 L 8.4 15.6"
+              stroke="#000"
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
+          </mask>
+          <circle cx="12" cy="12" r="10.5" fill="currentColor" mask="url(#motim-o-x)" />
         </svg>
         TIM
       </span>
@@ -58,13 +57,7 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
     label: "Option",
     node: (
       <span className="flex items-center gap-2">
-        <Image
-          src="/trusted/option.svg"
-          alt=""
-          width={1000}
-          height={1000}
-          className="size-4.5 dark:invert"
-        />
+        <OptionLogo className="size-4.5" />
         <span className="text-lg font-semibold tracking-normal">Option</span>
       </span>
     ),

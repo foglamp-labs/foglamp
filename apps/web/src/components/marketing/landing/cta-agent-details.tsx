@@ -38,7 +38,7 @@ export function AgentDetails({
   return (
     <div className={cn("flex w-105 max-w-full flex-col gap-7", className)}>
       <div className="flex items-center gap-3">
-        <span className="flex size-9 items-center border border-border/20 justify-center rounded-2xl corner-squircle bg-orange-500/10 text-orange-500">
+        <span className="flex size-9 items-center border border-border/20 justify-center rounded-2xl corner-squircle bg-blue-500/10 text-blue-500">
           <IconGhostFilled className="size-5" />
         </span>
         <span className="flex flex-col gap-0.5">
