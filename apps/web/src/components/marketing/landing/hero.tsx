@@ -23,7 +23,7 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
   {
     label: "Olwen",
     node: (
-      <span className="flex items-center gap-2">
+      <span className="flex items-center gap-1.5">
         <OlwenLogo className="size-6" />
         <span className="font-display text-lg font-semibold tracking-tight">
           Olwen
@@ -35,9 +35,12 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
     label: "MOTIM",
     node: (
       <span className="flex items-center text-xl font-black tracking-tight">
-        M
-        {/* the O: a circle with the brand X knocked out of it */}
-        <svg viewBox="0 0 24 24" className="mx-[2px] size-[1.05em]" aria-hidden>
+        M{/* the O: a circle with the brand X knocked out of it */}
+        <svg
+          viewBox="0 0 24 24"
+          className="mx-[2px] mr-0 size-[0.9em]"
+          aria-hidden
+        >
           <mask id="motim-o-x">
             <rect width="24" height="24" fill="#fff" />
             <path
@@ -47,7 +50,13 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
               strokeLinecap="round"
             />
           </mask>
-          <circle cx="12" cy="12" r="10.5" fill="currentColor" mask="url(#motim-o-x)" />
+          <circle
+            cx="12"
+            cy="12"
+            r="10.5"
+            fill="currentColor"
+            mask="url(#motim-o-x)"
+          />
         </svg>
         TIM
       </span>
@@ -57,7 +66,7 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
     label: "Option",
     node: (
       <span className="flex items-center gap-2">
-        <OptionLogo className="size-4.5" />
+        <OptionLogo className="size-3.5 text-[#878787]" />
         <span className="text-lg font-semibold tracking-normal">Option</span>
       </span>
     ),
@@ -73,18 +82,14 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
   {
     label: "Mainline",
     node: (
-      <span className="font-mono text-base font-semibold tracking-tight">
+      <span className="font-mono text-base font-semibold tracking-widest">
         mainline
       </span>
     ),
   },
   {
     label: "KA'A",
-    node: (
-      <span className="text-xl font-black tracking-tight">
-        KA&rsquo;A
-      </span>
-    ),
+    node: <span className="text-xl font-black tracking-tight">KA&rsquo;A</span>,
   },
   {
     label: "LVargas",
@@ -173,14 +178,23 @@ export function Hero() {
   return (
     // overflow-x-clip keeps the soft blur on the wide dashboard from ever
     // nudging a horizontal scrollbar during its entrance.
-    <section className="relative isolate w-full overflow-x-clip pt-28 pb-16 sm:pt-28">
+    <section className="relative isolate w-full overflow-x-clip pt-28">
       {/* Subtle film-grain noise over the hero. A high-frequency feTurbulence
           fractal, desaturated and dropped to a low opacity with screen blending
-          so it lifts the dark background without muddying the copy. */}
-      <FilmGrain
-        id="hero-noise"
-        className="-z-10 opacity-10 mix-blend-screen"
-      />
+          so it lifts the dark background without muddying the copy. Faded out
+          toward the bottom so the texture dissolves after the trusted-by strip
+          instead of stretching to the section edge and cutting. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          WebkitMaskImage:
+            "linear-gradient(to bottom, #000 78%, transparent 97%)",
+          maskImage: "linear-gradient(to bottom, #000 78%, transparent 97%)",
+        }}
+      >
+        <FilmGrain id="hero-noise" className="opacity-10 mix-blend-screen" />
+      </div>
 
       {/* Copy: left-aligned, sharing the dashboard's max-w-7xl left edge. */}
       <div className="mx-auto flex max-w-7xl justify-between items-end px-5 sm:px-8">
@@ -257,15 +271,15 @@ export function Hero() {
           hero's grain. Real projects running on Foglamp, all monochrome. */}
       <motion.div
         {...rise(1.7)}
-        className="mx-auto mt-14 flex w-full max-w-7xl flex-wrap items-center gap-x-14 gap-y-5 px-5 sm:px-8"
+        className="mx-auto mt-18 flex w-full max-w-7xl flex-wrap items-center gap-x-20 gap-y-5 px-5 sm:px-8"
       >
-        <p className="text-sm text-muted-foreground">Trusted by</p>
+        <p className="text-sm text-muted-foreground/50">Trusted by</p>
         <ul className="contents list-none">
           {TRUSTED.map(({ label, node }) => (
             <li
               key={label}
               title={label}
-              className="text-muted-foreground/80 grayscale"
+              className="text-muted-foreground/70 grayscale"
             >
               {node}
             </li>
