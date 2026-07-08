@@ -123,18 +123,18 @@ const NODES: HeroNode[] = [
 // Flowing curves, drawn to roughly match the sketch: long laterals with soft
 // vertical swings. Each is a single cubic bezier in canvas coordinates.
 const EDGES: { d: string; color: string; delay: number }[] = [
-  // app → research
-  { d: "M 218 90 C 340 100, 240 250, 268 258", color: "#64748b", delay: 0.7 },
-  // cron → support
-  { d: "M 200 502 C 250 505, 240 508, 282 508", color: "#f59e0b", delay: 0.85 },
-  // research → resend
-  { d: "M 500 240 C 590 220, 530 90, 556 66", color: "#f97316", delay: 1.1 },
-  // research → postgres
-  { d: "M 500 290 C 560 310, 510 360, 548 372", color: "#f97316", delay: 1.25 },
-  // support → postgres
-  { d: "M 514 500 C 570 490, 520 400, 548 388", color: "#f97316", delay: 1.4 },
-  // support → slack
-  { d: "M 514 540 C 570 555, 520 595, 556 596", color: "#f97316", delay: 1.5 },
+  // app (right edge, 218,76) → research (left edge, 268,250)
+  { d: "M 218 76 C 300 80, 210 250, 268 250", color: "#64748b", delay: 0.7 },
+  // cron (200,498) → support (282,508)
+  { d: "M 200 498 C 235 498, 245 508, 282 508", color: "#f59e0b", delay: 0.85 },
+  // research (500,240) → resend (556,52)
+  { d: "M 500 240 C 580 235, 495 52, 556 52", color: "#f97316", delay: 1.1 },
+  // research (500,290) → postgres (548,352)
+  { d: "M 500 290 C 545 295, 500 352, 548 352", color: "#f97316", delay: 1.25 },
+  // support (514,495) → postgres (548,364)
+  { d: "M 514 495 C 565 488, 495 364, 548 364", color: "#f97316", delay: 1.4 },
+  // support (514,530) → slack (556,584)
+  { d: "M 514 530 C 560 535, 505 584, 556 584", color: "#f97316", delay: 1.5 },
 ];
 
 function HeroNodeCard({ n, reduce }: { n: HeroNode; reduce: boolean }) {
