@@ -26,21 +26,26 @@ import {
   IconChevronRight,
   IconChevronRightFilled,
   IconCircleChevronRightFilled,
+  IconDirectionArrowsFilled,
+  IconZoomScanFilled,
 } from "@tabler/icons-react";
 
 const DOCS_URL = "https://docs.foglamp.dev";
 
-// The Product menu: each entry is a muted name over a one-line pitch.
+// The Product menu: each entry is a muted name over a one-line pitch, with
+// the same icon its hero eyebrow uses.
 const PRODUCT_ITEMS = [
   {
     href: "/scan" as const,
     name: "Scan",
     pitch: "Turn your repo into a shareable map",
+    Icon: IconZoomScanFilled,
   },
   {
     href: "/hud" as const,
     name: "HUD",
     pitch: "Watch your agents while you build",
+    Icon: IconDirectionArrowsFilled,
   },
 ] as const;
 
@@ -58,7 +63,8 @@ function ProductsMenu() {
                 render={<Link href={item.href} />}
                 className="flex-col items-start gap-0.5 px-3 py-2.5"
               >
-                <span className="text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <item.Icon className="size-3.5" />
                   {item.name}
                 </span>
                 <span className="font-medium text-foreground">
