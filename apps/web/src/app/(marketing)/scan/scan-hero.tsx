@@ -8,6 +8,7 @@ import { HeroGrain } from "@/components/marketing/noise-overlay";
 import { Favicon, ModelIcon } from "@/components/scan/brand";
 import { KIND_STYLES } from "@/components/scan/kinds";
 import { CopyScanPromptButton } from "./copy-scan-prompt-button";
+import { IconLineScan, IconZoomScanFilled } from "@tabler/icons-react";
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
@@ -219,8 +220,12 @@ function HeroMap({ reduce }: { reduce: boolean }) {
   return (
     <div
       aria-hidden
-      className="relative shrink-0"
-      style={{ width: CANVAS_W, height: CANVAS_H }}
+      className="relative origin-top-left shrink-0"
+      style={{
+        width: CANVAS_W,
+        height: CANVAS_H,
+        transform: "scale(var(--map-s, 1))",
+      }}
     >
       <svg
         className="pointer-events-none absolute inset-0 overflow-visible"
@@ -293,9 +298,10 @@ export function ScanHero() {
         <div className="max-w-xl shrink-0">
           <motion.p
             {...rise(0.05)}
-            className="text-sm font-medium tracking-wide text-orange-500"
+            className="text-base font-medium tracking-wide text-orange-500 flex gap-1.5 items-center"
           >
-            Foglamp Scan
+            <IconZoomScanFilled className="size-4" />
+            Scan
           </motion.p>
           <motion.h1
             {...rise(0.15)}
@@ -319,8 +325,18 @@ export function ScanHero() {
           </motion.div>
         </div>
 
-        {/* The scattered map filling the right half. */}
-        <motion.div {...rise(0.5)} className="hidden min-w-0 lg:block">
+        {/* The scattered map filling the right half. The 760x640 canvas is
+            scaled down on narrower viewports so it never spills off-screen; the
+            wrapper reserves the SCALED size (calc reads the same --map-s var
+            the map's transform uses), so the flex layout stays honest. */}
+        <motion.div
+          {...rise(0.5)}
+          className="hidden shrink-0 lg:block lg:[--map-s:0.66] xl:[--map-s:0.82] 2xl:[--map-s:1]"
+          style={{
+            width: "calc(760px * var(--map-s, 1))",
+            height: "calc(640px * var(--map-s, 1))",
+          }}
+        >
           <HeroMap reduce={reduce} />
         </motion.div>
       </div>

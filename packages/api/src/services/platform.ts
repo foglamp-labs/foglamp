@@ -9,6 +9,7 @@ import {
 import { user } from "@foglamp/db/schema/auth";
 import { member, organization } from "@foglamp/db/schema/organization";
 import { project } from "@foglamp/db/schema/project";
+import { scan } from "@foglamp/db/schema/scan";
 import { subscription } from "@foglamp/db/schema/subscription";
 import { env } from "@foglamp/env/server";
 import {
@@ -249,6 +250,7 @@ export async function getPlatformStats(db: Db, ch: Ch) {
     activeOrgIds30d,
     mrrCents,
     postgres,
+    scanRows,
   ] = await Promise.all([
     Promise.all([
       db.select({ n: count() }).from(user),
@@ -284,6 +286,15 @@ export async function getPlatformStats(db: Db, ch: Ch) {
     queryRecentlyActiveOrgs(ch, ymd(since30d)),
     getMrrCents(),
     getPostgresStats(db),
+    // Anonymous codebase scans (physical table "poster"): total, last 7d, and
+    // cumulative views across every scan page.
+    db
+      .select({
+        total: count(),
+        last7d: sql<number>`count(*) filter (where ${scan.createdAt} >= ${since7d})`,
+        views: sql<number>`coalesce(sum(${scan.viewCount}), 0)`,
+      })
+      .from(scan),
   ]);
 
   // Build the top-orgs panel: CH only has ids + span counts, so resolve org
@@ -373,6 +384,11 @@ export async function getPlatformStats(db: Db, ch: Ch) {
       paidOrgs,
     },
     spans: { last24h: spans24h, last30d: spans30d },
+    scans: {
+      total: scanRows[0]?.total ?? 0,
+      last7d: Number(scanRows[0]?.last7d ?? 0),
+      views: Number(scanRows[0]?.views ?? 0),
+    },
     signupsByDay: signupRows.map((r) => ({ day: r.day, users: r.n })),
     usageByDay: usageByDay.map((r) => {
       const err = errorByDayMap.get(r.day);

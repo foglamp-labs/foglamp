@@ -34,11 +34,13 @@ import {
   IconBuildingSkyscraper,
   IconCoinFilled,
   IconCreditCard,
+  IconEyeFilled,
   IconFolderFilled,
   IconGiftFilled,
   IconStack2Filled,
   IconUserFilled,
   IconUserPlus,
+  IconZoomScanFilled,
   type Icon,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -347,7 +349,7 @@ export function PlatformClient() {
         description="Cross-org numbers for the hosted deployment. Refreshes every minute."
       />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-10">
         <StatCard
           label="MRR"
           size="sm"
@@ -396,6 +398,27 @@ export function PlatformClient() {
           value={formatCount(d.spans.last24h)}
           icon={IconStack2Filled}
           iconClassName="text-fuchsia-500"
+        />
+        <StatCard
+          label="Scans"
+          size="sm"
+          value={formatCount(d.scans.total)}
+          icon={IconZoomScanFilled}
+          iconClassName="text-orange-500"
+        />
+        <StatCard
+          label="New scans (7d)"
+          size="sm"
+          value={formatCount(d.scans.last7d)}
+          icon={IconZoomScanFilled}
+          iconClassName="text-lime-500"
+        />
+        <StatCard
+          label="Scan views"
+          size="sm"
+          value={formatCount(d.scans.views)}
+          icon={IconEyeFilled}
+          iconClassName="text-cyan-500"
         />
       </div>
 
