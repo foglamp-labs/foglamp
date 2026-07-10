@@ -69,7 +69,19 @@ export function ScanPersonalities() {
                 bounce: 0.2,
                 delay: reduce ? 0 : 0.15 + i * 0.07,
               }}
-              whileHover={reduce ? undefined : { y: y - 28, scale: 1.04 }}
+              whileHover={
+                reduce
+                  ? undefined
+                  : {
+                      y: y - 28,
+                      scale: 1.04,
+                      transition: {
+                        type: "spring",
+                        stiffness: 550,
+                        damping: 34,
+                      },
+                    }
+              }
             >
               <div
                 className={cn(
@@ -91,8 +103,8 @@ export function ScanPersonalities() {
                 {/* light + shade orbs */}
                 <div className="absolute -top-8 -right-4 size-24 rounded-full bg-white/20 blur-2xl" />
                 <div className="absolute -bottom-10 left-4 size-24 rounded-full bg-black/15 blur-2xl" />
-                {/* the big glyph */}
-                <a.Icon className="absolute -right-4 top-10 size-28 rotate-12 text-white/20" />
+                {/* the big glyph, centered so the fan overlap never hides it */}
+                <a.Icon className="absolute left-1/2 top-[38%] size-24 -translate-x-1/2 -translate-y-1/2 rotate-12 text-white/25" />
                 {/* title, bottom-left like the reference */}
                 <span className="absolute bottom-5 left-5 right-5 font-display text-xl font-semibold leading-tight tracking-tight text-white drop-shadow">
                   {a.title}
@@ -115,7 +127,7 @@ export function ScanPersonalities() {
                 a.gradient
               )}
             >
-              <a.Icon className="absolute -right-3 top-8 size-24 rotate-12 text-white/20" />
+              <a.Icon className="absolute left-1/2 top-[36%] size-20 -translate-x-1/2 -translate-y-1/2 rotate-12 text-white/25" />
               <span className="absolute bottom-4 left-4 right-4 font-display text-lg font-semibold leading-tight tracking-tight text-white drop-shadow">
                 {a.title}
               </span>
