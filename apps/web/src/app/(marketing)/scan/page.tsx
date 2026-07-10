@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { CtaSection } from "@/components/marketing/landing/cta";
-import { ScanGalleryVariants } from "./scan-gallery-variants";
+import { ScanPersonalities } from "./scan-personalities";
 import { ScanHero } from "./scan-hero";
 
 export const metadata: Metadata = {
@@ -20,8 +20,7 @@ export default function ScanLandingPage() {
   return (
     <div className="flex flex-col gap-36">
       <ScanHero />
-      {/* Temporary: five gallery layouts to pick from. */}
-      <ScanGalleryVariants />
+      <ScanPersonalities />
       <CtaSection />
     </div>
   );

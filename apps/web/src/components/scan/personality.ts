@@ -24,7 +24,7 @@ export interface Personality {
   gradient: string;
 }
 
-const ARCHETYPES = {
+export const ARCHETYPES = {
   orchestrator: {
     title: "Tireless Orchestrator",
     Icon: IconGhostFilled,
