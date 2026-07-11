@@ -31,7 +31,7 @@ export function ScanPersonalities() {
   return (
     <section className="mx-auto w-full max-w-7xl overflow-x-clip px-5 sm:px-8">
       <h2 className="font-display max-w-2xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-        Every repo gets dealt a card.
+        Get your card
       </h2>
       <p className="mt-3 max-w-lg text-muted-foreground text-pretty">
         The scan reads your architecture and picks your repo's personality.
@@ -78,17 +78,12 @@ export function ScanPersonalities() {
                 delay: reduce ? 0 : i * 0.03,
                 opacity: { duration: 0.35, ease: "easeOut" },
               }}
-              whileHover={
-                reduce
-                  ? undefined
-                  : {
-                      y: y - 8,
-                      scale: 1.03,
-                      transition: { duration: 0.15, ease: "easeOut" },
-                    }
-              }
             >
-              <div
+              {/* hover lives on its own element so both the lift and the
+                  settle-back use this fast transition, not the entrance's */}
+              <motion.div
+                whileHover={reduce ? undefined : { y: -8, scale: 1.03 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
                 className={cn(
                   "relative h-72 w-52 origin-bottom overflow-hidden rounded-3xl corner-squircle bg-linear-to-br shadow-(--custom-shadow)",
                   a.gradient
@@ -114,7 +109,7 @@ export function ScanPersonalities() {
                 <span className="absolute bottom-5 left-5 right-5 font-display text-xl font-semibold leading-tight tracking-tight text-white drop-shadow">
                   {a.title}
                 </span>
-              </div>
+              </motion.div>
             </motion.div>
           );
         })}
