@@ -10,8 +10,9 @@ import { motion, useReducedMotion } from "motion/react";
 
 import { ARCHETYPES } from "@/components/scan/personality";
 
-// Scatter geometry, interfacecraft.dev-style: an irregular hand-thrown pile
-// rather than a uniform arc. Rotation and height jitter per card.
+// Fan geometry: cards spread along a shallow arc, rotated outward from the
+// center. The ANIMATION is interfacecraft.dev's (spread from a gathered
+// pile, subtle hover), the LAYOUT stays the fan.
 const ORDER = [
   "scheduler",
   "archivist",
@@ -21,8 +22,6 @@ const ORDER = [
   "builder",
   "minimalist",
 ] as const;
-const ROT = [-8, 4, -2, 1, 5, -4, 7];
-const JITTER = [-6, 26, -38, 4, -24, 18, -10];
 
 export function ScanPersonalities() {
   const reduce = useReducedMotion() ?? false;
@@ -44,13 +43,13 @@ export function ScanPersonalities() {
         {ORDER.map((key, i) => {
           const a = ARCHETYPES[key];
           const off = i - mid; // -3 .. 3
-          const rotate = ROT[i]!;
-          const x = off * 128;
-          const y = JITTER[i]!;
+          const rotate = off * 7;
+          const x = off * 118;
+          const y = Math.abs(off) * 26;
           return (
             <motion.div
               key={key}
-              className="absolute left-1/2 top-10 cursor-pointer select-none"
+              className="absolute left-1/2 top-4 cursor-pointer select-none"
               style={{ zIndex: 10 + i, x: "-50%" }}
               initial={
                 reduce
