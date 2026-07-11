@@ -60,7 +60,7 @@ export function ScanPersonalities() {
                       y: y + 40,
                       scale: 0.7,
                       opacity: 0,
-                      filter: "blur(16px)",
+                      filter: "blur(8px)",
                     }
               }
               whileInView={{
@@ -84,7 +84,7 @@ export function ScanPersonalities() {
                   : {
                       y: y - 8,
                       scale: 1.03,
-                      transition: { duration: 0.3, ease: "easeOut" },
+                      transition: { duration: 0.15, ease: "easeOut" },
                     }
               }
             >
