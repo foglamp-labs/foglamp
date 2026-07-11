@@ -59,9 +59,9 @@ export function ScanPersonalities() {
               whileInView={{ rotate, translateX: x, y }}
               viewport={{ once: true, amount: 0.5 }}
               transition={{
-                duration: 0.75,
+                duration: 0.5,
                 ease: [0.22, 1, 0.36, 1],
-                delay: reduce ? 0 : i * 0.04,
+                delay: reduce ? 0 : i * 0.03,
               }}
               whileHover={
                 reduce
@@ -69,7 +69,7 @@ export function ScanPersonalities() {
                   : {
                       y: y - 8,
                       scale: 1.02,
-                      transition: { duration: 0.3, ease: "easeOut" },
+                      transition: { duration: 0.16, ease: "easeOut" },
                     }
               }
             >
