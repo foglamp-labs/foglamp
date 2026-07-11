@@ -74,7 +74,7 @@ export function ScanPersonalities() {
               viewport={{ once: true, amount: 0.5 }}
               transition={{
                 duration: 0.7,
-                ease: [0.45, 0, 0.15, 1],
+                ease: [0.22, 1, 0.36, 1],
                 delay: reduce ? 0 : i * 0.03,
                 opacity: { duration: 0.35, ease: "easeOut" },
               }}
