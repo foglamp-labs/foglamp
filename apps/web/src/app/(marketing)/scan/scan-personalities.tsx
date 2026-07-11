@@ -54,22 +54,37 @@ export function ScanPersonalities() {
               initial={
                 reduce
                   ? { rotate, translateX: x, y }
-                  : { rotate, translateX: x * 0.3, y: y + 90 }
+                  : {
+                      rotate,
+                      translateX: x * 0.3,
+                      y: y + 40,
+                      scale: 0.7,
+                      opacity: 0,
+                      filter: "blur(16px)",
+                    }
               }
-              whileInView={{ rotate, translateX: x, y }}
+              whileInView={{
+                rotate,
+                translateX: x,
+                y,
+                scale: 1,
+                opacity: 1,
+                filter: "blur(0px)",
+              }}
               viewport={{ once: true, amount: 0.5 }}
               transition={{
-                duration: 0.5,
-                ease: [0.22, 1, 0.36, 1],
+                duration: 0.7,
+                ease: [0.45, 0, 0.15, 1],
                 delay: reduce ? 0 : i * 0.03,
+                opacity: { duration: 0.35, ease: "easeOut" },
               }}
               whileHover={
                 reduce
                   ? undefined
                   : {
                       y: y - 8,
-                      scale: 1.02,
-                      transition: { duration: 0.16, ease: "easeOut" },
+                      scale: 1.03,
+                      transition: { duration: 0.3, ease: "easeOut" },
                     }
               }
             >
