@@ -99,6 +99,31 @@ describe("normalize", () => {
     // Unparseable bedrock id stays unresolved instead of guessing.
     expect(modelIdCandidates("amazon-bedrock", "mystery-model")).toEqual([]);
   });
+  test("bedrock ids: newer creators (minimax, moonshot, zai, xai, nvidia, google)", () => {
+    expect(modelIdCandidates("amazon-bedrock", "minimax.minimax-m2.5")).toContain(
+      "minimax/minimax-m2.5",
+    );
+    expect(modelIdCandidates("amazon-bedrock", "us.minimax.minimax-m2.5-v1:0")).toContain(
+      "minimax/minimax-m2.5",
+    );
+    // Bedrock ships Kimi under both "moonshot." and "moonshotai."; OpenRouter
+    // uses "moonshotai".
+    expect(modelIdCandidates("amazon-bedrock", "moonshot.kimi-k2-thinking")).toContain(
+      "moonshotai/kimi-k2-thinking",
+    );
+    expect(modelIdCandidates("amazon-bedrock", "moonshotai.kimi-k2.5")).toContain(
+      "moonshotai/kimi-k2.5",
+    );
+    expect(modelIdCandidates("amazon-bedrock", "zai.glm-4.7")).toContain("z-ai/glm-4.7");
+    // xAI gets the dotted-version candidate (OpenRouter says "grok-4.3").
+    expect(modelIdCandidates("amazon-bedrock", "xai.grok-4-3")).toContain("x-ai/grok-4.3");
+    expect(modelIdCandidates("amazon-bedrock", "nvidia.nemotron-nano-9b-v2")).toContain(
+      "nvidia/nemotron-nano-9b-v2",
+    );
+    expect(modelIdCandidates("amazon-bedrock", "google.gemma-3-27b-it")).toContain(
+      "google/gemma-3-27b-it",
+    );
+  });
 });
 
 describe("resolveModelPrice", () => {

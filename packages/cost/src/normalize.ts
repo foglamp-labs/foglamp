@@ -21,6 +21,9 @@ const VENDOR_MAP: Record<string, string> = {
   perplexity: "perplexity",
   meta: "meta-llama",
   amazon: "amazon",
+  // Bedrock creator namespaces whose OpenRouter slug differs.
+  moonshot: "moonshotai",
+  zai: "z-ai",
   groq: "",
   togetherai: "",
   fireworks: "",
@@ -47,7 +50,7 @@ const VERSION_SUFFIX_RE =
 // "apac.", "global.", …), the model's creator, then the model name carrying an
 // ARN-style version suffix — e.g. "us.anthropic.claude-haiku-4-5-20251001-v1:0".
 const BEDROCK_ID_RE =
-  /^(?:[a-z]{2,6}(?:-gov)?\.)?(anthropic|amazon|meta|mistral|cohere|ai21|deepseek|writer|openai|qwen|luma|stability|twelvelabs)\.(.+)$/;
+  /^(?:[a-z]{2,6}(?:-gov)?\.)?(anthropic|amazon|meta|mistral|cohere|ai21|deepseek|writer|openai|qwen|luma|stability|twelvelabs|minimax|google|moonshotai|moonshot|nvidia|xai|zai)\.(.+)$/;
 
 function pushCandidate(out: string[], vendor: string, model: string): void {
   if (!vendor || !model) return;
@@ -57,14 +60,14 @@ function pushCandidate(out: string[], vendor: string, model: string): void {
 }
 
 // Expand one vendor/model pair into ordered lookup candidates: exact first,
-// then date-stripped, then — for Anthropic — the dotted version OpenRouter
-// uses (the Anthropic API says "claude-haiku-4-5", OpenRouter
-// "claude-haiku-4.5").
+// then date-stripped, then — for Anthropic and xAI — the dotted version
+// OpenRouter uses (the Anthropic API says "claude-haiku-4-5", OpenRouter
+// "claude-haiku-4.5"; Bedrock says "grok-4-3", OpenRouter "grok-4.3").
 function expandModel(out: string[], vendor: string, model: string): void {
   pushCandidate(out, vendor, model);
   const dateless = model.replace(VERSION_SUFFIX_RE, "");
   pushCandidate(out, vendor, dateless);
-  if (vendor === "anthropic") {
+  if (vendor === "anthropic" || vendor === "x-ai") {
     pushCandidate(out, vendor, dateless.replace(/(\d)-(\d)/g, "$1.$2"));
   }
 }
