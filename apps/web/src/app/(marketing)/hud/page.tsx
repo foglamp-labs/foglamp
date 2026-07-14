@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { HudPlayground } from "@/components/marketing/hud/hud-playground";
 import { CtaSection } from "@/components/marketing/landing/cta";
 import { HeroGrain } from "@/components/marketing/noise-overlay";
+import { IconDirectionArrowsFilled } from "@tabler/icons-react";
 
 export const metadata: Metadata = {
   title: "HUD",
@@ -23,8 +24,9 @@ export default function HudPage() {
       <section className="relative isolate w-full overflow-x-clip pt-28 pb-40">
         <HeroGrain id="hud-noise" />
         <div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
-          <p className="text-sm font-medium tracking-wide text-orange-500">
-            Foglamp HUD
+          <p className="text-base font-medium tracking-wide text-orange-500 flex gap-1.5 items-center">
+            <IconDirectionArrowsFilled className="size-4" />
+            HUD
           </p>
           <h1 className="font-display mt-4 max-w-2xl text-4xl font-semibold tracking-tight text-balance md:text-5xl">
             See your agents while you build.
@@ -52,8 +54,8 @@ export default function HudPage() {
               Zero setup
             </h3>
             <p className="mt-2 text-sm text-muted-foreground text-pretty">
-              It ships inside the SDK. When your agent wires Foglamp up, the
-              HUD comes with it. Nothing to install, nothing to deploy.
+              It ships inside the SDK. When your agent wires Foglamp up, the HUD
+              comes with it. Nothing to install, nothing to deploy.
             </p>
           </div>
           <div>
@@ -61,8 +63,8 @@ export default function HudPage() {
               Local by default
             </h3>
             <p className="mt-2 text-sm text-muted-foreground text-pretty">
-              Traces stream to the overlay on your machine. No API key, no
-              data leaves your laptop. It turns itself off in production.
+              Traces stream to the overlay on your machine. No API key, no data
+              leaves your laptop. It turns itself off in production.
             </p>
           </div>
           <div>
@@ -70,8 +72,8 @@ export default function HudPage() {
               The full story
             </h3>
             <p className="mt-2 text-sm text-muted-foreground text-pretty">
-              Timeline, tool calls, retries, cost per run. When something
-              fails you watch it fail, instead of digging through logs.
+              Timeline, tool calls, retries, cost per run. When something fails
+              you watch it fail, instead of digging through logs.
             </p>
           </div>
         </div>

@@ -61,13 +61,13 @@ function ProductsMenu() {
             <li key={item.href}>
               <NavigationMenuLink
                 render={<Link href={item.href} />}
-                className="flex-col items-start gap-0.5 px-3 py-2.5"
+                className="flex-col items-start gap-1 px-3 py-2.5"
               >
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5 font-medium">
                   <item.Icon className="size-3.5" />
                   {item.name}
                 </span>
-                <span className="font-medium text-foreground">
+                <span className=" text-muted-foreground text-xs">
                   {item.pitch}
                 </span>
               </NavigationMenuLink>

@@ -88,7 +88,7 @@ export function MarketingFooter() {
           </filter>
         </svg>
       </figure>
-      <div className="mx-auto max-w-7xl px-5 py-16 pb-28 sm:px-8">
+      <div className="mx-auto max-w-7xl px-5 py-20 pb-28 sm:px-8">
         {/* Trailing 1fr is a ghost column that keeps the link columns pulled
             toward the brand instead of spread across the full width. */}
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">

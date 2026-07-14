@@ -23,7 +23,7 @@ export function CtaSection() {
   return (
     <section
       ref={ref}
-      className="relative isolate flex w-full flex-col justify-center overflow-hidden py-32 sm:py-44 mb-12"
+      className="relative isolate flex w-full flex-col justify-center overflow-hidden mb-20"
       style={{ minHeight: "780px" }}
     >
       {/* Faint dashboard grid so the fog has a surface to sit on. */}
@@ -64,7 +64,7 @@ export function CtaSection() {
           }}
         >
           <div
-            className="fog-layer absolute inset-[-15%] opacity-3"
+            className="fog-layer absolute inset-[-15%] opacity-30"
             style={{
               filter: "blur(4px)",
               animationName: "fog-drift-a",
@@ -107,7 +107,7 @@ export function CtaSection() {
           </div>
           {/* bottom-right filler */}
           <div
-            className="fog-layer absolute inset-[-15%] opacity-35"
+            className="fog-layer absolute inset-[-15%] opacity-45"
             style={{
               filter: "blur(18px)",
               animationName: "fog-drift-d",
@@ -123,7 +123,7 @@ export function CtaSection() {
           {/* a denser puff right on top of the agent details, so they read as
               half-swallowed by the fog */}
           <div
-            className="fog-layer absolute inset-[-15%] opacity-60"
+            className="fog-layer absolute inset-[-15%] opacity-40"
             style={{
               filter: "blur(12px)",
               animationName: "fog-drift-e",

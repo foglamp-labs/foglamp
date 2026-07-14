@@ -66,7 +66,7 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
     label: "Option",
     node: (
       <span className="flex items-center gap-2">
-        <OptionLogo className="size-3.5 text-[#878787]" />
+        <OptionLogo className="size-3.5 text-[#676767]" />
         <span className="text-lg font-semibold tracking-normal">Option</span>
       </span>
     ),
@@ -188,12 +188,11 @@ export function Hero() {
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
-          WebkitMaskImage:
-            "linear-gradient(to bottom, #000 78%, transparent 97%)",
-          maskImage: "linear-gradient(to bottom, #000 78%, transparent 97%)",
+          WebkitMaskImage: "linear-gradient(to top, #000 78%, transparent 97%)",
+          maskImage: "linear-gradient(to top, #000 78%, transparent 97%)",
         }}
       >
-        <FilmGrain id="hero-noise" className="opacity-10 mix-blend-screen" />
+        <FilmGrain id="hero-noise" className="opacity-15 mix-blend-screen" />
       </div>
 
       {/* Copy: left-aligned, sharing the dashboard's max-w-7xl left edge. */}
@@ -209,10 +208,8 @@ export function Hero() {
             {...rise(0.27)}
             className="mt-5 max-w-md text-lg text-muted-foreground text-pretty"
           >
-            See the cost, latency, and quality of every LLM call.{" "}
-            <span className="text-primary">
-              Catch bad output before your users do.
-            </span>
+            See the cost, latency, and quality of every LLM call. Catch bad
+            output before your users do.
           </motion.p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -271,7 +268,7 @@ export function Hero() {
           hero's grain. Real projects running on Foglamp, all monochrome. */}
       <motion.div
         {...rise(1.7)}
-        className="mx-auto mt-18 flex w-full max-w-7xl flex-wrap items-center gap-x-20 gap-y-5 px-5 sm:px-8"
+        className="mx-auto mt-18 flex w-full max-w-7xl flex-wrap items-center gap-x-20 gap-y-5 px-5 sm:px-8 pb-18"
       >
         <p className="text-sm text-muted-foreground/50">Trusted by</p>
         <ul className="contents list-none">
@@ -279,7 +276,7 @@ export function Hero() {
             <li
               key={label}
               title={label}
-              className="text-muted-foreground/70 grayscale"
+              className="text-muted-foreground/60 grayscale"
             >
               {node}
             </li>

@@ -298,7 +298,7 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section className="mx-auto w-full max-w-7xl px-5 sm:px-8 -mb-24">
+    <section className="mx-auto w-full max-w-7xl px-5 sm:px-8 mt-52 mb-32">
       <h2 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
         Set up in one prompt.
       </h2>
@@ -306,14 +306,14 @@ export function HowItWorks() {
         Just hand it to Claude Code or Codex and get going.
       </p>
 
-      <div className="mt-16 grid gap-12 md:grid-cols-3 md:gap-20">
+      <div className="mt-20 grid gap-12 md:grid-cols-3 md:gap-20">
         {STEPS.map((step) => (
           <div key={step.n}>
             {/* arts sit a little narrower than the text column */}
             <div className="w-11/12">
               <step.Art />
             </div>
-            <h3 className="mt-5 font-display text-lg font-semibold tracking-tight">
+            <h3 className="mt-8 font-display text-lg font-semibold tracking-tight">
               <span className="mr-2 text-muted-foreground/60">{step.n}</span>
               {step.title}
             </h3>

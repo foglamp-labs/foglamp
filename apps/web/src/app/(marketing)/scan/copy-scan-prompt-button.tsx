@@ -66,12 +66,12 @@ export function CopyScanPromptButton({ className }: { className?: string }) {
         }}
         aria-label="Copy the scan prompt"
       >
-        Copy scan prompt
         <CopyIcon
           copied={copied}
-          className="size-4 mt-px"
+          className="size-4"
           checkClassName="size-4 text-green-600 mt-px"
         />
+        Copy scan prompt
       </Button>
     </BorderBeam>
   );
