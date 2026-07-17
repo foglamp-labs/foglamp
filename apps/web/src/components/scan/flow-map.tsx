@@ -2,8 +2,16 @@
 
 import type { NodeKind, ScanData } from "@foglamp/contracts/scan";
 import { cn } from "@foglamp/ui/lib/utils";
-import { motion } from "motion/react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { BorderBeam } from "border-beam";
+import { motion, useReducedMotion } from "motion/react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { Favicon, ModelIcon } from "./brand";
 import { foldGraph, type FoldedNode } from "./fold-graph";
@@ -17,10 +25,12 @@ import {
   type SizedNode,
 } from "./layout";
 
-// Solid (no alpha) but subtle: the theme's border color, nudged toward the
-// foreground just enough to read on the canvas grid.
+// Mixed from the OPAQUE background (never from --border, which carries alpha
+// in dark mode): translucent strokes stack where routes share a channel,
+// reading as doubled lines in different shades. Opaque same-color strokes
+// overlap invisibly.
 const EDGE_STROKE =
-  "color-mix(in oklab, var(--border) 65%, var(--muted-foreground) 35%)";
+  "color-mix(in oklab, var(--background) 70%, var(--muted-foreground) 30%)";
 
 const HEAD_H = 56;
 const CHIP_ROW_H = 24;
@@ -38,10 +48,164 @@ function nodeHeight(n: FoldedNode): number {
   return HEAD_H + n.embeds.length * CHIP_ROW_H + 12;
 }
 
+// Agents "light up" once the map has settled: the same colorful BorderBeam as
+// the landing page's copy button, ramped in gently after the node's entrance
+// animation and kept subtle.
+const AGENT_BEAM_STRENGTH = 0.4;
+const AGENT_BEAM_STEP = 0.02;
+
+function AgentBeam({
+  delay,
+  children,
+}: {
+  /** Seconds until the beam starts ramping in (after the node's entrance). */
+  delay: number;
+  children: ReactNode;
+}) {
+  const reduce = useReducedMotion() ?? false;
+  const [strength, setStrength] = useState(0);
+  // Per-agent random offset — staggered starts also desync the beams' spin
+  // phases, so agents don't all glow in lockstep.
+  const jitter = useRef(Math.random() * 4);
+  useEffect(() => {
+    if (reduce) {
+      setStrength(AGENT_BEAM_STRENGTH);
+      return;
+    }
+    let iv: ReturnType<typeof setInterval> | undefined;
+    const t = setTimeout(() => {
+      iv = setInterval(() => {
+        setStrength((s) => {
+          const next = +(s + AGENT_BEAM_STEP).toFixed(3);
+          if (next >= AGENT_BEAM_STRENGTH) {
+            if (iv) clearInterval(iv);
+            return AGENT_BEAM_STRENGTH;
+          }
+          return next;
+        });
+      }, 16);
+    }, (delay + jitter.current) * 1000);
+    return () => {
+      clearTimeout(t);
+      if (iv) clearInterval(iv);
+    };
+  }, [delay, reduce]);
+  return (
+    <BorderBeam
+      // "md" keeps the glow ON the border (a slow traveling beam) — the
+      // pulse presets bloom across the card body, which washed out content.
+      size="md"
+      colorVariant="colorful"
+      theme="auto"
+      strength={strength}
+      duration={6}
+      borderRadius={12}
+      // corner-squircle: the beam clips children with a plain 24px radius,
+      // which reads rounder than the cards' squircle corners — give its
+      // radius the same corner-shape so agent cards match the others.
+      className="h-full w-full rounded-3xl "
+    >
+      {children}
+    </BorderBeam>
+  );
+}
+
+// A discrete traveling beam: a glowing dot that occasionally runs the edge
+// path and "hits" the target node (flashing its border in the beam's color).
+// Uses a WAAPI offset-path animation — compositor-friendly, unlike the old
+// always-on dashed pulse, which repainted the entire full-size SVG every
+// frame and made big maps feel laggy. Sparse by design: one run, long rest.
+const BEAM_SPEED = 0.25; // px per ms — an unhurried glide
+const BEAM_TRAVEL_MIN_MS = 1600;
+const BEAM_TRAVEL_MAX_MS = 5000;
+const BEAM_REST_MS = 30000; // + up to 25s jitter between runs
+
+function BeamPulse({
+  d,
+  length,
+  color,
+  dimmed,
+  compact,
+  onArrive,
+}: {
+  d: string;
+  /** Polyline length in px — travel time scales with it (constant speed). */
+  length: number;
+  color: string;
+  dimmed: boolean;
+  /** Shorter comet for small embeds, where full-size beams read too long. */
+  compact?: boolean;
+  onArrive: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const arriveRef = useRef(onArrive);
+  arriveRef.current = onArrive;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof el.animate !== "function") return;
+    let stopped = false;
+    let anim: Animation | null = null;
+    let timer: ReturnType<typeof setTimeout>;
+    const travelMs = clamp(
+      length / BEAM_SPEED,
+      BEAM_TRAVEL_MIN_MS,
+      BEAM_TRAVEL_MAX_MS
+    );
+    const run = () => {
+      if (stopped) return;
+      anim?.cancel(); // release the previous run's forward-fill
+      el.style.opacity = "1";
+      // fill: "forwards" holds the beam at the target while the 0.25s opacity
+      // fade plays — without it the effect ends first and the beam snaps back
+      // to the path start, flashing there mid-fade.
+      anim = el.animate(
+        [{ offsetDistance: "0%" }, { offsetDistance: "100%" }],
+        { duration: travelMs, easing: "ease-in-out", fill: "forwards" }
+      );
+      anim.onfinish = () => {
+        el.style.opacity = "0";
+        if (stopped) return;
+        arriveRef.current();
+        timer = setTimeout(run, BEAM_REST_MS + Math.random() * 25000);
+      };
+    };
+    timer = setTimeout(run, 1200 + Math.random() * BEAM_REST_MS);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      anim?.cancel();
+    };
+  }, [d, length]);
+  return (
+    <div className={cn("transition-opacity duration-300", dimmed && "opacity-15")}>
+      {/* A comet, not a dot: a pill rotated along the path (offsetRotate auto
+          keeps its x-axis on the travel direction), bright at the leading
+          edge with a fading tail. */}
+      <div
+        ref={ref}
+        className={cn(
+          "pointer-events-none absolute top-0 left-0 h-[3px] rounded-full",
+          compact ? "w-4" : "w-8"
+        )}
+        style={{
+          offsetPath: `path("${d}")`,
+          offsetRotate: "auto",
+          background: `linear-gradient(to right, transparent, ${color})`,
+          boxShadow: `0 0 10px ${color}66`,
+          opacity: 0,
+          transition: "opacity 0.25s ease",
+        }}
+      />
+    </div>
+  );
+}
+
 export function FlowMap({
   graph,
   focusKinds,
   embedded = false,
+  frame = false,
+  direction = "RIGHT",
 }: {
   graph: ScanData["graph"];
   focusKinds: NodeKind[] | null;
@@ -51,6 +215,13 @@ export function FlowMap({
    * default.
    */
   embedded?: boolean;
+  /**
+   * Iframe-embed mode (/scan/<slug>/embed): fully interactive like the full
+   * page, but fits with no sidebar clearance — there is no floating sidebar.
+   */
+  frame?: boolean;
+  /** Flow direction — DOWN suits portrait containers (mobile hero). */
+  direction?: "RIGHT" | "DOWN";
 }) {
   const folded = useMemo(() => foldGraph(graph), [graph]);
 
@@ -72,17 +243,22 @@ export function FlowMap({
         height: nodeHeight(n),
       })
     );
-    layoutGraph(sized, folded.edges, { compact: embedded }).then((l) => {
-      if (!cancelled) setLayout(l);
-    });
+    layoutGraph(sized, folded.edges, { compact: embedded, direction }).then(
+      (l) => {
+        if (!cancelled) setLayout(l);
+      }
+    );
     return () => {
       cancelled = true;
     };
-  }, [folded]);
+  }, [folded, direction]);
 
-  // Entrance choreography: things appear left-to-right, following the flow.
-  const delayAt = (x: number) =>
-    0.15 + (x / Math.max(1, layout?.width ?? 1)) * 0.9;
+  // Entrance choreography: things appear along the flow direction.
+  const delayAt = (x: number, y = 0) =>
+    0.15 +
+    ((x + y) /
+      Math.max(1, (layout?.width ?? 1) + (layout?.height ?? 0))) *
+      0.9;
   const nodeById = useMemo(
     () => new Map((layout?.nodes ?? []).map((n) => [n.id, n])),
     [layout]
@@ -130,6 +306,36 @@ export function FlowMap({
         .map((n) => n.id)
     );
   }, [focusKinds, folded.nodes]);
+
+  // Beam-hit rings: one overlay per node/group, flashed imperatively when a
+  // beam arrives (refs, not state — a flash shouldn't re-render the graph).
+  const hitRings = useRef(new Map<string, HTMLDivElement>());
+  const hitTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const registerHitRing = (id: string) => (el: HTMLDivElement | null) => {
+    if (el) hitRings.current.set(id, el);
+    else hitRings.current.delete(id);
+  };
+  function flashTarget(id: string, color: string) {
+    const el = hitRings.current.get(id);
+    if (!el) return;
+    el.style.borderColor = color;
+    el.style.opacity = "0.55"; // soft glow, not a hard outline
+    const prev = hitTimers.current.get(id);
+    if (prev) clearTimeout(prev);
+    hitTimers.current.set(
+      id,
+      setTimeout(() => {
+        el.style.opacity = "0";
+      }, 600)
+    );
+  }
+  useEffect(() => {
+    const timers = hitTimers.current;
+    return () => {
+      for (const t of timers.values()) clearTimeout(t);
+      timers.clear();
+    };
+  }, []);
 
   const nodeActive = (id: string) =>
     (!kindActive || kindActive.has(id)) && (!trace || trace.nodes.has(id));
@@ -189,9 +395,9 @@ export function FlowMap({
   useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el || fitted.current || !layout || layout.width === 0) return;
-    const padL = embedded ? 0 : 432; // clear the floating sidebar
-    const padR = embedded ? 0 : 48;
-    const padY = embedded ? 0 : 56;
+    const padL = embedded ? 0 : frame ? 24 : 432; // clear the floating sidebar
+    const padR = embedded ? 0 : frame ? 24 : 48;
+    const padY = embedded ? 0 : frame ? 24 : 56;
     const availW = Math.max(200, el.clientWidth - padL - padR);
     const availH = Math.max(200, el.clientHeight - padY * 2);
     const kFit = Math.min(availW / layout.width, availH / layout.height);
@@ -199,7 +405,7 @@ export function FlowMap({
       // The whole graph fits at a readable size — center it.
       // Embeds may upscale a little — a small demo graph should fill its
       // marketing slot. The full viewer never upscales (fat borders).
-      const k = clamp(kFit, 0.3, embedded ? 1.35 : 1);
+      const k = clamp(kFit, 0.3, embedded ? 1.6 : 1);
       tRef.current = {
         x: padL + (availW - layout.width * k) / 2,
         y: padY + (availH - layout.height * k) / 2,
@@ -218,7 +424,7 @@ export function FlowMap({
     }
     fitted.current = true;
     applyTransform();
-  }, [layout, embedded]);
+  }, [layout, embedded, frame]);
 
   // Wheel zoom (and trackpad pinch, which arrives as ctrlKey+wheel). Native
   // listener so we can preventDefault (React's onWheel is passive).
@@ -227,18 +433,28 @@ export function FlowMap({
     if (!el || embedded) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const cx = e.clientX - rect.left;
-      const cy = e.clientY - rect.top;
       const prev = tRef.current;
-      const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.0018));
-      const k = clamp(prev.k * factor, 0.2, 3);
-      const ratio = k / prev.k;
-      tRef.current = {
-        k,
-        x: cx - (cx - prev.x) * ratio,
-        y: cy - (cy - prev.y) * ratio,
-      };
+      if (e.ctrlKey) {
+        // Trackpad pinch arrives as ctrlKey+wheel — the only gesture that zooms.
+        const rect = el.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const cy = e.clientY - rect.top;
+        const factor = Math.exp(-e.deltaY * 0.012);
+        const k = clamp(prev.k * factor, 0.2, 3);
+        const ratio = k / prev.k;
+        tRef.current = {
+          k,
+          x: cx - (cx - prev.x) * ratio,
+          y: cy - (cy - prev.y) * ratio,
+        };
+      } else {
+        // Two-finger scroll (either axis) pans the canvas.
+        tRef.current = {
+          ...prev,
+          x: prev.x - e.deltaX,
+          y: prev.y - e.deltaY,
+        };
+      }
       applyTransform();
     };
     el.addEventListener("wheel", onWheel, { passive: false });
@@ -332,6 +548,11 @@ export function FlowMap({
                 <span className="absolute top-4 left-4 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {g.label}
                 </span>
+                <div
+                  ref={registerHitRing(g.id)}
+                  className="pointer-events-none absolute inset-0 rounded-[32px] corner-squircle border opacity-0 transition-[opacity,border-color] duration-500"
+                  style={{ borderColor: "transparent" }}
+                />
               </motion.div>
             ))}
 
@@ -343,8 +564,6 @@ export function FlowMap({
             >
               {layout.edges.map((e, i) => {
                 const d = edgePath(e.points);
-                const sourceKind =
-                  nodeById.get(foldedEdgeAt(e.orig[0]!).from)?.kind ?? "entry";
                 const delay = delayAt(xOf.get(e.from) ?? 0) + 0.25;
                 const active = edgeActive(e);
                 return (
@@ -364,21 +583,6 @@ export function FlowMap({
                       animate={{ pathLength: 1, opacity: 1 }}
                       transition={{ duration: 0.6, delay, ease: "easeOut" }}
                     />
-                    {/* traveling pulse — pure CSS so N edges don't each run a
-                        JS animation loop; sparse dash so it doesn't pollute */}
-                    <path
-                      d={d}
-                      fill="none"
-                      stroke={KIND_STYLES[sourceKind].hex}
-                      strokeWidth={1.6}
-                      strokeLinecap="round"
-                      strokeDasharray="4 156"
-                      strokeOpacity={0.55}
-                      style={{
-                        opacity: 0,
-                        animation: `scan-fade 0.5s ease ${delay + 0.8}s forwards, scan-pulse 5.5s linear ${delay + 0.8}s infinite`,
-                      }}
-                    />
                     <motion.path
                       d={arrowHead(e.points)}
                       fill="none"
@@ -395,14 +599,53 @@ export function FlowMap({
               })}
             </svg>
 
+            {/* discrete traveling beams — one per edge, sparse and staggered */}
             {layout.edges.map((e, i) => {
-              if (!e.label) return null;
-              const mid = labelAnchor(e.points);
+              const sourceKind =
+                nodeById.get(foldedEdgeAt(e.orig[0]!).from)?.kind ?? "entry";
+              const hex = KIND_STYLES[sourceKind].hex;
+              let length = 0;
+              for (let p = 0; p < e.points.length - 1; p++) {
+                length += Math.hypot(
+                  e.points[p + 1]!.x - e.points[p]!.x,
+                  e.points[p + 1]!.y - e.points[p]!.y
+                );
+              }
+              return (
+                <BeamPulse
+                  key={`b${i}`}
+                  d={edgePath(e.points)}
+                  length={length}
+                  color={hex}
+                  dimmed={!edgeActive(e)}
+                  compact={embedded}
+                  onArrive={() => flashTarget(e.to, hex)}
+                />
+              );
+            })}
+
+            {layout.edges.map((e, i) => {
+              // Explicit labels ("charges on trial end") are always shown;
+              // kind-only labels ("reads", "writes") are boilerplate that
+              // piles up in shared channels, so they surface only while the
+              // edge is part of a traced flow.
+              const kindLabel = e.orig
+                .map((oi) => foldedEdgeAt(oi).kind)
+                .find(Boolean);
+              const text = e.label ?? kindLabel;
+              if (!text) return null;
+              const kindOnly = !e.label;
+              const inTrace =
+                trace !== null && e.orig.some((oi) => trace.edges.has(oi));
+              if (kindOnly && !inTrace) return null;
+              // Explicit labels sit where ELK routed space for them; trace-
+              // revealed kind labels fall back to the longest-segment anchor.
+              const mid = e.labelPos ?? labelAnchor(e.points);
               if (!mid) return null;
-              const delay = delayAt(xOf.get(e.from) ?? 0) + 0.6;
+              const delay = kindOnly ? 0 : delayAt(xOf.get(e.from) ?? 0) + 0.6;
               return (
                 <motion.span
-                  key={`l${i}`}
+                  key={`l${i}${kindOnly ? "k" : ""}`}
                   className={cn(
                     "absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-background px-2 py-0.5 text-xs text-muted-foreground/80 transition-opacity duration-300",
                     !edgeActive(e) && "opacity-15"
@@ -412,7 +655,7 @@ export function FlowMap({
                   animate={{ opacity: 1 }}
                   transition={{ delay, duration: 0.3 }}
                 >
-                  {e.label}
+                  {text}
                 </motion.span>
               );
             })}
@@ -421,6 +664,101 @@ export function FlowMap({
               const style = KIND_STYLES[n.kind];
               const Glyph = style.Glyph;
               const dim = !nodeActive(n.id);
+              const card = (
+                <div
+                  onPointerUp={
+                    embedded
+                      ? undefined
+                      : (e) => {
+                          if (drag.current?.moved) return;
+                          e.stopPropagation();
+                          drag.current = null;
+                          setTraceRoot((cur) => (cur === n.id ? null : n.id));
+                        }
+                  }
+                  className={cn(
+                    "flex h-full flex-col overflow-hidden rounded-3xl corner-squircle bg-card text-card-foreground border dark:border-none dark:shadow-(--custom-shadow)",
+                    !embedded && "cursor-pointer"
+                  )}
+                >
+                  <div className="flex h-14 flex-none items-center gap-2.5 px-3.5">
+                    <span
+                      className={cn(
+                        "flex size-7 flex-none items-center justify-center rounded-2xl corner-squircle",
+                        style.icon
+                      )}
+                    >
+                      {n.kind === "model" ? (
+                        <ModelIcon
+                          label={n.label}
+                          domain={n.domain}
+                          className="size-4"
+                        />
+                      ) : (
+                        <Favicon
+                          domain={n.domain}
+                          className="size-4 rounded-sm"
+                          fallback={
+                            <Glyph
+                              className={cn("size-4", style.glyphClass)}
+                              stroke={2}
+                            />
+                          }
+                        />
+                      )}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm font-medium leading-snug">
+                        {n.label}
+                      </span>
+                      {n.sub ? (
+                        <span className="truncate text-xs leading-snug text-muted-foreground">
+                          {n.sub}
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                  {n.embeds.length > 0 ? (
+                    <div className="mx-4 flex flex-1 flex-col items-start gap-2 border-t border-muted pt-2.5 pb-2.5">
+                      {n.embeds.map((em) => {
+                        const emStyle = KIND_STYLES[em.kind];
+                        const EmGlyph = emStyle.Glyph;
+                        return (
+                          <span
+                            key={em.id}
+                            className="flex max-w-full items-center gap-1.5"
+                          >
+                            {em.kind === "model" ? (
+                              <ModelIcon
+                                label={em.label}
+                                domain={em.domain}
+                                className="size-3"
+                              />
+                            ) : (
+                              <Favicon
+                                domain={em.domain}
+                                className="size-3 rounded-sm"
+                                fallback={
+                                  <EmGlyph
+                                    className={cn(
+                                      "size-3 text-muted-foreground",
+                                      emStyle.glyphClass
+                                    )}
+                                    stroke={2}
+                                  />
+                                }
+                              />
+                            )}
+                            <span className="truncate text-xs font-medium">
+                              {em.label}
+                            </span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
               return (
                 <motion.div
                   key={n.id}
@@ -437,103 +775,29 @@ export function FlowMap({
                     type: "spring",
                     duration: 0.55,
                     bounce: 0.25,
-                    delay: delayAt(n.x),
+                    delay: delayAt(n.x, n.y),
                   }}
                 >
+                  {/* Dim lives on this wrapper so the agent beam fades with
+                      the card when a trace/legend focus mutes the node. */}
                   <div
-                    onPointerUp={
-                      embedded
-                        ? undefined
-                        : (e) => {
-                            if (drag.current?.moved) return;
-                            e.stopPropagation();
-                            drag.current = null;
-                            setTraceRoot((cur) => (cur === n.id ? null : n.id));
-                          }
-                    }
                     className={cn(
-                      "flex h-full flex-col overflow-hidden rounded-3xl corner-squircle bg-card text-card-foreground shadow-(--custom-shadow) transition-opacity duration-300",
-                      !embedded && "cursor-pointer",
+                      "h-full transition-opacity duration-300",
                       dim && "opacity-25"
                     )}
                   >
-                    <div className="flex h-14 flex-none items-center gap-2.5 px-3.5">
-                      <span
-                        className={cn(
-                          "flex size-7 flex-none items-center justify-center rounded-2xl corner-squircle",
-                          style.icon
-                        )}
-                      >
-                        {n.kind === "model" ? (
-                          <ModelIcon
-                            label={n.label}
-                            domain={n.domain}
-                            className="size-4"
-                          />
-                        ) : (
-                          <Favicon
-                            domain={n.domain}
-                            className="size-4 rounded-sm"
-                            fallback={
-                              <Glyph
-                                className={cn("size-4", style.glyphClass)}
-                                stroke={2}
-                              />
-                            }
-                          />
-                        )}
-                      </span>
-                      <span className="flex min-w-0 flex-col">
-                        <span className="truncate text-sm font-medium leading-snug">
-                          {n.label}
-                        </span>
-                        {n.sub ? (
-                          <span className="truncate text-xs leading-snug text-muted-foreground">
-                            {n.sub}
-                          </span>
-                        ) : null}
-                      </span>
-                    </div>
-                    {n.embeds.length > 0 ? (
-                      <div className="mx-4 flex flex-1 flex-col items-start gap-2 border-t border-muted pt-2.5 pb-2.5">
-                        {n.embeds.map((em) => {
-                          const emStyle = KIND_STYLES[em.kind];
-                          const EmGlyph = emStyle.Glyph;
-                          return (
-                            <span
-                              key={em.id}
-                              className="flex max-w-full items-center gap-1.5"
-                            >
-                              {em.kind === "model" ? (
-                                <ModelIcon
-                                  label={em.label}
-                                  domain={em.domain}
-                                  className="size-3"
-                                />
-                              ) : (
-                                <Favicon
-                                  domain={em.domain}
-                                  className="size-3 rounded-sm"
-                                  fallback={
-                                    <EmGlyph
-                                      className={cn(
-                                        "size-3 text-muted-foreground",
-                                        emStyle.glyphClass
-                                      )}
-                                      stroke={2}
-                                    />
-                                  }
-                                />
-                              )}
-                              <span className="truncate text-xs font-medium">
-                                {em.label}
-                              </span>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    ) : null}
+                    {n.kind === "agent" ? (
+                      <AgentBeam delay={delayAt(n.x, n.y) + 0.7}>{card}</AgentBeam>
+                    ) : (
+                      card
+                    )}
                   </div>
+                  {/* beam-hit ring — flashed in the arriving beam's color */}
+                  <div
+                    ref={registerHitRing(n.id)}
+                    className="pointer-events-none absolute inset-0 rounded-3xl corner-squircle border opacity-0 transition-[opacity,border-color] duration-500"
+                    style={{ borderColor: "transparent" }}
+                  />
                 </motion.div>
               );
             })}
@@ -548,7 +812,7 @@ export function FlowMap({
         <motion.div
           key={tracedNode.id}
           ref={popoverRef}
-          className="border-overlay absolute z-30 w-60 rounded-xl bg-card p-3 shadow-(--custom-shadow)"
+          className="absolute z-30 w-60 rounded-xl bg-card p-4 shadow-(--custom-shadow)"
           style={{
             left: tNow.x + tracedNode.x * tNow.k,
             top: tNow.y + (tracedNode.y + tracedNode.height + 10) * tNow.k,
@@ -557,19 +821,27 @@ export function FlowMap({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            <span
-              className={cn(
-                "size-1.5 rounded-full",
-                KIND_STYLES[tracedNode.kind].bar
-              )}
-            />
+          <div className="flex items-center gap-1 text-[11px] font-medium  tracking-wide text-muted-foreground">
+            {(() => {
+              const s = KIND_STYLES[tracedNode.kind];
+              return (
+                <s.Glyph
+                  className={cn("size-3 mb-px", s.text, s.glyphClass)}
+                  stroke={2}
+                />
+              );
+            })()}
             {KIND_STYLES[tracedNode.kind].label}
           </div>
           <div className="mt-1 text-sm font-medium">{tracedNode.label}</div>
           {(tracedNode.detail ?? tracedNode.sub) ? (
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {tracedNode.detail ?? tracedNode.sub}
+            </p>
+          ) : null}
+          {tracedNode.sourceRef ? (
+            <p className="mt-1.5 truncate font-mono text-[10px] text-muted-foreground/80">
+              {tracedNode.sourceRef}
             </p>
           ) : null}
         </motion.div>

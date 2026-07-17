@@ -3,7 +3,12 @@ import { db } from "@foglamp/db";
 import type { Context } from "hono";
 import { getConnInfo } from "hono/bun";
 
-import { createOrUpdateScan, getScanBySlug } from "@foglamp/api/services/scans";
+import {
+  claimScan,
+  createOrUpdateScan,
+  getPreviousScanBySlug,
+  getScanBySlug,
+} from "@foglamp/api/services/scans";
 
 import type { AppEnv } from "./evlog";
 import { checkScanRateLimit } from "./rateLimit";
@@ -101,4 +106,47 @@ export async function handleScanGet(c: Context<AppEnv>): Promise<Response> {
   const data = await getScanBySlug(db, slug);
   if (!data) return c.json({ error: "not found" }, 404);
   return c.json(data);
+}
+
+// GET /scan/:slug/previous — the version before the scan's last update, for
+// the "what changed" diff. 404 when the scan is missing or never updated.
+export async function handleScanGetPrevious(c: Context<AppEnv>): Promise<Response> {
+  const slug = c.req.param("slug");
+  if (!slug) return c.json({ error: "not found" }, 404);
+  const data = await getPreviousScanBySlug(db, slug);
+  if (!data) return c.json({ error: "not found" }, 404);
+  return c.json(data);
+}
+
+// POST /scan/:slug/claim — a signed-in user proves ownership with the raw
+// edit token; the scan is tied to their account and stops expiring.
+export async function handleScanClaim(c: Context<AppEnv>): Promise<Response> {
+  const session = c.get("session");
+  if (!session?.user?.id) {
+    return c.json({ error: "Not authenticated" }, 401);
+  }
+  const slug = c.req.param("slug");
+  if (!slug) return c.json({ error: "not found" }, 404);
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid JSON body" }, 400);
+  }
+  const editToken =
+    body && typeof body === "object" && "editToken" in body
+      ? (body as { editToken?: unknown }).editToken
+      : undefined;
+  if (typeof editToken !== "string" || editToken.length === 0) {
+    return c.json({ error: "editToken required" }, 400);
+  }
+
+  const outcome = await claimScan(db, { slug, editToken, userId: session.user.id });
+  if (!outcome.ok) {
+    return outcome.reason === "not_found"
+      ? c.json({ error: "not found" }, 404)
+      : c.json({ error: "invalid edit token" }, 403);
+  }
+  return c.json({ ok: true, slug });
 }

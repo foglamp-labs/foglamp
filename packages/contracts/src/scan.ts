@@ -3,9 +3,9 @@
 // Single source of truth shared by: the renderer (apps/web), the create/read
 // service (packages/api), the DB row type (packages/db), and the extractor
 // prompt/skill. The "every scan looks consistent" property comes from the
-// *caps* here — the agent is forced to prioritize (top 3 models, top 5 tools,
-// ≤18 nodes, short labels) rather than dump everything, so the fixed layout
-// never overflows.
+// *caps* here — the agent is forced to prioritize (top 3 models, top 10 tools,
+// short labels, ≤60 nodes) rather than dump everything, so every scan reads
+// the same way even when the map is big.
 //
 // The agent never picks colors, icons, or positions. It emits canonical
 // `domain`s (e.g. "openai.com", "exa.ai") that the renderer turns into real
@@ -26,6 +26,8 @@ export const MAX_NODE_LABEL = 28;
  *  - agent:    an agent or named generateText/streamText flow
  *  - model:    an LLM (tag `domain` with the provider, e.g. "anthropic.com")
  *  - tool:     a tool/function the model can call (Exa, Firecrawl, a DB query…)
+ *  - service:  an internal business-logic module/pipeline (billing, ingestion,
+ *              a queue worker, a domain service) — code the project owns
  *  - store:    a datastore (Postgres, ClickHouse, Redis, a vector index…)
  *  - external: a third-party service/API the flow talks to
  */
@@ -35,10 +37,19 @@ export const NodeKind = z.enum([
   "agent",
   "model",
   "tool",
+  "service",
   "store",
   "external",
 ]);
 export type NodeKind = z.infer<typeof NodeKind>;
+
+/**
+ * Optional edge semantics — what the connection *does*. Rendered quietly:
+ * revealed when the viewer traces a flow, unlike an explicit `label` which is
+ * always visible.
+ */
+export const EdgeKind = z.enum(["calls", "reads", "writes", "triggers"]);
+export type EdgeKind = z.infer<typeof EdgeKind>;
 
 /** A logo-bearing item in the left rail (a model, tool, or integration). */
 const RailItem = z.object({
@@ -65,6 +76,8 @@ const GraphNode = z.object({
   /** Pipeline stage this node belongs to (e.g. "Setup pipeline"). Nodes sharing
    *  a group render as one labeled vertical stack. */
   group: z.string().min(1).max(24).optional(),
+  /** Where this lives in the repo (e.g. "src/agents/support.ts:42"). */
+  sourceRef: z.string().min(1).max(120).optional(),
 });
 export type GraphNode = z.infer<typeof GraphNode>;
 
@@ -73,6 +86,8 @@ const GraphEdge = z.object({
   to: z.string().min(1).max(64),
   /** Optional short edge label (e.g. "on alert", "retry"). */
   label: z.string().max(24).optional(),
+  /** Optional edge semantics; used as the label when `label` is omitted. */
+  kind: EdgeKind.optional(),
 });
 export type GraphEdge = z.infer<typeof GraphEdge>;
 
@@ -112,11 +127,12 @@ export const ScanData = z
     /** Third-party integrations. Max 10 — the rail scrolls. */
     topIntegrations: z.array(RailItem).max(10).default([]),
 
-    /** The flow map. Capped so the deterministic layout always fits the canvas. */
+    /** The flow map — one big map, business logic included. Caps exist only
+     *  to bound pathological payloads; big maps are welcome (the viewer pans). */
     graph: z
       .object({
-        nodes: z.array(GraphNode).min(1).max(24),
-        edges: z.array(GraphEdge).max(48).default([]),
+        nodes: z.array(GraphNode).min(1).max(60),
+        edges: z.array(GraphEdge).max(120).default([]),
       })
       .refine(
         (g) => {

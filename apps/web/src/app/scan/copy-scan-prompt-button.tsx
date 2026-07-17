@@ -68,8 +68,8 @@ export function CopyScanPromptButton({ className }: { className?: string }) {
       >
         <CopyIcon
           copied={copied}
-          className="size-4"
-          checkClassName="size-4 text-green-600 mt-px"
+          className="size-4 mb-px"
+          checkClassName="size-4 text-green-600 mb-px"
         />
         Copy scan prompt
       </Button>

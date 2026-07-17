@@ -71,6 +71,13 @@
       "when": 1782872044351,
       "tag": "0009_sudden_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784216246302,
+      "tag": "0010_uneven_dragon_man",
+      "breakpoints": true
     }
   ]
 }

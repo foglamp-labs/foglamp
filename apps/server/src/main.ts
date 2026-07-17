@@ -20,7 +20,12 @@ import { cors } from "hono/cors";
 import { evlog, type AppEnv } from "./evlog";
 import { handleFoggy } from "./foggy";
 import { pruneFoggyRateLimits } from "./foggyRateLimit";
-import { handleScanCreate, handleScanGet } from "./scan";
+import {
+  handleScanClaim,
+  handleScanCreate,
+  handleScanGet,
+  handleScanGetPrevious,
+} from "./scan";
 import { pruneScanRateLimits } from "./rateLimit";
 
 const app = new Hono<AppEnv>();
@@ -104,6 +109,10 @@ app.post(
   handleScanCreate,
 );
 app.get("/scan/:slug", handleScanGet);
+// Previous version of a scan (pre-last-update) — powers the changes card.
+app.get("/scan/:slug/previous", handleScanGetPrevious);
+// Claim a scan into the signed-in user's account (stops the 90-day expiry).
+app.post("/scan/:slug/claim", handleScanClaim);
 // Legacy aliases from when the product was called "poster" — agents with an
 // old prompt or lock file still resolve.
 app.post(

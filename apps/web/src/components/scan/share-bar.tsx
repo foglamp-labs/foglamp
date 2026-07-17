@@ -103,7 +103,7 @@ export function ShareBar({
       {/* Legend — bottom center, grouped categories. Hovering a group
           spotlights every node of (or embedding) those kinds. */}
       {kinds.length > 0 ? (
-        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4">
+        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-full bg-card/70 px-5 py-2.5 shadow-(--custom-shadow) backdrop-blur-md">
           {LEGEND_GROUPS.filter((g) =>
             g.kinds.some((k) => kinds.includes(k))
           ).map((g) => {
@@ -125,11 +125,11 @@ export function ShareBar({
                   dimmed && "opacity-40"
                 )}
               >
-                <span
+                <g.Glyph
                   className={cn(
-                    "size-1.5 rounded-full transition-transform",
-                    g.dot,
-                    active ? "scale-125" : "opacity-80"
+                    "size-3 transition-transform",
+                    g.iconClass,
+                    active ? "scale-110" : "opacity-80"
                   )}
                 />
                 {g.label}

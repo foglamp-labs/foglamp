@@ -5,15 +5,29 @@ import { Card, CardContent } from "@foglamp/ui/components/card";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAiAgent,
+  IconArrowBarToDown,
   IconBox,
+  IconList,
   IconPlug,
   type IconProps,
+  IconSearch,
   IconSitemapFilled,
   IconTool,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 
 import { Favicon, ModelIcon } from "./brand";
+
+// Tool icon by name convention — same logic as the HUD's toolGlyph
+// (packages/sdk/src/hud/react/FoglampHUD.tsx): search/list/get prefixes map
+// to recognizable icons, everything else keeps the generic mark.
+function toolIcon(item: RailItem): ComponentType<IconProps> {
+  const n = item.label.toLowerCase();
+  if (/^(search|find|query|lookup)/.test(n)) return IconSearch;
+  if (/^(list|ls|index|all)/.test(n)) return IconList;
+  if (/^(get|fetch|read|load)/.test(n)) return IconArrowBarToDown;
+  return IconTool;
+}
 
 function RailRow({
   item,
@@ -56,10 +70,10 @@ function SectionHeader({
 export function LeftRail({ data }: { data: ScanData }) {
   const { topModels, topTools, topIntegrations } = data;
   return (
-    <Card className="flex max-h-[50dvh] flex-col overflow-hidden rounded-[36px] py-0">
+    <Card className="flex max-h-[50dvh] flex-col overflow-hidden rounded-[36px] py-0 pr-12 no-scrollbar">
       {/* Scroll (and all vertical padding) lives on the content so the fade
           mask reaches the card edges and dissolves rows, not the card. */}
-      <CardContent className="scroll-fade scrollbar-none flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
+      <CardContent className="scroll-fade scrollbar-none flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5 no-scrollbar">
         {topModels.length > 0 ? (
           <section className="mt-1 px-1">
             <SectionHeader
@@ -91,7 +105,7 @@ export function LeftRail({ data }: { data: ScanData }) {
             />
             <ul className="flex list-none flex-col gap-3">
               {topTools.map((t) => (
-                <RailRow key={t.id} item={t} FallbackIcon={IconBox} />
+                <RailRow key={t.id} item={t} FallbackIcon={toolIcon(t)} />
               ))}
             </ul>
           </section>

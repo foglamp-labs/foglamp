@@ -20,6 +20,7 @@ const KIND_HEX: Record<string, string> = {
   agent: "#f97316",
   model: "#3b82f6",
   tool: "#8b5cf6",
+  service: "#ec4899",
   store: "#10b981",
   external: "#0ea5e9",
 };

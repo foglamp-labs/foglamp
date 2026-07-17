@@ -21,6 +21,7 @@ export interface FoldedNode {
   sub?: string;
   detail?: string;
   group?: string;
+  sourceRef?: string;
   /** Models and tools this node uses, rendered inline (models first). */
   embeds: Embed[];
 }
@@ -62,6 +63,7 @@ export function foldGraph(graph: ScanData["graph"]): FoldedGraph {
       sub: n.sub,
       detail: n.detail,
       group: n.group,
+      sourceRef: n.sourceRef,
       // models before tools
       embeds: (embedsByNode.get(n.id) ?? []).sort((a, b) =>
         a.kind === b.kind ? 0 : a.kind === "model" ? -1 : 1,

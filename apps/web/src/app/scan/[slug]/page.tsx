@@ -1,25 +1,8 @@
-import { type ScanData, validateScan } from "@foglamp/contracts/scan";
-import { env } from "@foglamp/env/web";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ScanBoard } from "@/components/scan/scan-board";
-
-// SSR uses the internal server URL when set (private network), else the public one.
-const SERVER = env.INTERNAL_SERVER_URL ?? env.NEXT_PUBLIC_SERVER_URL;
-
-async function loadScan(slug: string): Promise<ScanData | null> {
-  try {
-    const res = await fetch(`${SERVER}/scan/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    const parsed = validateScan(await res.json());
-    return parsed.ok ? parsed.data : null;
-  } catch {
-    return null;
-  }
-}
+import { loadPreviousScan, loadScan } from "@/lib/scan-load";
 
 export async function generateMetadata({
   params,
@@ -43,7 +26,10 @@ export default async function ScanPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const data = await loadScan(slug);
+  const [data, previous] = await Promise.all([
+    loadScan(slug),
+    loadPreviousScan(slug),
+  ]);
   if (!data) notFound();
-  return <ScanBoard data={data} />;
+  return <ScanBoard data={data} previous={previous} />;
 }

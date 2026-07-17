@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 
-import { CtaSection } from "@/components/marketing/landing/cta";
-import { ScanPersonalities } from "./scan-personalities";
-import { ScanHero } from "./scan-hero";
+import { ScanLanding } from "./scan-landing";
 
 export const metadata: Metadata = {
   title: "Foglamp Scan",
@@ -17,11 +15,5 @@ export const metadata: Metadata = {
 };
 
 export default function ScanLandingPage() {
-  return (
-    <div className="flex flex-col gap-36">
-      <ScanHero />
-      <ScanPersonalities />
-      <CtaSection />
-    </div>
-  );
+  return <ScanLanding />;
 }
