@@ -67,6 +67,10 @@ export function listTraces(
 		traceName?: string;
 		/** Exact match on the workflow name. */
 		workflowName?: string;
+		/** Exact match on the trace's customer id. */
+		customerId?: string;
+		/** Keep only traces whose LLM spans used this model. */
+		modelId?: string;
 		sort?: { field: TraceSortField; dir: SortDir };
 		limit?: number;
 		offset?: number;
@@ -79,6 +83,10 @@ export function listTraces(
 		conditions.push("agent_name = {agentName:String}");
 	if (params.workflowName !== undefined)
 		conditions.push("workflow_name = {workflowName:String}");
+	if (params.customerId !== undefined)
+		conditions.push("customer_id = {customerId:String}");
+	if (params.modelId !== undefined)
+		conditions.push("has(models, {modelId:String})");
 	if (params.sessionId !== undefined)
 		conditions.push("session_id = {sessionId:String}");
 	if (params.from !== undefined)
@@ -126,6 +134,8 @@ export function listTraces(
 			projectId: params.projectId,
 			agentName: params.agentName,
 			workflowName: params.workflowName,
+			customerId: params.customerId,
+			modelId: params.modelId,
 			sessionId: params.sessionId,
 			from: params.from,
 			to: params.to,
@@ -169,6 +179,8 @@ export function traceListSummary(
 		errorsOnly?: boolean;
 		traceName?: string;
 		workflowName?: string;
+		customerId?: string;
+		modelId?: string;
 	},
 ): Promise<TraceListSummaryRow[]> {
 	// Per-trace filters that narrow the visible set apply here too; the
@@ -179,6 +191,10 @@ export function traceListSummary(
 		having.push("agent_name = {agentName:String}");
 	if (params.workflowName !== undefined)
 		having.push("workflow_name = {workflowName:String}");
+	if (params.customerId !== undefined)
+		having.push("customer_id = {customerId:String}");
+	if (params.modelId !== undefined)
+		having.push("has(models, {modelId:String})");
 	if (params.sessionId !== undefined)
 		having.push("session_id = {sessionId:String}");
 	if (params.from !== undefined)
@@ -206,6 +222,8 @@ export function traceListSummary(
          trace_id,
          any(agent_name) AS agent_name,
          any(workflow_name) AS workflow_name,
+         any(customer_id) AS customer_id,
+         groupUniqArrayMerge(models) AS models,
          any(session_id) AS session_id,
          any(trace_name) AS trace_name,
          min(trace_summary.trace_start) AS trace_start,
@@ -221,6 +239,8 @@ export function traceListSummary(
 			projectId: params.projectId,
 			agentName: params.agentName,
 			workflowName: params.workflowName,
+			customerId: params.customerId,
+			modelId: params.modelId,
 			sessionId: params.sessionId,
 			from: params.from,
 			to: params.to,
@@ -232,6 +252,7 @@ export function traceListSummary(
 export type SessionListRow = {
 	session_id: string;
 	agent_name: string;
+	customer_id: string;
 	turn_count: string;
 	span_count: string;
 	llm_span_count: string;
@@ -268,6 +289,8 @@ export function listSessions(
 		errorsOnly?: boolean;
 		/** Exact-match filter on the session's agent. */
 		agentName?: string;
+		/** Exact-match filter on the session's customer. */
+		customerId?: string;
 		/** Case-insensitive substring match on the session id. */
 		sessionId?: string;
 		sort?: { field: SessionSortField; dir: SortDir };
@@ -282,6 +305,8 @@ export function listSessions(
 	if (params.errorsOnly) having.push("error_count > 0");
 	if (params.agentName !== undefined)
 		having.push("agent_name = {agentName:String}");
+	if (params.customerId !== undefined)
+		having.push("customer_id = {customerId:String}");
 	if (params.sessionId !== undefined)
 		having.push(
 			"positionCaseInsensitive(session_id, {sessionSearch:String}) > 0",
@@ -295,6 +320,7 @@ export function listSessions(
 		`SELECT
        session_id,
        any(agent_name) AS agent_name,
+       any(customer_id) AS customer_id,
        uniqExact(trace_id) AS turn_count,
        sum(span_count) AS span_count,
        sum(llm_span_count) AS llm_span_count,
@@ -315,6 +341,7 @@ export function listSessions(
 			from: params.from,
 			to: params.to,
 			agentName: params.agentName,
+			customerId: params.customerId,
 			sessionSearch: params.sessionId,
 			limit: params.limit ?? 50,
 			offset: params.offset ?? 0,
@@ -350,6 +377,7 @@ export function sessionListSummary(
 		to?: string;
 		errorsOnly?: boolean;
 		agentName?: string;
+		customerId?: string;
 		sessionId?: string;
 	},
 ): Promise<SessionListSummaryRow[]> {
@@ -363,6 +391,8 @@ export function sessionListSummary(
 	if (params.errorsOnly) having.push("error_count > 0");
 	if (params.agentName !== undefined)
 		having.push("agent_name = {agentName:String}");
+	if (params.customerId !== undefined)
+		having.push("customer_id = {customerId:String}");
 	if (params.sessionId !== undefined)
 		having.push(
 			"positionCaseInsensitive(session_id, {sessionSearch:String}) > 0",
@@ -383,6 +413,7 @@ export function sessionListSummary(
        SELECT
          session_id,
          any(agent_name) AS agent_name,
+         any(customer_id) AS customer_id,
          sum(error_count) AS error_count,
          sum(total_cost) AS total_cost,
          sum(total_tokens) AS total_tokens,
@@ -398,6 +429,7 @@ export function sessionListSummary(
 			from: params.from,
 			to: params.to,
 			agentName: params.agentName,
+			customerId: params.customerId,
 			sessionSearch: params.sessionId,
 		},
 	);

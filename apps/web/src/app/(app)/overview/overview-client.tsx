@@ -1124,6 +1124,11 @@ export function OverviewClient() {
                     {customerRows.map((c) => (
                       <BreakdownRow
                         key={c.customerId ?? "~unidentified"}
+                        href={
+                          c.customerId
+                            ? (`/traces?customer=${encodeURIComponent(c.customerId)}` as Route)
+                            : undefined
+                        }
                         renderIcon={(cls) =>
                           c.customerId ? (
                             <CustomerAvatar

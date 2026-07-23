@@ -1,4 +1,5 @@
 import {
+  getCustomerDisplays,
   getSessionTurns,
   listSessions,
   listTraces,
@@ -29,6 +30,7 @@ export async function getSessionList(
     from: Date;
     to: Date;
     agentName?: string;
+    customerId?: string;
     sessionId?: string;
     errorsOnly?: boolean;
     sort?: { field: SessionSortField; dir: SortDir };
@@ -42,6 +44,7 @@ export async function getSessionList(
     from: toClickHouseDateTime(input.from),
     to: toClickHouseDateTime(input.to),
     agentName: input.agentName,
+    customerId: input.customerId,
     sessionId: input.sessionId,
     errorsOnly: input.errorsOnly,
   };
@@ -59,6 +62,12 @@ export async function getSessionList(
     sessionListSummary(ch, filters),
   ]);
   const sum = summaryRows[0];
+  // Decorate the page's sessions with customer display fields (name/avatar): the
+  // rows carry only customer_id, so resolve the distinct ids against the
+  // customers dimension in one lookup and map them back.
+  const customerIds = [...new Set(sessions.map((s) => s.customer_id).filter(Boolean))];
+  const dims = await getCustomerDisplays(ch, { projectId: input.projectId, customerIds });
+  const customerById = new Map(dims.map((d) => [d.customer_id, d]));
   return {
     // 20/40/60/80th percentile cost thresholds; finite values only.
     costQuantiles: (sum?.cost_q ?? []).map(Number).filter(Number.isFinite),
@@ -71,6 +80,9 @@ export async function getSessionList(
     sessions: sessions.map((s) => ({
       sessionId: s.session_id,
       agentName: s.agent_name || null,
+      customerId: s.customer_id || null,
+      customerName: customerById.get(s.customer_id)?.customer_name || null,
+      customerImageUrl: customerById.get(s.customer_id)?.customer_image_url || null,
       turnCount: num(s.turn_count),
       spanCount: num(s.span_count),
       llmSpanCount: num(s.llm_span_count),
@@ -115,6 +127,20 @@ export async function getSessionDetail(
 
   const byTrace = new Map<string, TraceListRow>(metrics.map((m) => [m.trace_id, m]));
 
+  // Customer is stable across a session's traces; pick the first non-empty id
+  // and resolve its display name/avatar so the detail header can show it.
+  const customerId = metrics.find((m) => m.customer_id)?.customer_id ?? null;
+  const customerDims = customerId
+    ? await getCustomerDisplays(ch, { projectId: input.projectId, customerIds: [customerId] })
+    : [];
+  const customer = customerId
+    ? {
+        customerId,
+        customerName: customerDims[0]?.customer_name || null,
+        customerImageUrl: customerDims[0]?.customer_image_url || null,
+      }
+    : null;
+
   const turns = content.map((c) => {
     const m = byTrace.get(c.trace_id);
     return {
@@ -145,7 +171,7 @@ export async function getSessionDetail(
     lastSeen: turns[turns.length - 1]?.endTime ?? null,
   };
 
-  return { sessionId: input.sessionId, agentName: turns[0]?.agentName ?? null, stats, turns };
+  return { sessionId: input.sessionId, agentName: turns[0]?.agentName ?? null, customer, stats, turns };
 }
 
 /**

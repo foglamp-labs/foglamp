@@ -24,13 +24,16 @@ import {
   IconAlertTriangle,
   IconGhost,
   IconMessage2Filled,
+  IconUser,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CopyButton } from "@/components/app/copy-button";
+import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { HeatCell } from "@/components/app/heat-cell";
 import { pageWindow } from "@/components/app/trend-charts";
 import {
@@ -88,6 +91,7 @@ export function SessionsClient() {
   const [params, patchParams] = useUrlFilters({
     q: "",
     agent: "",
+    customer: "",
     errors: "",
     sort: "",
     page: "1",
@@ -103,13 +107,19 @@ export function SessionsClient() {
     setSearch((prev) => (prev.trim() === params.q ? prev : params.q));
   }, [params.q]);
   const agentFilter = params.agent;
+  const customerFilter = params.customer;
   const errorsOnly = params.errors === "1";
   const sort = parseSortParam(params.sort, SESSION_SORT_KEYS);
   const toggle = (key: SessionSortKey) =>
     patchParams({ sort: cycleSortParam(sort, key) });
   const page = Math.max(0, (Number.parseInt(params.page, 10) || 1) - 1);
   const setPage = (p: number) => patchParams({ page: String(p + 1) });
-  const hasFilters = !!(debouncedSearch.trim() || agentFilter || errorsOnly);
+  const hasFilters = !!(
+    debouncedSearch.trim() ||
+    agentFilter ||
+    customerFilter ||
+    errorsOnly
+  );
 
   // Filter/sort changes reset the page inside patchParams; project and range
   // changes happen outside it, so reset explicitly (skipping mount, which
@@ -134,12 +144,23 @@ export function SessionsClient() {
     enabled: !!projectId,
   });
 
+  // Customers for the filter dropdown (cost-desc rollup; ids + display names).
+  const customersList = useQuery({
+    ...trpc.customers.list.queryOptions({
+      projectId: projectId!,
+      from: range.from.toISOString(),
+      to: range.to.toISOString(),
+    }),
+    enabled: !!projectId,
+  });
+
   const sessions = useQuery({
     ...trpc.sessions.list.queryOptions({
       projectId: projectId!,
       from: range.from.toISOString(),
       to: range.to.toISOString(),
       agentName: agentFilter || undefined,
+      customerId: customerFilter || undefined,
       sessionId: debouncedSearch.trim() || undefined,
       errorsOnly: errorsOnly || undefined,
       sort: sort ? { field: sort.key, dir: sort.dir } : undefined,
@@ -184,6 +205,20 @@ export function SessionsClient() {
       <AgentIcon name={name} className={p.className} />
     ),
   }));
+  const customerOptions = (customersList.data?.customers ?? [])
+    .filter((c): c is typeof c & { customerId: string } => !!c.customerId)
+    .map((c) => ({
+      value: c.customerId,
+      label: c.customerName ?? c.customerId,
+      icon: (p: { className?: string }) => (
+        <CustomerAvatar
+          customerId={c.customerId}
+          customerName={c.customerName}
+          imageUrl={c.customerImageUrl}
+          className={p.className}
+        />
+      ),
+    }));
 
   return (
     <>
@@ -214,6 +249,13 @@ export function SessionsClient() {
               icon={IconGhost}
               options={agentOptions}
             />
+            <FilterSelect
+              value={customerFilter}
+              onChange={(v) => patchParams({ customer: v })}
+              allLabel="Any customer"
+              icon={IconUser}
+              options={customerOptions}
+            />
             <ToggleChip
               active={errorsOnly}
               onClick={() => patchParams({ errors: errorsOnly ? "" : "1" })}
@@ -222,10 +264,10 @@ export function SessionsClient() {
               Errors only
             </ToggleChip>
             <ClearFiltersButton
-              show={!!(search || agentFilter || errorsOnly)}
+              show={!!(search || agentFilter || customerFilter || errorsOnly)}
               onClick={() => {
                 setSearch("");
-                patchParams({ q: "", agent: "", errors: "" });
+                patchParams({ q: "", agent: "", customer: "", errors: "" });
               }}
             />
             <div className="ml-auto flex items-center gap-3">
@@ -250,7 +292,8 @@ export function SessionsClient() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-md">Session</TableHead>
-                      <TableHead className="w-72">Agent</TableHead>
+                      <TableHead className="w-56">Agent</TableHead>
+                      <TableHead className="w-56">Customer</TableHead>
                       <SortableHead
                         sortKey="turns"
                         sort={sort}
@@ -329,7 +372,46 @@ export function SessionsClient() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{s.agentName ?? "—"}</TableCell>
+                        <TableCell>
+                          {s.agentName ? (
+                            <div className="flex min-w-0 items-center gap-2">
+                              <AgentIcon
+                                name={s.agentName}
+                                className="size-4"
+                              />
+                              <span className="truncate">{s.agentName}</span>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {s.customerId ? (
+                            <Link
+                              // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
+                              href={
+                                `/traces?customer=${encodeURIComponent(
+                                  s.customerId
+                                )}` as any
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              title="View this customer's traces"
+                              className="flex min-w-0 items-center gap-2 transition-colors hover:text-foreground"
+                            >
+                              <CustomerAvatar
+                                customerId={s.customerId}
+                                customerName={s.customerName}
+                                imageUrl={s.customerImageUrl}
+                                className="size-4"
+                              />
+                              <span className="truncate">
+                                {s.customerName ?? s.customerId}
+                              </span>
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
                         <TableCell align="right">
                           {formatCount(s.turnCount)}
                         </TableCell>

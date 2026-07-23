@@ -13,6 +13,7 @@ export const sessionsRouter = router({
         to: z.coerce.date().optional(),
         // Filters.
         agentName: z.string().optional(),
+        customerId: z.string().optional(),
         sessionId: z.string().optional(),
         errorsOnly: z.boolean().optional(),
         sort: z
@@ -32,6 +33,7 @@ export const sessionsRouter = router({
         from,
         to,
         agentName: input.agentName,
+        customerId: input.customerId,
         sessionId: input.sessionId,
         errorsOnly: input.errorsOnly,
         sort: input.sort,

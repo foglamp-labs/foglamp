@@ -22,6 +22,7 @@ import { Streamdown } from "streamdown";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CopyButton } from "@/components/app/copy-button";
+import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { HEAT_SHADES } from "@/components/app/heat-cell";
 import { useDelayedLoading } from "@/components/app/hooks";
 import { markdownComponents } from "@/components/app/markdown";
@@ -201,6 +202,28 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                     <AgentIcon name={data.agentName} className="size-3.5" />
                     <span className="truncate font-medium">
                       {data.agentName}
+                    </span>
+                  </Link>
+                )}
+                {data?.customer && (
+                  <Link
+                    // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
+                    href={
+                      `/traces?customer=${encodeURIComponent(
+                        data.customer.customerId
+                      )}` as any
+                    }
+                    title="View this customer's traces"
+                    className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
+                  >
+                    <CustomerAvatar
+                      customerId={data.customer.customerId}
+                      customerName={data.customer.customerName}
+                      imageUrl={data.customer.customerImageUrl}
+                      className="size-3.5"
+                    />
+                    <span className="truncate font-medium">
+                      {data.customer.customerName ?? data.customer.customerId}
                     </span>
                   </Link>
                 )}

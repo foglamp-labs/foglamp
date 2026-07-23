@@ -40,6 +40,8 @@ export async function getTraceList(
     agentName?: string;
     traceName?: string;
     workflowName?: string;
+    customerId?: string;
+    modelId?: string;
     errorsOnly?: boolean;
     sort?: { field: TraceSortField; dir: SortDir };
     limit?: number;
@@ -54,6 +56,8 @@ export async function getTraceList(
     agentName: input.agentName,
     traceName: input.traceName,
     workflowName: input.workflowName,
+    customerId: input.customerId,
+    modelId: input.modelId,
     errorsOnly: input.errorsOnly,
   };
   // Fetch the page and, in parallel, a single-row rollup over the whole filtered

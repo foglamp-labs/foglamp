@@ -23,16 +23,18 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAffiliateFilled,
   IconAlertTriangle,
+  IconCpu,
   IconGhost,
   IconMessage2Filled,
   IconPlayerStopFilled,
   IconSitemap,
   IconSitemapFilled,
+  IconUser,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
@@ -40,7 +42,6 @@ import { ModelLogo, formatModelName } from "@/components/model-logo";
 import {
   ClearFiltersButton,
   FilterSelect,
-  SearchInput,
   SortableHead,
   ToggleChip,
   Toolbar,
@@ -48,7 +49,7 @@ import {
   parseSortParam,
   useUrlFilters,
 } from "@/components/app/data-table";
-import { useDebouncedValue, useDelayedLoading } from "@/components/app/hooks";
+import { useDelayedLoading } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
   EmptyState,
@@ -90,28 +91,20 @@ export function TracesClient() {
   const router = useRouter();
 
   // Filters + sorting (applied server-side across the full result set) live in
-  // the URL so the view survives reload/back and can be shared. The search box
-  // keeps local state for typing; the debounced value syncs to ?q=.
+  // the URL so the view survives reload/back and can be shared.
   const [params, patchParams] = useUrlFilters({
-    q: "",
     agent: "",
     workflow: "",
+    customer: "",
+    model: "",
     errors: "",
     sort: "",
     page: "1",
   });
-  const [search, setSearch] = useState(params.q);
-  const debouncedSearch = useDebouncedValue(search);
-  useEffect(() => {
-    patchParams({ q: debouncedSearch.trim() });
-  }, [debouncedSearch, patchParams]);
-  // Back/forward (or any external URL change) re-syncs the input; in-flight
-  // typing wins when it already matches what the URL will settle on.
-  useEffect(() => {
-    setSearch((prev) => (prev.trim() === params.q ? prev : params.q));
-  }, [params.q]);
   const agentFilter = params.agent;
   const workflowFilter = params.workflow;
+  const customerFilter = params.customer;
+  const modelFilter = params.model;
   const errorsOnly = params.errors === "1";
   const sort = parseSortParam(params.sort, TRACE_SORT_KEYS);
   const toggle = (key: TraceSortKey) =>
@@ -119,9 +112,10 @@ export function TracesClient() {
   const page = Math.max(0, (Number.parseInt(params.page, 10) || 1) - 1);
   const setPage = (p: number) => patchParams({ page: String(p + 1) });
   const hasFilters = !!(
-    debouncedSearch.trim() ||
     agentFilter ||
     workflowFilter ||
+    customerFilter ||
+    modelFilter ||
     errorsOnly
   );
 
@@ -158,6 +152,26 @@ export function TracesClient() {
     enabled: !!projectId,
   });
 
+  // Customers for the filter dropdown (cost-desc rollup; ids + display names).
+  const customersList = useQuery({
+    ...trpc.customers.list.queryOptions({
+      projectId: projectId!,
+      from: range.from.toISOString(),
+      to: range.to.toISOString(),
+    }),
+    enabled: !!projectId,
+  });
+
+  // Models used in the window, for the filter dropdown.
+  const modelsList = useQuery({
+    ...trpc.metrics.models.queryOptions({
+      projectId: projectId!,
+      from: range.from.toISOString(),
+      to: range.to.toISOString(),
+    }),
+    enabled: !!projectId,
+  });
+
   const traces = useQuery({
     ...trpc.traces.list.queryOptions({
       projectId: projectId!,
@@ -165,7 +179,8 @@ export function TracesClient() {
       to: range.to.toISOString(),
       agentName: agentFilter || undefined,
       workflowName: workflowFilter || undefined,
-      traceName: debouncedSearch.trim() || undefined,
+      customerId: customerFilter || undefined,
+      modelId: modelFilter || undefined,
       errorsOnly: errorsOnly || undefined,
       sort: sort ? { field: sort.key, dir: sort.dir } : undefined,
       limit: PAGE_SIZE,
@@ -215,6 +230,29 @@ export function TracesClient() {
     label: name,
     icon: IconSitemapFilled,
   }));
+  const customerOptions = (customersList.data?.customers ?? [])
+    .filter((c): c is typeof c & { customerId: string } => !!c.customerId)
+    .map((c) => ({
+      value: c.customerId,
+      label: c.customerName ?? c.customerId,
+      icon: (p: { className?: string }) => (
+        <CustomerAvatar
+          customerId={c.customerId}
+          customerName={c.customerName}
+          imageUrl={c.customerImageUrl}
+          className={p.className}
+        />
+      ),
+    }));
+  const modelOptions = (modelsList.data ?? [])
+    .filter((m) => m.modelId !== "(unknown)")
+    .map((m) => ({
+      value: m.modelId,
+      label: formatModelName(m.modelId),
+      icon: (p: { className?: string }) => (
+        <ModelLogo modelId={m.modelId} className={p.className} />
+      ),
+    }));
 
   return (
     <>
@@ -232,11 +270,6 @@ export function TracesClient() {
       ) : (
         <div className="flex flex-col gap-4">
           <Toolbar>
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search trace name…"
-            />
             <FilterSelect
               value={agentFilter}
               onChange={(v) => patchParams({ agent: v })}
@@ -251,6 +284,20 @@ export function TracesClient() {
               icon={IconSitemap}
               options={workflowOptions}
             />
+            <FilterSelect
+              value={customerFilter}
+              onChange={(v) => patchParams({ customer: v })}
+              allLabel="Any customer"
+              icon={IconUser}
+              options={customerOptions}
+            />
+            <FilterSelect
+              value={modelFilter}
+              onChange={(v) => patchParams({ model: v })}
+              allLabel="Any model"
+              icon={IconCpu}
+              options={modelOptions}
+            />
             <ToggleChip
               active={errorsOnly}
               onClick={() => patchParams({ errors: errorsOnly ? "" : "1" })}
@@ -259,11 +306,16 @@ export function TracesClient() {
               Errors only
             </ToggleChip>
             <ClearFiltersButton
-              show={!!(search || agentFilter || workflowFilter || errorsOnly)}
-              onClick={() => {
-                setSearch("");
-                patchParams({ q: "", agent: "", workflow: "", errors: "" });
-              }}
+              show={hasFilters}
+              onClick={() =>
+                patchParams({
+                  agent: "",
+                  workflow: "",
+                  customer: "",
+                  model: "",
+                  errors: "",
+                })
+              }
             />
             <div className="ml-auto flex items-center gap-3">
               <span className="hidden whitespace-nowrap text-sm text-muted-foreground/50 tabular-nums sm:inline">
@@ -431,9 +483,14 @@ export function TracesClient() {
                                   </Link>
                                 )}
                                 {t.customerId && (
-                                  <span
-                                    title="Customer"
-                                    className="inline-flex min-w-0 shrink items-center gap-1"
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      patchParams({ customer: t.customerId! });
+                                    }}
+                                    title="Filter by customer"
+                                    className="inline-flex min-w-0 shrink cursor-pointer items-center gap-1 transition-colors hover:text-foreground"
                                   >
                                     <CustomerAvatar
                                       customerId={t.customerId}
@@ -445,7 +502,7 @@ export function TracesClient() {
                                     <span className="truncate">
                                       {t.customerName ?? t.customerId}
                                     </span>
-                                  </span>
+                                  </button>
                                 )}
                               </div>
                             </div>
