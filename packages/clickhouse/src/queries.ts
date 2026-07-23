@@ -632,10 +632,6 @@ export type SpanDetailRow = {
 	web_search_count: number;
 	request_count: number;
 	ttft_ms: number | null;
-	chunk_offsets: number[];
-	chunk_tokens: number[];
-	reasoning_offsets: number[];
-	reasoning_chunk_tokens: number[];
 	reasoning_duration_ms: number | null;
 	// Per-dimension cost breakdown (Nullable Decimals → strings); these sum to
 	// total_cost. Surfaced on the span detail view, not in list rollups.
@@ -708,8 +704,7 @@ export function getTraceSpans(
        input_tokens, output_tokens, total_tokens,
        reasoning_tokens, cached_input_tokens, cache_write_input_tokens,
        image_count, web_search_count, request_count, ttft_ms,
-       chunk_offsets, chunk_tokens,
-       reasoning_offsets, reasoning_chunk_tokens, reasoning_duration_ms,
+       reasoning_duration_ms,
        prompt_cost, completion_cost, request_cost, image_cost, web_search_cost,
        internal_reasoning_cost, cache_read_cost, cache_write_cost,
        total_cost, priced_model_id, priced_at, pricing_source,

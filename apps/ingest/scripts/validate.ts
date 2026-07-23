@@ -70,6 +70,8 @@ const payload: IngestPayload = {
           provider: "openai",
           modelId: "gpt-4o",
           ttftMs: 120,
+          // Deprecated sample arrays older SDKs still send — the contract must
+          // accept them and buildSpanRows must drop them (asserted below).
           chunkOffsets: [120, 260, 400],
           chunkTokens: [125, 310, 500],
           usage: {
@@ -128,13 +130,8 @@ assert(llm.pricing_source === "openrouter", `pricing_source = ${llm.pricing_sour
 assert(llm.duration_ms === 490, `llm duration_ms = ${llm.duration_ms}`);
 assert(llm.ttft_ms === 120, `ttft preserved = ${llm.ttft_ms}`);
 assert(
-  JSON.stringify(llm.chunk_offsets) === "[120,260,400]" &&
-    JSON.stringify(llm.chunk_tokens) === "[125,310,500]",
-  "chunk samples pass through buildSpanRows",
-);
-assert(
-  root.chunk_offsets.length === 0 && tool.chunk_tokens.length === 0,
-  "non-llm spans get empty chunk arrays",
+  !("chunk_offsets" in llm) && !("chunk_tokens" in llm),
+  "deprecated chunk sample arrays are accepted on the wire but not written",
 );
 assert(llm.metadata.tier === "pro", "span metadata overrides trace metadata");
 assert(llm.metadata.env === "prod", "trace metadata inherited onto span");
@@ -175,19 +172,19 @@ const buffer = new WriteBuffer(client, {
 });
 buffer.push(rows);
 await buffer.stop(); // flush + drain
-assert(flushed === 3, `flushed ${flushed} rows`);
+assert(flushed === 4, `flushed ${flushed} rows`);
 
 await new Promise((r) => setTimeout(r, 300)); // let MV parts settle
 
 const traces = await listTraces(client, { projectId: PID });
 assert(traces.length === 1, "one trace summarized");
 assert(Number(traces[0]!.total_cost) === 0.00725, `trace total_cost = ${traces[0]!.total_cost}`);
-assert(Number(traces[0]!.span_count) === 3, `span_count = ${traces[0]!.span_count}`);
+assert(Number(traces[0]!.span_count) === 4, `span_count = ${traces[0]!.span_count}`);
 assert(Number(traces[0]!.error_count) === 1, `error_count = ${traces[0]!.error_count}`);
 assert(Number(traces[0]!.priced_span_count) === 1, `priced_span_count = ${traces[0]!.priced_span_count}`);
 
 const spans = await getTraceSpans(client, { projectId: PID, traceId: "t_ingest_1" });
-assert(spans.length === 3, "three spans queryable from CH");
+assert(spans.length === 4, "four spans queryable from CH");
 assert(spans.find((s) => s.span_id === "s_llm")!.metadata.tier === "pro", "merged metadata round-trips through CH");
 
 await client.close();

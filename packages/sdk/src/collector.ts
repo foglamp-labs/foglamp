@@ -259,18 +259,15 @@ interface TraceBuilder {
   stepInput: Map<number, string>;
   ttft: Map<number, number>;
   toolStart: Map<string, number>;
-  // Intra-stream sampling, keyed by stepNumber. chunkSamples holds
-  // [offsetMs, cumulativeTextLength] pairs (rescaled to tokens at step end);
-  // chunkTextLen is the running text length; streamingStep marks the step
-  // currently emitting text-deltas (used to route deltas that carry no callId).
-  chunkSamples: Map<number, Array<[number, number]>>;
+  // Streaming text accounting, keyed by stepNumber. chunkTextLen /
+  // reasoningTextLen are running text lengths (they feed the HUD's live token
+  // estimate via CHARS_PER_TOKEN); streamingStep marks the step currently
+  // emitting text-deltas (used to route deltas that carry no callId).
   chunkTextLen: Map<number, number>;
-  streamingStep: number | undefined;
-  // Reasoning-stream sampling, same shape as chunkSamples/chunkTextLen but for
-  // reasoning-delta text. activeReasoningBlocks tracks open blocks (blockId →
-  // start offset ms) per step; reasoningDurationMs accumulates closed blocks.
-  reasoningSamples: Map<number, Array<[number, number]>>;
   reasoningTextLen: Map<number, number>;
+  streamingStep: number | undefined;
+  // Reasoning lifecycle: activeReasoningBlocks tracks open blocks (blockId →
+  // start offset ms) per step; reasoningDurationMs accumulates closed blocks.
   activeReasoningBlocks: Map<number, Map<string, number>>;
   reasoningDurationMs: Map<number, number>;
   // Pure model-call timing. The language-model-call lifecycle events carry no
@@ -284,10 +281,6 @@ interface TraceBuilder {
 // The wire contract caps spans per trace; keep the root + most recent under it.
 const MAX_SPANS_PER_TRACE = 2_000;
 const ERROR_MESSAGE_CAP = 8_192;
-// Intra-stream sampling: one sample per this many ms (keeps arrays small), and
-// a hard cap matching the wire contract's `.max(200)` on the chunk arrays.
-const CHUNK_SAMPLE_INTERVAL_MS = 100;
-const MAX_CHUNK_SAMPLES = 200;
 
 // Map the AI SDK `performance.timeBetweenOutputChunksMs` stats onto the wire
 // chunkJitter shape. Returns undefined unless all six values are present — the
@@ -325,20 +318,6 @@ function buildChunkJitter(
     p90: Math.max(0, p90),
     max: Math.max(0, max),
   };
-}
-
-// Evenly thin samples to at most `max`, always keeping the last entry (it
-// anchors the cumulative text length used for the token rescale).
-function decimateSamples(
-  samples: ReadonlyArray<[number, number]>,
-  max: number,
-): ReadonlyArray<[number, number]> {
-  if (samples.length <= max) return samples;
-  const out: Array<[number, number]> = [];
-  const stride = samples.length / max;
-  for (let i = 0; i < max - 1; i++) out.push(samples[Math.floor(i * stride)]!);
-  out.push(samples[samples.length - 1]!);
-  return out;
 }
 
 // Grouping-only view of a context: the workflow/session/customer/metadata that
@@ -478,11 +457,9 @@ export class Collector implements Telemetry {
         stepInput: new Map(),
         ttft: new Map(),
         toolStart: new Map(),
-        chunkSamples: new Map(),
         chunkTextLen: new Map(),
-        streamingStep: undefined,
-        reasoningSamples: new Map(),
         reasoningTextLen: new Map(),
+        streamingStep: undefined,
         activeReasoningBlocks: new Map(),
         reasoningDurationMs: new Map(),
         currentStep: undefined,
@@ -624,10 +601,9 @@ export class Collector implements Telemetry {
         return;
       }
 
-      // Text payloads drive the intra-stream samples. The delta text length is a
-      // cheap token proxy that we rescale to real tokens at onStepFinish.
-      // Reasoning deltas feed a parallel sample series rescaled by
-      // usage.reasoningTokens instead.
+      // Text payloads drive the HUD's live token estimate: running text length
+      // is a cheap token proxy (CHARS_PER_TOKEN), replaced by the real usage
+      // numbers at step end. Reasoning deltas accumulate separately.
       const isReasoning = chunk.type === "reasoning-delta";
       if (chunk.type !== "text-delta" && !isReasoning) return;
       const text = chunk.text ?? chunk.textDelta;
@@ -638,26 +614,7 @@ export class Collector implements Telemetry {
       const { builder, step } = target;
 
       const lenMap = isReasoning ? builder.reasoningTextLen : builder.chunkTextLen;
-      const sampleMap = isReasoning ? builder.reasoningSamples : builder.chunkSamples;
-
-      const cumLen = (lenMap.get(step) ?? 0) + text.length;
-      lenMap.set(step, cumLen);
-
-      const stepStart = builder.stepStart.get(step) ?? builder.startTime;
-      const offsetMs = Math.max(0, Date.now() - stepStart);
-      const samples = sampleMap.get(step);
-      if (!samples) {
-        sampleMap.set(step, [[offsetMs, cumLen]]);
-        return;
-      }
-      const last = samples[samples.length - 1]!;
-      // New time bucket → new sample; otherwise fold the latest length into the
-      // current bucket so the final sample always anchors to the full text.
-      if (offsetMs - last[0] >= CHUNK_SAMPLE_INTERVAL_MS) {
-        samples.push([offsetMs, cumLen]);
-      } else {
-        last[1] = cumLen;
-      }
+      lenMap.set(step, (lenMap.get(step) ?? 0) + text.length);
 
       if (this.config.hud) {
         const nowTs = Date.now();
@@ -723,7 +680,6 @@ export class Collector implements Telemetry {
     // Web-search usage isn't in `usage` — pull it from provider metadata / tools.
     const webSearchCount = extractWebSearchCount(e);
     if (webSearchCount !== undefined) usage = { ...(usage ?? {}), webSearchCount };
-    const chunks = this.buildChunkArrays(builder, e.stepNumber, usage);
     // Close reasoning blocks that never saw a reasoning-end (best effort:
     // count them as running until now), then fold into the step total.
     const openBlocks = builder.activeReasoningBlocks.get(e.stepNumber);
@@ -737,7 +693,6 @@ export class Collector implements Telemetry {
         );
       }
     }
-    const reasoning = this.buildReasoningArrays(builder, e.stepNumber, usage);
     const reasoningDurationMs = builder.reasoningDurationMs.get(e.stepNumber);
     // Secondary provider signals: model build fingerprint, safety ratings,
     // grounding sources (output-gated), and normalized rate-limit headroom.
@@ -762,10 +717,8 @@ export class Collector implements Telemetry {
     const modelCallMs = responseTimeMs ?? builder.modelCallMs.get(e.stepNumber);
     const chunkJitter = buildChunkJitter(perf?.timeBetweenOutputChunksMs);
 
-    // This step is done streaming; drop its sampling scratch state.
-    builder.chunkSamples.delete(e.stepNumber);
+    // This step is done streaming; drop its scratch state.
     builder.chunkTextLen.delete(e.stepNumber);
-    builder.reasoningSamples.delete(e.stepNumber);
     builder.reasoningTextLen.delete(e.stepNumber);
     builder.activeReasoningBlocks.delete(e.stepNumber);
     builder.reasoningDurationMs.delete(e.stepNumber);
@@ -785,10 +738,6 @@ export class Collector implements Telemetry {
       modelId: e.model?.modelId ?? builder.modelId,
       usage,
       ttftMs,
-      chunkOffsets: chunks?.chunkOffsets,
-      chunkTokens: chunks?.chunkTokens,
-      reasoningOffsets: reasoning?.reasoningOffsets,
-      reasoningChunkTokens: reasoning?.reasoningChunkTokens,
       reasoningDurationMs:
         reasoningDurationMs !== undefined ? Math.round(reasoningDurationMs) : undefined,
       input: builder.recordInputs ? builder.stepInput.get(e.stepNumber) : undefined,
@@ -1206,60 +1155,6 @@ export class Collector implements Telemetry {
       return serialize(e.text, this.config.maxPayloadChars);
     }
     return serialize(e.content, this.config.maxPayloadChars);
-  }
-
-  // Turn a step's [offsetMs, cumulativeTextLength] samples into parallel
-  // offset/token arrays. Text length is rescaled to the real visible-token
-  // count (outputTokens minus reasoningTokens, which stream separately and
-  // would otherwise inflate the curve). Returns undefined for non-streaming
-  // steps so the span omits the fields entirely.
-  private buildChunkArrays(
-    builder: TraceBuilder,
-    step: number,
-    usage: ReturnType<typeof mapUsage>,
-  ): { chunkOffsets: number[]; chunkTokens: number[] } | undefined {
-    const raw = builder.chunkSamples.get(step);
-    const finalTextLen = builder.chunkTextLen.get(step) ?? 0;
-    if (!usage || !raw || raw.length === 0 || finalTextLen <= 0) return undefined;
-
-    const scaleTokens = Math.max(0, (usage.outputTokens ?? 0) - (usage.reasoningTokens ?? 0));
-    if (scaleTokens === 0) return undefined;
-
-    const samples = decimateSamples(raw, MAX_CHUNK_SAMPLES);
-    const chunkOffsets = new Array<number>(samples.length);
-    const chunkTokens = new Array<number>(samples.length);
-    for (let i = 0; i < samples.length; i++) {
-      const sample = samples[i]!;
-      chunkOffsets[i] = sample[0];
-      chunkTokens[i] = Math.round((sample[1] / finalTextLen) * scaleTokens);
-    }
-    return { chunkOffsets, chunkTokens };
-  }
-
-  // Same rescale for the reasoning stream, anchored to usage.reasoningTokens.
-  // No reported reasoning tokens (older providers, non-reasoning models) → no
-  // curve: unknown stays absent, never estimated.
-  private buildReasoningArrays(
-    builder: TraceBuilder,
-    step: number,
-    usage: ReturnType<typeof mapUsage>,
-  ): { reasoningOffsets: number[]; reasoningChunkTokens: number[] } | undefined {
-    const raw = builder.reasoningSamples.get(step);
-    const finalTextLen = builder.reasoningTextLen.get(step) ?? 0;
-    if (!usage || !raw || raw.length === 0 || finalTextLen <= 0) return undefined;
-
-    const scaleTokens = usage.reasoningTokens ?? 0;
-    if (scaleTokens === 0) return undefined;
-
-    const samples = decimateSamples(raw, MAX_CHUNK_SAMPLES);
-    const reasoningOffsets = new Array<number>(samples.length);
-    const reasoningChunkTokens = new Array<number>(samples.length);
-    for (let i = 0; i < samples.length; i++) {
-      const sample = samples[i]!;
-      reasoningOffsets[i] = sample[0];
-      reasoningChunkTokens[i] = Math.round((sample[1] / finalTextLen) * scaleTokens);
-    }
-    return { reasoningOffsets, reasoningChunkTokens };
   }
 
   private finalize(callId: string, builder: TraceBuilder): void {

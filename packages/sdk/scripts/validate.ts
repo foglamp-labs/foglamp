@@ -66,9 +66,9 @@ integration.onStart({
   messages: [{ role: "user", content: "help me" }],
 });
 integration.onStepStart({ callId: CALL, stepNumber: 0, messages: [{ role: "user", content: "help me" }] });
-// First streamed chunk → TTFT for step 0, then text-deltas drive intra-stream
-// sampling. The deltas carry no callId/stepNumber, exercising the fallback that
-// routes them to the single streaming step.
+// First streamed chunk → TTFT for step 0. The text-deltas carry no
+// callId/stepNumber, exercising the fallback that routes them to the single
+// streaming step (they feed the HUD's live token estimate).
 integration.onChunk({ chunk: { type: "ai.stream.firstChunk", callId: CALL, stepNumber: 0 } });
 integration.onChunk({ chunk: { type: "text-delta", text: "Hello, " } });
 integration.onChunk({ chunk: { type: "text-delta", text: "this is " } });
@@ -140,23 +140,6 @@ assert(root.output === "Here is your answer.", "root output captured from onFini
 assert(step0.spanType === "llm" && step0.parentSpanId === `${CALL}:root`, "llm step parented to root");
 assert(step0.ttftMs !== undefined && step0.ttftMs >= 0, `TTFT captured for streamed step 0 (${step0.ttftMs}ms)`);
 assert(step1.ttftMs === undefined, "no TTFT for step without a first-chunk marker");
-assert(
-  Array.isArray(step0.chunkOffsets) && step0.chunkOffsets!.length >= 1,
-  `chunk samples captured for streamed step 0 (${step0.chunkOffsets?.length} samples)`,
-);
-assert(
-  step0.chunkOffsets!.length === step0.chunkTokens!.length,
-  "chunkOffsets and chunkTokens are parallel arrays",
-);
-// outputTokens 200 − reasoningTokens 40 = 160 visible tokens at the final sample.
-assert(
-  step0.chunkTokens![step0.chunkTokens!.length - 1] === 160,
-  `final cumulative tokens rescaled to output−reasoning (got ${step0.chunkTokens![step0.chunkTokens!.length - 1]})`,
-);
-assert(
-  step1.chunkOffsets === undefined && step1.chunkTokens === undefined,
-  "no chunk arrays for a non-streamed step",
-);
 assert(step0.usage?.inputTokens === 1000, "input tokens mapped");
 assert(step0.usage?.cachedInputTokens === 200, "cacheRead → cachedInputTokens");
 assert(step0.usage?.cacheWriteInputTokens === 50, "cacheWrite → cacheWriteInputTokens");
@@ -313,8 +296,8 @@ assert(wTool.output === '{"hits":3}', "tool output serialized");
 assert(wRoot.output === "final answer", "root output from result text");
 assert(wRoot.startTime <= wTool.startTime && wTool.endTime <= wRoot.endTime, "root envelopes the tool span");
 
-// --- streamText: v5/v6 usage shape (inputTokens), TTFT + chunk curve --------
-console.log("wrap() streamText (v5/v6 usage shape + streaming curve + callback composition):");
+// --- streamText: v5/v6 usage shape (inputTokens), TTFT --------
+console.log("wrap() streamText (v5/v6 usage shape + TTFT + callback composition):");
 const capS = makeCapture();
 let userChunks = 0;
 let userSteps = 0;
@@ -350,8 +333,6 @@ const sStep = sTrace.spans.find((s) => s.spanType === "llm")!;
 assert(sStep.usage?.inputTokens === 1000, "v5/v6 inputTokens mapped");
 assert(sStep.usage?.reasoningTokens === 40, "reasoning tokens from outputTokenDetails");
 assert(sStep.ttftMs !== undefined && sStep.ttftMs >= 0, `TTFT captured (${sStep.ttftMs}ms)`);
-assert(Array.isArray(sStep.chunkOffsets) && sStep.chunkOffsets!.length >= 1, "chunk samples captured");
-assert(sStep.chunkTokens![sStep.chunkTokens!.length - 1] === 160, `final tokens rescaled to output−reasoning (got ${sStep.chunkTokens![sStep.chunkTokens!.length - 1]})`);
 assert(userChunks === 3 && userSteps === 1, "user-supplied onChunk/onStepFinish still invoked (composition, not clobber)");
 
 // --- generateObject + streamObject -----------------------------------------

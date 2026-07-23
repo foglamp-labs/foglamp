@@ -97,16 +97,11 @@ export const spanSchema = z
     // Time-to-first-token, read from the AI SDK step performance object.
     ttftMs: z.number().nonnegative().optional(),
 
-    // Intra-stream sampling (streaming llm spans only). Two parallel arrays:
-    // chunkOffsets[i] is ms from step start, chunkTokens[i] is cumulative output
-    // tokens at that moment. Downsampled by the SDK; empty/omitted otherwise.
+    // Deprecated: intra-stream sample arrays for the removed TPS-curve/replay
+    // feature. Current SDKs no longer send them; kept optional so `.strict()`
+    // doesn't reject older deployed SDKs that still do. Ignored at ingest.
     chunkOffsets: z.array(z.number().int().nonnegative()).max(200).optional(),
     chunkTokens: z.array(z.number().int().nonnegative()).max(200).optional(),
-
-    // Reasoning-stream sampling (streaming llm spans on reasoning models).
-    // Same shape as chunkOffsets/chunkTokens but tracking the reasoning text
-    // stream; reasoningChunkTokens is cumulative *reasoning* tokens. Only sent
-    // when the provider streamed reasoning and reported reasoningTokens.
     reasoningOffsets: z
       .array(z.number().int().nonnegative())
       .max(200)

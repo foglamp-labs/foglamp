@@ -681,4 +681,18 @@ GROUP BY project_id, bucket, span_type, model_id, agent_name`,
       `ALTER TABLE spans MATERIALIZE INDEX idx_ingested_at`,
     ],
   },
+  {
+    // The intra-stream TPS-curve/replay feature was removed (0006_chunk_samples /
+    // 0010_reasoning_chunks added these): nothing writes or reads the sample
+    // arrays anymore. DROP COLUMN is an online metadata ALTER; no MV references
+    // these columns. Run only after server/ingest/web are on code that neither
+    // selects nor inserts them.
+    id: "0018_drop_chunk_samples",
+    statements: [
+      `ALTER TABLE spans DROP COLUMN IF EXISTS chunk_offsets`,
+      `ALTER TABLE spans DROP COLUMN IF EXISTS chunk_tokens`,
+      `ALTER TABLE spans DROP COLUMN IF EXISTS reasoning_offsets`,
+      `ALTER TABLE spans DROP COLUMN IF EXISTS reasoning_chunk_tokens`,
+    ],
+  },
 ];

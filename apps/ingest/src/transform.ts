@@ -79,10 +79,6 @@ export function buildSpanRows(args: {
         // the stored count agree with computeCost's `requestCount ?? 1`.
         request_count: usage?.requestCount ?? (isPriced ? 1 : 0),
         ttft_ms: span.ttftMs == null ? null : Math.round(span.ttftMs),
-        chunk_offsets: span.chunkOffsets ?? [],
-        chunk_tokens: span.chunkTokens ?? [],
-        reasoning_offsets: span.reasoningOffsets ?? [],
-        reasoning_chunk_tokens: span.reasoningChunkTokens ?? [],
         reasoning_duration_ms:
           span.reasoningDurationMs == null ? null : Math.round(span.reasoningDurationMs),
         prompt_cost: costs.promptCost,

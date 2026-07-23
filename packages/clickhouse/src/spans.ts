@@ -30,10 +30,6 @@ export type SpanRow = {
   web_search_count: number;
   request_count: number;
   ttft_ms: number | null;
-  chunk_offsets: number[]; // ms from step start, parallel to chunk_tokens
-  chunk_tokens: number[]; // cumulative output tokens at each offset
-  reasoning_offsets: number[]; // ms from step start, parallel to reasoning_chunk_tokens
-  reasoning_chunk_tokens: number[]; // cumulative reasoning tokens at each offset
   reasoning_duration_ms: number | null; // wall-clock ms inside reasoning blocks
   prompt_cost: string | null;
   completion_cost: string | null;

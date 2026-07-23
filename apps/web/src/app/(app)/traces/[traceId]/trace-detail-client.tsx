@@ -57,7 +57,6 @@ import {
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { SpanTypeBadge } from "@/components/app/span-type";
-import { TpsHeadline } from "@/components/app/tps-headline";
 import { TraceTimeline, WHOLE_TRACE_ID } from "@/components/app/trace-timeline";
 import { ModelLogo, formatModelName } from "@/components/model-logo";
 import {
@@ -196,7 +195,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 	}, [spans, window.span, stats, erroredSpans.length, traceScores]);
 
 	// Select a span and reflect it in the URL (?span=) so the selection is
-	// shareable; other params (e.g. ?replay=1) are preserved.
+	// shareable; other params are preserved.
 	const select = useCallback(
 		(spanId: string | null) => {
 			setSelected(spanId);
@@ -257,25 +256,27 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 			/>
 
 			{/* Context chips: link back to the owning session / workflow / agent,
-			    plus the end-customer this trace served (no page, so not a link). */}
+			    plus the end-customer this trace served (links to their traces). */}
 			{(ctx?.sessionId ||
 				ctx?.workflowName ||
 				ctx?.agentName ||
 				ctx?.customer) && (
 				<div className="-mt-1 flex flex-wrap items-center gap-2 text-xs">
 					{ctx.customer && (
-						<span className="inline-flex max-w-xs items-center gap-[5px] rounded-full bg-card px-2.5 pl-2 py-1 text-muted-foreground shadow-(--custom-shadow)">
-							<CustomerAvatar
-								customerId={ctx.customer.id}
-								customerName={ctx.customer.name}
-								imageUrl={ctx.customer.imageUrl}
-								filled
-								className="size-3.5 shrink-0"
-							/>
-							<span className="truncate">
-								{ctx.customer.name ?? ctx.customer.id}
-							</span>
-						</span>
+						<ContextChip
+							href={`/traces?customer=${encodeURIComponent(ctx.customer.id)}`}
+							icon={(p) => (
+								<CustomerAvatar
+									customerId={ctx.customer!.id}
+									customerName={ctx.customer!.name}
+									imageUrl={ctx.customer!.imageUrl}
+									filled
+									className={p.className}
+								/>
+							)}
+							iconClassName=""
+							label={ctx.customer.name ?? ctx.customer.id}
+						/>
 					)}
 					{ctx.sessionId && (
 						<ContextChip
@@ -433,7 +434,6 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 								spans={spans}
 								selected={selected}
 								onSelect={select}
-								autoPlay={searchParams.get("replay") === "1"}
 								scores={scores.data ?? []}
 								evalMeta={evalMeta}
 								presetName={presetName}
@@ -801,22 +801,11 @@ function SpanDetail({
 									"—"
 								) : span.reasoningDurationMs != null &&
 									span.reasoningDurationMs > 0 ? (
-									// Reasoning models: split the wait into thinking time plus the
-									// residual until the first visible text. The first-text offset
-									// comes from the text chunk samples when captured; otherwise we
-									// approximate it with the TTFT itself.
+									// Reasoning models: show how much of the wait was thinking.
 									<span>
 										{formatDuration(span.ttftMs)}{" "}
 										<span className="text-muted-foreground">
-											({formatDuration(span.reasoningDurationMs)} thinking +{" "}
-											{formatDuration(
-												Math.max(
-													0,
-													(span.chunkOffsets[0] ?? span.ttftMs) -
-														span.reasoningDurationMs,
-												),
-											)}{" "}
-											to first text)
+											({formatDuration(span.reasoningDurationMs)} thinking)
 										</span>
 									</span>
 								) : (
@@ -1019,10 +1008,6 @@ function SpanDetail({
 								</div>
 							)}
 						</div>
-					)}
-
-					{span.spanType === "llm" && span.outputTokens > 0 && (
-						<TpsHeadline span={span} />
 					)}
 
 					{metaEntries.length > 0 && (

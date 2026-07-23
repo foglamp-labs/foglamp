@@ -45,14 +45,6 @@ export interface Span {
   modelId?: string;
   usage?: Usage;
   ttftMs?: number;
-  /** Intra-stream samples (streaming llm spans). ms from step start, parallel to chunkTokens. */
-  chunkOffsets?: number[];
-  /** Cumulative output tokens at each chunkOffsets entry. */
-  chunkTokens?: number[];
-  /** Reasoning-stream samples (reasoning models). ms from step start, parallel to reasoningChunkTokens. */
-  reasoningOffsets?: number[];
-  /** Cumulative reasoning tokens at each reasoningOffsets entry. */
-  reasoningChunkTokens?: number[];
   /** Total wall-clock ms spent inside reasoning blocks for this step. */
   reasoningDurationMs?: number;
   input?: string;

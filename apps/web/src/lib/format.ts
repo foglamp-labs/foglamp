@@ -41,13 +41,6 @@ export function formatTokens(value: number): string {
   return compact.format(value);
 }
 
-/** Tokens/sec; `null`/`undefined` → em dash (no measurable rate). */
-export function formatTps(value: number | null | undefined): string {
-  if (value === null || value === undefined || !Number.isFinite(value))
-    return "—";
-  return `${value >= 1000 ? compact.format(value) : Math.round(value)} tok/s`;
-}
-
 /** Milliseconds → human duration (µs/ms/s/m/h/d). */
 export function formatDuration(ms: number): string {
   if (!Number.isFinite(ms)) return "—";

@@ -11,24 +11,6 @@ import { decimalOrNull, finite, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
 
-// Generation tokens/sec. Prefer the AI SDK's own measured rate
-// (`effective_output_tps`, present on v7 beta/canary spans) over our derivation:
-// output tokens over the active streaming window (duration minus
-// time-to-first-token). Returns null when neither is available (non-streaming,
-// zero-duration, or no output).
-function generationTps(
-  effectiveOutputTps: number | null,
-  outputTokens: number,
-  durationMs: number,
-  ttftMs: number | null,
-): number | null {
-  if (effectiveOutputTps !== null && effectiveOutputTps > 0) return effectiveOutputTps;
-  if (outputTokens <= 0) return null;
-  const windowMs = durationMs - (ttftMs ?? 0);
-  if (windowMs <= 0) return null;
-  return outputTokens / (windowMs / 1000);
-}
-
 export async function getTraceList(
   db: Db,
   ch: Ch,
@@ -154,15 +136,7 @@ export async function getTraceDetail(
     webSearchCount: num(s.web_search_count),
     requestCount: num(s.request_count),
     ttftMs: s.ttft_ms === null ? null : num(s.ttft_ms),
-    chunkOffsets: (s.chunk_offsets ?? []).map(num),
-    chunkTokens: (s.chunk_tokens ?? []).map(num),
-    reasoningOffsets: (s.reasoning_offsets ?? []).map(num),
-    reasoningChunkTokens: (s.reasoning_chunk_tokens ?? []).map(num),
     reasoningDurationMs: s.reasoning_duration_ms === null ? null : num(s.reasoning_duration_ms),
-    // Generation throughput: the SDK's measured rate when present, else output
-    // tokens over the streaming window (excluding the TTFT wait). Null when
-    // there's no measurable window.
-    tps: generationTps(s.effective_output_tps, num(s.output_tokens), num(s.duration_ms), s.ttft_ms),
     totalCost: decimalOrNull(s.total_cost),
     // Per-dimension cost breakdown (null when unpriced/zero); these sum to
     // totalCost and drive the span-detail breakdown panel.

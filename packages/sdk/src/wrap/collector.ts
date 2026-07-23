@@ -30,28 +30,11 @@ function withWebSearch(usage: Usage | undefined, step: unknown): Usage | undefin
 // It is fed two ways:
 //   • tool spans   — from wrapped `tool.execute` (real, measured start/end).
 //   • llm steps    — streaming: `onStepFinish` (sequential real timing) + `onChunk`
-//                    sampling; non-streaming: reconstructed from the result.
+//                    TTFT/reasoning timing; non-streaming: reconstructed from the result.
 // Both paths emit the same wire `Trace`/`Span` and share the global `Transport`.
 
 const MAX_SPANS_PER_TRACE = 2_000;
 const ERROR_MESSAGE_CAP = 8_192;
-// One intra-stream sample per this many ms; hard cap matches the wire `.max(200)`.
-const CHUNK_SAMPLE_INTERVAL_MS = 100;
-const MAX_CHUNK_SAMPLES = 200;
-
-// Evenly thin samples to at most `max`, always keeping the last entry (it anchors
-// the cumulative text length used for the token rescale). Mirrors collector.ts.
-function decimateSamples(
-  samples: ReadonlyArray<[number, number]>,
-  max: number,
-): ReadonlyArray<[number, number]> {
-  if (samples.length <= max) return samples;
-  const out: Array<[number, number]> = [];
-  const stride = samples.length / max;
-  for (let i = 0; i < max - 1; i++) out.push(samples[Math.floor(i * stride)]!);
-  out.push(samples[samples.length - 1]!);
-  return out;
-}
 
 // Reconstruct per-step time windows for a non-streaming result (no per-step
 // timestamps are exposed). In a tool loop, step k runs up to tool k's start and
@@ -108,8 +91,6 @@ interface LlmSpanInput {
   modelId: string | undefined;
   finishReason: string | undefined;
   output: unknown;
-  chunks?: { chunkOffsets: number[]; chunkTokens: number[] } | undefined;
-  reasoning?: { reasoningOffsets: number[]; reasoningChunkTokens: number[] } | undefined;
   reasoningDurationMs?: number | undefined;
   // Secondary provider signals (no modelCallMs in wrap — v4-v6 expose no
   // language-model-call lifecycle).
@@ -144,14 +125,9 @@ export class WrapCollector {
   // attribute to; `lastBoundary` is its start (previous step's end, or call start).
   private streamStepIndex = 0;
   private lastBoundary = this.startTime;
-  private readonly chunkSamples = new Map<number, Array<[number, number]>>();
-  private readonly chunkTextLen = new Map<number, number>();
   private readonly ttft = new Map<number, number>();
-  // Reasoning-stream state, mirroring the v7 collector: samples + cumulative
-  // text length per step, open blocks (blockId → start offset ms), and the
-  // accumulated per-step reasoning duration.
-  private readonly reasoningSamples = new Map<number, Array<[number, number]>>();
-  private readonly reasoningTextLen = new Map<number, number>();
+  // Reasoning-stream state, mirroring the v7 collector: open blocks (blockId →
+  // start offset ms) and the accumulated per-step reasoning duration.
   private readonly activeReasoningBlocks = new Map<number, Map<string, number>>();
   private readonly reasoningDurMs = new Map<number, number>();
 
@@ -262,25 +238,6 @@ export class WrapCollector {
     if (!text || text.length === 0) return;
 
     if (!this.ttft.has(step)) this.ttft.set(step, Math.max(0, now - this.lastBoundary));
-
-    const lenMap = isReasoning ? this.reasoningTextLen : this.chunkTextLen;
-    const sampleMap = isReasoning ? this.reasoningSamples : this.chunkSamples;
-
-    const cumLen = (lenMap.get(step) ?? 0) + text.length;
-    lenMap.set(step, cumLen);
-
-    const offsetMs = Math.max(0, now - this.lastBoundary);
-    const samples = sampleMap.get(step);
-    if (!samples) {
-      sampleMap.set(step, [[offsetMs, cumLen]]);
-      return;
-    }
-    const last = samples[samples.length - 1]!;
-    if (offsetMs - last[0] >= CHUNK_SAMPLE_INTERVAL_MS) {
-      samples.push([offsetMs, cumLen]);
-    } else {
-      last[1] = cumLen;
-    }
   }
 
   /** streamText `onStepFinish`: close the in-flight step with real timing. */
@@ -290,7 +247,6 @@ export class WrapCollector {
     const end = Date.now();
     this.lastBoundary = end;
     const usage = withWebSearch(mapUsageWrap(step?.usage as never), step);
-    const chunks = this.buildChunkArrays(stepNumber, usage);
     // Close reasoning blocks that never saw a reasoning-end (best effort:
     // count them as running until the step boundary).
     const openBlocks = this.activeReasoningBlocks.get(stepNumber);
@@ -303,12 +259,7 @@ export class WrapCollector {
         );
       }
     }
-    const reasoning = this.buildReasoningArrays(stepNumber, usage);
     const reasoningDurationMs = this.reasoningDurMs.get(stepNumber);
-    this.chunkSamples.delete(stepNumber);
-    this.chunkTextLen.delete(stepNumber);
-    this.reasoningSamples.delete(stepNumber);
-    this.reasoningTextLen.delete(stepNumber);
     this.activeReasoningBlocks.delete(stepNumber);
     this.reasoningDurMs.delete(stepNumber);
     this.pushLlmSpan({
@@ -320,8 +271,6 @@ export class WrapCollector {
       modelId: step?.response?.modelId ?? this.modelId,
       finishReason: step?.finishReason,
       output: step?.text,
-      chunks,
-      reasoning,
       reasoningDurationMs:
         reasoningDurationMs !== undefined ? Math.round(reasoningDurationMs) : undefined,
       ...this.stepSignals(step),
@@ -449,10 +398,6 @@ export class WrapCollector {
       modelId: s.modelId,
       usage: s.usage,
       ttftMs: this.ttft.get(s.stepNumber),
-      chunkOffsets: s.chunks?.chunkOffsets,
-      chunkTokens: s.chunks?.chunkTokens,
-      reasoningOffsets: s.reasoning?.reasoningOffsets,
-      reasoningChunkTokens: s.reasoning?.reasoningChunkTokens,
       reasoningDurationMs: s.reasoningDurationMs,
       output: this.config.recordOutputs
         ? serialize(s.output, this.config.maxPayloadChars)
@@ -465,54 +410,6 @@ export class WrapCollector {
       metadata,
     });
     if (end > this.endTime) this.endTime = end;
-  }
-
-  // Rescale a step's [offsetMs, cumulativeTextLength] samples to parallel
-  // offset/token arrays (text length → visible output tokens). Mirrors collector.ts.
-  private buildChunkArrays(
-    step: number,
-    usage: Usage | undefined,
-  ): { chunkOffsets: number[]; chunkTokens: number[] } | undefined {
-    const raw = this.chunkSamples.get(step);
-    const finalTextLen = this.chunkTextLen.get(step) ?? 0;
-    if (!usage || !raw || raw.length === 0 || finalTextLen <= 0) return undefined;
-
-    const scaleTokens = Math.max(0, (usage.outputTokens ?? 0) - (usage.reasoningTokens ?? 0));
-    if (scaleTokens === 0) return undefined;
-
-    const samples = decimateSamples(raw, MAX_CHUNK_SAMPLES);
-    const chunkOffsets = new Array<number>(samples.length);
-    const chunkTokens = new Array<number>(samples.length);
-    for (let i = 0; i < samples.length; i++) {
-      const sample = samples[i]!;
-      chunkOffsets[i] = sample[0];
-      chunkTokens[i] = Math.round((sample[1] / finalTextLen) * scaleTokens);
-    }
-    return { chunkOffsets, chunkTokens };
-  }
-
-  // Same rescale for the reasoning stream, anchored to usage.reasoningTokens.
-  // Versions that never report reasoning tokens (v4) → no curve, no estimates.
-  private buildReasoningArrays(
-    step: number,
-    usage: Usage | undefined,
-  ): { reasoningOffsets: number[]; reasoningChunkTokens: number[] } | undefined {
-    const raw = this.reasoningSamples.get(step);
-    const finalTextLen = this.reasoningTextLen.get(step) ?? 0;
-    if (!usage || !raw || raw.length === 0 || finalTextLen <= 0) return undefined;
-
-    const scaleTokens = usage.reasoningTokens ?? 0;
-    if (scaleTokens === 0) return undefined;
-
-    const samples = decimateSamples(raw, MAX_CHUNK_SAMPLES);
-    const reasoningOffsets = new Array<number>(samples.length);
-    const reasoningChunkTokens = new Array<number>(samples.length);
-    for (let i = 0; i < samples.length; i++) {
-      const sample = samples[i]!;
-      reasoningOffsets[i] = sample[0];
-      reasoningChunkTokens[i] = Math.round((sample[1] / finalTextLen) * scaleTokens);
-    }
-    return { reasoningOffsets, reasoningChunkTokens };
   }
 
   private finalize(): void {

@@ -1,7 +1,7 @@
 // Static, locally-typed data for the interactive landing-page demo. None of this
 // touches tRPC or the live types — the demo is a faithful *visual* replica, so
 // the shapes here only need to match what the demo components read. Where a real
-// presentational component (e.g. TraceReplay) wants the deep tRPC `TraceSpan`,
+// presentational component (e.g. TraceTimeline) wants the deep tRPC `TraceSpan`,
 // the demo casts `MockTraceSpan[] as unknown as TraceSpan[]` at the call site.
 //
 // The demo is lazy-loaded client-only (ssr:false), so module-load work that
@@ -549,13 +549,11 @@ export type MockTraceSpan = {
   endTime: string;
   durationMs: number;
   ttftMs: number | null;
-  // Output tokens drive the throughput ribbon; total tokens + cost feed the
-  // per-span rows and the whole-trace rollup the timeline renders.
+  // Total tokens + cost feed the per-span rows and the whole-trace rollup the
+  // timeline renders.
   outputTokens: number;
   totalTokens: number;
   totalCost: number | null;
-  chunkOffsets: number[];
-  chunkTokens: number[];
 };
 
 // Base timestamps as ClickHouse datetime strings ('YYYY-MM-DD HH:MM:SS', UTC).
@@ -581,8 +579,6 @@ export const TRACE_SPANS: MockTraceSpan[] = [
     outputTokens: 0,
     totalTokens: 0,
     totalCost: null,
-    chunkOffsets: [],
-    chunkTokens: [],
   },
   {
     spanId: "s1",
@@ -597,8 +593,6 @@ export const TRACE_SPANS: MockTraceSpan[] = [
     outputTokens: 142,
     totalTokens: 612,
     totalCost: 0.0011,
-    chunkOffsets: [280, 460, 640, 820, 920],
-    chunkTokens: [4, 28, 71, 118, 142],
   },
   {
     spanId: "s2",
@@ -613,8 +607,6 @@ export const TRACE_SPANS: MockTraceSpan[] = [
     outputTokens: 0,
     totalTokens: 0,
     totalCost: null,
-    chunkOffsets: [],
-    chunkTokens: [],
   },
   {
     spanId: "s3",
@@ -629,8 +621,6 @@ export const TRACE_SPANS: MockTraceSpan[] = [
     outputTokens: 0,
     totalTokens: 0,
     totalCost: null,
-    chunkOffsets: [],
-    chunkTokens: [],
   },
   {
     spanId: "s4",
@@ -645,8 +635,6 @@ export const TRACE_SPANS: MockTraceSpan[] = [
     outputTokens: 264,
     totalTokens: 1486,
     totalCost: 0.0042,
-    chunkOffsets: [340, 600, 860, 1080],
-    chunkTokens: [6, 88, 196, 264],
   },
   {
     spanId: "s5",
@@ -661,8 +649,6 @@ export const TRACE_SPANS: MockTraceSpan[] = [
     outputTokens: 689,
     totalTokens: 2961,
     totalCost: 0.0089,
-    chunkOffsets: [520, 980, 1480, 1980, 2460],
-    chunkTokens: [8, 142, 318, 512, 689],
   },
 ];
 

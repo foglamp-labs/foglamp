@@ -112,7 +112,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
         />
       </section>
 
-      {/* Waterfall + throughput replay — the real dashboard timeline component.
+      {/* Waterfall — the real dashboard timeline component.
           Wrapped in min-w-0 like the real trace page so the fixed-width name and
           duration columns can't push the bar track past the panel's right edge. */}
       <div className="min-w-0">

@@ -282,7 +282,7 @@ describe("wrap", () => {
     expect(trace.traceName).toBe("solo");
   });
 
-  test("streamText: reasoning chunks → reasoning fields; TTFT anchors at first reasoning chunk", async () => {
+  test("streamText: reasoning chunks → reasoning duration; TTFT anchors at first reasoning chunk", async () => {
     const { fake, calls } = makeFakeAi();
     const { fetchImpl, traces } = makeCapture();
     const fog = wrap(fake, { ...OPTS, fetch: fetchImpl });
@@ -312,19 +312,15 @@ describe("wrap", () => {
     await fog.flush();
 
     const llm = traces()[0]!.spans.find((s) => s.spanType === "llm")!;
-    expect(llm.reasoningOffsets!.length).toBeGreaterThan(0);
-    expect(llm.reasoningChunkTokens!.length).toBe(llm.reasoningOffsets!.length);
-    // Cumulative curve rescales to the reported reasoning token count.
-    expect(llm.reasoningChunkTokens!.at(-1)).toBe(20);
     // The block ran ~20ms between its deltas before reasoning-end closed it.
     expect(llm.reasoningDurationMs!).toBeGreaterThan(0);
     // TTFT = first reasoning chunk (after the ~30ms silent wait), NOT the
-    // text-delta that arrived ~40ms later.
+    // text-delta that arrived ~40ms later (~70ms in).
     expect(llm.ttftMs!).toBeGreaterThanOrEqual(20);
-    expect(llm.ttftMs!).toBeLessThan(llm.chunkOffsets![0]!);
+    expect(llm.ttftMs!).toBeLessThan(65);
   });
 
-  test("streamText: no reasoning chunks / no reasoningTokens → fields stay absent", async () => {
+  test("streamText: no reasoning chunks → reasoning duration stays absent", async () => {
     const { fake, calls } = makeFakeAi();
     const { fetchImpl, traces } = makeCapture();
     const fog = wrap(fake, { ...OPTS, fetch: fetchImpl });
@@ -341,8 +337,6 @@ describe("wrap", () => {
     await fog.flush();
 
     const llm = traces()[0]!.spans.find((s) => s.spanType === "llm")!;
-    expect(llm.reasoningOffsets).toBeUndefined();
-    expect(llm.reasoningChunkTokens).toBeUndefined();
     expect(llm.reasoningDurationMs).toBeUndefined();
   });
 

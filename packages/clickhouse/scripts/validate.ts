@@ -64,10 +64,6 @@ const blank = {
   total_cost: null,
   pricing_source: "",
   priced_at: null,
-  chunk_offsets: [],
-  chunk_tokens: [],
-  reasoning_offsets: [],
-  reasoning_chunk_tokens: [],
   reasoning_duration_ms: null,
   workflow_name: "",
   workflow_run_id: "",
@@ -144,8 +140,6 @@ const rows: SpanRow[] = [
     output_tokens: 500,
     total_tokens: 1500,
     ttft_ms: 120,
-    chunk_offsets: [120, 260, 400],
-    chunk_tokens: [125, 310, 500],
     prompt_cost: "0.0025000000",
     completion_cost: "0.0050000000",
     total_cost: "0.0075000000",
@@ -243,15 +237,6 @@ assert(
 );
 assert(spans[1]!.ttft_ms === 120, "ttft preserved on llm span");
 assert(spans[1]!.metadata.env === "prod", "metadata map round-trips");
-assert(
-  JSON.stringify(spans[1]!.chunk_offsets) === "[120,260,400]" &&
-    JSON.stringify(spans[1]!.chunk_tokens) === "[125,310,500]",
-  "chunk samples round-trip on llm span",
-);
-assert(
-  spans[0]!.chunk_offsets.length === 0 && spans[2]!.chunk_tokens.length === 0,
-  "non-streaming spans have empty chunk arrays",
-);
 
 console.log("workflow runs (workflow_run_summary MV):");
 const runs = await listWorkflowRuns(client, { projectId: PID });
