@@ -19,50 +19,95 @@ import {
   CardHeader,
   CardTitle,
 } from "@foglamp/ui/components/card";
-import { Field, FieldLabel } from "@foglamp/ui/components/field";
-import { Input } from "@foglamp/ui/components/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@foglamp/ui/components/select";
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@foglamp/ui/components/input-group";
 import { IconTrashFilled } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { NoProject, TableSkeleton } from "@/components/app/page-parts";
+import { NoProject } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { ModelLogo } from "@/components/model-logo";
 import { trpc } from "@/utils/trpc";
 
 type Provider = "google" | "openai" | "anthropic";
 const PROVIDER_LABELS: Record<Provider, string> = {
-  google: "Google (Gemini)",
+  google: "Google",
   openai: "OpenAI",
-  anthropic: "Anthropic (Claude)",
+  anthropic: "Anthropic",
 };
-// Providers a key can be added for (judge-capable). The saved list shows all.
-const ADDABLE: Provider[] = ["google", "openai", "anthropic"];
 const ALL_PROVIDERS: Provider[] = ["google", "openai", "anthropic"];
 
 /** Provider keys management, rendered as a tab of the Settings page. */
 export function ProviderKeysTab() {
   const { projectId } = useProject();
-  const qc = useQueryClient();
-  const [provider, setProvider] = useState<Provider>("google");
-  const [key, setKey] = useState("");
-  // Target kept set while the dialog animates closed so its label doesn't
-  // blank out mid-animation; `removeOpen` alone drives visibility.
-  const [removeTarget, setRemoveTarget] = useState<Provider | null>(null);
-  const [removeOpen, setRemoveOpen] = useState(false);
 
   const keys = useQuery({
     ...trpc.providerKeys.list.queryOptions({ projectId: projectId! }),
     enabled: !!projectId,
   });
+
+  if (!projectId) {
+    return <NoProject />;
+  }
+
+  const configured = keys.data?.secretsConfigured ?? false;
+  const saved = new Set((keys.data?.keys ?? []).map((k) => k.provider));
+
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>Provider Keys</CardTitle>
+        <CardDescription>
+          Used by every judge eval that uses that provider's models.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-5">
+        {!keys.isLoading && !configured && (
+          <div className="rounded-xl corner-squircle border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
+            <span className="font-medium text-destructive">
+              Encryption not configured.
+            </span>{" "}
+            Set <code>FOGLAMP_SECRETS_KEY</code> (32+ chars) on the server to
+            enable saving provider keys.
+          </div>
+        )}
+
+        <div className="gap-x-8 mt-3 pb-3 grid grid-cols-3">
+          {ALL_PROVIDERS.map((p) => (
+            <ProviderKeyColumn
+              key={p}
+              projectId={projectId}
+              provider={p}
+              configured={configured}
+              hasKey={saved.has(p)}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// One provider's column: logo + status header, key input, save/delete actions.
+function ProviderKeyColumn({
+  projectId,
+  provider,
+  configured,
+  hasKey,
+}: {
+  projectId: string;
+  provider: Provider;
+  configured: boolean;
+  hasKey: boolean;
+}) {
+  const qc = useQueryClient();
+  const [key, setKey] = useState("");
+  const [removeOpen, setRemoveOpen] = useState(false);
 
   const upsert = useMutation(
     trpc.providerKeys.upsert.mutationOptions({
@@ -85,132 +130,59 @@ export function ProviderKeysTab() {
     })
   );
 
-  if (!projectId) {
-    return <NoProject />;
-  }
-
-  const configured = keys.data?.secretsConfigured ?? false;
-  const saved = new Map((keys.data?.keys ?? []).map((k) => [k.provider, k]));
-
   return (
-    <>
-      <Card size="sm">
-        <CardHeader>
-          <CardTitle>Add or replace a key</CardTitle>
-          <CardDescription>
-            Used by every judge eval that uses that provider's models.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          {!keys.isLoading && !configured && (
-            <div className="rounded-xl corner-squircle border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-muted-foreground">
-              <span className="font-medium text-destructive">
-                Encryption not configured.
-              </span>{" "}
-              Set <code>FOGLAMP_SECRETS_KEY</code> (32+ chars) on the server to
-              enable saving provider keys.
-            </div>
-          )}
-
-          <div className="flex items-end gap-2 mt-2">
-            <Field className="w-52">
-              <FieldLabel>Provider</FieldLabel>
-              <Select
-                value={provider}
-                onValueChange={(v) => setProvider(v as Provider)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue>
-                    {(value) => (
-                      <span className="flex items-center gap-2">
-                        <ModelLogo provider={value as string} />
-                        {PROVIDER_LABELS[value as Provider]}
-                      </span>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {ADDABLE.map((p) => (
-                    <SelectItem key={p} value={p} label={PROVIDER_LABELS[p]}>
-                      <ModelLogo provider={p} />
-                      {PROVIDER_LABELS[p]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field className="flex-1">
-              <FieldLabel>API key</FieldLabel>
-              <Input
-                type="password"
-                placeholder="Paste the provider API key"
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                disabled={!configured}
-              />
-            </Field>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-1.75 text-sm font-medium">
+        <ModelLogo provider={provider} className="size-3.5" />
+        {PROVIDER_LABELS[provider]}
+      </div>
+      {/* A real form so Enter in the key field saves it. */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!key.trim()) return;
+          upsert.mutate({ projectId, provider, key: key.trim() });
+        }}
+        className="flex items-center gap-2"
+      >
+        <InputGroup>
+          <InputGroupInput
+            type="password"
+            placeholder={hasKey ? "••••••••••••" : "Paste the API key"}
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            disabled={!configured}
+          />
+          <InputGroupAddon align="inline-end" className="pr-1.25">
             <Button
+              type="submit"
+              size="sm"
+              variant="ghost"
+              className="mr-1 h-6.5 rounded-sm dark:hover:bg-muted"
               disabled={!configured || !key.trim() || upsert.isPending}
-              onClick={() =>
-                upsert.mutate({ projectId, provider, key: key.trim() })
-              }
             >
-              Save key
+              Save
             </Button>
-          </div>
-
-          <div className="flex flex-col gap-2 mt-2">
-            <p className="text-sm font-medium text-muted-foreground">
-              Saved keys
-            </p>
-            {keys.isLoading ? (
-              <TableSkeleton rows={3} />
-            ) : (
-              <div className="flex flex-col">
-                {ALL_PROVIDERS.map((p) => {
-                  const has = saved.has(p);
-                  return (
-                    <div
-                      key={p}
-                      className="flex items-center justify-between gap-4 border-b border-border/50 py-3 min-h-15 last:border-b-0 px-1.5"
-                    >
-                      <div className="flex items-center gap-3">
-                        <ModelLogo provider={p} className="size-4" />
-                        <span className="text-sm font-medium">
-                          {PROVIDER_LABELS[p]}
-                        </span>
-                        <Badge variant={has ? "emerald" : "secondary"}>
-                          {has ? "configured" : "not set"}
-                        </Badge>
-                      </div>
-                      {has && (
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          disabled={remove.isPending}
-                          onClick={() => {
-                            setRemoveTarget(p);
-                            setRemoveOpen(true);
-                          }}
-                        >
-                          <IconTrashFilled />
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          </InputGroupAddon>
+        </InputGroup>
+        {hasKey && (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost-destructive"
+            disabled={remove.isPending}
+            onClick={() => setRemoveOpen(true)}
+          >
+            <IconTrashFilled />
+          </Button>
+        )}
+      </form>
 
       <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove the {removeTarget ? PROVIDER_LABELS[removeTarget] : ""}{" "}
-              key?
+              Remove the {PROVIDER_LABELS[provider]} key?
             </AlertDialogTitle>
             <AlertDialogDescription>
               Every judge eval that uses this provider's models will stop
@@ -222,16 +194,13 @@ export function ProviderKeysTab() {
             <AlertDialogAction
               variant="destructive"
               disabled={remove.isPending}
-              onClick={() =>
-                removeTarget &&
-                remove.mutate({ projectId, provider: removeTarget })
-              }
+              onClick={() => remove.mutate({ projectId, provider })}
             >
               Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

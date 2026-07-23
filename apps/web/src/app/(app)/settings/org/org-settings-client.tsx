@@ -41,11 +41,13 @@ import {
   IconChartPieFilled,
   IconClockFilled,
   IconCreditCardFilled,
+  IconCrownFilled,
   IconFolderFilled,
   IconGaugeFilled,
   IconLockFilled,
   IconMailFilled,
   IconSettingsFilled,
+  IconShieldFilled,
   IconStack2Filled,
   IconTimelineEventFilled,
   IconTrash,
@@ -94,7 +96,6 @@ function capitalize(value: string) {
 const TAB_IDS = [
   "general",
   "members",
-  "invitations",
   "provider-keys",
   "projects",
   "billing",
@@ -106,6 +107,12 @@ function isTabId(v: string | null): v is TabId {
   return !!v && (TAB_IDS as readonly string[]).includes(v);
 }
 
+// Invitations used to be their own tab; keep old links landing on Members.
+function fromParam(v: string | null): TabId | null {
+  if (v === "invitations") return "members";
+  return isTabId(v) ? v : null;
+}
+
 const TABS: {
   id: TabId;
   label: string;
@@ -113,7 +120,6 @@ const TABS: {
 }[] = [
   { id: "general", label: "General", icon: IconSettingsFilled },
   { id: "members", label: "Members", icon: IconUserFilled },
-  { id: "invitations", label: "Invitations", icon: IconMailFilled },
   { id: "provider-keys", label: "Provider Keys", icon: IconLockFilled },
   { id: "projects", label: "Projects", icon: IconFolderFilled },
   { id: "billing", label: "Billing", icon: IconCreditCardFilled },
@@ -183,16 +189,15 @@ export function OrgSettingsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const [tab, setTab] = useState<TabId>(
-    isTabId(tabParam) ? tabParam : "general"
-  );
+  const [tab, setTab] = useState<TabId>(fromParam(tabParam) ?? "general");
   // Follow later URL changes too (e.g. an in-app link while already here).
   useEffect(() => {
-    if (isTabId(tabParam)) setTab(tabParam);
+    const next = fromParam(tabParam);
+    if (next) setTab(next);
   }, [tabParam]);
 
   function onTabChange(value: string) {
-    const next = isTabId(value) ? value : "general";
+    const next = fromParam(value) ?? "general";
     setTab(next);
     // Keep the URL shareable/refreshable without adding history entries.
     router.replace(`/settings/org?tab=${next}` as Route, { scroll: false });
@@ -214,7 +219,6 @@ export function OrgSettingsClient() {
         <TabBar tab={tab} onChange={onTabChange} />
         {tab === "general" && <GeneralTab orgId={orgId} orgName={orgName} />}
         {tab === "members" && <MembersTab orgId={orgId} />}
-        {tab === "invitations" && <InvitationsTab orgId={orgId} />}
         {tab === "projects" && <ProjectsTab orgId={orgId} />}
         {tab === "billing" && <BillingTab orgId={orgId} />}
         {tab === "usage" && <UsageTab orgId={orgId} />}
@@ -224,7 +228,7 @@ export function OrgSettingsClient() {
   );
 }
 
-// --- Members + invitations share a fetch (explicit org id; no active-org dance) ---
+// --- Members + pending invitations in one fetch (explicit org id; no active-org dance) ---
 function useOrgPeople(orgId: string) {
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -481,12 +485,52 @@ function GeneralTab({ orgId, orgName }: { orgId: string; orgName: string }) {
 }
 
 function MembersTab({ orgId }: { orgId: string }) {
-  const { members, refresh } = useOrgPeople(orgId);
-  // Target kept set while the dialog animates closed (see ProjectsTab).
+  const { members, invites, refresh } = useOrgPeople(orgId);
+  // Targets kept set while their dialogs animate closed (see ProjectsTab).
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
   const [removeOpen, setRemoveOpen] = useState(false);
   const [roleUpdating, setRoleUpdating] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [email, setEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<Role>("member");
+  const [inviting, setInviting] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState<Invite | null>(null);
+  const [revokeOpen, setRevokeOpen] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+
+  const invite = async () => {
+    if (!email.trim() || inviting) return;
+    setInviting(true);
+    try {
+      const res = await authClient.organization.inviteMember({
+        email: email.trim(),
+        role: inviteRole,
+        organizationId: orgId,
+      });
+      if (res.error)
+        return toast.error(res.error.message ?? "Failed to invite");
+      setEmail("");
+      toast.success("Invitation sent");
+      void refresh();
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const cancelInvite = async () => {
+    if (!revokeTarget || revoking) return;
+    setRevoking(true);
+    try {
+      const res = await authClient.organization.cancelInvitation({
+        invitationId: revokeTarget.id,
+      });
+      setRevokeOpen(false);
+      if (res.error) return toast.error(res.error.message ?? "Failed");
+      void refresh();
+    } finally {
+      setRevoking(false);
+    }
+  };
 
   const changeRole = async (memberId: string, role: Role) => {
     if (roleUpdating === memberId) return;
@@ -524,136 +568,6 @@ function MembersTab({ orgId }: { orgId: string }) {
     <Card size="sm">
       <CardHeader>
         <CardTitle>Members</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col">
-        {members.map((m) => (
-          <div
-            key={m.id}
-            className="flex items-center justify-between gap-3 border-b border-border/50 py-3 last:border-b-0"
-          >
-            <div className="flex items-center gap-3">
-              <Avatar size="sm">
-                <AvatarFallback>
-                  {initials(m.user.name || m.user.email)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">
-                  {m.user.name || m.user.email}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {m.user.email}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {m.role === "owner" ? (
-                <Badge variant="amber">Owner</Badge>
-              ) : (
-                <Select
-                  value={m.role}
-                  // Lock only the row being updated; the rest stay usable.
-                  disabled={roleUpdating === m.id}
-                  onValueChange={(v) => changeRole(m.id, v as Role)}
-                >
-                  <SelectTrigger size="sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-              {m.role !== "owner" && (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setRemoveTarget(m);
-                    setRemoveOpen(true);
-                  }}
-                >
-                  <IconTrashFilled />
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
-      </CardContent>
-
-      <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove member?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {removeTarget?.user.email} will lose access to this organization.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={removing}
-              onClick={remove}
-            >
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Card>
-  );
-}
-
-function InvitationsTab({ orgId }: { orgId: string }) {
-  const { invites, refresh } = useOrgPeople(orgId);
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("member");
-  const [inviting, setInviting] = useState(false);
-  // Target kept set while the dialog animates closed (see ProjectsTab).
-  const [revokeTarget, setRevokeTarget] = useState<Invite | null>(null);
-  const [revokeOpen, setRevokeOpen] = useState(false);
-  const [revoking, setRevoking] = useState(false);
-
-  const invite = async () => {
-    if (!email.trim() || inviting) return;
-    setInviting(true);
-    try {
-      const res = await authClient.organization.inviteMember({
-        email: email.trim(),
-        role,
-        organizationId: orgId,
-      });
-      if (res.error)
-        return toast.error(res.error.message ?? "Failed to invite");
-      setEmail("");
-      toast.success("Invitation sent");
-      void refresh();
-    } finally {
-      setInviting(false);
-    }
-  };
-
-  const cancel = async () => {
-    if (!revokeTarget || revoking) return;
-    setRevoking(true);
-    try {
-      const res = await authClient.organization.cancelInvitation({
-        invitationId: revokeTarget.id,
-      });
-      setRevokeOpen(false);
-      if (res.error) return toast.error(res.error.message ?? "Failed");
-      void refresh();
-    } finally {
-      setRevoking(false);
-    }
-  };
-
-  return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>Invitations</CardTitle>
         <CardDescription>
           Invite teammates by email. Admins+ can manage members.
         </CardDescription>
@@ -665,26 +579,35 @@ function InvitationsTab({ orgId }: { orgId: string }) {
             e.preventDefault();
             void invite();
           }}
-          className="flex items-end gap-2"
+          className="flex items-end gap-4"
         >
           <Field className="flex-1">
             <FieldLabel>Email</FieldLabel>
             <Input
               type="email"
-              placeholder="teammate@example.com"
+              placeholder="steve@jobs.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </Field>
           <Field className="w-46">
             <FieldLabel>Role</FieldLabel>
-            <Select value={role} onValueChange={(v) => setRole(v as Role)}>
+            <Select
+              value={inviteRole}
+              onValueChange={(v) => setInviteRole(v as Role)}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="member">
+                  <IconUserFilled className="size-3.5 shrink-0 text-muted-foreground" />
+                  Member
+                </SelectItem>
+                <SelectItem value="admin">
+                  <IconShieldFilled className="size-3.5 shrink-0 text-muted-foreground" />
+                  Admin
+                </SelectItem>
               </SelectContent>
             </Select>
           </Field>
@@ -693,9 +616,74 @@ function InvitationsTab({ orgId }: { orgId: string }) {
             disabled={!email.trim() || inviting}
             className="mb-0.5"
           >
+            <IconMailFilled />
             Invite
           </Button>
         </form>
+
+        <div className="flex flex-col">
+          {members.map((m) => (
+            <div
+              key={m.id}
+              className="flex items-center justify-between gap-3 border-b border-border/50 py-3 px-1 pr-1.5 last:border-b-0 last:pb-1"
+            >
+              <div className="flex items-center gap-3">
+                <Avatar size="xs">
+                  <AvatarFallback>
+                    {initials(m.user.name || m.user.email)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">
+                  {m.user.name || m.user.email}
+                  <span className="text-xs text-muted-foreground font-normal ml-2.5">
+                    {m.user.email}
+                  </span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {m.role === "owner" ? (
+                  <Badge variant="orange">
+                    <IconCrownFilled />
+                    Owner
+                  </Badge>
+                ) : (
+                  <Select
+                    value={m.role}
+                    // Lock only the row being updated; the rest stay usable.
+                    disabled={roleUpdating === m.id}
+                    onValueChange={(v) => changeRole(m.id, v as Role)}
+                  >
+                    <SelectTrigger size="sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">
+                        <IconShieldFilled className="size-3.5 shrink-0 text-muted-foreground" />
+                        Admin
+                      </SelectItem>
+                      <SelectItem value="member">
+                        <IconUserFilled className="size-3.5 shrink-0 text-muted-foreground" />
+                        Member
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {m.role !== "owner" && (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setRemoveTarget(m);
+                      setRemoveOpen(true);
+                    }}
+                  >
+                    <IconTrashFilled />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
 
         {invites.length > 0 && (
           <div className="mt-4 flex flex-col">
@@ -736,6 +724,27 @@ function InvitationsTab({ orgId }: { orgId: string }) {
         )}
       </CardContent>
 
+      <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove member?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removeTarget?.user.email} will lose access to this organization.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removing}
+              onClick={remove}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={revokeOpen} onOpenChange={setRevokeOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -750,7 +759,7 @@ function InvitationsTab({ orgId }: { orgId: string }) {
             <AlertDialogAction
               variant="destructive"
               disabled={revoking}
-              onClick={cancel}
+              onClick={cancelInvite}
             >
               Revoke
             </AlertDialogAction>

@@ -9,9 +9,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
 
-import { authClient } from "@/lib/auth-client";
+import { GoogleLogo } from "@/components/brand-logos";
 import { BrandMark } from "@/components/marketing/brand-mark";
-import { IconBrandGoogleFilled } from "@tabler/icons-react";
+import { authClient } from "@/lib/auth-client";
 
 // Which sign-in methods the server has enabled (fetched by the login page from
 // /api/auth-methods). Hosted: google + magic link. Self-host: password (+ magic
@@ -144,7 +144,7 @@ export default function LoginForm({
             setMode("password");
           }}
         >
-          Back to sign in
+          Back to login
         </Button>
       </div>
     );
@@ -174,7 +174,7 @@ export default function LoginForm({
             setMode(methods.emailPassword ? "password" : "magic");
           }}
         >
-          Back to sign in
+          Back to login
         </Button>
       </div>
     );
@@ -186,7 +186,7 @@ export default function LoginForm({
         <BrandMark className="w-7" />
       </div>
       <h1 className="mt-5 mb-1 w-full text-start text-lg font-medium text-balance">
-        {mode === "forgot" ? "Reset your password" : "Sign in"}
+        {mode === "forgot" ? "Reset your password" : "Login"}
       </h1>
       <p className="mb-6 text-sm text-muted-foreground tracking-normal">
         {mode === "forgot"
@@ -202,7 +202,7 @@ export default function LoginForm({
           disabled={googlePending}
           onClick={signInWithGoogle}
         >
-          <IconBrandGoogleFilled className="size-3.5" />
+          <GoogleLogo className="size-3.5 mr-0.75" />
           {googlePending ? "Redirecting…" : "Continue with Google"}
         </Button>
       )}
@@ -291,7 +291,7 @@ export default function LoginForm({
                 className="w-full mt-2"
                 disabled={!canSubmit || isSubmitting}
               >
-                {isSubmitting ? "Signing in…" : "Sign in"}
+                {isSubmitting ? "Signing in…" : "Login"}
               </Button>
             )}
           </passwordForm.Subscribe>
@@ -350,7 +350,7 @@ export default function LoginForm({
             className="self-start px-0 text-muted-foreground/50"
             onClick={() => setMode("password")}
           >
-            Back to sign in
+            Back to login
           </Button>
         </form>
       ) : hasEmailForm ? (
@@ -406,7 +406,7 @@ export default function LoginForm({
       {methods.emailPassword && methods.magicLink && mode !== "forgot" && (
         <Button
           variant="link"
-          className="mt-4 self-start px-0 text-muted-foreground/50"
+          className="mt-4 self-start px-0 text-muted-foreground/50 hover:text-foreground"
           onClick={() => setMode(mode === "password" ? "magic" : "password")}
         >
           {mode === "password"
