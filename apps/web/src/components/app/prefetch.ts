@@ -103,7 +103,6 @@ const routePrefetch: Partial<Record<Route, (ctx: PrefetchCtx) => void>> = {
     warm(trpc.workflows.names.queryOptions(args));
     warm(trpc.customers.list.queryOptions(args));
     warm(trpc.metrics.models.queryOptions(args));
-    warm(trpc.traces.metadataKeys.queryOptions(args));
   },
   "/evals": ({ projectId, from, to }) => {
     warm(trpc.evals.list.queryOptions({ projectId, from, to }));
