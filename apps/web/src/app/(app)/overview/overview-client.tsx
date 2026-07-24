@@ -464,30 +464,28 @@ export function OverviewClient() {
     ...trpc.traces.list.queryOptions({ projectId: projectId!, limit: 1 }),
     enabled,
   });
-  // Delay every section's loading treatment so fast loads never flash it: the
-  // whole page (KPI cards, charts, and lists) stays blank until a load has run
-  // long enough to be worth a skeleton, then they all reveal in step.
-  const showSummarySkeleton = useDelayedLoading(summary.isLoading);
-  const showSeriesSkeleton = useDelayedLoading(timeseries.isLoading);
-  const showCostSkeleton = useDelayedLoading(
-    costByModel.isLoading || models.isLoading,
-  );
-  const showCacheSkeleton = useDelayedLoading(cacheSummary.isLoading);
-  const showModelsSkeleton = useDelayedLoading(models.isLoading);
-  const showAgentsSkeleton = useDelayedLoading(agents.isLoading);
-  const showWorkflowsSkeleton = useDelayedLoading(workflows.isLoading);
-  const showCustomersSkeleton = useDelayedLoading(customers.isLoading);
-
-  // Per-slot latches for the entrance fade (see useSkeletonShown): a card only
-  // fades in if its slot never painted a skeleton first.
-  const summarySkeletonShown = useSkeletonShown(showSummarySkeleton);
-  const seriesSkeletonShown = useSkeletonShown(showSeriesSkeleton);
-  const costSkeletonShown = useSkeletonShown(showCostSkeleton);
-  const cacheSkeletonShown = useSkeletonShown(showCacheSkeleton);
-  const modelsSkeletonShown = useSkeletonShown(showModelsSkeleton);
-  const agentsSkeletonShown = useSkeletonShown(showAgentsSkeleton);
-  const workflowsSkeletonShown = useSkeletonShown(showWorkflowsSkeleton);
-  const customersSkeletonShown = useSkeletonShown(showCustomersSkeleton);
+  // The whole page loads as one unit: every slot gates on this shared flag, so
+  // a fast query (the models list, typically) can never paint its card alone
+  // and then jump around as slower siblings land. `isLoading` is only true on
+  // the first fetch — range changes keep placeholderData on screen, so this
+  // never regresses a loaded page back to skeletons.
+  const pageLoading =
+    summary.isLoading ||
+    timeseries.isLoading ||
+    models.isLoading ||
+    costByModel.isLoading ||
+    cacheSummary.isLoading ||
+    agents.isLoading ||
+    workflows.isLoading ||
+    customers.isLoading ||
+    everReceived.isLoading;
+  // Delay the loading treatment so fast loads never flash it: the whole page
+  // (KPI cards, charts, and lists) stays blank until the load has run long
+  // enough to be worth skeletons, then every slot reveals in step.
+  const showSkeleton = useDelayedLoading(pageLoading);
+  // Latch for the entrance fade (see useSkeletonShown): cards only fade in if
+  // the page never painted skeletons first.
+  const skeletonShown = useSkeletonShown(showSkeleton);
 
   // p50/p95/p99 latency + requests/errors per bucket. Keeps the raw bucket as
   // the x value (formatted on the axis) so we can thin the ticks.
@@ -713,9 +711,8 @@ export function OverviewClient() {
     1,
     ...customerRows.map((c) => c.totalCost ?? 0),
   );
-  // Raw load flags: drive empty-state detection here, and gate each chart card
-  // (nothing pre-delay → ChartCardSkeleton after the delay → the real chart),
-  // mirroring the KPI cards so the whole page shares one loading rhythm.
+  // Raw load flags for empty-state detection: a chart is only "empty" once its
+  // own queries have actually resolved (rendering is gated on pageLoading).
   const costLoading = costByModel.isLoading || models.isLoading;
   const seriesLoading = timeseries.isLoading;
 
@@ -767,15 +764,18 @@ export function OverviewClient() {
         <OverviewHeader />
       </div>
 
-      {/* Onboarding — shown until this project has ever received a trace. */}
-      {!everReceived.isLoading &&
-        (everReceived.data?.traces ?? []).length === 0 && <OnboardingPanel />}
+      {/* Onboarding — shown until this project has ever received a trace.
+          Gated on pageLoading so it mounts with the rest of the page instead
+          of popping in and pushing content down. */}
+      {!pageLoading && (everReceived.data?.traces ?? []).length === 0 && (
+        <OnboardingPanel />
+      )}
 
-      {/* KPIs — skeleton waits out the shared delay (see showSummarySkeleton),
-          so fast loads render nothing until the data lands. `isLoading` is
+      {/* KPIs — skeleton waits out the shared delay (see showSkeleton), so
+          fast loads render nothing until the data lands. `isLoading` is
           already false for cached data, so normal navigation never flashes it. */}
-      {summary.isLoading ? (
-        showSummarySkeleton ? (
+      {pageLoading ? (
+        showSkeleton ? (
           <StatCardsSkeleton
             count={4}
             className={cn(entrance && "page-fade-in")}
@@ -785,7 +785,7 @@ export function OverviewClient() {
         <section
           className={cn(
             "grid gap-4 md:grid-cols-2 xl:grid-cols-4",
-            entrance && !summarySkeletonShown && "page-fade-in",
+            entrance && !skeletonShown && "page-fade-in",
           )}
         >
           <StatCard
@@ -864,14 +864,14 @@ export function OverviewClient() {
       {/* Volume + errors and latency, side by side. Each card mirrors the KPI
           gate: nothing pre-delay, a card skeleton after it, the chart once loaded. */}
       <section className="grid gap-4 lg:grid-cols-2">
-        {timeseries.isLoading ? (
-          showSeriesSkeleton ? (
+        {pageLoading ? (
+          showSkeleton ? (
             <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
           <Card
             size="sm"
-            className={cn(entrance && !seriesSkeletonShown && "page-fade-in")}
+            className={cn(entrance && !skeletonShown && "page-fade-in")}
           >
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle>Requests & errors</CardTitle>
@@ -928,14 +928,14 @@ export function OverviewClient() {
           </Card>
         )}
 
-        {timeseries.isLoading ? (
-          showSeriesSkeleton ? (
+        {pageLoading ? (
+          showSkeleton ? (
             <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
           <Card
             size="sm"
-            className={cn(entrance && !seriesSkeletonShown && "page-fade-in")}
+            className={cn(entrance && !skeletonShown && "page-fade-in")}
           >
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle>Latency</CardTitle>
@@ -1006,14 +1006,14 @@ export function OverviewClient() {
       </section>
 
       {/* Cost over time, stacked by model */}
-      {costLoading ? (
-        showCostSkeleton ? (
+      {pageLoading ? (
+        showSkeleton ? (
           <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
         ) : null
       ) : (
         <Card
           size="sm"
-          className={cn(entrance && !costSkeletonShown && "page-fade-in")}
+          className={cn(entrance && !skeletonShown && "page-fade-in")}
         >
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle>Cost over time</CardTitle>
@@ -1078,8 +1078,8 @@ export function OverviewClient() {
 
       {/* Cache efficiency — how much input was served from cache, and what
           those reads saved vs paying each span's own full input rate. */}
-      {cacheSummary.isLoading ? (
-        showCacheSkeleton ? (
+      {pageLoading ? (
+        showSkeleton ? (
           <StatCardsSkeleton
             count={2}
             className={cn(
@@ -1092,7 +1092,7 @@ export function OverviewClient() {
         <section
           className={cn(
             "grid gap-4 md:grid-cols-2",
-            entrance && !cacheSkeletonShown && "page-fade-in",
+            entrance && !skeletonShown && "page-fade-in",
           )}
         >
           <StatCard
@@ -1122,8 +1122,8 @@ export function OverviewClient() {
 
       {/* By model + by agent + by workflow + by customer, side by side */}
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-        {models.isLoading ? (
-          showModelsSkeleton ? (
+        {pageLoading ? (
+          showSkeleton ? (
             <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
@@ -1131,7 +1131,7 @@ export function OverviewClient() {
             size="sm"
             className={cn(
               "pb-0! group-data-[size=sm]/card:pb-0",
-              entrance && !modelsSkeletonShown && "page-fade-in",
+              entrance && !skeletonShown && "page-fade-in",
             )}
           >
             <CardHeader>
@@ -1173,8 +1173,8 @@ export function OverviewClient() {
           </Card>
         )}
 
-        {agents.isLoading ? (
-          showAgentsSkeleton ? (
+        {pageLoading ? (
+          showSkeleton ? (
             <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
@@ -1182,7 +1182,7 @@ export function OverviewClient() {
             size="sm"
             className={cn(
               "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && !agentsSkeletonShown && "page-fade-in",
+              entrance && !skeletonShown && "page-fade-in",
             )}
           >
             <CardHeader>
@@ -1222,8 +1222,8 @@ export function OverviewClient() {
           </Card>
         )}
 
-        {workflows.isLoading ? (
-          showWorkflowsSkeleton ? (
+        {pageLoading ? (
+          showSkeleton ? (
             <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
@@ -1231,7 +1231,7 @@ export function OverviewClient() {
             size="sm"
             className={cn(
               "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && !workflowsSkeletonShown && "page-fade-in",
+              entrance && !skeletonShown && "page-fade-in",
             )}
           >
             <CardHeader>
@@ -1275,8 +1275,8 @@ export function OverviewClient() {
           </Card>
         )}
 
-        {customers.isLoading ? (
-          showCustomersSkeleton ? (
+        {pageLoading ? (
+          showSkeleton ? (
             <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
@@ -1284,7 +1284,7 @@ export function OverviewClient() {
             size="sm"
             className={cn(
               "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && !customersSkeletonShown && "page-fade-in",
+              entrance && !skeletonShown && "page-fade-in",
             )}
           >
             <CardHeader>
