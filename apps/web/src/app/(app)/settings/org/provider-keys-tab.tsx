@@ -117,7 +117,7 @@ function ProviderKeyColumn({
         toast.success("Provider key saved");
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
   const remove = useMutation(
     trpc.providerKeys.delete.mutationOptions({
@@ -127,7 +127,7 @@ function ProviderKeyColumn({
         toast.success("Provider key removed");
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
 
   return (

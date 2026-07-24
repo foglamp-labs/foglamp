@@ -10,14 +10,18 @@ import {
 	GeminiLogo,
 	GrokLogo,
 	GroqLogo,
+	KimiLogo,
 	MetaLogo,
 	MicrosoftLogo,
+	MiniMaxLogo,
 	MistralLogo,
+	NvidiaLogo,
 	OllamaLogo,
 	OpenAILogo,
 	OpenRouterLogo,
 	PerplexityLogo,
 	QwenLogo,
+	ZaiLogo,
 } from "./brand-logos";
 
 type Logo = (props: SVGProps<SVGSVGElement>) => React.ReactElement;
@@ -55,6 +59,16 @@ const LOGOS: Record<string, Logo> = {
 	aws: AWSLogo,
 	bedrock: AWSLogo,
 	ollama: OllamaLogo,
+	minimax: MiniMaxLogo,
+	minimaxai: MiniMaxLogo,
+	moonshot: KimiLogo,
+	moonshotai: KimiLogo,
+	kimi: KimiLogo,
+	"z-ai": ZaiLogo,
+	zai: ZaiLogo,
+	zhipu: ZaiLogo,
+	glm: ZaiLogo,
+	nvidia: NvidiaLogo,
 };
 
 // Bare model ids (no "vendor/" prefix) → vendor, matched by well-known name
@@ -72,6 +86,10 @@ const MODEL_ID_HINTS: [RegExp, string][] = [
 	[/^command/, "cohere"],
 	[/^phi/, "microsoft"],
 	[/^sonar/, "perplexity"],
+	[/^(minimax|abab)/, "minimax"],
+	[/^(kimi|moonshot)/, "kimi"],
+	[/^glm/, "glm"],
+	[/^nemotron/, "nvidia"],
 ];
 
 // Brand accent per vendor, used to color charts/bars so a model's identity is
@@ -107,6 +125,17 @@ const VENDOR_COLORS: Record<string, string> = {
 	aws: "#FF9900",
 	bedrock: "#FF9900",
 	ollama: "#888888",
+	minimax: "#E2167E",
+	minimaxai: "#E2167E",
+	moonshot: "#1783FF",
+	moonshotai: "#1783FF",
+	kimi: "#1783FF",
+	// Z.ai's mark is monochrome, so it gets a neutral tone like grok.
+	"z-ai": "#9CA3AF",
+	zai: "#9CA3AF",
+	zhipu: "#9CA3AF",
+	glm: "#9CA3AF",
+	nvidia: "#76B900",
 };
 
 /** Resolve the canonical vendor key for a (provider, modelId) pair, or null. */
@@ -165,6 +194,8 @@ const MODEL_WORD_CASE: Record<string, string> = {
 	openai: "OpenAI",
 	xai: "xAI",
 	qwq: "QwQ",
+	minimax: "MiniMax",
+	glm: "GLM",
 };
 
 /**

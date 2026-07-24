@@ -41,7 +41,7 @@ export function ChartLegend({
             className={cn(
               "text-muted-foreground flex items-center cursor-pointer gap-1.5 text-sm transition-all hover:text-foreground",
               dimmed && "opacity-30",
-              active && "text-foreground"
+              active && "text-foreground",
             )}
           >
             <span
@@ -109,9 +109,39 @@ export function dedupeTicks(buckets: string[], labelFn: (b: string) => string) {
 export function thinTicks(
   buckets: string[],
   labelFn: (b: string) => string,
-  target = 8
+  target = 8,
 ) {
-  const reps = dedupeTicks(buckets, labelFn);
+  let reps = dedupeTicks(buckets, labelFn);
+  if (reps.length > 1) {
+    const pos = new Map(buckets.map((b, i) => [b, i]));
+    const at = (b: string) => pos.get(b) ?? 0;
+    // Ticks closer together than this many buckets render overlapping labels
+    // (~7% of the axis width). Spacing must be enforced positionally: sparse
+    // series (e.g. an agent idle for most of a day) make periods unequally
+    // wide, so "one tick per day" alone doesn't guarantee separation.
+    const minGap = Math.max(1, Math.ceil(buckets.length / 14));
+    // A partial leading period (e.g. a "last 7 days" range starting at 22:00)
+    // puts its rep a sliver left of the next label — drop it and let the
+    // first full period anchor the left edge instead.
+    if (reps.length >= 2 && at(reps[1]!) - at(reps[0]!) < minGap)
+      reps = reps.slice(1);
+    // Greedy min-spacing pass that always keeps the final rep: drop any rep
+    // that crowds its kept predecessor, and before appending the endpoint pop
+    // kept reps that would crowd *it* (the end-anchored label needs the same
+    // clearance).
+    const kept: string[] = [reps[0]!];
+    for (let i = 1; i < reps.length - 1; i++) {
+      if (at(reps[i]!) - at(kept[kept.length - 1]!) >= minGap)
+        kept.push(reps[i]!);
+    }
+    const last = reps[reps.length - 1]!;
+    if (last !== kept[kept.length - 1]) {
+      while (kept.length > 0 && at(last) - at(kept[kept.length - 1]!) < minGap)
+        kept.pop();
+      kept.push(last);
+    }
+    reps = kept;
+  }
   const n = reps.length;
   if (n <= target) return reps;
   const step = Math.ceil((n - 1) / (target - 1));
@@ -162,7 +192,7 @@ export function makeEdgeTick(labelFn: (b: string) => string) {
  * e.g. `1 … 4 5 6 … 20`. */
 export function pageWindow(
   current: number,
-  total: number
+  total: number,
 ): (number | "ellipsis")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const middle: number[] = [];

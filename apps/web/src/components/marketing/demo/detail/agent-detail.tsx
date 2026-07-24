@@ -127,7 +127,7 @@ export function AgentDetail({ agentName }: { agentName: string }) {
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           icon={IconBoltFilled}
-          iconClassName="text-violet-300 dark:text-violet-700"
+          iconClassName="text-orange-500 dark:text-orange-500"
           size="sm"
           label="Spans"
           value={agent.spanCount}
@@ -135,7 +135,7 @@ export function AgentDetail({ agentName }: { agentName: string }) {
         />
         <StatCard
           icon={IconAlertTriangleFilled}
-          iconClassName="text-rose-300 dark:text-rose-700"
+          iconClassName="text-red-500 dark:text-red-600"
           size="sm"
           label="Error rate"
           value={agent.errorRate}
@@ -143,7 +143,7 @@ export function AgentDetail({ agentName }: { agentName: string }) {
         />
         <StatCard
           icon={IconClockFilled}
-          iconClassName="text-sky-300 dark:text-sky-700"
+          iconClassName="text-sky-500 dark:text-sky-500"
           size="sm"
           label="p95 latency"
           value={agent.p95}
@@ -151,7 +151,7 @@ export function AgentDetail({ agentName }: { agentName: string }) {
         />
         <StatCard
           icon={IconCoinFilled}
-          iconClassName="text-yellow-300 dark:text-yellow-600"
+          iconClassName="text-yellow-400 dark:text-yellow-500"
           size="sm"
           label="Total cost"
           value={agent.cost}
@@ -293,15 +293,17 @@ export function AgentDetail({ agentName }: { agentName: string }) {
                 interactive
                 onClick={() => openDetail({ type: "trace", id: t.traceId })}
                 className={cn(
-                  t.errors &&
-                    "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
+                  t.errors && "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
                 )}
               >
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium">{t.name}</span>
                     {t.errors ? (
-                      <Badge variant="rose" className="shrink-0 font-sans ml-auto">
+                      <Badge
+                        variant="rose"
+                        className="shrink-0 font-sans ml-auto"
+                      >
                         <IconAlertTriangle />
                         {t.errors}
                         {t.errors === 1 ? " error" : " errors"}

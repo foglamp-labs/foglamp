@@ -61,6 +61,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type ComponentType, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { useEntranceOnce } from "@/components/app/hooks";
 import { NoProject, PageHeader } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { ProjectIcon } from "@/components/app/project-icon";
@@ -155,7 +156,7 @@ function TabBar({
               "relative h-8 cursor-pointer rounded-xl corner-squircle px-2.5 text-sm font-medium",
               active
                 ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:transition-colors"
+                : "text-muted-foreground hover:text-foreground hover:transition-colors",
             )}
           >
             {active && (
@@ -182,6 +183,7 @@ function TabBar({
 }
 
 export function OrgSettingsClient() {
+  const entrance = useEntranceOnce();
   const { project } = useProject();
   const orgId = project?.orgId;
   const orgName = project?.orgName ?? "";
@@ -214,8 +216,12 @@ export function OrgSettingsClient() {
 
   return (
     <>
-      <OrgSettingsHeader />
-      <div className="flex flex-col gap-6">
+      {/* Wrapped here (not inside OrgSettingsHeader) so the copy rendered by
+          loading.tsx stays unanimated — only the page's own header fades. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <OrgSettingsHeader />
+      </div>
+      <div className={cn("flex flex-col gap-6", entrance && "page-fade-in")}>
         <TabBar tab={tab} onChange={onTabChange} />
         {tab === "general" && <GeneralTab orgId={orgId} orgName={orgName} />}
         {tab === "members" && <MembersTab orgId={orgId} />}
@@ -286,7 +292,7 @@ function GeneralTab({ orgId, orgName }: { orgId: string; orgName: string }) {
         toast.success("Project updated");
       },
       onError: (e) => toast.error(e.message ?? "Failed to update project"),
-    })
+    }),
   );
   const saveName = () => {
     if (!project) return;
@@ -794,7 +800,7 @@ function ProjectsTab({ orgId }: { orgId: string }) {
         toast.success("Project deleted");
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
 
   return (

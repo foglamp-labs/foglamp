@@ -59,7 +59,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ComponentType, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { useDelayedLoading } from "@/components/app/hooks";
+import {
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
   EmptyState,
@@ -168,7 +172,7 @@ const METRICS: {
 ];
 
 const METRIC_BY_VALUE = Object.fromEntries(
-  METRICS.map((m) => [m.value, m])
+  METRICS.map((m) => [m.value, m]),
 ) as Record<Metric, (typeof METRICS)[number]>;
 
 const isEvalMetric = (m: Metric) =>
@@ -224,6 +228,7 @@ const DEFAULT_FORM = {
 };
 
 export function AlertsClient() {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const qc = useQueryClient();
 
@@ -251,6 +256,9 @@ export function AlertsClient() {
   });
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showSkeleton = useDelayedLoading(alerts.isLoading);
+  // Latch for the entrance fade (see useSkeletonShown): the list only fades in
+  // if it never painted a skeleton first.
+  const skeletonShown = useSkeletonShown(showSkeleton);
 
   const create = useMutation(
     trpc.alerts.create.mutationOptions({
@@ -262,7 +270,7 @@ export function AlertsClient() {
         toast.success("Alert created");
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
 
   const update = useMutation(
@@ -272,7 +280,7 @@ export function AlertsClient() {
         toast.success(variables.enabled ? "Alert resumed" : "Alert paused");
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
 
   const deleteAlert = useMutation(
@@ -283,7 +291,7 @@ export function AlertsClient() {
         toast.success("Alert deleted");
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
 
   if (!projectId) {
@@ -305,7 +313,7 @@ export function AlertsClient() {
   // don't linger while they're fixing the problem.
   const setField = <K extends keyof typeof form>(
     key: K,
-    value: (typeof form)[K]
+    value: (typeof form)[K],
   ) =>
     setForm((f) => {
       setErrors((e) => {
@@ -353,206 +361,218 @@ export function AlertsClient() {
 
   return (
     <>
-      <AlertsHeader
-        actions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger render={<Button size="sm" />}>
-              <IconPlus />
-              New alert
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>New alert</DialogTitle>
-                <DialogDescription>
-                  Create a threshold rule to get notified when a metric crosses
-                  a value.
-                </DialogDescription>
-              </DialogHeader>
-              {/* A real form so Enter in any field submits the dialog. */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSubmit();
-                }}
-                className="flex flex-col gap-4"
-              >
-                <Field data-invalid={!!errors.name}>
-                  <FieldLabel>Name</FieldLabel>
-                  <Input
-                    placeholder="e.g. High error rate"
-                    aria-invalid={!!errors.name}
-                    maxLength={200}
-                    value={form.name}
-                    onChange={(e) => setField("name", e.target.value)}
-                  />
-                  <FieldError>{errors.name}</FieldError>
-                </Field>
-                <div className="flex items-end gap-3">
-                  <Field className="flex-1">
-                    <FieldLabel>Metric</FieldLabel>
-                    <Select
-                      value={form.metric}
-                      onValueChange={(v) => setField("metric", v as Metric)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue>
-                          {(value) => {
-                            const m = METRIC_BY_VALUE[value as Metric];
-                            if (!m) return null;
+      {/* Wrapped here (not inside AlertsHeader) so the copy rendered by
+          loading.tsx stays unanimated — only the page's own header fades. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <AlertsHeader
+          actions={
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger render={<Button size="sm" />}>
+                <IconPlus />
+                New alert
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>New alert</DialogTitle>
+                  <DialogDescription>
+                    Create a threshold rule to get notified when a metric
+                    crosses a value.
+                  </DialogDescription>
+                </DialogHeader>
+                {/* A real form so Enter in any field submits the dialog. */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSubmit();
+                  }}
+                  className="flex flex-col gap-4"
+                >
+                  <Field data-invalid={!!errors.name}>
+                    <FieldLabel>Name</FieldLabel>
+                    <Input
+                      placeholder="e.g. High error rate"
+                      aria-invalid={!!errors.name}
+                      maxLength={200}
+                      value={form.name}
+                      onChange={(e) => setField("name", e.target.value)}
+                    />
+                    <FieldError>{errors.name}</FieldError>
+                  </Field>
+                  <div className="flex items-end gap-3">
+                    <Field className="flex-1">
+                      <FieldLabel>Metric</FieldLabel>
+                      <Select
+                        value={form.metric}
+                        onValueChange={(v) => setField("metric", v as Metric)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue>
+                            {(value) => {
+                              const m = METRIC_BY_VALUE[value as Metric];
+                              if (!m) return null;
+                              const Logo = m.icon;
+                              return (
+                                <span className="flex items-center gap-1.5">
+                                  <Logo className="text-muted-foreground" />
+                                  {m.label}
+                                </span>
+                              );
+                            }}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {METRICS.map((m) => {
                             const Logo = m.icon;
                             return (
-                              <span className="flex items-center gap-1.5">
-                                <Logo className="text-muted-foreground" />
+                              <SelectItem
+                                key={m.value}
+                                value={m.value}
+                                label={m.label}
+                              >
+                                <Logo className="text-muted-foreground mt-0.5" />
                                 {m.label}
-                              </span>
+                              </SelectItem>
                             );
-                          }}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {METRICS.map((m) => {
-                          const Logo = m.icon;
-                          return (
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field className="w-fit">
+                      <FieldLabel className="sr-only">Comparison</FieldLabel>
+                      <Select
+                        value={form.comparison}
+                        onValueChange={(v) =>
+                          setField("comparison", v as Comparison)
+                        }
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue>
+                            {(value) => (
+                              <span className="tabular-nums">
+                                {COMPARISON_SYMBOLS[value as Comparison]}
+                              </span>
+                            )}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="w-56">
+                          {COMPARISONS.map((c) => (
                             <SelectItem
-                              key={m.value}
-                              value={m.value}
-                              label={m.label}
+                              key={c.value}
+                              value={c.value}
+                              label={COMPARISON_SYMBOLS[c.value]}
                             >
-                              <Logo className="text-muted-foreground mt-0.5" />
-                              {m.label}
+                              <span className="w-4 tabular-nums">
+                                {COMPARISON_SYMBOLS[c.value]}
+                              </span>
+                              {c.label}
                             </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field className="w-fit">
-                    <FieldLabel className="sr-only">Comparison</FieldLabel>
-                    <Select
-                      value={form.comparison}
-                      onValueChange={(v) =>
-                        setField("comparison", v as Comparison)
-                      }
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue>
-                          {(value) => (
-                            <span className="tabular-nums">
-                              {COMPARISON_SYMBOLS[value as Comparison]}
-                            </span>
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent className="w-56">
-                        {COMPARISONS.map((c) => (
-                          <SelectItem
-                            key={c.value}
-                            value={c.value}
-                            label={COMPARISON_SYMBOLS[c.value]}
-                          >
-                            <span className="w-4 tabular-nums">
-                              {COMPARISON_SYMBOLS[c.value]}
-                            </span>
-                            {c.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field className="w-28" data-invalid={!!errors.threshold}>
-                    <FieldLabel className="flex items-center gap-1.5">
-                      Threshold
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {METRIC_BY_VALUE[form.metric].unit}
-                      </span>
-                    </FieldLabel>
-                    <Input
-                      type="number"
-                      min={0}
-                      placeholder={METRIC_BY_VALUE[form.metric].placeholder}
-                      aria-invalid={!!errors.threshold}
-                      value={form.threshold}
-                      onChange={(e) => setField("threshold", e.target.value)}
-                    />
-                    <FieldError>{errors.threshold}</FieldError>
-                  </Field>
-                </div>
-                {isEvalMetric(form.metric) && (
-                  <Field data-invalid={!!errors.evalId}>
-                    <FieldLabel>Eval</FieldLabel>
-                    <Select
-                      value={form.evalId}
-                      onValueChange={(v) => setField("evalId", v as string)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select an eval…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(evals.data ?? []).map((ev) => (
-                          <SelectItem key={ev.id} value={ev.id}>
-                            {ev.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldError>{errors.evalId}</FieldError>
-                  </Field>
-                )}
-                <div className="flex items-start gap-3">
-                  <Field className="w-40">
-                    <FieldLabel>Window</FieldLabel>
-                    <Select
-                      value={form.windowSeconds}
-                      onValueChange={(v) =>
-                        setField("windowSeconds", v as string)
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {WINDOW_PRESETS.map((p) => (
-                          <SelectItem key={p.value} value={p.value}>
-                            {p.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field className="flex-1" data-invalid={!!errors.email}>
-                    <FieldLabel>Email channel</FieldLabel>
-                    <Input
-                      type="email"
-                      placeholder="you@example.com"
-                      aria-invalid={!!errors.email}
-                      value={form.email}
-                      onChange={(e) => setField("email", e.target.value)}
-                    />
-                    <FieldError>{errors.email}</FieldError>
-                  </Field>
-                </div>
-                <DialogFooter>
-                  <Button type="submit" disabled={create.isPending}>
-                    Create alert
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        }
-      />
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field className="w-28" data-invalid={!!errors.threshold}>
+                      <FieldLabel className="flex items-center gap-1.5">
+                        Threshold
+                        <span className="text-xs font-normal text-muted-foreground">
+                          {METRIC_BY_VALUE[form.metric].unit}
+                        </span>
+                      </FieldLabel>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder={METRIC_BY_VALUE[form.metric].placeholder}
+                        aria-invalid={!!errors.threshold}
+                        value={form.threshold}
+                        onChange={(e) => setField("threshold", e.target.value)}
+                      />
+                      <FieldError>{errors.threshold}</FieldError>
+                    </Field>
+                  </div>
+                  {isEvalMetric(form.metric) && (
+                    <Field data-invalid={!!errors.evalId}>
+                      <FieldLabel>Eval</FieldLabel>
+                      <Select
+                        value={form.evalId}
+                        onValueChange={(v) => setField("evalId", v as string)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select an eval…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(evals.data ?? []).map((ev) => (
+                            <SelectItem key={ev.id} value={ev.id}>
+                              {ev.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldError>{errors.evalId}</FieldError>
+                    </Field>
+                  )}
+                  <div className="flex items-start gap-3">
+                    <Field className="w-40">
+                      <FieldLabel>Window</FieldLabel>
+                      <Select
+                        value={form.windowSeconds}
+                        onValueChange={(v) =>
+                          setField("windowSeconds", v as string)
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {WINDOW_PRESETS.map((p) => (
+                            <SelectItem key={p.value} value={p.value}>
+                              {p.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field className="flex-1" data-invalid={!!errors.email}>
+                      <FieldLabel>Email channel</FieldLabel>
+                      <Input
+                        type="email"
+                        placeholder="you@example.com"
+                        aria-invalid={!!errors.email}
+                        value={form.email}
+                        onChange={(e) => setField("email", e.target.value)}
+                      />
+                      <FieldError>{errors.email}</FieldError>
+                    </Field>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={create.isPending}>
+                      Create alert
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          }
+        />
+      </div>
       {alerts.isLoading ? (
         showSkeleton ? (
-          <TableSkeleton />
+          <div className={cn(entrance && "page-fade-in")}>
+            <TableSkeleton />
+          </div>
         ) : null
       ) : rows.length === 0 ? (
         <EmptyState
           icon={IconAlertTriangleFilled}
           title="No alerts yet"
           description="Create a rule to get notified when a metric crosses a threshold."
+          className={cn(entrance && !skeletonShown && "page-fade-in")}
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div
+          className={cn(
+            "grid gap-4 md:grid-cols-2",
+            entrance && !skeletonShown && "page-fade-in",
+          )}
+        >
           {rows.map((r) => {
             const metric = METRIC_BY_VALUE[r.metric as Metric];
             const MetricIcon = metric?.icon;
@@ -594,7 +614,10 @@ export function AlertsClient() {
                       )}
                     </span>
                     <CardTitle className="truncate">{r.name}</CardTitle>
-                    <Badge variant={status.variant} className="ml-auto shrink-0">
+                    <Badge
+                      variant={status.variant}
+                      className="ml-auto shrink-0"
+                    >
                       {r.status}
                     </Badge>
                   </div>

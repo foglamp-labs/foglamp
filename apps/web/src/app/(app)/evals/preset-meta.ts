@@ -172,7 +172,7 @@ export const PRESET_META: Record<
 };
 
 export const presetMeta = (
-  id: string
+  id: string,
 ): { icon: Icon; outline: Icon; family: Family } =>
   PRESET_META[id] ?? {
     icon: IconSparklesFilled,

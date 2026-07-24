@@ -67,13 +67,13 @@ export const PROVIDER_GROUPS: {
 // across providers), so selecting a model derives its provider.
 export const MODEL_PROVIDER: Record<string, Provider> = Object.fromEntries(
   (Object.entries(JUDGE_MODELS) as [Provider, { id: string }[]][]).flatMap(
-    ([p, list]) => list.map((m) => [m.id, p] as const)
-  )
+    ([p, list]) => list.map((m) => [m.id, p] as const),
+  ),
 );
 export const MODEL_LABEL: Record<string, string> = Object.fromEntries(
   Object.values(JUDGE_MODELS)
     .flat()
-    .map((m) => [m.id, m.label] as const)
+    .map((m) => [m.id, m.label] as const),
 );
 
 /** Validates a code preset's params. Returns a human message when the eval
@@ -82,7 +82,7 @@ export const MODEL_LABEL: Record<string, string> = Object.fromEntries(
  * wizard and the edit dialog so both gate identically. */
 export function settingsParamError(
   preset: { id: string } | null,
-  values: { substring: string; pattern: string; maxChars: string }
+  values: { substring: string; pattern: string; maxChars: string },
 ): string | null {
   if (!preset) return null;
   if (preset.id === "contains" || preset.id === "not_contains") {
@@ -120,7 +120,7 @@ export const PROMPT_PLACEHOLDERS = [
  * default), are always allowed. Shared by the create wizard + edit dialog. */
 export function promptOverrideError(
   preset: { source: "code" | "llm" } | null,
-  promptOverride: string
+  promptOverride: string,
 ): string | null {
   if (!preset || preset.source !== "llm") return null;
   const text = promptOverride.trim();
@@ -130,7 +130,7 @@ export function promptOverrideError(
   const unknown = tokens.find((t) => !known.includes(t));
   if (unknown) {
     return `Unknown placeholder {${unknown}}. Use ${PROMPT_PLACEHOLDERS.map(
-      (p) => `{${p}}`
+      (p) => `{${p}}`,
     ).join(", ")}.`;
   }
   if (tokens.length === 0) {
@@ -168,7 +168,7 @@ export function Segmented<T extends string>({
               "relative flex-1 cursor-pointer rounded-xl corner-squircle px-2 py-1 text-sm font-medium whitespace-nowrap transition-colors",
               active
                 ? "text-foreground"
-                : "text-foreground/60 hover:text-foreground"
+                : "text-foreground/60 hover:text-foreground",
             )}
           >
             {active && (
@@ -296,7 +296,10 @@ export function EvalSettingsFields({
           {needsKey && (
             <p className="text-sm text-destructive">
               No {judgeProvider} key saved.{" "}
-              <Link href="/settings/org?tab=provider-keys" className="underline">
+              <Link
+                href="/settings/org?tab=provider-keys"
+                className="underline"
+              >
                 Add one
               </Link>{" "}
               to enable this judge.

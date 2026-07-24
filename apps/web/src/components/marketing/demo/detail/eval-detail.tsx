@@ -84,31 +84,32 @@ export function EvalDetail({ evalId }: { evalId: string }) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={IconBoltFilled}
-          iconClassName="text-violet-300 dark:text-violet-700"
+          iconClassName="text-violet-500 dark:text-violet-500"
           size="sm"
           label="Scored"
           value={e.scored}
         />
         <StatCard
           icon={IconGaugeFilled}
-          iconClassName="text-fuchsia-300 dark:text-fuchsia-700"
+          iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
           size="sm"
           label="Avg score"
           value={e.avgScore.toFixed(2)}
         />
         <StatCard
           icon={IconCircleCheckFilled}
-          iconClassName="text-emerald-300 dark:text-emerald-700"
+          iconClassName="text-emerald-500 dark:text-emerald-500"
           size="sm"
           label="Pass rate"
           value={`${Math.round(e.passRate * 100)}%`}
         />
         <StatCard
           icon={IconCoinFilled}
-          iconClassName="text-yellow-300 dark:text-yellow-600"
+          iconClassName="text-yellow-400 dark:text-yellow-500"
           size="sm"
           label="Eval spend"
-          value={formatCost(spend, 4)}
+          value={spend}
+          formatValue={(n) => formatCost(n, 4)}
         />
       </div>
 

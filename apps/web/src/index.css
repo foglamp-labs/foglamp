@@ -52,6 +52,23 @@
   }
 }
 
+/* Page entrance — opacity-only fade, played once per hard load (gated by a
+   module-scope flag at the call site, Linear-style): client-side navigations
+   back to the page render instantly. */
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.page-fade-in {
+  animation: page-fade-in 75ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-fade-in {
+    animation: none;
+  }
+}
+
 /* Marketing fog drift — CSS keyframes instead of JS-driven Motion so the
    transform animates on the compositor: the blurred/masked layers rasterize
    once and only their transforms change, keeping the main thread free (the

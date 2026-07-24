@@ -6,7 +6,8 @@ import { RouteHeader } from "@/components/app/route-header";
 export function PricingHeader({ actions }: { actions?: React.ReactNode }) {
   return (
     <RouteHeader
-      href="/settings/pricing" noIcon
+      href="/settings/pricing"
+      noIcon
       title="Custom pricing"
       description="Override per-model prices for this project. Unset dimensions fall back to OpenRouter."
       actions={actions}

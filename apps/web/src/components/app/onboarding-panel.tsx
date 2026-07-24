@@ -119,10 +119,7 @@ export function OnboardingPanel() {
                   onClick={copy}
                   aria-label="Copy prompt"
                 >
-                  <CopyIcon
-                    copied={copied}
-                    checkClassName="text-green-400 dark:text-green-600"
-                  />
+                  <CopyIcon copied={copied} />
                   Copy the prompt
                 </Button>
               ) : (

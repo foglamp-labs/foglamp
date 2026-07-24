@@ -47,6 +47,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { cn } from "@foglamp/ui/lib/utils";
+import { useEntranceOnce } from "@/components/app/hooks";
 import { PageHeader, StatCard } from "@/components/app/page-parts";
 import { formatCount } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
@@ -94,7 +96,7 @@ const PLAN_STYLE_FALLBACK = {
 // Comp an org to enterprise limits for a chosen window. Grants are enforced at
 // plan-resolution time (getOrgPlan), so revocations/expiries apply within ~60s
 // (the ingest plan cache TTL).
-function AccessGrantsCard() {
+function AccessGrantsCard({ className }: { className?: string }) {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [days, setDays] = useState("30");
@@ -128,7 +130,7 @@ function AccessGrantsCard() {
         refresh();
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
   const revoke = useMutation(
     trpc.platform.revokeAccess.mutationOptions({
@@ -138,7 +140,7 @@ function AccessGrantsCard() {
         refresh();
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
 
   const grantLabel = (expiresAt: Date | string | null) => {
@@ -150,7 +152,7 @@ function AccessGrantsCard() {
   };
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle>Access grants</CardTitle>
         <CardDescription>
@@ -287,6 +289,7 @@ function AccessGrantsCard() {
 // the stats query 403s for anyone else, so this page renders nothing useful
 // even if reached directly).
 export function PlatformClient() {
+  const entrance = useEntranceOnce();
   const stats = useQuery({
     ...trpc.platform.stats.queryOptions(),
     refetchInterval: 60_000,
@@ -344,85 +347,106 @@ export function PlatformClient() {
 
   return (
     <>
-      <PageHeader
-        title="Platform"
-        description="Cross-org numbers for the hosted deployment. Refreshes every minute."
-      />
+      {/* This page has no header.tsx shared with loading.tsx, so its own
+          header is a plain top-level slot — fade it along with the rest. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <PageHeader
+          title="Platform"
+          description="Cross-org numbers for the hosted deployment. Refreshes every minute."
+        />
+      </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-10">
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5",
+          entrance && "page-fade-in",
+        )}
+      >
         <StatCard
           label="MRR"
           size="sm"
-          value={formatMrr(d.mrrCents)}
+          value={d.mrrCents ?? "—"}
+          formatValue={formatMrr}
           icon={IconCoinFilled}
           iconClassName="text-amber-500"
         />
         <StatCard
           label="Users"
           size="sm"
-          value={formatCount(d.totals.users)}
+          value={d.totals.users}
+          formatValue={formatCount}
           icon={IconUserFilled}
           iconClassName="text-sky-500"
         />
         <StatCard
           label="New users (7d)"
           size="sm"
-          value={formatCount(d.totals.usersLast7d)}
+          value={d.totals.usersLast7d}
+          formatValue={formatCount}
           icon={IconUserPlus}
           iconClassName="text-emerald-500"
         />
         <StatCard
           label="Organizations"
           size="sm"
-          value={formatCount(d.totals.orgs)}
+          value={d.totals.orgs}
+          formatValue={formatCount}
           icon={IconBuilding}
           iconClassName="text-violet-500"
         />
         <StatCard
           label="Projects"
           size="sm"
-          value={formatCount(d.totals.projects)}
+          value={d.totals.projects}
+          formatValue={formatCount}
           icon={IconFolderFilled}
           iconClassName="text-teal-500"
         />
         <StatCard
           label="Paid subs"
           size="sm"
-          value={formatCount(d.totals.activeSubscriptions)}
+          value={d.totals.activeSubscriptions}
+          formatValue={formatCount}
           icon={IconCreditCard}
           iconClassName="text-rose-500"
         />
         <StatCard
           label="Spans (24h)"
           size="sm"
-          value={formatCount(d.spans.last24h)}
+          value={d.spans.last24h}
+          formatValue={formatCount}
           icon={IconStack2Filled}
           iconClassName="text-fuchsia-500"
         />
         <StatCard
           label="Scans"
           size="sm"
-          value={formatCount(d.scans.total)}
+          value={d.scans.total}
+          formatValue={formatCount}
           icon={IconZoomScanFilled}
           iconClassName="text-orange-500"
         />
         <StatCard
           label="New scans (7d)"
           size="sm"
-          value={formatCount(d.scans.last7d)}
+          value={d.scans.last7d}
+          formatValue={formatCount}
           icon={IconZoomScanFilled}
           iconClassName="text-lime-500"
         />
         <StatCard
           label="Scan views"
           size="sm"
-          value={formatCount(d.scans.views)}
+          value={d.scans.views}
+          formatValue={formatCount}
           icon={IconEyeFilled}
           iconClassName="text-cyan-500"
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div
+        className={cn("grid gap-4 lg:grid-cols-3", entrance && "page-fade-in")}
+      >
         <Card>
           <CardHeader>
             <CardTitle>Signup funnel</CardTitle>
@@ -515,7 +539,9 @@ export function PlatformClient() {
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div
+        className={cn("grid gap-4 lg:grid-cols-2", entrance && "page-fade-in")}
+      >
         <Card>
           <CardHeader>
             <CardTitle>Ingestion, last 30 days</CardTitle>
@@ -574,7 +600,9 @@ export function PlatformClient() {
         <Card>
           <CardHeader>
             <CardTitle>Top organizations, last 30 days</CardTitle>
-            <CardDescription>By span volume · includes new orgs</CardDescription>
+            <CardDescription>
+              By span volume · includes new orgs
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col">
             {d.topOrgs.map((org) => (
@@ -616,9 +644,11 @@ export function PlatformClient() {
         </Card>
       </div>
 
-      <AccessGrantsCard />
+      <AccessGrantsCard className={cn(entrance && "page-fade-in")} />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div
+        className={cn("grid gap-4 lg:grid-cols-3", entrance && "page-fade-in")}
+      >
         <Card>
           <CardHeader>
             <CardTitle>ClickHouse storage</CardTitle>

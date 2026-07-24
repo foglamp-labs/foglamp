@@ -44,8 +44,17 @@ import {
   parseSortParam,
   useUrlFilters,
 } from "@/components/app/data-table";
-import { useDebouncedValue, useDelayedLoading } from "@/components/app/hooks";
-import { HEAT_SHADES, HeatCell, percentileBucket } from "@/components/app/heat-cell";
+import {
+  useDebouncedValue,
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
+import {
+  HEAT_SHADES,
+  HeatCell,
+  percentileBucket,
+} from "@/components/app/heat-cell";
 import { pageWindow } from "@/components/app/trend-charts";
 import { Stat } from "@/components/app/stat";
 import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
@@ -91,8 +100,8 @@ const WORKFLOW_SORT_KEYS = [
   "lastRun",
 ] as const satisfies readonly WorkflowSortKey[];
 
-
 export function WorkflowsClient() {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const { range, setRange } = useRange();
   const router = useRouter();
@@ -156,6 +165,9 @@ export function WorkflowsClient() {
 
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showSkeleton = useDelayedLoading(workflows.isLoading);
+  // Latch for the entrance fade: the content below only fades in if this slot
+  // never painted a skeleton first (see useSkeletonShown).
+  const skeletonShown = useSkeletonShown(showSkeleton);
 
   if (!projectId) {
     return (
@@ -178,31 +190,40 @@ export function WorkflowsClient() {
   // page links. Falls back to "at least the current page" before the count loads.
   const totalPages = Math.max(
     page + 1,
-    Math.ceil(workflowCount / PAGE_SIZE) || 1
+    Math.ceil(workflowCount / PAGE_SIZE) || 1,
   );
   const currentPage = page + 1;
   const pages = pageWindow(currentPage, totalPages);
 
   return (
     <>
-      <WorkflowsHeader />
+      {/* Wrapped here (not inside WorkflowsHeader) so the copy rendered by
+          loading.tsx stays unanimated — only the page's own header fades. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <WorkflowsHeader />
+      </div>
       {workflows.isLoading ? (
         showSkeleton ? (
-          view === "cards" ? (
-            <CardsSkeleton count={6} />
-          ) : (
-            <TableSkeleton />
-          )
+          <div className={cn(entrance && "page-fade-in")}>
+            {view === "cards" ? <CardsSkeleton count={6} /> : <TableSkeleton />}
+          </div>
         ) : null
       ) : rows.length === 0 && page === 0 && !hasFilters ? (
-        <InstrumentEmptyState
-          feature="workflow"
-          icon={IconSitemapFilled}
-          title="No workflows yet"
-          description="Pass a workflowName via the SDK integration to group runs."
-        />
+        <div className={cn(entrance && !skeletonShown && "page-fade-in")}>
+          <InstrumentEmptyState
+            feature="workflow"
+            icon={IconSitemapFilled}
+            title="No workflows yet"
+            description="Pass a workflowName via the SDK integration to group runs."
+          />
+        </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div
+          className={cn(
+            "flex flex-col gap-4",
+            entrance && !skeletonShown && "page-fade-in",
+          )}
+        >
           <Toolbar>
             <SearchInput
               value={search}
@@ -255,7 +276,7 @@ export function WorkflowsClient() {
                         <span
                           className={cn(
                             "truncate",
-                            !w.workflowName && "text-muted-foreground italic"
+                            !w.workflowName && "text-muted-foreground italic",
                           )}
                         >
                           {label}
@@ -353,13 +374,13 @@ export function WorkflowsClient() {
                       interactive
                       onClick={() =>
                         router.push(
-                          `/workflows/${workflowSlug(w.workflowName)}`
+                          `/workflows/${workflowSlug(w.workflowName)}`,
                         )
                       }
                       className={cn(
                         // Left accent bar on errored workflows — scannable at a glance.
                         w.errorCount > 0 &&
-                          "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
+                          "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
                       )}
                     >
                       <TableCell>
@@ -370,7 +391,7 @@ export function WorkflowsClient() {
                               className={cn(
                                 "truncate font-medium",
                                 !w.workflowName &&
-                                  "text-muted-foreground italic"
+                                  "text-muted-foreground italic",
                               )}
                             >
                               {w.workflowName ?? "Ungrouped"}
@@ -431,7 +452,7 @@ export function WorkflowsClient() {
                       aria-disabled={page === 0 || workflows.isFetching}
                       className={cn(
                         (page === 0 || workflows.isFetching) &&
-                          "pointer-events-none opacity-50"
+                          "pointer-events-none opacity-50",
                       )}
                       onClick={() => setPage(Math.max(0, page - 1))}
                     />
@@ -447,14 +468,14 @@ export function WorkflowsClient() {
                         <PaginationLink
                           isActive={p === currentPage}
                           className={cn(
-                            workflows.isFetching && "pointer-events-none"
+                            workflows.isFetching && "pointer-events-none",
                           )}
                           onClick={() => setPage(p - 1)}
                         >
                           {p}
                         </PaginationLink>
                       </PaginationItem>
-                    )
+                    ),
                   )}
                   <PaginationItem>
                     <PaginationNext
@@ -463,7 +484,7 @@ export function WorkflowsClient() {
                       }
                       className={cn(
                         (currentPage >= totalPages || workflows.isFetching) &&
-                          "pointer-events-none opacity-50"
+                          "pointer-events-none opacity-50",
                       )}
                       onClick={() => setPage(page + 1)}
                     />
@@ -483,4 +504,3 @@ export function WorkflowsClient() {
 function workflowSlug(workflowName: string | null): string {
   return workflowName ? encodeURIComponent(workflowName) : UNGROUPED;
 }
-

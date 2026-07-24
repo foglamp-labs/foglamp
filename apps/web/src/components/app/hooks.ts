@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // General-purpose UI hooks shared across list/table pages. These used to live in
 // data-table.tsx, which leaked them as an implicit public API; they have nothing
@@ -21,6 +21,33 @@ export function useDelayedLoading(loading: boolean, delay = 700): boolean {
     return () => clearTimeout(id);
   }, [loading, delay]);
   return show;
+}
+
+// Linear-style entrance gate, shared across every app page: module state
+// survives client-side navigations but resets on a hard reload, so exactly one
+// page — whichever the user landed on — plays its entrance fade per app boot,
+// and everything after that renders instantly.
+let entrancePlayed = false;
+
+/** True only on the first page mount after a hard load. Pair with the
+ * `page-fade-in` class (see index.css) on the page header and card slots. */
+export function useEntranceOnce(): boolean {
+  const [animate] = useState(() => !entrancePlayed);
+  useEffect(() => {
+    entrancePlayed = true;
+  }, []);
+  return animate;
+}
+
+/** Latches whether a slot's delayed skeleton has ever been shown this visit.
+ * Whatever paints first in a slot gets the entrance fade — the skeleton on
+ * slow loads, the real card when data beats the skeleton delay — and the
+ * skeleton→card swap itself stays instant, so a card whose slot already showed
+ * a skeleton must skip the fade. */
+export function useSkeletonShown(showing: boolean): boolean {
+  const ever = useRef(false);
+  if (showing) ever.current = true;
+  return ever.current;
 }
 
 /** Debounces a rapidly-changing value (e.g. a search box) so server-backed

@@ -24,7 +24,11 @@ import { AgentIcon } from "@/components/app/agent-icon";
 import { CopyButton } from "@/components/app/copy-button";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { HEAT_SHADES } from "@/components/app/heat-cell";
-import { useDelayedLoading } from "@/components/app/hooks";
+import {
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
 import { markdownComponents } from "@/components/app/markdown";
 import { navItem } from "@/components/app/nav";
 import {
@@ -80,6 +84,7 @@ function costShade(cost: number | null, thresholds: number[]) {
 }
 
 export function SessionDetailClient({ sessionId }: { sessionId: string }) {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const turnRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -89,6 +94,10 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
   });
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showSkeleton = useDelayedLoading(detail.isLoading);
+  // Latch for the entrance fade: whatever paints first below the header
+  // (skeleton or the loaded content) gets the fade, and the swap between them
+  // stays instant (see useSkeletonShown).
+  const skeletonShown = useSkeletonShown(showSkeleton);
 
   const back = navItem("/sessions");
 
@@ -119,42 +128,62 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
 
   return (
     <>
-      <PageHeader
-        title={sessionId}
-        back={back}
-        titleTrailing={<CopyButton value={sessionId} title="Copy session ID" />}
-      />
+      {/* Wrapped here (not inside loading.tsx's RouteHeader fallback) so that
+          fallback's copy stays unanimated — only the page's own header fades. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <PageHeader
+          title={sessionId}
+          back={back}
+          titleTrailing={
+            <CopyButton value={sessionId} title="Copy session ID" />
+          }
+        />
+      </div>
 
       {detail.isLoading ? (
         showSkeleton ? (
-          <TableSkeleton />
+          <div className={cn(entrance && "page-fade-in")}>
+            <TableSkeleton />
+          </div>
         ) : null
       ) : turns.length === 0 ? (
-        <EmptyState
-          icon={IconMessageOff}
-          title="No turns in this session"
-          description="It may have aged out of retention."
-        />
+        <div className={cn(entrance && !skeletonShown && "page-fade-in")}>
+          <EmptyState
+            icon={IconMessageOff}
+            title="No turns in this session"
+            description="It may have aged out of retention."
+          />
+        </div>
       ) : (
-        <>
+        // Mirrors the shell's `flex flex-col gap-6` — this wrapper replaced a
+        // fragment, so it has to reproduce the spacing its children used to
+        // get as direct flex children of the shell.
+        <div
+          className={cn(
+            "flex flex-col gap-6",
+            entrance && !skeletonShown && "page-fade-in",
+          )}
+        >
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               icon={IconBoltFilled}
-              iconClassName="text-violet-300 dark:text-violet-700"
+              iconClassName="text-orange-500 dark:text-orange-500"
               size="sm"
               label="Turns"
-              value={formatCount(stats?.turnCount ?? 0)}
+              value={stats?.turnCount ?? 0}
+              formatValue={formatCount}
             />
             <StatCard
               icon={IconCirclesFilled}
-              iconClassName="text-blue-400 dark:text-blue-600"
+              iconClassName="text-blue-500 dark:text-blue-500"
               size="sm"
               label="Tokens"
-              value={formatTokens(stats?.totalTokens ?? 0)}
+              value={stats?.totalTokens ?? 0}
+              formatValue={formatTokens}
             />
             <StatCard
               icon={IconClockFilled}
-              iconClassName="text-sky-300 dark:text-sky-700"
+              iconClassName="text-sky-500 dark:text-sky-500"
               size="sm"
               label="Duration"
               value={
@@ -170,10 +199,11 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
             />
             <StatCard
               icon={IconCoinFilled}
-              iconClassName="text-yellow-300 dark:text-yellow-600"
+              iconClassName="text-yellow-400 dark:text-yellow-500"
               size="sm"
               label="Cost"
-              value={formatCost(stats?.totalCost ?? null, 4)}
+              value={stats?.totalCost ?? "—"}
+              formatValue={(n) => formatCost(n, 4)}
             />
           </div>
 
@@ -210,7 +240,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                     // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
                     href={
                       `/traces?customer=${encodeURIComponent(
-                        data.customer.customerId
+                        data.customer.customerId,
                       )}` as any
                     }
                     title="View this customer's traces"
@@ -250,7 +280,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                       className={cn(
                         "ml-auto tabular-nums",
                         costShade(t.totalCost, costThresholds) ??
-                          "text-muted-foreground"
+                          "text-muted-foreground",
                       )}
                     >
                       {formatCost(t.totalCost)}
@@ -278,7 +308,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
               ))}
             </div>
           </div>
-        </>
+        </div>
       )}
     </>
   );
@@ -303,7 +333,7 @@ function TurnBlock({
           ? "border-rose-500"
           : isAborted
             ? "border-amber-500"
-            : "border-transparent"
+            : "border-transparent",
       )}
     >
       {/* Turn header: index, time, status, and a link to the full trace. */}
@@ -423,4 +453,3 @@ function Bubble({
     </div>
   );
 }
-

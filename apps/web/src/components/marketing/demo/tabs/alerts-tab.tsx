@@ -37,7 +37,7 @@ export function AlertsTab() {
               size="sm"
               className={cn(
                 firing &&
-                  "shadow-[inset_0_0_0_1px_rgba(244,63,94,0.3),0_2px_10px_-4px_rgba(244,63,94,0.4)]"
+                  "shadow-[inset_0_0_0_1px_rgba(244,63,94,0.3),0_2px_10px_-4px_rgba(244,63,94,0.4)]",
               )}
             >
               <CardHeader>
@@ -47,7 +47,7 @@ export function AlertsTab() {
                       "grid size-5 place-items-center rounded-lg corner-squircle p-0.5",
                       firing
                         ? "bg-rose-100 text-rose-500 dark:bg-rose-950"
-                        : "bg-emerald-100 text-emerald-500 dark:bg-emerald-950"
+                        : "bg-emerald-100 text-emerald-500 dark:bg-emerald-950",
                     )}
                   >
                     {firing ? (

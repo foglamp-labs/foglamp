@@ -50,7 +50,8 @@ function costShade(cost: number, thresholds: number[]) {
 export function SessionDetail({ sessionId }: { sessionId: string }) {
   const { closeDetail, openDetail } = useDemo();
   const turnRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const session = SESSIONS.find((s) => s.sessionId === sessionId) ?? SESSIONS[0]!;
+  const session =
+    SESSIONS.find((s) => s.sessionId === sessionId) ?? SESSIONS[0]!;
   const sessionsNav = navItem("/sessions")!;
 
   // Scrolls within the demo's inset scroll container (not the page).
@@ -82,21 +83,23 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={IconBoltFilled}
-          iconClassName="text-violet-300 dark:text-violet-700"
+          iconClassName="text-orange-500 dark:text-orange-500"
           size="sm"
           label="Turns"
-          value={formatCount(turns.length)}
+          value={turns.length}
+          formatValue={formatCount}
         />
         <StatCard
           icon={IconCirclesFilled}
-          iconClassName="text-blue-400 dark:text-blue-600"
+          iconClassName="text-blue-500 dark:text-blue-500"
           size="sm"
           label="Tokens"
-          value={formatTokens(totalTokens)}
+          value={totalTokens}
+          formatValue={formatTokens}
         />
         <StatCard
           icon={IconClockFilled}
-          iconClassName="text-sky-300 dark:text-sky-700"
+          iconClassName="text-sky-500 dark:text-sky-500"
           size="sm"
           label="Duration"
           value={
@@ -110,10 +113,11 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
         />
         <StatCard
           icon={IconCoinFilled}
-          iconClassName="text-yellow-300 dark:text-yellow-600"
+          iconClassName="text-yellow-400 dark:text-yellow-500"
           size="sm"
           label="Cost"
-          value={formatCost(totalCost, 4)}
+          value={totalCost}
+          formatValue={(n) => formatCost(n, 4)}
         />
       </div>
 
@@ -257,13 +261,7 @@ function TurnBlock({
   );
 }
 
-function Bubble({
-  role,
-  text,
-}: {
-  role: "user" | "assistant";
-  text: string;
-}) {
+function Bubble({ role, text }: { role: "user" | "assistant"; text: string }) {
   const isUser = role === "user";
   const Icon = isUser ? IconUserFilled : IconGhostFilled;
   return (

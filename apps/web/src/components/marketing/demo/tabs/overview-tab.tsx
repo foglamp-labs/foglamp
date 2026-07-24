@@ -37,11 +37,7 @@ import {
   makeEdgeTick,
   thinTicks,
 } from "@/components/app/trend-charts";
-import {
-  formatCost,
-  formatCount,
-  formatDuration,
-} from "@/lib/format";
+import { formatCost, formatCount, formatDuration } from "@/lib/format";
 
 import { useDemo } from "../demo-context";
 import { DemoRangePill } from "../demo-chrome";
@@ -249,7 +245,7 @@ export function OverviewTab() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={IconCirclesFilled}
-          iconClassName="text-blue-400 dark:text-blue-600"
+          iconClassName="text-blue-500 dark:text-blue-500"
           label={KPIS[0]!.label}
           size="sm"
           value={KPIS[0]!.value}
@@ -264,7 +260,7 @@ export function OverviewTab() {
         />
         <StatCard
           icon={IconCoinFilled}
-          iconClassName="text-yellow-400 dark:text-yellow-600"
+          iconClassName="text-yellow-400 dark:text-yellow-500"
           label={KPIS[1]!.label}
           size="sm"
           value={KPIS[1]!.value}
@@ -280,7 +276,7 @@ export function OverviewTab() {
         />
         <StatCard
           icon={IconGaugeFilled}
-          iconClassName="text-fuchsia-400 dark:text-fuchsia-600"
+          iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
           label={KPIS[2]!.label}
           size="sm"
           value={KPIS[2]!.value}
@@ -295,7 +291,7 @@ export function OverviewTab() {
         />
         <StatCard
           icon={IconAlertTriangleFilled}
-          iconClassName="text-rose-400 dark:text-rose-600"
+          iconClassName="text-red-500 dark:text-red-600"
           label={KPIS[3]!.label}
           size="sm"
           value={KPIS[3]!.value}

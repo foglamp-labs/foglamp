@@ -5,6 +5,7 @@ import {
   IconChartAreaFilled,
   IconCircleCheckFilled,
   IconCirclesFilled,
+  IconCirclePercentageFilled,
   IconCoinFilled,
   IconGaugeFilled,
   IconSitemapFilled,
@@ -39,7 +40,7 @@ import {
   makeEdgeTick,
   thinTicks,
 } from "@/components/app/trend-charts";
-import * as LineChart from "@/components/evilcharts/charts/line-chart";
+import * as BarChart from "@/components/evilcharts/charts/bar-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import {
   ModelLogo,
@@ -49,7 +50,11 @@ import {
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { useProject } from "@/components/app/project-context";
-import { useDelayedLoading } from "@/components/app/hooks";
+import {
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
 import { OnboardingPanel } from "@/components/app/onboarding-panel";
 import {
   CardSparkline,
@@ -89,6 +94,23 @@ const MODEL_COLORS = [
 // Evil Charts wants `colors: { light: [...], dark: [...] }`. Our --chart-* vars
 // already adapt to the theme, so the same value works for both.
 const themed = (color: string) => ({ light: [color], dark: [color] });
+
+/** Mix a hex color toward white (t > 0) or black (t < 0). Non-hex values
+ * (CSS vars) pass through untouched. */
+function shadeHex(hex: string, t: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m || t === 0) return hex;
+  const n = parseInt(m[1]!, 16);
+  const target = t > 0 ? 255 : 0;
+  const f = Math.abs(t);
+  const mix = (c: number) => Math.round(c + (target - c) * f);
+  const [r, g, b] = [n >> 16, (n >> 8) & 0xff, n & 0xff].map(mix);
+  return `#${((r! << 16) | (g! << 8) | b!).toString(16).padStart(6, "0")}`;
+}
+
+// Shade sequence for models sharing a vendor brand color: the first keeps the
+// brand tone, later ones lighten/darken it so same-vendor series stay apart.
+const VENDOR_SHADE_STEPS = [0, 0.35, -0.28, 0.6];
 
 // Series config for the blurred sample cost chart shown behind the empty state
 // (fake but plausible model names — the chart is decorative, never interactive).
@@ -148,7 +170,7 @@ function ChartLegend({
             className={cn(
               "text-muted-foreground flex cursor-pointer items-center gap-1.5 text-sm transition-all hover:text-foreground",
               dimmed && "opacity-30",
-              active && "text-foreground"
+              active && "text-foreground",
             )}
           >
             {it.color && (
@@ -168,9 +190,17 @@ function ChartLegend({
 
 /** Loading placeholder for the KPI row — built from the real Card shell so its
  * grid and heights match the loaded cards exactly (no layout shift). */
-function StatCardsSkeleton({ count = 4 }: { count?: number }) {
+function StatCardsSkeleton({
+  count = 4,
+  className,
+}: {
+  count?: number;
+  className?: string;
+}) {
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section
+      className={cn("grid gap-4 md:grid-cols-2 xl:grid-cols-4", className)}
+    >
       {Array.from({ length: count }).map((_, i) => (
         <Card key={i} size="sm">
           <CardHeader className="gap-1.5">
@@ -200,9 +230,9 @@ function StatCardsSkeleton({ count = 4 }: { count?: number }) {
 
 /** Loading placeholder for a chart card — same Card shell, header, and 260px
  * plot height as the real charts, so swapping it in causes no layout shift. */
-function ChartCardSkeleton() {
+function ChartCardSkeleton({ className }: { className?: string }) {
   return (
-    <Card size="sm">
+    <Card size="sm" className={className}>
       <CardHeader className="flex flex-row items-center justify-between gap-4">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-4 w-24" />
@@ -216,9 +246,12 @@ function ChartCardSkeleton() {
 
 /** Loading placeholder for a breakdown list card (Models / Agents / Workflows) —
  * same Card shell and header as the real cards so swapping it in causes no shift. */
-function ListCardSkeleton() {
+function ListCardSkeleton({ className }: { className?: string }) {
   return (
-    <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0!">
+    <Card
+      size="sm"
+      className={cn("pb-0! group-data-[size=sm]/card:pb-0!", className)}
+    >
       <CardHeader>
         <Skeleton className="h-4 w-20" />
       </CardHeader>
@@ -335,12 +368,13 @@ function BreakdownRow({
 }
 
 export function OverviewClient() {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const { range, setRange } = useRange();
   const { resolvedTheme } = useTheme();
   const { from, to } = useMemo(
     () => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
-    [range]
+    [range],
   );
   const windowMs = range.to.getTime() - range.from.getTime();
   const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
@@ -361,26 +395,47 @@ export function OverviewClient() {
     setLatencySelected(null);
   }, [from, to]);
 
+  // Every range-driven query keeps the previous range's data on screen while
+  // the new one loads (placeholderData) — a date change updates the cards in
+  // place instead of unmounting them to skeletons and back.
   const summary = useQuery({
     ...trpc.metrics.summary.queryOptions(args),
     enabled,
+    placeholderData: (prev) => prev,
   });
   const timeseries = useQuery({
     ...trpc.metrics.timeseries.queryOptions(args),
     enabled,
+    placeholderData: (prev) => prev,
   });
   const models = useQuery({
     ...trpc.metrics.models.queryOptions(args),
     enabled,
+    placeholderData: (prev) => prev,
   });
   const costByModel = useQuery({
     ...trpc.metrics.costByModel.queryOptions(args),
     enabled,
+    placeholderData: (prev) => prev,
   });
+  // Cache hit rate + estimated savings tiles beside the cost chart.
+  const cacheSummary = useQuery({
+    ...trpc.metrics.cacheSummary.queryOptions(args),
+    enabled,
+    placeholderData: (prev) => prev,
+  });
+  // Discount rate on cached reads: savings as a share of what those tokens
+  // would have cost at the full input rate (drives the savings meter).
+  const cacheDiscount = useMemo(() => {
+    const d = cacheSummary.data;
+    if (!d || d.estimatedSavings == null || !d.cachedAtFullPrice) return null;
+    return d.estimatedSavings / d.cachedAtFullPrice;
+  }, [cacheSummary.data]);
   // Top agents by cost for the "By agent" card (server default sort is cost desc).
   const agents = useQuery({
     ...trpc.agents.list.queryOptions({ ...args, limit: 100 }),
     enabled,
+    placeholderData: (prev) => prev,
   });
   // Top workflows by cost for the "By workflow" card (the server's default sort
   // is last-run, so ask for cost desc explicitly).
@@ -391,6 +446,7 @@ export function OverviewClient() {
       sort: { field: "cost", dir: "desc" },
     }),
     enabled,
+    placeholderData: (prev) => prev,
   });
   // Top customers by cost for the "Customers" card (server default sort is cost desc).
   const customers = useQuery({
@@ -400,6 +456,7 @@ export function OverviewClient() {
       includeUnidentified: true,
     }),
     enabled,
+    placeholderData: (prev) => prev,
   });
   // Range-independent probe: empty == this project has never received a trace,
   // which gates the onboarding panel.
@@ -413,12 +470,24 @@ export function OverviewClient() {
   const showSummarySkeleton = useDelayedLoading(summary.isLoading);
   const showSeriesSkeleton = useDelayedLoading(timeseries.isLoading);
   const showCostSkeleton = useDelayedLoading(
-    costByModel.isLoading || models.isLoading
+    costByModel.isLoading || models.isLoading,
   );
+  const showCacheSkeleton = useDelayedLoading(cacheSummary.isLoading);
   const showModelsSkeleton = useDelayedLoading(models.isLoading);
   const showAgentsSkeleton = useDelayedLoading(agents.isLoading);
   const showWorkflowsSkeleton = useDelayedLoading(workflows.isLoading);
   const showCustomersSkeleton = useDelayedLoading(customers.isLoading);
+
+  // Per-slot latches for the entrance fade (see useSkeletonShown): a card only
+  // fades in if its slot never painted a skeleton first.
+  const summarySkeletonShown = useSkeletonShown(showSummarySkeleton);
+  const seriesSkeletonShown = useSkeletonShown(showSeriesSkeleton);
+  const costSkeletonShown = useSkeletonShown(showCostSkeleton);
+  const cacheSkeletonShown = useSkeletonShown(showCacheSkeleton);
+  const modelsSkeletonShown = useSkeletonShown(showModelsSkeleton);
+  const agentsSkeletonShown = useSkeletonShown(showAgentsSkeleton);
+  const workflowsSkeletonShown = useSkeletonShown(showWorkflowsSkeleton);
+  const customersSkeletonShown = useSkeletonShown(showCustomersSkeleton);
 
   // p50/p95/p99 latency + requests/errors per bucket. Keeps the raw bucket as
   // the x value (formatted on the axis) so we can thin the ticks.
@@ -434,7 +503,7 @@ export function OverviewClient() {
         tokens: r.totalTokens,
         cost: r.totalCost ?? 0,
       })),
-    [timeseries.data]
+    [timeseries.data],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between
@@ -451,15 +520,15 @@ export function OverviewClient() {
         p95Abs: r.p95,
         p99Abs: r.p99,
       })),
-    [seriesData]
+    [seriesData],
   );
   const seriesTicks = useMemo(
     () =>
       thinTicks(
         seriesData.map((d) => d.bucket),
-        bucketLabel
+        bucketLabel,
       ),
-    [seriesData, bucketLabel]
+    [seriesData, bucketLabel],
   );
 
   // Is the final bucket the current, still-filling one? True when "now" still
@@ -484,9 +553,18 @@ export function OverviewClient() {
     const keyOf = new Map(top.map((id, i) => [id, `m${i}`]));
     const config: ChartConfig = {};
     const items: LegendItem[] = [];
+    // Models from the same vendor share a brand color — count repeats and
+    // shift each repeat's shade so their series stay distinguishable.
+    const brandSeen = new Map<string, number>();
     top.forEach((id, i) => {
       const key = `m${i}`;
-      const color = modelBrandColor(null, id) ?? MODEL_COLORS[i]!;
+      const base = modelBrandColor(null, id) ?? MODEL_COLORS[i]!;
+      const repeat = brandSeen.get(base) ?? 0;
+      brandSeen.set(base, repeat + 1);
+      const color = shadeHex(
+        base,
+        VENDOR_SHADE_STEPS[repeat % VENDOR_SHADE_STEPS.length]!,
+      );
       config[key] = {
         label: formatModelName(id),
         colors: themed(color),
@@ -540,11 +618,11 @@ export function OverviewClient() {
         const row: Record<string, string | number> = { bucket };
         for (const k of seriesKeys) row[k] = costs[k] ?? 0;
         return row;
-      }
+      },
     );
     const ticks = thinTicks(
       sorted.map(([bucket]) => bucket),
-      bucketLabel
+      bucketLabel,
     );
     return {
       costData: data,
@@ -600,7 +678,7 @@ export function OverviewClient() {
       cost,
       ticks: thinTicks(
         rows.map((r) => r.bucket),
-        bucketLabel
+        bucketLabel,
       ),
     };
   }, [range, bucketLabel]);
@@ -629,11 +707,11 @@ export function OverviewClient() {
   const maxAgentCost = Math.max(1, ...agentRows.map((a) => a.totalCost ?? 0));
   const maxWorkflowCost = Math.max(
     1,
-    ...workflowRows.map((w) => w.totalCost ?? 0)
+    ...workflowRows.map((w) => w.totalCost ?? 0),
   );
   const maxCustomerCost = Math.max(
     1,
-    ...customerRows.map((c) => c.totalCost ?? 0)
+    ...customerRows.map((c) => c.totalCost ?? 0),
   );
   // Raw load flags: drive empty-state detection here, and gate each chart card
   // (nothing pre-delay → ChartCardSkeleton after the delay → the real chart),
@@ -664,7 +742,7 @@ export function OverviewClient() {
       key,
       label: entry.label,
       color: entry.colors.light[0],
-    })
+    }),
   );
   const latencyItems: LegendItem[] = Object.entries(latencyConfig).map(
     ([key, entry]) => ({
@@ -673,12 +751,21 @@ export function OverviewClient() {
       color: (resolvedTheme === "dark"
         ? entry.colors.dark
         : entry.colors.light)[0],
-    })
+    }),
   );
 
+  // The fade class goes on each card slot (not the page wrapper) so cards
+  // animate at the moment they mount — which is when their query resolves,
+  // after the header is already on screen. `entrance` stays true for the whole
+  // first visit, so late-mounting cards still fade on a hard load; on later
+  // client-side visits everything renders instantly.
   return (
     <>
-      <OverviewHeader />
+      {/* Wrapped here (not inside OverviewHeader) so the copy rendered by
+          loading.tsx stays unanimated — only the page's own header fades. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <OverviewHeader />
+      </div>
 
       {/* Onboarding — shown until this project has ever received a trace. */}
       {!everReceived.isLoading &&
@@ -689,16 +776,25 @@ export function OverviewClient() {
           already false for cached data, so normal navigation never flashes it. */}
       {summary.isLoading ? (
         showSummarySkeleton ? (
-          <StatCardsSkeleton count={4} />
+          <StatCardsSkeleton
+            count={4}
+            className={cn(entrance && "page-fade-in")}
+          />
         ) : null
       ) : (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section
+          className={cn(
+            "grid gap-4 md:grid-cols-2 xl:grid-cols-4",
+            entrance && !summarySkeletonShown && "page-fade-in",
+          )}
+        >
           <StatCard
             icon={IconCirclesFilled}
-            iconClassName="text-blue-400 dark:text-blue-600"
+            iconClassName="text-blue-500 dark:text-blue-500"
             label="Tokens"
             size="sm"
-            value={formatTokens(cur?.totalTokens ?? 0)}
+            value={cur?.totalTokens ?? 0}
+            formatValue={formatTokens}
             delta={formatDelta(cur?.totalTokens, prev?.totalTokens)}
             hint={`${formatTokens(cur?.inputTokens ?? 0)} in · ${formatTokens(cur?.outputTokens ?? 0)} out`}
             chart={
@@ -710,10 +806,11 @@ export function OverviewClient() {
           />
           <StatCard
             icon={IconCoinFilled}
-            iconClassName="text-yellow-400 dark:text-yellow-600"
+            iconClassName="text-yellow-400 dark:text-yellow-500"
             label="Total cost"
             size="sm"
-            value={formatCost(cur?.totalCost, 4)}
+            value={cur?.totalCost ?? "—"}
+            formatValue={(n) => formatCost(n, 4)}
             delta={formatDelta(cur?.totalCost, prev?.totalCost)}
             deltaInverted
             hint={`~${formatCost(projectMonthlyCost(cur?.totalCost ?? null, windowMs), 4)}/mo`}
@@ -726,10 +823,11 @@ export function OverviewClient() {
           />
           <StatCard
             icon={IconGaugeFilled}
-            iconClassName="text-fuchsia-400 dark:text-fuchsia-600"
+            iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
             label="Eval pass rate"
             size="sm"
-            value={formatPercent(cur?.passRate)}
+            value={cur?.passRate ?? "—"}
+            formatValue={formatPercent}
             delta={formatDelta(cur?.passRate, prev?.passRate)}
             hint={
               cur?.checkCount
@@ -745,17 +843,18 @@ export function OverviewClient() {
           />
           <StatCard
             icon={IconAlertTriangleFilled}
-            iconClassName="text-rose-400 dark:text-rose-600"
+            iconClassName="text-red-500 dark:text-red-600"
             label="Error rate"
             size="sm"
-            value={formatPercent(cur?.errorRate)}
+            value={cur?.errorRate ?? "—"}
+            formatValue={formatPercent}
             delta={formatDelta(cur?.errorRate, prev?.errorRate)}
             deltaInverted
             hint={`${formatCount(cur?.errorCount ?? 0)} of ${formatCount(cur?.spanCount ?? 0)} spans`}
             chart={
               <PillMeter
                 fraction={cur?.errorRate ?? null}
-                className="text-rose-400 dark:text-rose-700"
+                className="text-red-400 dark:text-red-700"
               />
             }
           />
@@ -767,10 +866,13 @@ export function OverviewClient() {
       <section className="grid gap-4 lg:grid-cols-2">
         {timeseries.isLoading ? (
           showSeriesSkeleton ? (
-            <ChartCardSkeleton />
+            <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
-          <Card size="sm">
+          <Card
+            size="sm"
+            className={cn(entrance && !seriesSkeletonShown && "page-fade-in")}
+          >
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle>Requests & errors</CardTitle>
               <ChartLegend
@@ -828,10 +930,13 @@ export function OverviewClient() {
 
         {timeseries.isLoading ? (
           showSeriesSkeleton ? (
-            <ChartCardSkeleton />
+            <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
-          <Card size="sm">
+          <Card
+            size="sm"
+            className={cn(entrance && !seriesSkeletonShown && "page-fade-in")}
+          >
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle>Latency</CardTitle>
               <ChartLegend
@@ -903,10 +1008,13 @@ export function OverviewClient() {
       {/* Cost over time, stacked by model */}
       {costLoading ? (
         showCostSkeleton ? (
-          <ChartCardSkeleton />
+          <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
         ) : null
       ) : (
-        <Card size="sm">
+        <Card
+          size="sm"
+          className={cn(entrance && !costSkeletonShown && "page-fade-in")}
+        >
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle>Cost over time</CardTitle>
             {costItems.length > 0 && (
@@ -922,10 +1030,10 @@ export function OverviewClient() {
               empty={costEmpty}
               description="Instrument a call with the SDK to populate this chart."
             >
-              <LineChart.EvilLineChart
+              <BarChart.EvilBarChart
                 config={costChartConfig}
                 data={costChartData}
-                xDataKey="bucket"
+                stackType="stacked"
                 selectedDataKey={costSelected}
                 onSelectionChange={setCostSelected}
                 className="h-[260px] w-full"
@@ -933,45 +1041,99 @@ export function OverviewClient() {
                   // left: 2 (vs Recharts' default 5) tucks the auto-width
                   // y-axis labels closer to the card content edge.
                   margin: { top: 5, right: 5, bottom: 5, left: 2 },
+                  // Wider gap between buckets (Recharts default: 10%) keeps
+                  // the bars slim at any bucket count.
+                  barCategoryGap: "40%",
                 }}
               >
-                <LineChart.Grid />
-                <LineChart.XAxis
+                <BarChart.Grid />
+                <BarChart.XAxis
                   dataKey="bucket"
                   ticks={costChartTicks}
                   tickFormatter={bucketLabel}
                   interval={0}
                   tick={edgeTick}
                 />
-                <LineChart.YAxis
+                <BarChart.YAxis
                   tickFormatter={(v) => costAxisUsd.format(Number(v))}
                 />
-                <LineChart.Tooltip
+                <BarChart.Tooltip
                   labelFormatter={(v) => formatBucketFull(String(v))}
                   valueFormatter={(v) => formatCost(Number(v))}
+                  reverse
                 />
                 {costChartKeys.map((k) => (
-                  <LineChart.Line
+                  <BarChart.Bar
                     key={k}
                     dataKey={k}
-                    strokeVariant="solid"
-                    enableBufferLine={costBuffer}
+                    isClickable
+                    bufferBar={costBuffer}
                   />
                 ))}
-              </LineChart.EvilLineChart>
+              </BarChart.EvilBarChart>
             </MaybeEmptyOverlay>
           </CardContent>
         </Card>
+      )}
+
+      {/* Cache efficiency — how much input was served from cache, and what
+          those reads saved vs paying each span's own full input rate. */}
+      {cacheSummary.isLoading ? (
+        showCacheSkeleton ? (
+          <StatCardsSkeleton
+            count={2}
+            className={cn(
+              "md:grid-cols-2 xl:grid-cols-2",
+              entrance && "page-fade-in",
+            )}
+          />
+        ) : null
+      ) : (
+        <section
+          className={cn(
+            "grid gap-4 md:grid-cols-2",
+            entrance && !cacheSkeletonShown && "page-fade-in",
+          )}
+        >
+          <StatCard
+            label="Cache hit rate"
+            icon={IconCirclePercentageFilled}
+            value={cacheSummary.data?.hitRate ?? "—"}
+            formatValue={formatPercent}
+            hint={
+              (cacheSummary.data?.inputTokens ?? 0) > 0
+                ? `${formatTokens(cacheSummary.data?.cachedInputTokens ?? 0)} of ${formatTokens(cacheSummary.data?.inputTokens ?? 0)} input tokens read from cache`
+                : "No input tokens in this range"
+            }
+          />
+          <StatCard
+            label="Cache savings"
+            icon={IconCoinFilled}
+            value={cacheSummary.data?.estimatedSavings ?? "—"}
+            formatValue={(n) => formatCost(n)}
+            hint={
+              cacheDiscount != null
+                ? `cached reads cost ${formatPercent(cacheDiscount)} less than the full input rate`
+                : "vs paying the full input rate for cached tokens"
+            }
+          />
+        </section>
       )}
 
       {/* By model + by agent + by workflow + by customer, side by side */}
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         {models.isLoading ? (
           showModelsSkeleton ? (
-            <ListCardSkeleton />
+            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
-          <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0">
+          <Card
+            size="sm"
+            className={cn(
+              "pb-0! group-data-[size=sm]/card:pb-0",
+              entrance && !modelsSkeletonShown && "page-fade-in",
+            )}
+          >
             <CardHeader>
               <CardTitle>Models</CardTitle>
             </CardHeader>
@@ -1013,10 +1175,16 @@ export function OverviewClient() {
 
         {agents.isLoading ? (
           showAgentsSkeleton ? (
-            <ListCardSkeleton />
+            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
-          <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0!">
+          <Card
+            size="sm"
+            className={cn(
+              "pb-0! group-data-[size=sm]/card:pb-0!",
+              entrance && !agentsSkeletonShown && "page-fade-in",
+            )}
+          >
             <CardHeader>
               <CardTitle>Agents</CardTitle>
             </CardHeader>
@@ -1056,10 +1224,16 @@ export function OverviewClient() {
 
         {workflows.isLoading ? (
           showWorkflowsSkeleton ? (
-            <ListCardSkeleton />
+            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
-          <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0!">
+          <Card
+            size="sm"
+            className={cn(
+              "pb-0! group-data-[size=sm]/card:pb-0!",
+              entrance && !workflowsSkeletonShown && "page-fade-in",
+            )}
+          >
             <CardHeader>
               <CardTitle>Workflows</CardTitle>
             </CardHeader>
@@ -1103,10 +1277,16 @@ export function OverviewClient() {
 
         {customers.isLoading ? (
           showCustomersSkeleton ? (
-            <ListCardSkeleton />
+            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
           ) : null
         ) : (
-          <Card size="sm" className="pb-0! group-data-[size=sm]/card:pb-0!">
+          <Card
+            size="sm"
+            className={cn(
+              "pb-0! group-data-[size=sm]/card:pb-0!",
+              entrance && !customersSkeletonShown && "page-fade-in",
+            )}
+          >
             <CardHeader>
               <CardTitle>Customers</CardTitle>
             </CardHeader>

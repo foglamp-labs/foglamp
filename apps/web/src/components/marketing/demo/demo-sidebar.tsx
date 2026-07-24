@@ -35,19 +35,19 @@ function NavIcon({
     <span
       className={cn(
         "grid size-4.5 place-items-center [&_svg]:size-full!",
-        className
+        className,
       )}
     >
       <OutlineIcon
         className={cn(
           "[grid-area:1/1] transition-opacity duration-100 ease-in-out",
-          active ? "opacity-0" : "opacity-100"
+          active ? "opacity-0" : "opacity-100",
         )}
       />
       <ActiveIcon
         className={cn(
           "[grid-area:1/1] transition-opacity duration-100 ease-in-out",
-          active ? "opacity-100" : "opacity-0"
+          active ? "opacity-100" : "opacity-0",
         )}
       />
     </span>
@@ -108,7 +108,7 @@ export function DemoSidebar() {
                     className={cn(
                       BUTTON_BASE,
                       "cursor-pointer hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground",
-                      "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground dark:data-[active=true]:bg-sidebar-accent/50"
+                      "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground dark:data-[active=true]:bg-sidebar-accent/50",
                     )}
                   >
                     <NavIcon

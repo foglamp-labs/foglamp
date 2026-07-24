@@ -25,16 +25,17 @@ import {
 } from "@foglamp/ui/components/table";
 import { TooltipProvider } from "@foglamp/ui/components/tooltip";
 import { cn } from "@foglamp/ui/lib/utils";
-import {
-  IconAlertTriangle,
-  IconGhostFilled,
-} from "@tabler/icons-react";
+import { IconAlertTriangle, IconGhostFilled } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
-import { HEAT_SHADES, HeatCell, percentileBucket } from "@/components/app/heat-cell";
+import {
+  HEAT_SHADES,
+  HeatCell,
+  percentileBucket,
+} from "@/components/app/heat-cell";
 import { pageWindow } from "@/components/app/trend-charts";
 import { Stat } from "@/components/app/stat";
 import {
@@ -47,7 +48,12 @@ import {
   parseSortParam,
   useUrlFilters,
 } from "@/components/app/data-table";
-import { useDebouncedValue, useDelayedLoading } from "@/components/app/hooks";
+import {
+  useDebouncedValue,
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
 import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
 import { navItem } from "@/components/app/nav";
 import {
@@ -91,8 +97,8 @@ const AGENT_SORT_KEYS = [
   "cost",
 ] as const satisfies readonly AgentSortKey[];
 
-
 export function AgentsClient() {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const router = useRouter();
   const { range, setRange } = useRange();
@@ -156,6 +162,9 @@ export function AgentsClient() {
 
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showSkeleton = useDelayedLoading(agents.isLoading);
+  // Latch for the entrance fade: the content below only fades in if this slot
+  // never painted a skeleton first (see useSkeletonShown).
+  const skeletonShown = useSkeletonShown(showSkeleton);
 
   if (!projectId) {
     return (
@@ -182,24 +191,33 @@ export function AgentsClient() {
 
   return (
     <>
-      <AgentsHeader />
+      {/* Wrapped here (not inside AgentsHeader) so the copy rendered by
+          loading.tsx stays unanimated — only the page's own header fades. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <AgentsHeader />
+      </div>
       {agents.isLoading ? (
         showSkeleton ? (
-          view === "cards" ? (
-            <CardsSkeleton count={6} />
-          ) : (
-            <TableSkeleton />
-          )
+          <div className={cn(entrance && "page-fade-in")}>
+            {view === "cards" ? <CardsSkeleton count={6} /> : <TableSkeleton />}
+          </div>
         ) : null
       ) : rows.length === 0 && page === 0 && !hasFilters ? (
-        <InstrumentEmptyState
-          feature="agent"
-          icon={IconGhostFilled}
-          title="No agent activity"
-          description="Set agentName on the SDK integration to break down by agent."
-        />
+        <div className={cn(entrance && !skeletonShown && "page-fade-in")}>
+          <InstrumentEmptyState
+            feature="agent"
+            icon={IconGhostFilled}
+            title="No agent activity"
+            description="Set agentName on the SDK integration to break down by agent."
+          />
+        </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div
+          className={cn(
+            "flex flex-col gap-4",
+            entrance && !skeletonShown && "page-fade-in",
+          )}
+        >
           <Toolbar>
             <SearchInput
               value={search}
@@ -261,7 +279,7 @@ export function AgentsClient() {
                       <Stat
                         label="Spans"
                         value={`${formatCount(a.spanCount)} · ${formatCount(
-                          a.llmSpanCount
+                          a.llmSpanCount,
                         )} LLM`}
                       />
                       <Stat
@@ -347,13 +365,13 @@ export function AgentsClient() {
                       interactive
                       onClick={() =>
                         router.push(
-                          `/agents/${encodeURIComponent(a.agentName)}`
+                          `/agents/${encodeURIComponent(a.agentName)}`,
                         )
                       }
                       className={cn(
                         // Left accent bar on errored agents — scannable at a glance.
                         a.errorCount > 0 &&
-                          "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
+                          "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
                       )}
                     >
                       <TableCell>
@@ -419,7 +437,7 @@ export function AgentsClient() {
                       aria-disabled={page === 0 || agents.isFetching}
                       className={cn(
                         (page === 0 || agents.isFetching) &&
-                          "pointer-events-none opacity-50"
+                          "pointer-events-none opacity-50",
                       )}
                       onClick={() => setPage(Math.max(0, page - 1))}
                     />
@@ -435,14 +453,14 @@ export function AgentsClient() {
                         <PaginationLink
                           isActive={p === currentPage}
                           className={cn(
-                            agents.isFetching && "pointer-events-none"
+                            agents.isFetching && "pointer-events-none",
                           )}
                           onClick={() => setPage(p - 1)}
                         >
                           {p}
                         </PaginationLink>
                       </PaginationItem>
-                    )
+                    ),
                   )}
                   <PaginationItem>
                     <PaginationNext
@@ -451,7 +469,7 @@ export function AgentsClient() {
                       }
                       className={cn(
                         (currentPage >= totalPages || agents.isFetching) &&
-                          "pointer-events-none opacity-50"
+                          "pointer-events-none opacity-50",
                       )}
                       onClick={() => setPage(page + 1)}
                     />
@@ -465,4 +483,3 @@ export function AgentsClient() {
     </>
   );
 }
-

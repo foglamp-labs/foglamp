@@ -16,9 +16,17 @@ import {
   IconMailForward,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
+import { animate } from "motion/react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 import { Button } from "@foglamp/ui/components/button";
@@ -115,6 +123,47 @@ export function PageHeader({
   );
 }
 
+const defaultTickerFormat = (n: number) => Math.round(n).toLocaleString();
+
+/**
+ * Animated numeric stat: when `value` changes, the digits tween from the old
+ * number to the new one, with every intermediate frame run through `format`
+ * so the string stays properly formatted ("$1.23", "87%", "1.2K") the whole
+ * way. The first paint is static — only later changes animate.
+ */
+function TickerValue({
+  value,
+  format,
+}: {
+  value: number;
+  format: (n: number) => string;
+}) {
+  const [display, setDisplay] = useState(() => format(value));
+  const animatedFrom = useRef(value);
+  // The formatter is often an inline closure — keep the latest without
+  // retriggering the animation effect.
+  const formatRef = useRef(format);
+  formatRef.current = format;
+
+  useEffect(() => {
+    const from = animatedFrom.current;
+    if (from === value) {
+      setDisplay(formatRef.current(value));
+      return;
+    }
+    animatedFrom.current = value;
+    const controls = animate(from, value, {
+      duration: 0.6,
+      ease: "easeOut",
+      onUpdate: (v) => setDisplay(formatRef.current(v)),
+      onComplete: () => setDisplay(formatRef.current(value)),
+    });
+    return () => controls.stop();
+  }, [value]);
+
+  return <span>{display}</span>;
+}
+
 /**
  * A single metric tile for a stat strip. Within a strip, order cards by the
  * canonical narrative — **Volume → Health → Performance → Cost** — i.e. lead
@@ -132,10 +181,24 @@ export function StatCard({
   icon: Icon,
   iconClassName,
   chart,
+  prefix,
+  suffix,
+  formatValue,
 }: {
   label: string;
+  /** A `number` gets the ticker treatment — on change the digits animate to
+   * the new value, formatted each frame by `formatValue` and wrapped in
+   * `prefix`/`suffix`. Any other ReactNode (a preformatted string, "—", …)
+   * renders statically. */
   value: React.ReactNode;
   hint?: React.ReactNode;
+  /** Static element rendered before an animated numeric value. */
+  prefix?: React.ReactNode;
+  /** Static element rendered after an animated numeric value. */
+  suffix?: React.ReactNode;
+  /** Formats an animated numeric value each frame (e.g. `formatCost`).
+   * Defaults to a rounded locale string. */
+  formatValue?: (n: number) => string;
   /** Period-over-period change (from `formatDelta`); null/undefined hides it. */
   delta?: Delta | null;
   /** When true, "up" is bad (red) — for cost / errors / latency. */
@@ -159,8 +222,8 @@ export function StatCard({
             {Icon && (
               <Icon
                 className={cn(
-                  "size-[13px] shrink-0 text-muted-foreground",
-                  iconClassName
+                  "size-3.25 shrink-0 text-muted-foreground",
+                  iconClassName,
                 )}
               />
             )}
@@ -171,7 +234,18 @@ export function StatCard({
         </div>
         <div className="flex items-baseline justify-between gap-2">
           <CardTitle className={cn("tracking-tight tabular-nums")}>
-            {value}
+            {typeof value === "number" ? (
+              <>
+                {prefix}
+                <TickerValue
+                  value={value}
+                  format={formatValue ?? defaultTickerFormat}
+                />
+                {suffix}
+              </>
+            ) : (
+              value
+            )}
           </CardTitle>
           {hint && (
             <span className="min-w-0 truncate text-end text-xs text-muted-foreground/70">
@@ -207,12 +281,12 @@ function DeltaBadge({ delta, inverted }: { delta: Delta; inverted: boolean }) {
         "inline-flex items-center gap-1 text-xs font-medium tabular-nums mt-px",
         good
           ? "text-emerald-600 dark:text-emerald-500"
-          : "text-rose-600 dark:text-rose-500"
+          : "text-red-500 dark:text-red-600",
       )}
       title="vs. previous period"
     >
       {Math.abs(Math.round(delta.pct * 100))}%
-      <Arrow className="size-[13px] opacity-90" />
+      <Arrow className="size-3.25 opacity-90" />
     </span>
   );
 }
@@ -253,7 +327,7 @@ export function CardSparkline({
   const toPath = (slice: ReadonlyArray<readonly [number, number]>) =>
     slice
       .map(
-        ([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`
+        ([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`,
       )
       .join(" ");
 
@@ -378,16 +452,16 @@ export function PillMeter({
     <div
       className={cn(
         "px-6 pt-1.5 pb-5 group-data-[size=sm]/card:px-5",
-        className
+        className,
       )}
     >
-      <div className="flex h-3.5 items-stretch gap-[3px]">
+      <div className="flex h-3.5 items-stretch gap-0.75">
         {Array.from({ length: count }, (_, i) => (
           <span
             key={i}
             className={cn(
               "flex-1 rounded-full",
-              i < filled ? "bg-current" : "bg-muted-foreground/10"
+              i < filled ? "bg-current" : "bg-muted-foreground/10",
             )}
           />
         ))}
@@ -449,14 +523,14 @@ export function ScrollFade({
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 h-10 bg-linear-to-b to-transparent transition-opacity duration-150",
           fromClassName,
-          edges.top ? "opacity-100" : "opacity-0"
+          edges.top ? "opacity-100" : "opacity-0",
         )}
       />
       <div
         className={cn(
           "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t to-transparent transition-opacity duration-150",
           fromClassName,
-          edges.bottom ? "opacity-100" : "opacity-0"
+          edges.bottom ? "opacity-100" : "opacity-0",
         )}
       />
     </div>

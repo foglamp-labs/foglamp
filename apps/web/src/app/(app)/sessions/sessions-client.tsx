@@ -47,7 +47,12 @@ import {
   parseSortParam,
   useUrlFilters,
 } from "@/components/app/data-table";
-import { useDebouncedValue, useDelayedLoading } from "@/components/app/hooks";
+import {
+  useDebouncedValue,
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
 import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
 import { navItem } from "@/components/app/nav";
 import {
@@ -60,11 +65,7 @@ import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangePicker } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
-import {
-  formatCost,
-  formatCount,
-  formatTokens,
-} from "@/lib/format";
+import { formatCost, formatCount, formatTokens } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { SessionsHeader } from "./header";
 
@@ -79,8 +80,8 @@ const SESSION_SORT_KEYS = [
   "turns",
 ] as const satisfies readonly SessionSortKey[];
 
-
 export function SessionsClient() {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const { range, setRange } = useRange();
   const router = useRouter();
@@ -172,6 +173,10 @@ export function SessionsClient() {
   });
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showSkeleton = useDelayedLoading(sessions.isLoading);
+  // Latch for the entrance fade: whatever paints first in the table slot
+  // (skeleton or the loaded content) gets the fade, and the swap between them
+  // stays instant (see useSkeletonShown).
+  const skeletonShown = useSkeletonShown(showSkeleton);
 
   if (!projectId) {
     return (
@@ -194,7 +199,7 @@ export function SessionsClient() {
   // page links. Falls back to "at least the current page" before the count loads.
   const totalPages = Math.max(
     page + 1,
-    Math.ceil((summary?.sessionCount ?? 0) / PAGE_SIZE) || 1
+    Math.ceil((summary?.sessionCount ?? 0) / PAGE_SIZE) || 1,
   );
   const currentPage = page + 1;
   const pages = pageWindow(currentPage, totalPages);
@@ -222,20 +227,33 @@ export function SessionsClient() {
 
   return (
     <>
-      <SessionsHeader />
+      {/* Wrapped here (not inside SessionsHeader) so the copy rendered by
+          loading.tsx stays unanimated — only the page's own header fades. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <SessionsHeader />
+      </div>
       {sessions.isLoading ? (
         showSkeleton ? (
-          <TableSkeleton />
+          <div className={cn(entrance && "page-fade-in")}>
+            <TableSkeleton />
+          </div>
         ) : null
       ) : rows.length === 0 && page === 0 && !hasFilters ? (
-        <InstrumentEmptyState
-          feature="session"
-          icon={IconMessage2Filled}
-          title="No sessions yet"
-          description="Pass a sessionId via the SDK integration to group calls into conversations."
-        />
+        <div className={cn(entrance && !skeletonShown && "page-fade-in")}>
+          <InstrumentEmptyState
+            feature="session"
+            icon={IconMessage2Filled}
+            title="No sessions yet"
+            description="Pass a sessionId via the SDK integration to group calls into conversations."
+          />
+        </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div
+          className={cn(
+            "flex flex-col gap-4",
+            entrance && !skeletonShown && "page-fade-in",
+          )}
+        >
           <Toolbar>
             <SearchInput
               value={search}
@@ -339,13 +357,13 @@ export function SessionsClient() {
                         interactive
                         onClick={() =>
                           router.push(
-                            `/sessions/${encodeURIComponent(s.sessionId)}`
+                            `/sessions/${encodeURIComponent(s.sessionId)}`,
                           )
                         }
                         className={cn(
                           // Left accent bar on errored sessions — scannable at a glance.
                           s.errorCount > 0 &&
-                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
+                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
                         )}
                       >
                         <TableCell className="font-mono text-xs text-muted-foreground">
@@ -391,7 +409,7 @@ export function SessionsClient() {
                               // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
                               href={
                                 `/traces?customer=${encodeURIComponent(
-                                  s.customerId
+                                  s.customerId,
                                 )}` as any
                               }
                               onClick={(e) => e.stopPropagation()}
@@ -453,7 +471,7 @@ export function SessionsClient() {
                         aria-disabled={page === 0 || sessions.isFetching}
                         className={cn(
                           (page === 0 || sessions.isFetching) &&
-                            "pointer-events-none opacity-50"
+                            "pointer-events-none opacity-50",
                         )}
                         onClick={() => setPage(Math.max(0, page - 1))}
                       />
@@ -469,14 +487,14 @@ export function SessionsClient() {
                           <PaginationLink
                             isActive={p === currentPage}
                             className={cn(
-                              sessions.isFetching && "pointer-events-none"
+                              sessions.isFetching && "pointer-events-none",
                             )}
                             onClick={() => setPage(p - 1)}
                           >
                             {p}
                           </PaginationLink>
                         </PaginationItem>
-                      )
+                      ),
                     )}
                     <PaginationItem>
                       <PaginationNext
@@ -485,7 +503,7 @@ export function SessionsClient() {
                         }
                         className={cn(
                           (currentPage >= totalPages || sessions.isFetching) &&
-                            "pointer-events-none opacity-50"
+                            "pointer-events-none opacity-50",
                         )}
                         onClick={() => setPage(page + 1)}
                       />
@@ -500,4 +518,3 @@ export function SessionsClient() {
     </>
   );
 }
-

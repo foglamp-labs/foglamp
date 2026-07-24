@@ -48,16 +48,22 @@ import { formatDistanceToNow } from "date-fns";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { cn } from "@foglamp/ui/lib/utils";
 import { AnimatedApiKey } from "@/components/app/animated-api-key";
 import { CopyIcon } from "@/components/app/copy-icon";
 import { useCopied } from "@/components/app/use-copied";
-import { useDelayedLoading } from "@/components/app/hooks";
+import {
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
 import { EmptyState, TableSkeleton } from "@/components/app/page-parts";
 import { ApiKeysHeader } from "./header";
 import { useProject } from "@/components/app/project-context";
 import { trpc } from "@/utils/trpc";
 
 export function SettingsClient() {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const qc = useQueryClient();
 
@@ -81,6 +87,8 @@ export function SettingsClient() {
   });
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showSkeleton = useDelayedLoading(keys.isLoading);
+  // Latches whether the table's slot ever showed a skeleton (see useSkeletonShown).
+  const skeletonShown = useSkeletonShown(showSkeleton);
 
   const createKey = useMutation(
     trpc.projects.keys.create.mutationOptions({
@@ -91,7 +99,7 @@ export function SettingsClient() {
         setRevealedKey(data.key);
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
 
   const revoke = useMutation(
@@ -102,7 +110,7 @@ export function SettingsClient() {
         toast.success("API key revoked");
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
 
   // Active keys first, then newest-created first within each group.
@@ -116,129 +124,139 @@ export function SettingsClient() {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
       }),
-    [keys.data]
+    [keys.data],
   );
 
   return (
     <>
-      <ApiKeysHeader
-        actions={
-          projectId && (
-            <Dialog
-              open={keyDialogOpen}
-              onOpenChange={setKeyDialogOpen}
-              onOpenChangeComplete={(open) => {
-                // Reset only after the close animation finishes — resetting on
-                // close swaps the revealed view back to the create form mid-exit,
-                // causing a layout shift.
-                if (!open) {
-                  setKeyName("");
-                  setRevealedKey(null);
-                  resetCopied();
-                }
-              }}
-            >
-              <DialogTrigger render={<Button size="sm" />}>
-                <IconPlusFilled /> Create key
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {revealedKey ? "API key created" : "Create API key"}
-                  </DialogTitle>
+      {/* Wrapped here (not inside ApiKeysHeader) so the copy rendered by
+          loading.tsx stays unanimated — only the page's own header fades. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <ApiKeysHeader
+          actions={
+            projectId && (
+              <Dialog
+                open={keyDialogOpen}
+                onOpenChange={setKeyDialogOpen}
+                onOpenChangeComplete={(open) => {
+                  // Reset only after the close animation finishes — resetting on
+                  // close swaps the revealed view back to the create form mid-exit,
+                  // causing a layout shift.
+                  if (!open) {
+                    setKeyName("");
+                    setRevealedKey(null);
+                    resetCopied();
+                  }
+                }}
+              >
+                <DialogTrigger render={<Button size="sm" />}>
+                  <IconPlusFilled /> Create key
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {revealedKey ? "API key created" : "Create API key"}
+                    </DialogTitle>
 
-                  <DialogDescription>
-                    {revealedKey
-                      ? "Copy your key now, it won't be shown again."
-                      : "Give it a cool name."}
-                  </DialogDescription>
-                </DialogHeader>
-                {revealedKey ? (
-                  <>
-                    <Field>
-                      <FieldLabel>API Key:</FieldLabel>
-                      <InputGroup>
-                        <div className="flex min-w-0 flex-1 items-center overflow-x-auto px-2.5">
-                          <AnimatedApiKey from={keyName} value={revealedKey} />
-                        </div>
-                        <InputGroupAddon align="inline-end" className="pr-1">
-                          <Button
-                            size="icon-sm"
-                            variant="ghost"
-                            className="mr-1 rounded-sm size-7"
-                            onClick={() => {
-                              void navigator.clipboard.writeText(revealedKey);
-                              markCopied();
-                            }}
-                          >
-                            <CopyIcon
-                              copied={copied}
-                              checkClassName="text-green-600 dark:text-green-400"
+                    <DialogDescription>
+                      {revealedKey
+                        ? "Copy your key now, it won't be shown again."
+                        : "Give it a cool name."}
+                    </DialogDescription>
+                  </DialogHeader>
+                  {revealedKey ? (
+                    <>
+                      <Field>
+                        <FieldLabel>API Key:</FieldLabel>
+                        <InputGroup>
+                          <div className="flex min-w-0 flex-1 items-center overflow-x-auto px-2.5">
+                            <AnimatedApiKey
+                              from={keyName}
+                              value={revealedKey}
                             />
-                          </Button>
-                        </InputGroupAddon>
-                      </InputGroup>
-                    </Field>
-                    <DialogFooter>
-                      <Button onClick={() => setKeyDialogOpen(false)}>
-                        Done
-                      </Button>
-                    </DialogFooter>
-                  </>
-                ) : (
-                  <>
-                    <Field>
-                      <FieldLabel>Name</FieldLabel>
-                      <Input
-                        autoFocus
-                        placeholder="Production key"
-                        value={keyName}
-                        onChange={(e) => setKeyName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
+                          </div>
+                          <InputGroupAddon align="inline-end" className="pr-1">
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              className="mr-1 rounded-sm size-7"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(revealedKey);
+                                markCopied();
+                              }}
+                            >
+                              <CopyIcon copied={copied} />
+                            </Button>
+                          </InputGroupAddon>
+                        </InputGroup>
+                      </Field>
+                      <DialogFooter>
+                        <Button onClick={() => setKeyDialogOpen(false)}>
+                          Done
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  ) : (
+                    <>
+                      <Field>
+                        <FieldLabel>Name</FieldLabel>
+                        <Input
+                          autoFocus
+                          placeholder="Production key"
+                          value={keyName}
+                          onChange={(e) => setKeyName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              if (!keyName.trim()) return;
+                              createKey.mutate({
+                                projectId,
+                                name: keyName.trim(),
+                              });
+                            }
+                          }}
+                        />
+                      </Field>
+                      <DialogFooter>
+                        <Button
+                          disabled={!keyName.trim() || createKey.isPending}
+                          onClick={() => {
                             if (!keyName.trim()) return;
                             createKey.mutate({
                               projectId,
                               name: keyName.trim(),
                             });
-                          }
-                        }}
-                      />
-                    </Field>
-                    <DialogFooter>
-                      <Button
-                        disabled={!keyName.trim() || createKey.isPending}
-                        onClick={() => {
-                          if (!keyName.trim()) return;
-                          createKey.mutate({ projectId, name: keyName.trim() });
-                        }}
-                      >
-                        Create
-                      </Button>
-                    </DialogFooter>
-                  </>
-                )}
-              </DialogContent>
-            </Dialog>
-          )
-        }
-      />
+                          }}
+                        >
+                          Create
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
+            )
+          }
+        />
+      </div>
       {!projectId ? (
         <p className="text-sm text-muted-foreground">Select a project first.</p>
       ) : (
         <>
           {keys.isLoading ? (
             showSkeleton ? (
-              <TableSkeleton />
+              <div className={cn(entrance && "page-fade-in")}>
+                <TableSkeleton />
+              </div>
             ) : null
           ) : keyRows.length === 0 ? (
             <EmptyState
               icon={IconKeyFilled}
               title="No API keys"
               description="Create a key to authenticate SDK requests."
+              className={cn(entrance && !skeletonShown && "page-fade-in")}
             />
           ) : (
-            <Table>
+            <Table className={cn(entrance && !skeletonShown && "page-fade-in")}>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>

@@ -41,15 +41,16 @@ import {
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
-import {
-  formatCost,
-  formatCount,
-  formatDuration,
-} from "@/lib/format";
+import { formatCost, formatCount, formatDuration } from "@/lib/format";
 
 import { DetailHeader } from "../demo-chrome";
 import { useDemo } from "../demo-context";
-import { WORKFLOW_FLOW, WORKFLOW_RUNS, WORKFLOW_SERIES, WORKFLOWS } from "../mock-data";
+import {
+  WORKFLOW_FLOW,
+  WORKFLOW_RUNS,
+  WORKFLOW_SERIES,
+  WORKFLOWS,
+} from "../mock-data";
 
 // The demo window is a fixed "Last 24 hours", so the bucket axis renders
 // time-of-day labels.
@@ -122,7 +123,7 @@ export function WorkflowDetail({ workflowName }: { workflowName: string }) {
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           icon={IconBoltFilled}
-          iconClassName="text-violet-300 dark:text-violet-700"
+          iconClassName="text-orange-500 dark:text-orange-500"
           size="sm"
           label="Runs"
           value={wf.runs}
@@ -130,7 +131,7 @@ export function WorkflowDetail({ workflowName }: { workflowName: string }) {
         />
         <StatCard
           icon={IconAlertTriangleFilled}
-          iconClassName="text-rose-300 dark:text-rose-700"
+          iconClassName="text-red-500 dark:text-red-600"
           size="sm"
           label="Error rate"
           value={wf.errorRate}
@@ -138,7 +139,7 @@ export function WorkflowDetail({ workflowName }: { workflowName: string }) {
         />
         <StatCard
           icon={IconClockFilled}
-          iconClassName="text-sky-300 dark:text-sky-700"
+          iconClassName="text-sky-500 dark:text-sky-500"
           size="sm"
           label="p95 duration"
           value={wf.p95}
@@ -146,7 +147,7 @@ export function WorkflowDetail({ workflowName }: { workflowName: string }) {
         />
         <StatCard
           icon={IconCoinFilled}
-          iconClassName="text-yellow-300 dark:text-yellow-600"
+          iconClassName="text-yellow-400 dark:text-yellow-500"
           size="sm"
           label="Total cost"
           value={wf.cost}
@@ -254,7 +255,9 @@ export function WorkflowDetail({ workflowName }: { workflowName: string }) {
           <CardTitle className="flex flex-wrap items-center gap-2">
             Run flow
           </CardTitle>
-          <CardDescription>One representative run, step by step.</CardDescription>
+          <CardDescription>
+            One representative run, step by step.
+          </CardDescription>
         </CardHeader>
         <CardContent className="px-4 mt-3">
           <NodeFlow nodes={nodes} />
@@ -294,7 +297,10 @@ export function WorkflowDetail({ workflowName }: { workflowName: string }) {
                       )}
                     </span>
                     {r.errorCount > 0 && (
-                      <Badge variant="rose" className="shrink-0 font-sans ml-auto">
+                      <Badge
+                        variant="rose"
+                        className="shrink-0 font-sans ml-auto"
+                      >
                         <IconAlertTriangle />
                         {r.errorCount}
                         {r.errorCount === 1 ? " error" : " errors"}

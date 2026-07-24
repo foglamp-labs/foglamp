@@ -56,7 +56,7 @@ export function EvalsTab() {
                   <PIcon
                     className={cn(
                       "size-6 shrink-0 rounded-xl corner-squircle p-1",
-                      FAMILY_CHIP[family]
+                      FAMILY_CHIP[family],
                     )}
                   />
                   <span className="truncate">{e.name}</span>

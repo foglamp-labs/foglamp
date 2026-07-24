@@ -42,7 +42,7 @@ export function CopyButton({
       <CopyIcon
         copied={copied}
         className={iconSize}
-        checkClassName={cn(iconSize, "text-green-600 dark:text-green-400")}
+        checkClassName={cn(iconSize)}
       />
     </button>
   );

@@ -3,6 +3,8 @@
 import { IconCircleCheckFilled, IconCopyFilled } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 
+import { cn } from "@foglamp/ui/lib/utils";
+
 export function CopyIcon({
   copied,
   className,
@@ -28,7 +30,12 @@ export function CopyIcon({
           transition={{ type: "spring", duration: 0.25, bounce: 0 }}
         >
           {copied ? (
-            <IconCircleCheckFilled className={checkClassName ?? className} />
+            <IconCircleCheckFilled
+              className={cn(
+                "text-green-600 dark:text-green-400",
+                checkClassName ?? className
+              )}
+            />
           ) : (
             <IconCopyFilled className={className} />
           )}

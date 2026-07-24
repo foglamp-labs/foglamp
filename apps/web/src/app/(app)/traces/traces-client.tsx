@@ -49,7 +49,11 @@ import {
   parseSortParam,
   useUrlFilters,
 } from "@/components/app/data-table";
-import { useDelayedLoading } from "@/components/app/hooks";
+import {
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
   EmptyState,
@@ -84,8 +88,8 @@ const TRACE_SORT_KEYS = [
   "spans",
 ] as const satisfies readonly TraceSortKey[];
 
-
 export function TracesClient() {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const { range, setRange } = useRange();
   const router = useRouter();
@@ -192,6 +196,9 @@ export function TracesClient() {
   });
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showSkeleton = useDelayedLoading(traces.isLoading);
+  // Latch for the entrance fade: the content slot only fades in if its skeleton
+  // never painted first (see useSkeletonShown).
+  const skeletonShown = useSkeletonShown(showSkeleton);
 
   if (!projectId) {
     return (
@@ -214,7 +221,7 @@ export function TracesClient() {
   // page links. Falls back to "at least the current page" before the count loads.
   const totalPages = Math.max(
     page + 1,
-    Math.ceil((summary?.traceCount ?? 0) / PAGE_SIZE) || 1
+    Math.ceil((summary?.traceCount ?? 0) / PAGE_SIZE) || 1,
   );
   const currentPage = page + 1;
   const pages = pageWindow(currentPage, totalPages);
@@ -256,19 +263,31 @@ export function TracesClient() {
 
   return (
     <>
-      <TracesHeader />
+      {/* Wrapped here (not inside TracesHeader) so the copy rendered by
+          loading.tsx stays unanimated — only the page's own header fades. */}
+      <div className={cn(entrance && "page-fade-in")}>
+        <TracesHeader />
+      </div>
       {traces.isLoading ? (
         showSkeleton ? (
-          <TableSkeleton />
+          <div className={cn(entrance && "page-fade-in")}>
+            <TableSkeleton />
+          </div>
         ) : null
       ) : rows.length === 0 && page === 0 && !hasFilters ? (
         <EmptyState
           icon={IconAffiliateFilled}
           title="No traces yet"
           description="Run an instrumented call to see traces appear here."
+          className={cn(entrance && !skeletonShown && "page-fade-in")}
         />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div
+          className={cn(
+            "flex flex-col gap-4",
+            entrance && !skeletonShown && "page-fade-in",
+          )}
+        >
           <Toolbar>
             <FilterSelect
               value={agentFilter}
@@ -393,7 +412,7 @@ export function TracesClient() {
                         interactive
                         onClick={() =>
                           router.push(
-                            `/traces/${encodeURIComponent(t.traceId)}`
+                            `/traces/${encodeURIComponent(t.traceId)}`,
                           )
                         }
                         className={cn(
@@ -402,7 +421,7 @@ export function TracesClient() {
                           t.errorCount > 0
                             ? "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
                             : t.abortedCount > 0 &&
-                                "shadow-[inset_1px_0_0_0_var(--color-amber-500)]"
+                                "shadow-[inset_1px_0_0_0_var(--color-amber-500)]",
                         )}
                       >
                         <TableCell>
@@ -438,7 +457,7 @@ export function TracesClient() {
                                 {t.sessionId && (
                                   <Link
                                     href={`/sessions/${encodeURIComponent(
-                                      t.sessionId
+                                      t.sessionId,
                                     )}`}
                                     onClick={(e) => e.stopPropagation()}
                                     title="View session"
@@ -451,7 +470,7 @@ export function TracesClient() {
                                 {t.agentName && (
                                   <Link
                                     href={`/agents/${encodeURIComponent(
-                                      t.agentName
+                                      t.agentName,
                                     )}`}
                                     onClick={(e) => e.stopPropagation()}
                                     title="View agent"
@@ -470,7 +489,7 @@ export function TracesClient() {
                                 {t.workflowName && (
                                   <Link
                                     href={`/workflows/${encodeURIComponent(
-                                      t.workflowName
+                                      t.workflowName,
                                     )}`}
                                     onClick={(e) => e.stopPropagation()}
                                     title="View workflow"
@@ -572,7 +591,7 @@ export function TracesClient() {
                         aria-disabled={page === 0 || traces.isFetching}
                         className={cn(
                           (page === 0 || traces.isFetching) &&
-                            "pointer-events-none opacity-50"
+                            "pointer-events-none opacity-50",
                         )}
                         onClick={() => setPage(Math.max(0, page - 1))}
                       />
@@ -588,14 +607,14 @@ export function TracesClient() {
                           <PaginationLink
                             isActive={p === currentPage}
                             className={cn(
-                              traces.isFetching && "pointer-events-none"
+                              traces.isFetching && "pointer-events-none",
                             )}
                             onClick={() => setPage(p - 1)}
                           >
                             {p}
                           </PaginationLink>
                         </PaginationItem>
-                      )
+                      ),
                     )}
                     <PaginationItem>
                       <PaginationNext
@@ -604,7 +623,7 @@ export function TracesClient() {
                         }
                         className={cn(
                           (currentPage >= totalPages || traces.isFetching) &&
-                            "pointer-events-none opacity-50"
+                            "pointer-events-none opacity-50",
                         )}
                         onClick={() => setPage(page + 1)}
                       />
@@ -619,4 +638,3 @@ export function TracesClient() {
     </>
   );
 }
-

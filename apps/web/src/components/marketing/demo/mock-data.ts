@@ -198,7 +198,7 @@ export const OVERVIEW_COST_SERIES: OverviewCostPoint[] = OVERVIEW_SERIES.map(
       m1: +(r.cost * (0.32 + 0.05 * (1 - jt))).toFixed(3),
       m2: +(r.cost * (0.12 + 0.03 * jt)).toFixed(3),
     };
-  }
+  },
 );
 
 // Vendor brand accents (OpenAI / Anthropic / Google) reused by the cost chart
@@ -356,7 +356,7 @@ export function quintiles(values: number[]): number[] {
   const xs = values.filter((v) => v > 0).sort((a, b) => a - b);
   if (xs.length === 0) return [];
   return [0.2, 0.4, 0.6, 0.8].map(
-    (q) => xs[Math.min(xs.length - 1, Math.floor(q * xs.length))]!
+    (q) => xs[Math.min(xs.length - 1, Math.floor(q * xs.length))]!,
   );
 }
 
@@ -980,7 +980,7 @@ export const WORKFLOW_SERIES: WorkflowSeriesPoint[] = OV_BUCKETS.map(
     const p95 = Math.round(p50 * (1.7 + 0.4 * jA));
     const p99 = Math.round(p95 * (1.3 + 0.25 * w));
     return { bucket, runs, errors, p50, p95, p99 };
-  }
+  },
 );
 
 // Recent runs for the workflow detail table.

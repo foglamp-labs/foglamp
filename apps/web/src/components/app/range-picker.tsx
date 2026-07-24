@@ -48,7 +48,7 @@ export function RangePicker({
         render={
           <Button
             variant="outline"
-            className="w-fit justify-start rounded-2xl corner-squircle gap-2 active:scale-100 font-normal dark:bg-input/20 dark:bg-clip-border dark:shadow-none dark:border dark:border-border/50"
+            className="w-fit justify-start rounded-2xl corner-squircle gap-2 active:scale-100 bg-card font-normal dark:bg-input/20 dark:bg-clip-border dark:shadow-none dark:border-[0.5px] dark:border-border/50"
           />
         }
       >

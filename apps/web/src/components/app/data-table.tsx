@@ -310,7 +310,7 @@ export function ToggleChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-2xl corner-squircle px-3 text-sm font-normal whitespace-nowrap shadow-(--custom-shadow) transition-colors dark:border dark:border-border/50 dark:shadow-none",
+        "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-2xl corner-squircle px-3 text-sm font-normal whitespace-nowrap shadow-(--custom-shadow) transition-colors dark:border-[0.5px] dark:border-border/50 dark:shadow-none",
         active
           ? "bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400"
           : "bg-transparent text-muted-foreground/50 [&_svg]:text-neutral-500 dark:bg-input/20 dark:hover:bg-input/50"

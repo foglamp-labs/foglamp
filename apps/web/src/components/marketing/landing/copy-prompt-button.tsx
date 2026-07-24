@@ -72,11 +72,7 @@ export function CopyPromptButton({ className }: { className?: string }) {
         onClick={copyPrompt}
         aria-label="Copy the coding-agent prompt"
       >
-        <CopyIcon
-          copied={copied}
-          className="mb-px"
-          checkClassName="text-green-600 mb-px"
-        />
+        <CopyIcon copied={copied} className="mb-px" checkClassName="mb-px" />
         Copy agent prompt
       </Button>
     </BorderBeam>

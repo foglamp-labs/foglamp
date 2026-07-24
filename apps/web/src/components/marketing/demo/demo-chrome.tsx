@@ -112,7 +112,7 @@ export function DemoToggle({
         "inline-flex h-8 items-center gap-2 rounded-2xl corner-squircle px-3 text-sm shadow-(--custom-shadow)",
         active
           ? "bg-foreground/90 text-background"
-          : "bg-card text-muted-foreground"
+          : "bg-card text-muted-foreground",
       )}
     >
       <Icon className="size-3.5" />

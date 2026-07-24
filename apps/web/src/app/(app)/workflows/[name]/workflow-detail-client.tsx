@@ -46,7 +46,11 @@ import {
   useTableSort,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
-import { useDelayedLoading } from "@/components/app/hooks";
+import {
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
   type FlowNode,
@@ -104,6 +108,7 @@ const latencyConfig = {
 } satisfies ChartConfig;
 
 export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -111,7 +116,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   const { range, setRange } = useRange();
   // Selected run mirrors the `?run=` query param so the flow is deep-linkable.
   const [selected, setSelected] = useState<string | null>(() =>
-    searchParams.get("run")
+    searchParams.get("run"),
   );
   const [errorsOnly, setErrorsOnly] = useState(false);
   const [page, setPage] = useState(0);
@@ -194,6 +199,9 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   const activeRun = runRows.find((r) => r.workflowRunId === activeRunId);
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showRunsSkeleton = useDelayedLoading(runs.isLoading);
+  // Latch for the entrance fade: the runs table only fades in if this slot
+  // never painted a skeleton first (see useSkeletonShown).
+  const runsSkeletonShown = useSkeletonShown(showRunsSkeleton);
 
   const windowMs = range.to.getTime() - range.from.getTime();
   const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
@@ -210,7 +218,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
         p95: r.durationMs.p95,
         p99: r.durationMs.p99,
       })),
-    [series.data]
+    [series.data],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between
@@ -227,15 +235,15 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
         p95Abs: r.p95,
         p99Abs: r.p99,
       })),
-    [seriesData]
+    [seriesData],
   );
   const seriesTicks = useMemo(
     () =>
       thinTicks(
         seriesData.map((d) => d.bucket),
-        bucketLabel
+        bucketLabel,
       ),
-    [seriesData, bucketLabel]
+    [seriesData, bucketLabel],
   );
 
   const back = navItem("/workflows");
@@ -278,64 +286,77 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
 
   return (
     <>
-      <PageHeader
-        title={label}
-        back={back}
-        description={
-          ungrouped
-            ? "Runs with no workflow name."
-            : "Grouped runs for this workflow."
-        }
-        actions={<RangePicker value={range} onChange={setRange} />}
-      />
+      <div className={cn(entrance && "page-fade-in")}>
+        <PageHeader
+          title={label}
+          back={back}
+          description={
+            ungrouped
+              ? "Runs with no workflow name."
+              : "Grouped runs for this workflow."
+          }
+          actions={<RangePicker value={range} onChange={setRange} />}
+        />
+      </div>
 
       {noRuns ? (
-        <EmptyState
-          icon={IconSitemapFilled}
-          title="No runs in this range"
-          description="Try widening the time range, or this workflow has no runs yet."
-        />
+        <div className={cn(entrance && "page-fade-in")}>
+          <EmptyState
+            icon={IconSitemapFilled}
+            title="No runs in this range"
+            description="Try widening the time range, or this workflow has no runs yet."
+          />
+        </div>
       ) : (
         <>
           {/* Stat strip — totals over all runs in the window. */}
-          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <section
+            className={cn(
+              "grid grid-cols-2 gap-4 md:grid-cols-4",
+              entrance && "page-fade-in",
+            )}
+          >
             <StatCard
               icon={IconBoltFilled}
-              iconClassName="text-violet-300 dark:text-violet-700"
+              iconClassName="text-orange-500 dark:text-orange-500"
               size="sm"
               label="Runs"
-              value={formatCount(stats?.runCount ?? 0)}
+              value={stats?.runCount ?? 0}
+              formatValue={formatCount}
               hint={`${formatCount(stats?.traceCount ?? 0)} traces`}
             />
             <StatCard
               icon={IconAlertTriangleFilled}
-              iconClassName="text-rose-300 dark:text-rose-700"
+              iconClassName="text-red-500 dark:text-red-600"
               size="sm"
               label="Error rate"
-              value={formatPercent(stats?.errorRate)}
+              value={stats?.errorRate ?? "—"}
+              formatValue={formatPercent}
               hint={`${formatCount(stats?.erroredRunCount ?? 0)} errored`}
             />
             <StatCard
               icon={IconClockFilled}
-              iconClassName="text-sky-300 dark:text-sky-700"
+              iconClassName="text-sky-500 dark:text-sky-500"
               size="sm"
               label="p95 duration"
-              value={formatDuration(stats?.durationMs.p95 ?? 0)}
+              value={stats?.durationMs.p95 ?? 0}
+              formatValue={formatDuration}
               hint={`p50 ${formatDuration(stats?.durationMs.p50 ?? 0)}`}
             />
             <StatCard
               icon={IconCoinFilled}
-              iconClassName="text-yellow-300 dark:text-yellow-600"
+              iconClassName="text-yellow-400 dark:text-yellow-500"
               size="sm"
               label="Total cost"
-              value={formatCost(stats?.totalCost, 4)}
+              value={stats?.totalCost ?? "—"}
+              formatValue={(n) => formatCost(n, 4)}
               hint={`${formatTokens(stats?.totalTokens ?? 0)} tokens`}
             />
           </section>
 
           {/* Trend: run volume + run-duration percentiles over the window. */}
           <section className="grid gap-4 lg:grid-cols-2">
-            <Card size="sm">
+            <Card size="sm" className={cn(entrance && "page-fade-in")}>
               <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <CardTitle>Runs & errors</CardTitle>
                 <ChartLegend
@@ -391,7 +412,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
               </CardContent>
             </Card>
 
-            <Card size="sm">
+            <Card size="sm" className={cn(entrance && "page-fade-in")}>
               <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <CardTitle>Run duration</CardTitle>
                 <ChartLegend
@@ -453,7 +474,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
 
           {/* Step flow for the selected run. */}
           {activeRunId && (
-            <Card size="sm" className="pb-4">
+            <Card size="sm" className={cn("pb-4", entrance && "page-fade-in")}>
               <CardHeader>
                 <CardTitle className="flex flex-wrap items-center gap-2">
                   Run flow
@@ -498,7 +519,12 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
 
           {/* Runs table — click a row to drive the flow above. */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
+            <div
+              className={cn(
+                "flex items-center justify-between gap-3",
+                entrance && "page-fade-in",
+              )}
+            >
               <h2 className="text-sm font-medium">Runs</h2>
               <Toolbar>
                 <ToggleChip
@@ -513,20 +539,33 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
 
             {runs.isLoading && runRows.length === 0 ? (
               showRunsSkeleton ? (
-                <TableSkeleton />
+                <div className={cn(entrance && "page-fade-in")}>
+                  <TableSkeleton />
+                </div>
               ) : null
             ) : runRows.length === 0 ? (
-              <EmptyState
-                icon={IconSitemapFilled}
-                title={errorsOnly ? "No errored runs" : "No runs in this range"}
-                description={
-                  errorsOnly
-                    ? "No runs in this window had errors."
-                    : "Try widening the time range."
-                }
-              />
+              <div
+                className={cn(entrance && !runsSkeletonShown && "page-fade-in")}
+              >
+                <EmptyState
+                  icon={IconSitemapFilled}
+                  title={
+                    errorsOnly ? "No errored runs" : "No runs in this range"
+                  }
+                  description={
+                    errorsOnly
+                      ? "No runs in this window had errors."
+                      : "Try widening the time range."
+                  }
+                />
+              </div>
             ) : (
-              <>
+              <div
+                className={cn(
+                  "flex flex-col gap-3",
+                  entrance && !runsSkeletonShown && "page-fade-in",
+                )}
+              >
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -578,7 +617,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                           r.workflowRunId === activeRunId && "bg-accent/30",
                           // Left accent bar on errored runs — scannable at a glance.
                           r.errorCount > 0 &&
-                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
+                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
                         )}
                         onClick={() => selectRun(r.workflowRunId)}
                       >
@@ -640,7 +679,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                           aria-disabled={page === 0 || runs.isFetching}
                           className={cn(
                             (page === 0 || runs.isFetching) &&
-                              "pointer-events-none opacity-50"
+                              "pointer-events-none opacity-50",
                           )}
                           onClick={() => setPage((p) => Math.max(0, p - 1))}
                         />
@@ -656,14 +695,14 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                             <PaginationLink
                               isActive={p === currentPage}
                               className={cn(
-                                runs.isFetching && "pointer-events-none"
+                                runs.isFetching && "pointer-events-none",
                               )}
                               onClick={() => setPage(p - 1)}
                             >
                               {p}
                             </PaginationLink>
                           </PaginationItem>
-                        )
+                        ),
                       )}
                       <PaginationItem>
                         <PaginationNext
@@ -672,7 +711,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                           }
                           className={cn(
                             (currentPage >= totalPages || runs.isFetching) &&
-                              "pointer-events-none opacity-50"
+                              "pointer-events-none opacity-50",
                           )}
                           onClick={() => setPage((p) => p + 1)}
                         />
@@ -680,7 +719,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                     </PaginationContent>
                   </Pagination>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </>

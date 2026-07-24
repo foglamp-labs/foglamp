@@ -62,34 +62,34 @@ export function TraceDetail({ traceId }: { traceId: string }) {
       <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard
           icon={IconBoltFilled}
-          iconClassName="text-violet-300 dark:text-violet-700"
+          iconClassName="text-orange-500 dark:text-orange-500"
           size="sm"
           label="Spans"
           value={row.spans}
         />
         <StatCard
           icon={IconSparklesFilled}
-          iconClassName="text-emerald-300 dark:text-emerald-700"
+          iconClassName="text-emerald-500 dark:text-emerald-500"
           size="sm"
           label="LLM calls"
           value={String(llmCount)}
         />
         <StatCard
           icon={IconCirclesFilled}
-          iconClassName="text-blue-400 dark:text-blue-600"
+          iconClassName="text-blue-500 dark:text-blue-500"
           size="sm"
           label="Tokens"
           value={row.tokens}
         />
         <StatCard
           icon={IconAlertTriangleFilled}
-          iconClassName="text-rose-300 dark:text-rose-700"
+          iconClassName="text-red-500 dark:text-red-600"
           size="sm"
           label="Errors"
           value={
             <span
               className={cn(
-                errorCount > 0 && "text-rose-600 dark:text-rose-500",
+                errorCount > 0 && "text-red-500 dark:text-rose-600",
               )}
             >
               {errorCount}
@@ -116,7 +116,11 @@ export function TraceDetail({ traceId }: { traceId: string }) {
           Wrapped in min-w-0 like the real trace page so the fixed-width name and
           duration columns can't push the bar track past the panel's right edge. */}
       <div className="min-w-0">
-        <TraceTimeline spans={spans} selected={selected} onSelect={setSelected} />
+        <TraceTimeline
+          spans={spans}
+          selected={selected}
+          onSelect={setSelected}
+        />
       </div>
 
       {/* Prompt + response payload */}
