@@ -1,11 +1,14 @@
 import {
   type ProjectSummaryRow,
   type ScoreSummaryRow,
+  queryCacheSummary,
+  queryCostTimeseriesByCategory,
   queryMetricsTimeseries,
   queryMetricsTimeseriesByModel,
   queryModelBreakdown,
   queryProjectScoreSummary,
   queryProjectSummary,
+  queryToolBreakdown,
 } from "@foglamp/clickhouse";
 
 import {
@@ -102,7 +105,8 @@ function mapSummary(s: ProjectSummaryRow, score?: ScoreSummaryRow) {
     // Fraction of llm spans that received a price (0..1); null when no llm spans.
     costCoverage: llmSpans > 0 ? priced / llmSpans : null,
     // Fraction of spans that errored (0..1); null when no spans.
-    errorRate: num(s.span_count) > 0 ? num(s.error_count) / num(s.span_count) : null,
+    errorRate:
+      num(s.span_count) > 0 ? num(s.error_count) / num(s.span_count) : null,
     latencyMs: quantiles(s.duration_quantiles),
     ttftMs: quantiles(s.ttft_quantiles),
   };
@@ -173,3 +177,106 @@ export async function getCostTimeseriesByModel(
   }));
 }
 
+/**
+ * Per-tool rollup for the Tools breakdown card: call volume, error/abort
+ * counts, and latency quantiles per tool name, most-called first, optionally
+ * scoped to one agent or workflow (mirrors `getCostTimeseriesByCategory`).
+ */
+export async function getToolBreakdown(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: {
+    projectId: string;
+    from: Date;
+    to: Date;
+    agentName?: string;
+    workflowName?: string;
+  },
+) {
+  await requireProjectAccess(db, userId, input.projectId);
+  const rows = await queryToolBreakdown(ch, {
+    projectId: input.projectId,
+    from: toClickHouseDateTime(input.from),
+    to: toClickHouseDateTime(input.to),
+    agentName: input.agentName,
+    workflowName: input.workflowName,
+  });
+  return rows.map((r) => ({
+    toolName: r.name,
+    callCount: num(r.call_count),
+    errorCount: num(r.error_count),
+    abortedCount: num(r.aborted_count),
+    latencyMs: quantiles(r.duration_quantiles),
+  }));
+}
+
+export async function getCostTimeseriesByCategory(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: {
+    projectId: string;
+    from: Date;
+    to: Date;
+    agentName?: string;
+    workflowName?: string;
+  },
+) {
+  await requireProjectAccess(db, userId, input.projectId);
+  const rows = await queryCostTimeseriesByCategory(ch, {
+    projectId: input.projectId,
+    from: toClickHouseDateTime(input.from),
+    to: toClickHouseDateTime(input.to),
+    bucketSec: pickBucketSec(input.to.getTime() - input.from.getTime()),
+    agentName: input.agentName,
+    workflowName: input.workflowName,
+  });
+  return rows.map((r) => ({
+    bucket: r.bucket,
+    inputCost: decimalOrNull(r.prompt_cost) ?? 0,
+    outputCost: decimalOrNull(r.completion_cost) ?? 0,
+    cacheReadCost: decimalOrNull(r.cache_read_cost) ?? 0,
+    cacheWriteCost: decimalOrNull(r.cache_write_cost) ?? 0,
+    reasoningCost: decimalOrNull(r.internal_reasoning_cost) ?? 0,
+    otherCost: decimalOrNull(r.other_cost) ?? 0,
+  }));
+}
+
+/**
+ * Cache stat-tile numbers for a window. `estimatedSavings` compares each
+ * span's cache reads against its own full input rate (so custom pricing and
+ * historical price changes are respected); null when nothing was cached or
+ * no cached span carried a price.
+ */
+export async function getCacheSummary(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: { projectId: string; from: Date; to: Date },
+) {
+  await requireProjectAccess(db, userId, input.projectId);
+  const [row] = await queryCacheSummary(ch, {
+    projectId: input.projectId,
+    from: toClickHouseDateTime(input.from),
+    to: toClickHouseDateTime(input.to),
+  });
+  const inputTokens = num(row?.input_tokens);
+  const cachedInputTokens = num(row?.cached_input_tokens);
+  const cacheReadCost = decimalOrNull(row?.cache_read_cost ?? null);
+  const cachedAtPromptRate = row?.cached_at_prompt_rate ?? null;
+  return {
+    inputTokens,
+    cachedInputTokens,
+    // Fraction of input tokens served from cache (0..1); null with no input.
+    hitRate: inputTokens > 0 ? cachedInputTokens / inputTokens : null,
+    cacheReadCost,
+    // What the cached reads would have cost at the full input rate — the
+    // baseline the savings are measured against (drives the discount meter).
+    cachedAtFullPrice: cachedAtPromptRate,
+    estimatedSavings:
+      cachedAtPromptRate != null
+        ? cachedAtPromptRate - (cacheReadCost ?? 0)
+        : null,
+  };
+}

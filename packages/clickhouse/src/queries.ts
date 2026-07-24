@@ -1294,6 +1294,172 @@ export function queryMetricsTimeseriesByModel(
 	);
 }
 
+export type CostCategoryBucketRow = {
+	bucket: string;
+	prompt_cost: string;
+	completion_cost: string;
+	cache_read_cost: string;
+	cache_write_cost: string;
+	internal_reasoning_cost: string;
+	/** request + image + web-search costs, folded together. */
+	other_cost: string;
+};
+
+/**
+ * Cost per price dimension (input / output / cache read / cache write /
+ * reasoning / other) in `bucketSec`-wide buckets, optionally scoped to one
+ * agent or workflow. The per-dimension costs live only on raw spans (the
+ * minute rollup carries just the total), so this aggregates the spans table
+ * directly — same no-FINAL semantics as the metrics_by_minute MV. WITH FILL
+ * keeps empty buckets present so stacked bars stay evenly spaced.
+ */
+export function queryCostTimeseriesByCategory(
+	client: ClickHouseClient,
+	params: {
+		projectId: string;
+		from: string;
+		to: string;
+		bucketSec?: number;
+		agentName?: string;
+		workflowName?: string;
+	},
+): Promise<CostCategoryBucketRow[]> {
+	const filters: string[] = [
+		"project_id = {projectId:String}",
+		"span_type = 'llm'",
+		"start_time >= {from:DateTime}",
+		"start_time < {to:DateTime}",
+	];
+	if (params.agentName) filters.push("agent_name = {agentName:String}");
+	if (params.workflowName) filters.push("workflow_name = {workflowName:String}");
+	// Columns are `spans.`-qualified so ClickHouse's alias substitution can't
+	// fold an output alias (e.g. `AS prompt_cost`) back into the aggregate,
+	// which would nest sums and fail with ILLEGAL_AGGREGATION.
+	const sumCost = (col: string) =>
+		`sum(ifNull(spans.${col}, CAST(0 AS Decimal(38, 10))))`;
+
+	return rows<CostCategoryBucketRow>(
+		client,
+		`SELECT
+       toDateTime(toStartOfInterval(start_time, toIntervalSecond({bucketSec:UInt32}))) AS bucket,
+       ${sumCost("prompt_cost")} AS prompt_cost,
+       ${sumCost("completion_cost")} AS completion_cost,
+       ${sumCost("cache_read_cost")} AS cache_read_cost,
+       ${sumCost("cache_write_cost")} AS cache_write_cost,
+       ${sumCost("internal_reasoning_cost")} AS internal_reasoning_cost,
+       ${sumCost("request_cost")} + ${sumCost("image_cost")} + ${sumCost("web_search_cost")} AS other_cost
+     FROM spans
+     WHERE ${filters.join(" AND ")}
+     GROUP BY bucket
+     ORDER BY bucket ASC
+       WITH FILL
+       FROM toStartOfInterval({from:DateTime}, toIntervalSecond({bucketSec:UInt32}))
+       TO {to:DateTime}
+       STEP toIntervalSecond({bucketSec:UInt32})`,
+		{
+			projectId: params.projectId,
+			from: params.from,
+			to: params.to,
+			bucketSec: Math.max(60, Math.floor(params.bucketSec ?? 60)),
+			agentName: params.agentName,
+			workflowName: params.workflowName,
+		},
+	);
+}
+
+export type ToolBreakdownRow = {
+	name: string;
+	call_count: string;
+	error_count: string;
+	aborted_count: string;
+	/** [p50, p95, p99] tool duration in milliseconds. */
+	duration_quantiles: number[];
+};
+
+/**
+ * Per-tool rollup over a window (calls, errors, latency quantiles), most-called
+ * first, optionally scoped to one agent or workflow. Tool names live only in
+ * the raw spans' `name` column (the minute rollup has no name dimension), so
+ * this aggregates the spans table directly — same no-FINAL semantics as
+ * `queryCostTimeseriesByCategory`.
+ */
+export function queryToolBreakdown(
+	client: ClickHouseClient,
+	params: {
+		projectId: string;
+		from: string;
+		to: string;
+		agentName?: string;
+		workflowName?: string;
+		limit?: number;
+	},
+): Promise<ToolBreakdownRow[]> {
+	const filters: string[] = [
+		"project_id = {projectId:String}",
+		"span_type = 'tool'",
+		"start_time >= {from:DateTime}",
+		"start_time < {to:DateTime}",
+	];
+	if (params.agentName) filters.push("agent_name = {agentName:String}");
+	if (params.workflowName) filters.push("workflow_name = {workflowName:String}");
+	return rows<ToolBreakdownRow>(
+		client,
+		`SELECT
+       name,
+       toUInt64(count()) AS call_count,
+       toUInt64(countIf(status = 'error')) AS error_count,
+       toUInt64(countIf(status = 'aborted')) AS aborted_count,
+       quantiles(0.5, 0.95, 0.99)(duration_ms) AS duration_quantiles
+     FROM spans
+     WHERE ${filters.join(" AND ")}
+     GROUP BY name
+     ORDER BY call_count DESC
+     LIMIT {limit:UInt32}`,
+		{
+			projectId: params.projectId,
+			from: params.from,
+			to: params.to,
+			agentName: params.agentName,
+			workflowName: params.workflowName,
+			limit: params.limit ?? 50,
+		},
+	);
+}
+
+export type CacheSummaryRow = {
+	input_tokens: string;
+	cached_input_tokens: string;
+	cache_read_cost: string;
+	/** What the cached reads would have cost at each span's own full input
+	 * rate (prompt_cost / uncached input tokens) — a Float64 estimate. Spans
+	 * that were fully cached or unpriced contribute nothing. */
+	cached_at_prompt_rate: number | null;
+};
+
+/** Window totals for the cache stat tiles: input/cached token volumes, what
+ * cache reads actually cost, and what they would have cost at full price. */
+export function queryCacheSummary(
+	client: ClickHouseClient,
+	params: { projectId: string; from: string; to: string },
+): Promise<CacheSummaryRow[]> {
+	return rows<CacheSummaryRow>(
+		client,
+		`SELECT
+       toUInt64(sum(spans.input_tokens)) AS input_tokens,
+       toUInt64(sum(spans.cached_input_tokens)) AS cached_input_tokens,
+       sum(ifNull(spans.cache_read_cost, CAST(0 AS Decimal(38, 10)))) AS cache_read_cost,
+       sum(toFloat64(spans.cached_input_tokens)
+         * (toFloat64(spans.prompt_cost)
+            / nullIf(toFloat64(spans.input_tokens) - toFloat64(spans.cached_input_tokens), 0))
+       ) AS cached_at_prompt_rate
+     FROM spans
+     WHERE project_id = {projectId:String}
+       AND span_type = 'llm'
+       AND start_time >= {from:DateTime} AND start_time < {to:DateTime}`,
+		{ projectId: params.projectId, from: params.from, to: params.to },
+	);
+}
+
 export type AgentBreakdownRow = {
 	agent_name: string;
 	span_count: string;

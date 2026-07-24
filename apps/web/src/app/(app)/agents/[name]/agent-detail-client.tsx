@@ -45,6 +45,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
+import { CostBreakdownCard } from "@/components/app/cost-breakdown-card";
+import { ToolBreakdownCard } from "@/components/app/tool-breakdown-card";
 import {
   SortableHead,
   ToggleChip,
@@ -52,7 +54,11 @@ import {
   useTableSort,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
-import { useDelayedLoading } from "@/components/app/hooks";
+import {
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
+} from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
   type FlowNode,
@@ -118,13 +124,14 @@ function stepIcon(spanType: string, modelId: string | null) {
 }
 
 export function AgentDetailClient({ agentName }: { agentName: string }) {
+  const entrance = useEntranceOnce();
   const { projectId } = useProject();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { range, setRange } = useRange();
   // Selected trace mirrors the `?trace=` query param so the flow is deep-linkable.
   const [selected, setSelected] = useState<string | null>(() =>
-    searchParams.get("trace")
+    searchParams.get("trace"),
   );
   const [errorsOnly, setErrorsOnly] = useState(false);
   const [page, setPage] = useState(0);
@@ -137,7 +144,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 
   const { from, to } = useMemo(
     () => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
-    [range]
+    [range],
   );
   const enabled = !!projectId;
 
@@ -217,6 +224,9 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
   const activeTrace = traceRows.find((t) => t.traceId === activeTraceId);
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showTracesSkeleton = useDelayedLoading(traces.isLoading);
+  // Latch for the entrance fade: the traces table only fades in if this slot
+  // never painted a skeleton first (see useSkeletonShown).
+  const tracesSkeletonShown = useSkeletonShown(showTracesSkeleton);
 
   const windowMs = range.to.getTime() - range.from.getTime();
   const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
@@ -233,7 +243,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
         p95: r.latencyMs.p95,
         p99: r.latencyMs.p99,
       })),
-    [series.data]
+    [series.data],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between two
@@ -250,16 +260,16 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
         p95Abs: r.p95,
         p99Abs: r.p99,
       })),
-    [seriesData]
+    [seriesData],
   );
 
   const seriesTicks = useMemo(
     () =>
       thinTicks(
         seriesData.map((d) => d.bucket),
-        bucketLabel
+        bucketLabel,
       ),
-    [seriesData, bucketLabel]
+    [seriesData, bucketLabel],
   );
 
   const back = navItem("/agents");
@@ -287,7 +297,11 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
     label: s.name,
     sublabel: s.modelId,
     status:
-      s.status === "error" ? "error" : s.status === "aborted" ? "aborted" : "ok",
+      s.status === "error"
+        ? "error"
+        : s.status === "aborted"
+          ? "aborted"
+          : "ok",
     timestamp: s.startTime,
     durationMs: s.durationMs,
   }));
@@ -295,7 +309,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
   const totalTraces = traces.data?.summary.traceCount ?? 0;
   const totalPages = Math.max(
     page + 1,
-    Math.ceil(totalTraces / PAGE_SIZE) || 1
+    Math.ceil(totalTraces / PAGE_SIZE) || 1,
   );
   const currentPage = page + 1;
   const pages = pageWindow(currentPage, totalPages);
@@ -306,61 +320,74 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 
   return (
     <>
-      <PageHeader
-        title={agentName}
-        titleLeading={<AgentIcon name={agentName} className="size-4.5" />}
-        back={back}
-        description="Trends, traces, and step flow for this agent."
-        actions={<RangePicker value={range} onChange={setRange} />}
-      />
+      <div className={cn(entrance && "page-fade-in")}>
+        <PageHeader
+          title={agentName}
+          titleLeading={<AgentIcon name={agentName} className="size-4.5" />}
+          back={back}
+          description="Trends, traces, and step flow for this agent."
+          actions={<RangePicker value={range} onChange={setRange} />}
+        />
+      </div>
 
       {noData ? (
-        <EmptyState
-          icon={IconGhostFilled}
-          title="No activity in this range"
-          description="Try widening the time range, or this agent has no traces yet."
-        />
+        <div className={cn(entrance && "page-fade-in")}>
+          <EmptyState
+            icon={IconGhostFilled}
+            title="No activity in this range"
+            description="Try widening the time range, or this agent has no traces yet."
+          />
+        </div>
       ) : (
         <>
           {/* Stat strip — totals over all spans in the window. */}
-          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <section
+            className={cn(
+              "grid grid-cols-2 gap-4 md:grid-cols-4",
+              entrance && "page-fade-in",
+            )}
+          >
             <StatCard
               icon={IconBoltFilled}
-              iconClassName="text-violet-300 dark:text-violet-700"
+              iconClassName="text-orange-500 dark:text-orange-500"
               size="sm"
               label="Spans"
-              value={formatCount(stats?.spanCount ?? 0)}
+              value={stats?.spanCount ?? 0}
+              formatValue={formatCount}
               hint={`${formatCount(stats?.llmSpanCount ?? 0)} LLM`}
             />
             <StatCard
               icon={IconAlertTriangleFilled}
-              iconClassName="text-rose-300 dark:text-rose-700"
+              iconClassName="text-red-500 dark:text-red-600"
               size="sm"
               label="Error rate"
-              value={formatPercent(errorRate)}
+              value={errorRate ?? "—"}
+              formatValue={formatPercent}
               hint={`${formatCount(stats?.errorCount ?? 0)} errors`}
             />
             <StatCard
               icon={IconClockFilled}
-              iconClassName="text-sky-300 dark:text-sky-700"
+              iconClassName="text-sky-500 dark:text-sky-500"
               size="sm"
               label="p95 latency"
-              value={formatDuration(stats?.latencyMs.p95 ?? 0)}
+              value={stats?.latencyMs.p95 ?? 0}
+              formatValue={formatDuration}
               hint={`p50 ${formatDuration(stats?.latencyMs.p50 ?? 0)}`}
             />
             <StatCard
               icon={IconCoinFilled}
-              iconClassName="text-yellow-300 dark:text-yellow-600"
+              iconClassName="text-yellow-400 dark:text-yellow-500"
               size="sm"
               label="Total cost"
-              value={formatCost(stats?.totalCost ?? null, 4)}
+              value={stats?.totalCost ?? "—"}
+              formatValue={(n) => formatCost(n, 4)}
               hint={`${formatTokens(stats?.totalTokens ?? 0)} tokens`}
             />
           </section>
 
           {/* Trend: span volume + LLM latency percentiles over the window. */}
           <section className="grid gap-4 lg:grid-cols-2">
-            <Card size="sm">
+            <Card size="sm" className={cn(entrance && "page-fade-in")}>
               <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <CardTitle>Spans & errors</CardTitle>
                 <ChartLegend
@@ -416,7 +443,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
               </CardContent>
             </Card>
 
-            <Card size="sm">
+            <Card size="sm" className={cn(entrance && "page-fade-in")}>
               <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <CardTitle>Latency</CardTitle>
                 <ChartLegend
@@ -476,9 +503,22 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
             </Card>
           </section>
 
+          {/* Where this agent's spend and time go: cost per price dimension
+              over the window, beside the per-tool runtime breakdown. */}
+          <section className="grid gap-4 lg:grid-cols-2">
+            <CostBreakdownCard
+              agentName={agentName}
+              className={cn(entrance && "page-fade-in")}
+            />
+            <ToolBreakdownCard
+              agentName={agentName}
+              className={cn(entrance && "page-fade-in")}
+            />
+          </section>
+
           {/* Step flow for the selected trace. */}
           {activeTraceId && (
-            <Card size="sm" className="pb-4">
+            <Card size="sm" className={cn("pb-4", entrance && "page-fade-in")}>
               <CardHeader>
                 <CardTitle className="flex flex-wrap items-center gap-2">
                   Trace flow
@@ -514,7 +554,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     nodes={nodes}
                     onNodeClick={(spanId) =>
                       router.push(
-                        `/traces/${encodeURIComponent(activeTraceId)}?span=${encodeURIComponent(spanId)}`
+                        `/traces/${encodeURIComponent(activeTraceId)}?span=${encodeURIComponent(spanId)}`,
                       )
                     }
                   />
@@ -525,7 +565,12 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 
           {/* Traces table — click a row to drive the flow above. */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
+            <div
+              className={cn(
+                "flex items-center justify-between gap-3",
+                entrance && "page-fade-in",
+              )}
+            >
               <h2 className="text-sm font-medium">Traces</h2>
               <Toolbar>
                 <ToggleChip
@@ -540,22 +585,35 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 
             {traces.isLoading && traceRows.length === 0 ? (
               showTracesSkeleton ? (
-                <TableSkeleton />
+                <div className={cn(entrance && "page-fade-in")}>
+                  <TableSkeleton />
+                </div>
               ) : null
             ) : traceRows.length === 0 ? (
-              <EmptyState
-                icon={IconGhostFilled}
-                title={
-                  errorsOnly ? "No errored traces" : "No traces in this range"
-                }
-                description={
-                  errorsOnly
-                    ? "No traces in this window had errors."
-                    : "Try widening the time range."
-                }
-              />
+              <div
+                className={cn(
+                  entrance && !tracesSkeletonShown && "page-fade-in",
+                )}
+              >
+                <EmptyState
+                  icon={IconGhostFilled}
+                  title={
+                    errorsOnly ? "No errored traces" : "No traces in this range"
+                  }
+                  description={
+                    errorsOnly
+                      ? "No traces in this window had errors."
+                      : "Try widening the time range."
+                  }
+                />
+              </div>
             ) : (
-              <>
+              <div
+                className={cn(
+                  "flex flex-col gap-3",
+                  entrance && !tracesSkeletonShown && "page-fade-in",
+                )}
+              >
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -620,7 +678,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                               t.traceId === activeTraceId && "bg-accent/30",
                               // Left accent bar on errored traces — scannable at a glance.
                               t.errorCount > 0 &&
-                                "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
+                                "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
                             )}
                             onClick={() => {
                               // Row click both drives the flow above and
@@ -633,7 +691,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                               <IconChevronRight
                                 className={cn(
                                   "size-3.5 transition-transform",
-                                  isOpen && "rotate-90"
+                                  isOpen && "rotate-90",
                                 )}
                               />
                             </TableCell>
@@ -662,7 +720,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                               {t.workflowName ? (
                                 <Link
                                   href={`/workflows/${encodeURIComponent(
-                                    t.workflowName
+                                    t.workflowName,
                                   )}`}
                                   onClick={(e) => e.stopPropagation()}
                                   title="View workflow"
@@ -731,7 +789,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                           aria-disabled={page === 0 || traces.isFetching}
                           className={cn(
                             (page === 0 || traces.isFetching) &&
-                              "pointer-events-none opacity-50"
+                              "pointer-events-none opacity-50",
                           )}
                           onClick={() => setPage((p) => Math.max(0, p - 1))}
                         />
@@ -747,14 +805,14 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                             <PaginationLink
                               isActive={p === currentPage}
                               className={cn(
-                                traces.isFetching && "pointer-events-none"
+                                traces.isFetching && "pointer-events-none",
                               )}
                               onClick={() => setPage(p - 1)}
                             >
                               {p}
                             </PaginationLink>
                           </PaginationItem>
-                        )
+                        ),
                       )}
                       <PaginationItem>
                         <PaginationNext
@@ -763,7 +821,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                           }
                           className={cn(
                             (currentPage >= totalPages || traces.isFetching) &&
-                              "pointer-events-none opacity-50"
+                              "pointer-events-none opacity-50",
                           )}
                           onClick={() => setPage((p) => p + 1)}
                         />
@@ -771,7 +829,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     </PaginationContent>
                   </Pagination>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </>
