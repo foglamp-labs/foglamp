@@ -55,6 +55,7 @@ import { FoglampHUD } from "foglamp/hud";
 
 import { FoggyLauncher, FoggyWidget } from "./foggy/foggy-widget";
 import { account, nav } from "./nav";
+import { prefetchRoute, type PrefetchCtx } from "./prefetch";
 import { NewProjectDialog } from "./new-project-dialog";
 import { ProjectProvider, useProject } from "./project-context";
 import { ProjectIcon } from "./project-icon";
@@ -264,6 +265,16 @@ function ShellBody({ children }: { children: React.ReactNode }) {
   // and the panel (a flex sibling of the inset) can share it.
   const [foggyOpen, setFoggyOpen] = useState(false);
 
+  // Hover/focus intent on a sidebar link warms that page's tRPC queries (see
+  // prefetch.ts) with the same project + range args the page itself will use.
+  const prefetchCtx: PrefetchCtx | null = projectId
+    ? {
+        projectId,
+        from: range.from.toISOString(),
+        to: range.to.toISOString(),
+      }
+    : null;
+
   return (
     <SidebarProvider className="group/shell relative h-svh min-h-0 overflow-hidden">
       <Sidebar variant="inset">
@@ -281,7 +292,17 @@ function ShellBody({ children }: { children: React.ReactNode }) {
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         isActive={active}
-                        render={<Link href={item.href} />}
+                        render={
+                          <Link
+                            href={item.href}
+                            onPointerEnter={() =>
+                              prefetchRoute(item.href, prefetchCtx)
+                            }
+                            onFocus={() =>
+                              prefetchRoute(item.href, prefetchCtx)
+                            }
+                          />
+                        }
                       >
                         <NavIcon
                           icon={item.icon}
@@ -307,7 +328,15 @@ function ShellBody({ children }: { children: React.ReactNode }) {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     isActive={active}
-                    render={<Link href={item.href} />}
+                    render={
+                      <Link
+                        href={item.href}
+                        onPointerEnter={() =>
+                          prefetchRoute(item.href, prefetchCtx)
+                        }
+                        onFocus={() => prefetchRoute(item.href, prefetchCtx)}
+                      />
+                    }
                   >
                     <NavIcon
                       icon={item.icon}
