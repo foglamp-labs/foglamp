@@ -10,9 +10,10 @@ import {
 import {
   IconAffiliate,
   IconAlertTriangle,
+  IconChevronRight,
   IconPlayerStopFilled,
 } from "@tabler/icons-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
 import {
@@ -20,7 +21,12 @@ import {
   SpanScoreDots,
   type TraceScore,
 } from "@/components/app/eval-scores";
-import { SpanTypeChip, spanTypeBar } from "@/components/app/span-type";
+import {
+  SpanTypeChip,
+  spanTypeBar,
+  spanTypeIcon,
+  spanTypeVariant,
+} from "@/components/app/span-type";
 import { ModelLogo, modelBrandColor } from "@/components/model-logo";
 import { formatCost, formatDuration, formatTokens } from "@/lib/format";
 import {
@@ -69,6 +75,76 @@ export function TraceTimeline({
   const ordered = useMemo(() => orderSpans(spans), [spans]);
   const total = window.span;
 
+  // Span-type visibility chips + per-row collapse. Both are view-local state:
+  // hiding a type filters individual rows (agent containers always stay), and
+  // collapsing a row hides its whole subtree.
+  const [hiddenTypes, setHiddenTypes] = useState<ReadonlySet<string>>(
+    new Set()
+  );
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const toggleType = (type: string) =>
+    setHiddenTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  const toggleCollapse = (spanId: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(spanId)) next.delete(spanId);
+      else next.add(spanId);
+      return next;
+    });
+
+  // Non-agent span counts per type — the filter chips (agent rows are the
+  // tree's skeleton, so they're not filterable).
+  const typeCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of spans) {
+      if (s.spanType === "agent") continue;
+      m.set(s.spanType, (m.get(s.spanType) ?? 0) + 1);
+    }
+    return [...m.entries()];
+  }, [spans]);
+
+  // The rows actually rendered: walk the depth-first order once, dropping
+  // subtrees under a collapsed row (tracked as a stack of collapsed depths)
+  // and rows whose type is hidden. Descendant counts feed the "+N" collapse
+  // indicator and double as hasChildren.
+  const visibleRows = useMemo(() => {
+    const out: {
+      span: TraceSpan;
+      depth: number;
+      hasChildren: boolean;
+      descendants: number;
+    }[] = [];
+    const collapseDepths: number[] = [];
+    for (let i = 0; i < ordered.length; i++) {
+      const { span, depth } = ordered[i];
+      while (
+        collapseDepths.length > 0 &&
+        depth <= collapseDepths[collapseDepths.length - 1]
+      ) {
+        collapseDepths.pop();
+      }
+      const hiddenByAncestor = collapseDepths.length > 0;
+      if (collapsed.has(span.spanId)) collapseDepths.push(depth);
+      if (hiddenByAncestor) continue;
+      if (hiddenTypes.has(span.spanType) && span.spanType !== "agent") continue;
+      let descendants = 0;
+      for (
+        let j = i + 1;
+        j < ordered.length && ordered[j].depth > depth;
+        j++
+      ) {
+        descendants++;
+      }
+      out.push({ span, depth, hasChildren: descendants > 0, descendants });
+    }
+    return out;
+  }, [ordered, collapsed, hiddenTypes]);
+
   // Trace-wide cost/token rollup for the synthetic "Whole trace" root row.
   const traceTotals = useMemo(() => {
     let cost = 0;
@@ -102,6 +178,34 @@ export function TraceTimeline({
 
   return (
     <div className="flex flex-col">
+      {/* Span-type filter chips — only worth the row once there's a mix. */}
+      {typeCounts.length > 1 && (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          {typeCounts.map(([type, count]) => {
+            const TypeIcon = spanTypeIcon(type);
+            const hidden = hiddenTypes.has(type);
+            return (
+              <button
+                key={type}
+                type="button"
+                aria-pressed={!hidden}
+                onClick={() => toggleType(type)}
+                title={hidden ? `Show ${type} spans` : `Hide ${type} spans`}
+                className="cursor-pointer"
+              >
+                <Badge
+                  variant={hidden ? "secondary" : spanTypeVariant(type)}
+                  className={cn("gap-1 font-sans", hidden && "opacity-45")}
+                >
+                  <TypeIcon className="size-3" />
+                  {type} · {count}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Time ruler, aligned to the bar track. */}
       <div className="grid grid-cols-[11rem_minmax(0,1fr)_6.5rem] items-center">
         <div />
@@ -173,7 +277,8 @@ export function TraceTimeline({
               </div>
             </button>
 
-            {ordered.map(({ span, depth }) => {
+            {visibleRows.map(({ span, depth, hasChildren, descendants }) => {
+              const isCollapsed = collapsed.has(span.spanId);
               const offsetMs = toMs(span.startTime) - window.start;
               const offset = (offsetMs / total) * 100;
               // Clamp to the remaining track so a span whose end rounds past
@@ -272,6 +377,42 @@ export function TraceTimeline({
                     className="flex min-w-0 items-start gap-2 pr-3"
                     style={{ paddingLeft: (depth + 1) * 14 + 4 }}
                   >
+                    {/* Collapse chevron — a styled span (not a nested button,
+                        which would be invalid inside the row button). Rows
+                        without children keep an invisible slot so labels align. */}
+                    <span
+                      // biome-ignore lint/a11y/useSemanticElements: a real <button> can't nest inside the row's button element
+                      role="button"
+                      aria-hidden={!hasChildren}
+                      tabIndex={hasChildren ? 0 : -1}
+                      onClick={(e) => {
+                        if (!hasChildren) return;
+                        e.stopPropagation();
+                        toggleCollapse(span.spanId);
+                      }}
+                      onKeyDown={(e) => {
+                        if (!hasChildren) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleCollapse(span.spanId);
+                        }
+                      }}
+                      title={isCollapsed ? "Expand" : "Collapse"}
+                      className={cn(
+                        "mt-[3px] flex size-3.5 shrink-0 items-center justify-center",
+                        hasChildren
+                          ? "cursor-pointer text-muted-foreground/50 hover:text-foreground"
+                          : "pointer-events-none opacity-0"
+                      )}
+                    >
+                      <IconChevronRight
+                        className={cn(
+                          "size-3 transition-transform",
+                          hasChildren && !isCollapsed && "rotate-90"
+                        )}
+                      />
+                    </span>
                     {isAgent ? (
                       <span
                         title={span.spanType}
@@ -303,7 +444,14 @@ export function TraceTimeline({
                       <SpanTypeChip type={span.spanType} />
                     )}
                     <div className="flex min-w-0 flex-col gap-1">
-                      <span className="break-words">{span.name}</span>
+                      <span className="break-words">
+                        {span.name}
+                        {isCollapsed && descendants > 0 && (
+                          <span className="ml-1.5 text-[10px] text-muted-foreground tabular-nums">
+                            +{descendants} hidden
+                          </span>
+                        )}
+                      </span>
                       {hasBadges && (
                         <div className="flex flex-wrap items-center gap-1.5">
                           {isError && (

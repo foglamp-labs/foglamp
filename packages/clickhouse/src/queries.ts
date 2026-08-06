@@ -71,6 +71,9 @@ export function listTraces(
 		customerId?: string;
 		/** Keep only traces whose LLM spans used this model. */
 		modelId?: string;
+		/** Keep only traces with a span carrying metadata[key] = value. */
+		metadataKey?: string;
+		metadataValue?: string;
 		sort?: { field: TraceSortField; dir: SortDir };
 		limit?: number;
 		offset?: number;
@@ -99,6 +102,10 @@ export function listTraces(
 			"positionCaseInsensitive(trace_name, {traceName:String}) > 0",
 		);
 	const having = conditions.length ? `HAVING ${conditions.join(" AND ")}` : "";
+	// Metadata lives only on raw spans (trace_summary has no map column), so the
+	// filter is a semi-join against spans, bounded by the same time window and
+	// pruned by the bloom indexes on mapKeys/mapValues.
+	const metadataWhere = metadataTraceFilter(params);
 	const sortCol = params.sort
 		? TRACE_SORT_COLUMN[params.sort.field]
 		: "trace_start";
@@ -125,7 +132,7 @@ export function listTraces(
        sum(total_tokens) AS total_tokens,
        groupUniqArrayMerge(models) AS models
      FROM trace_summary
-     WHERE project_id = {projectId:String}
+     WHERE project_id = {projectId:String}${metadataWhere}
      GROUP BY trace_id
      ${having}
      ORDER BY ${sortCol} ${sortDir}
@@ -140,8 +147,149 @@ export function listTraces(
 			from: params.from,
 			to: params.to,
 			traceName: params.traceName,
+			metadataKey: params.metadataKey,
+			metadataValue: params.metadataValue,
 			limit: params.limit ?? 50,
 			offset: params.offset ?? 0,
+		},
+	);
+}
+
+/**
+ * WHERE fragment (leading ` AND …` or empty) restricting trace_summary rows to
+ * traces with a span carrying `metadata[key] = value`. Only applies when both
+ * key and value are set — a key alone drives the pinned column, not a filter.
+ * The subquery is time-bounded when the caller's window is, keeping the spans
+ * scan pruned by partition + primary key.
+ */
+function metadataTraceFilter(params: {
+	metadataKey?: string;
+	metadataValue?: string;
+	from?: string;
+	to?: string;
+}): string {
+	if (!params.metadataKey || params.metadataValue === undefined) return "";
+	const timeBounds = [
+		params.from !== undefined ? "AND start_time >= {from:DateTime64(3)}" : "",
+		params.to !== undefined ? "AND start_time < {to:DateTime64(3)}" : "",
+	]
+		.filter(Boolean)
+		.join(" ");
+	return ` AND trace_id IN (
+       SELECT DISTINCT trace_id FROM spans
+       WHERE project_id = {projectId:String}
+         ${timeBounds}
+         AND metadata[{metadataKey:String}] = {metadataValue:String}
+     )`;
+}
+
+export type MetadataKeyRow = {
+	key: string;
+	span_count: string;
+};
+
+/**
+ * Distinct metadata keys in a window, most-frequent first. Keys are
+ * user-defined tags (env, tenant, version…) so cardinality is naturally low;
+ * the LIMIT is a guard, not the expected shape. Backed by the bloom index on
+ * `mapKeys(metadata)`.
+ */
+export function queryMetadataKeys(
+	client: ClickHouseClient,
+	params: { projectId: string; from: string; to: string; limit?: number },
+): Promise<MetadataKeyRow[]> {
+	return rows<MetadataKeyRow>(
+		client,
+		`SELECT
+       arrayJoin(mapKeys(metadata)) AS key,
+       toUInt64(count()) AS span_count
+     FROM spans
+     WHERE project_id = {projectId:String}
+       AND start_time >= {from:DateTime} AND start_time < {to:DateTime}
+     GROUP BY key
+     ORDER BY span_count DESC
+     LIMIT {limit:UInt32}`,
+		{
+			projectId: params.projectId,
+			from: params.from,
+			to: params.to,
+			limit: params.limit ?? 50,
+		},
+	);
+}
+
+export type MetadataValueRow = {
+	value: string;
+	span_count: string;
+};
+
+/**
+ * Top values for one metadata key in a window, most-frequent first. Values can
+ * be high-cardinality, so the list is capped — callers fetch limit+1 to detect
+ * truncation and fall back to free-text entry. Backed by the bloom indexes on
+ * `mapKeys`/`mapValues`.
+ */
+export function queryMetadataValues(
+	client: ClickHouseClient,
+	params: {
+		projectId: string;
+		key: string;
+		from: string;
+		to: string;
+		limit?: number;
+	},
+): Promise<MetadataValueRow[]> {
+	return rows<MetadataValueRow>(
+		client,
+		`SELECT
+       metadata[{key:String}] AS value,
+       toUInt64(count()) AS span_count
+     FROM spans
+     WHERE project_id = {projectId:String}
+       AND start_time >= {from:DateTime} AND start_time < {to:DateTime}
+       AND mapContains(metadata, {key:String})
+     GROUP BY value
+     ORDER BY span_count DESC
+     LIMIT {limit:UInt32}`,
+		{
+			projectId: params.projectId,
+			key: params.key,
+			from: params.from,
+			to: params.to,
+			limit: params.limit ?? 50,
+		},
+	);
+}
+
+export type TraceMetadataValueRow = {
+	trace_id: string;
+	value: string;
+};
+
+/**
+ * One metadata key's value per trace, for the pinned metadata column — bounded
+ * to the current page's trace ids, so this stays a cheap point lookup against
+ * the spans primary key. `anyIf` picks the first span that carries the key
+ * (metadata is stamped per span but stable within a trace in practice).
+ */
+export function queryTraceMetadataValues(
+	client: ClickHouseClient,
+	params: { projectId: string; key: string; traceIds: string[] },
+): Promise<TraceMetadataValueRow[]> {
+	if (params.traceIds.length === 0) return Promise.resolve([]);
+	return rows<TraceMetadataValueRow>(
+		client,
+		`SELECT
+       trace_id,
+       anyIf(metadata[{key:String}], mapContains(metadata, {key:String})) AS value
+     FROM spans
+     WHERE project_id = {projectId:String}
+       AND trace_id IN {traceIds:Array(String)}
+     GROUP BY trace_id`,
+		{
+			projectId: params.projectId,
+			key: params.key,
+			traceIds: params.traceIds,
 		},
 	);
 }
@@ -181,6 +329,8 @@ export function traceListSummary(
 		workflowName?: string;
 		customerId?: string;
 		modelId?: string;
+		metadataKey?: string;
+		metadataValue?: string;
 	},
 ): Promise<TraceListSummaryRow[]> {
 	// Per-trace filters that narrow the visible set apply here too; the
@@ -204,6 +354,7 @@ export function traceListSummary(
 	if (params.traceName !== undefined)
 		having.push("positionCaseInsensitive(trace_name, {traceName:String}) > 0");
 	const havingClause = having.length ? `HAVING ${having.join(" AND ")}` : "";
+	const metadataWhere = metadataTraceFilter(params);
 	return rows<TraceListSummaryRow>(
 		client,
 		// Qualify the per-trace columns with the subquery alias \`t\`: the outer
@@ -231,7 +382,7 @@ export function traceListSummary(
          sum(total_cost) AS total_cost,
          dateDiff('millisecond', min(trace_summary.trace_start), max(trace_summary.trace_end)) AS duration_ms
        FROM trace_summary
-       WHERE project_id = {projectId:String}
+       WHERE project_id = {projectId:String}${metadataWhere}
        GROUP BY trace_id
        ${havingClause}
      ) AS t`,
@@ -245,6 +396,8 @@ export function traceListSummary(
 			from: params.from,
 			to: params.to,
 			traceName: params.traceName,
+			metadataKey: params.metadataKey,
+			metadataValue: params.metadataValue,
 		},
 	);
 }

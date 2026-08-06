@@ -321,8 +321,12 @@ export function ToggleChip({
   );
 }
 
+// Dropdowns longer than this get an inline search input at the top.
+const FILTER_SEARCH_THRESHOLD = 8;
+
 /** A compact dropdown filter with an "All" reset option (empty string). Sized to
- * match the other toolbar controls. */
+ * match the other toolbar controls. Long option lists (or `allowFreeText`) get
+ * an inline typeahead that narrows the list as you type. */
 export function FilterSelect<T extends string>({
   value,
   onChange,
@@ -330,6 +334,7 @@ export function FilterSelect<T extends string>({
   options,
   icon: IconComp,
   className,
+  allowFreeText = false,
 }: {
   value: T | "";
   onChange: (value: T | "") => void;
@@ -344,15 +349,35 @@ export function FilterSelect<T extends string>({
    * fallback for options that don't define their own. */
   icon?: ComponentType<{ className?: string }>;
   className?: string;
+  /** Accept a typed value (Enter) even when it matches no listed option — for
+   * capped option lists where the full value set is larger than what's shown. */
+  allowFreeText?: boolean;
 }) {
+  // A free-text value isn't among the listed options — surface it as a
+  // synthetic first option so the trigger and list can render its label.
+  const allOptions =
+    value && !options.some((o) => o.value === value)
+      ? [{ value: value as T, label: value as string }, ...options]
+      : options;
+
   // The trigger leads with the selected option's icon, falling back to the
   // filter's own icon (the "all"/placeholder state).
-  const TriggerIcon = options.find((o) => o.value === value)?.icon ?? IconComp;
+  const TriggerIcon =
+    allOptions.find((o) => o.value === value)?.icon ?? IconComp;
 
   // Coordinate open state with sibling filters (see FilterGroupContext). Falls
   // back to Base UI's own uncontrolled state when used outside a Toolbar.
   const group = useContext(FilterGroupContext);
   const id = useId();
+
+  // Inline typeahead over the option labels; cleared whenever the dropdown
+  // closes so it reopens unfiltered.
+  const [query, setQuery] = useState("");
+  const searchable = allowFreeText || options.length > FILTER_SEARCH_THRESHOLD;
+  const q = query.trim().toLowerCase();
+  const visibleOptions = q
+    ? allOptions.filter((o) => o.label.toLowerCase().includes(q))
+    : allOptions;
 
   return (
     <Select<T | "", false>
@@ -361,9 +386,10 @@ export function FilterSelect<T extends string>({
       // Non-modal so sibling triggers stay hoverable while this one is open.
       modal={false}
       open={group ? group.openId === id : undefined}
-      onOpenChange={(isOpen) =>
-        group?.setOpenId((curr) => (isOpen ? id : curr === id ? null : curr))
-      }
+      onOpenChange={(isOpen) => {
+        if (!isOpen) setQuery("");
+        group?.setOpenId((curr) => (isOpen ? id : curr === id ? null : curr));
+      }}
     >
       <SelectTrigger
         size="sm"
@@ -387,6 +413,46 @@ export function FilterSelect<T extends string>({
         align="start"
         sideOffset={8}
       >
+        {searchable && (
+          <div className="sticky -top-1 z-10 -mx-1 -mt-1 mb-1 border-b border-border/40 bg-popover p-1">
+            <div className="relative">
+              <IconSearch className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search…"
+                autoFocus
+                className="h-7 rounded-md border-none bg-transparent pl-7 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
+                onKeyDown={(e) => {
+                  // Free-text apply: Enter with no matching option filters by
+                  // the typed value (capped lists hide the long tail).
+                  if (
+                    e.key === "Enter" &&
+                    allowFreeText &&
+                    query.trim() &&
+                    visibleOptions.length === 0
+                  ) {
+                    e.preventDefault();
+                    onChange(query.trim() as T);
+                    group?.setOpenId(null);
+                    return;
+                  }
+                  // Keep list navigation with the select; everything else
+                  // (typing, Backspace, Home/End…) belongs to the input —
+                  // otherwise Base UI's own typeahead hijacks the keystrokes.
+                  if (
+                    e.key !== "ArrowDown" &&
+                    e.key !== "ArrowUp" &&
+                    e.key !== "Enter" &&
+                    e.key !== "Escape"
+                  ) {
+                    e.stopPropagation();
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
         {/* Explicit `label` keeps the value→label map (and SelectValue) text
             only, so the icon in the children doesn't render twice in the
             trigger. */}
@@ -396,7 +462,19 @@ export function FilterSelect<T extends string>({
           )}
           {allLabel}
         </SelectItem>
-        {options.map((o) => {
+        {searchable && q && visibleOptions.length === 0 && (
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+            {allowFreeText ? (
+              <span>
+                Press <span className="text-foreground">Enter</span> to use
+                “{query.trim()}”
+              </span>
+            ) : (
+              "No matches"
+            )}
+          </div>
+        )}
+        {visibleOptions.map((o) => {
           const OptIcon = o.icon;
           return (
             <SelectItem key={o.value} value={o.value} label={o.label}>

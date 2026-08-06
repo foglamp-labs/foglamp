@@ -29,6 +29,8 @@ import {
   IconPlayerStopFilled,
   IconSitemap,
   IconSitemapFilled,
+  IconTag,
+  IconTagFilled,
   IconUser,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
@@ -78,6 +80,17 @@ import { TracesHeader } from "./header";
 
 const PAGE_SIZE = 25;
 
+// Colored icons for the dropdown *options* only — the closed trigger keeps the
+// neutral outline icon, same as the agent filter (whose options carry colored
+// AgentIcons while the trigger idles with a neutral ghost).
+const WorkflowIconFilled = (p: { className?: string }) => (
+  <IconSitemapFilled className={cn(p.className, "text-emerald-500")} />
+);
+// Metadata option identity — fuchsia, unclaimed by the other filter entities.
+const MetaValueIcon = (p: { className?: string }) => (
+  <IconTagFilled className={cn(p.className, "text-fuchsia-500")} />
+);
+
 type TraceSortKey = "when" | "cost" | "duration" | "tokens" | "spans";
 
 const TRACE_SORT_KEYS = [
@@ -101,6 +114,8 @@ export function TracesClient() {
     workflow: "",
     customer: "",
     model: "",
+    metaKey: "",
+    metaValue: "",
     errors: "",
     sort: "",
     page: "1",
@@ -109,6 +124,10 @@ export function TracesClient() {
   const workflowFilter = params.workflow;
   const customerFilter = params.customer;
   const modelFilter = params.model;
+  // Metadata: the key alone pins its value as a table column; key + value
+  // filters the trace set.
+  const metaKeyFilter = params.metaKey;
+  const metaValueFilter = params.metaValue;
   const errorsOnly = params.errors === "1";
   const sort = parseSortParam(params.sort, TRACE_SORT_KEYS);
   const toggle = (key: TraceSortKey) =>
@@ -120,6 +139,7 @@ export function TracesClient() {
     workflowFilter ||
     customerFilter ||
     modelFilter ||
+    metaKeyFilter ||
     errorsOnly
   );
 
@@ -176,6 +196,28 @@ export function TracesClient() {
     enabled: !!projectId,
   });
 
+  // Metadata keys seen in the window, for the metadata filter's key picker.
+  const metaKeysList = useQuery({
+    ...trpc.traces.metadataKeys.queryOptions({
+      projectId: projectId!,
+      from: range.from.toISOString(),
+      to: range.to.toISOString(),
+    }),
+    enabled: !!projectId,
+  });
+
+  // Top values for the chosen key (capped server-side; `truncated` switches the
+  // value picker into accept-free-text mode for the long tail).
+  const metaValuesList = useQuery({
+    ...trpc.traces.metadataValues.queryOptions({
+      projectId: projectId!,
+      key: metaKeyFilter,
+      from: range.from.toISOString(),
+      to: range.to.toISOString(),
+    }),
+    enabled: !!projectId && !!metaKeyFilter,
+  });
+
   const traces = useQuery({
     ...trpc.traces.list.queryOptions({
       projectId: projectId!,
@@ -185,6 +227,8 @@ export function TracesClient() {
       workflowName: workflowFilter || undefined,
       customerId: customerFilter || undefined,
       modelId: modelFilter || undefined,
+      metadataKey: metaKeyFilter || undefined,
+      metadataValue: (metaKeyFilter && metaValueFilter) || undefined,
       errorsOnly: errorsOnly || undefined,
       sort: sort ? { field: sort.key, dir: sort.dir } : undefined,
       limit: PAGE_SIZE,
@@ -235,7 +279,17 @@ export function TracesClient() {
   const workflowOptions = (workflowsList.data ?? []).map((name) => ({
     value: name,
     label: name,
-    icon: IconSitemapFilled,
+    icon: WorkflowIconFilled,
+  }));
+  const metaKeyOptions = (metaKeysList.data ?? []).map((key) => ({
+    value: key,
+    label: key,
+    icon: MetaValueIcon,
+  }));
+  const metaValueOptions = (metaValuesList.data?.values ?? []).map((v) => ({
+    value: v,
+    label: v,
+    icon: MetaValueIcon,
   }));
   const customerOptions = (customersList.data?.customers ?? [])
     .filter((c): c is typeof c & { customerId: string } => !!c.customerId)
@@ -317,6 +371,25 @@ export function TracesClient() {
               icon={IconCpu}
               options={modelOptions}
             />
+            {/* Metadata: picking a key pins its value as a column and reveals
+                the value picker; picking a value filters the trace set. */}
+            <FilterSelect
+              value={metaKeyFilter}
+              onChange={(v) => patchParams({ metaKey: v, metaValue: "" })}
+              allLabel="Any metadata"
+              icon={IconTag}
+              options={metaKeyOptions}
+            />
+            {metaKeyFilter && (
+              <FilterSelect
+                value={metaValueFilter}
+                onChange={(v) => patchParams({ metaValue: v })}
+                allLabel={`Any ${metaKeyFilter}`}
+                icon={IconTag}
+                options={metaValueOptions}
+                allowFreeText={metaValuesList.data?.truncated ?? false}
+              />
+            )}
             <ToggleChip
               active={errorsOnly}
               onClick={() => patchParams({ errors: errorsOnly ? "" : "1" })}
@@ -332,6 +405,8 @@ export function TracesClient() {
                   workflow: "",
                   customer: "",
                   model: "",
+                  metaKey: "",
+                  metaValue: "",
                   errors: "",
                 })
               }
@@ -358,6 +433,14 @@ export function TracesClient() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Trace</TableHead>
+                      {metaKeyFilter && (
+                        <TableHead className="w-40">
+                          <span className="inline-flex items-center gap-1.5">
+                            <IconTagFilled className="size-3.5 text-fuchsia-500" />
+                            {metaKeyFilter}
+                          </span>
+                        </TableHead>
+                      )}
                       <SortableHead
                         sortKey="spans"
                         sort={sort}
@@ -546,6 +629,27 @@ export function TracesClient() {
                             )}
                           </div>
                         </TableCell>
+                        {metaKeyFilter && (
+                          <TableCell>
+                            {t.metadataValue ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  patchParams({
+                                    metaValue: t.metadataValue!,
+                                  });
+                                }}
+                                title={`Filter by ${metaKeyFilter}: ${t.metadataValue}`}
+                                className="block max-w-36 cursor-pointer truncate text-muted-foreground transition-colors hover:text-foreground"
+                              >
+                                {t.metadataValue}
+                              </button>
+                            ) : (
+                              <span className="text-muted-foreground/40">—</span>
+                            )}
+                          </TableCell>
+                        )}
                         <TableCell className="text-right tabular-nums">
                           {formatCount(t.spanCount)}
                         </TableCell>

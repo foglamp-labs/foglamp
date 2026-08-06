@@ -23,9 +23,11 @@ import {
   IconCirclesFilled,
   IconClockFilled,
   IconCoinFilled,
+  IconGaugeFilled,
   IconListTree,
   IconMessage2Filled,
   IconPlayerStopFilled,
+  IconRoute,
   IconSitemapFilled,
   IconSparklesFilled,
   IconX,
@@ -146,6 +148,34 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
   // Aborted spans (AI SDK onAbort) — a clean cancellation, surfaced apart from
   // errors and never counted toward the error stat.
   const abortedSpans = spans.filter((s) => s.status === "aborted");
+  // Worst rate-limit headroom reported by any span in the trace — surfaced as
+  // a banner when it dips below the threshold, so a trace that ran close to
+  // the provider's limit is visible without opening every span inspector.
+  const lowHeadroom = useMemo(() => {
+    let worst: {
+      span: Span;
+      pct: number;
+      kind: "tokens" | "requests";
+    } | null = null;
+    for (const s of spans) {
+      const rl = s.rateLimit;
+      if (!rl) continue;
+      const candidates = [
+        { pct: pctRemaining(rl.tokensRemaining, rl.tokensLimit), kind: "tokens" as const },
+        { pct: pctRemaining(rl.requestsRemaining, rl.requestsLimit), kind: "requests" as const },
+      ];
+      for (const c of candidates) {
+        if (
+          c.pct != null &&
+          c.pct < LOW_HEADROOM_PCT &&
+          (!worst || c.pct < worst.pct)
+        ) {
+          worst = { span: s, pct: c.pct, kind: c.kind };
+        }
+      }
+    }
+    return worst;
+  }, [spans]);
   // Eval scores for the selected span — shown in its inspector (the timeline
   // row only carries compact pass/fail indicators).
   const activeScores = useMemo(
@@ -312,6 +342,16 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
               label={ctx.workflowName}
             />
           )}
+          {ctx.workflowName && ctx.workflowRunId && (
+            // Deep-links to this run inside the workflow detail (?run=), so the
+            // trace's sibling traces in the same run are one hop away.
+            <ContextChip
+              href={`/workflows/${encodeURIComponent(ctx.workflowName)}?run=${encodeURIComponent(ctx.workflowRunId)}`}
+              icon={IconRoute}
+              iconClassName="text-emerald-500"
+              label={ctx.workflowRunId}
+            />
+          )}
           {ctx.agentName && (
             <ContextChip
               href={`/agents/${encodeURIComponent(ctx.agentName)}`}
@@ -407,6 +447,12 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
             />
           </section>
 
+          <TimeComposition
+            spans={spans}
+            totalMs={window.span}
+            className={cn(entrance && !skeletonShown && "page-fade-in")}
+          />
+
           {erroredSpans.length > 0 && (
             // The banner is itself a button (it selects the errored span), so the
             // copy control rides alongside as an absolutely-positioned sibling
@@ -470,6 +516,26 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
             </button>
           )}
 
+          {lowHeadroom && (
+            <button
+              type="button"
+              onClick={() => select(lowHeadroom.span.spanId)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-lg cursor-pointer bg-orange-500/10 shadow-(--custom-shadow-orange) px-3 py-2.5 text-left text-sm text-orange-700 transition-colors hover:bg-orange-500/20 dark:bg-orange-500/15 dark:text-orange-400 dark:hover:bg-orange-500/20",
+                entrance && !skeletonShown && "page-fade-in",
+              )}
+            >
+              <IconGaugeFilled className="size-4 shrink-0" />
+              <span className="font-medium">
+                Rate limit nearly exhausted
+              </span>
+              <span className="min-w-0 truncate text-orange-700/80 dark:text-orange-400/80">
+                {lowHeadroom.pct}% of {lowHeadroom.kind} remaining after{" "}
+                {lowHeadroom.span.name}
+              </span>
+            </button>
+          )}
+
           <div
             className={cn(
               "flex items-start gap-6",
@@ -498,6 +564,112 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
         </>
       )}
     </>
+  );
+}
+
+/**
+ * One horizontal strip splitting the trace's wall-clock into model time (pure
+ * model-call when the SDK reported it, else the whole LLM span), tool
+ * execution, other spans, and idle — the trace-level rollup of the waterfall's
+ * per-span phase split, in the same palette. Interval unions keep parallel
+ * spans from counting double; where categories overlap each other, their
+ * widths are scaled to fit the covered window so the strip always sums to the
+ * trace duration (the legend shows the exact per-category unions).
+ */
+function TimeComposition({
+  spans,
+  totalMs,
+  className,
+}: {
+  spans: Span[];
+  totalMs: number;
+  className?: string;
+}) {
+  const segs = useMemo(() => {
+    type Interval = [number, number];
+    const buckets: Record<"llm" | "tool" | "other", Interval[]> = {
+      llm: [],
+      tool: [],
+      other: [],
+    };
+    for (const s of spans) {
+      // Agent spans are containers — their window spans everything beneath.
+      if (s.spanType === "agent") continue;
+      const start = toMs(s.startTime);
+      const end =
+        s.spanType === "llm" && s.modelCallMs != null && s.modelCallMs > 0
+          ? start + Math.min(s.modelCallMs, s.durationMs)
+          : start + s.durationMs;
+      if (end <= start) continue;
+      const key =
+        s.spanType === "llm" ? "llm" : s.spanType === "tool" ? "tool" : "other";
+      buckets[key].push([start, end]);
+    }
+    const unionMs = (intervals: Interval[]) => {
+      if (intervals.length === 0) return 0;
+      const sorted = [...intervals].sort((a, b) => a[0] - b[0]);
+      let total = 0;
+      let [cs, ce] = sorted[0];
+      for (const [s, e] of sorted.slice(1)) {
+        if (s > ce) {
+          total += ce - cs;
+          cs = s;
+          ce = e;
+        } else {
+          ce = Math.max(ce, e);
+        }
+      }
+      return total + (ce - cs);
+    };
+    const llm = unionMs(buckets.llm);
+    const tool = unionMs(buckets.tool);
+    const other = unionMs(buckets.other);
+    const covered = unionMs([
+      ...buckets.llm,
+      ...buckets.tool,
+      ...buckets.other,
+    ]);
+    const idle = Math.max(0, totalMs - covered);
+    const sum = llm + tool + other;
+    const fit = sum > covered && sum > 0 ? covered / sum : 1;
+    return {
+      parts: [
+        { key: "Model", exact: llm, width: llm * fit, bar: "bg-violet-500" },
+        { key: "Tools", exact: tool, width: tool * fit, bar: "bg-blue-500" },
+        { key: "Other", exact: other, width: other * fit, bar: "bg-slate-400" },
+        {
+          key: "Idle",
+          exact: idle,
+          width: idle,
+          bar: "bg-muted-foreground/15",
+        },
+      ].filter((p) => p.exact > 0),
+    };
+  }, [spans, totalMs]);
+
+  if (totalMs <= 0 || segs.parts.length === 0) return null;
+
+  return (
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <div className="flex h-2 w-full gap-px">
+        {segs.parts.map((p) => (
+          <div
+            key={p.key}
+            title={`${p.key}: ${formatDuration(p.exact)}`}
+            className={cn("h-full rounded-xs", p.bar)}
+            style={{ width: `${(p.width / totalMs) * 100}%` }}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-muted-foreground tabular-nums">
+        {segs.parts.map((p) => (
+          <span key={p.key} className="inline-flex items-center gap-1.5">
+            <span className={cn("size-2 rounded-xs", p.bar)} />
+            {p.key} {formatDuration(p.exact)}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -554,6 +726,9 @@ function parseSources(raw: string | null | undefined): ParsedSource[] {
     return [];
   }
 }
+
+// Below this % of remaining rate-limit quota, the trace gets a warning banner.
+const LOW_HEADROOM_PCT = 10;
 
 // Percent of a rate-limit quota still available, or null when not computable.
 function pctRemaining(
@@ -944,6 +1119,28 @@ function SpanDetail({
                   ))}
                   <Field label="Total" value={formatCost(span.totalCost)} />
                 </div>
+              )}
+              {/* The usage-count side of the breakdown — cached/reasoning
+                  tokens, retries — so the costs above have their volumes. */}
+              {usageExtras.length > 0 && (
+                <>
+                  <span className="text-xs font-medium text-muted-foreground px-1">
+                    Usage
+                  </span>
+                  <div className="grid grid-cols-2 gap-4 px-1">
+                    {usageExtras.map((p) => (
+                      <Field
+                        key={p.label}
+                        label={p.label}
+                        value={
+                          p.unit === " tok"
+                            ? `${formatTokens(p.value)} tok`
+                            : formatCount(p.value)
+                        }
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           )}

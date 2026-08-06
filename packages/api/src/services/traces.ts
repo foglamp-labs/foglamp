@@ -2,6 +2,9 @@ import {
   getCustomerDisplays,
   getTraceSpans,
   listTraces,
+  queryMetadataKeys,
+  queryMetadataValues,
+  queryTraceMetadataValues,
   type SortDir,
   traceListSummary,
   type TraceSortField,
@@ -25,6 +28,10 @@ export async function getTraceList(
     customerId?: string;
     modelId?: string;
     errorsOnly?: boolean;
+    /** Filter to traces carrying metadata[key] = value; the key alone also
+     * decorates each trace with its value (the pinned metadata column). */
+    metadataKey?: string;
+    metadataValue?: string;
     sort?: { field: TraceSortField; dir: SortDir };
     limit?: number;
     offset?: number;
@@ -41,6 +48,8 @@ export async function getTraceList(
     customerId: input.customerId,
     modelId: input.modelId,
     errorsOnly: input.errorsOnly,
+    metadataKey: input.metadataKey,
+    metadataValue: input.metadataValue,
   };
   // Fetch the page and, in parallel, a single-row rollup over the whole filtered
   // set — the cost/duration quintile thresholds drive the heatmaps (percentile-
@@ -60,8 +69,20 @@ export async function getTraceList(
   // rows carry only customer_id, so resolve the distinct ids against the
   // customers dimension in one lookup and map them back.
   const customerIds = [...new Set(rows.map((r) => r.customer_id).filter(Boolean))];
-  const dims = await getCustomerDisplays(ch, { projectId: input.projectId, customerIds });
+  // The pinned metadata column: resolve the chosen key's value for this page's
+  // traces (bounded id-list lookup) alongside the customer display decoration.
+  const [dims, metaRows] = await Promise.all([
+    getCustomerDisplays(ch, { projectId: input.projectId, customerIds }),
+    input.metadataKey
+      ? queryTraceMetadataValues(ch, {
+          projectId: input.projectId,
+          key: input.metadataKey,
+          traceIds: rows.map((r) => r.trace_id),
+        })
+      : Promise.resolve([]),
+  ]);
   const customerById = new Map(dims.map((d) => [d.customer_id, d]));
+  const metaByTrace = new Map(metaRows.map((m) => [m.trace_id, m.value]));
   return {
     // 20/40/60/80th percentile thresholds; finite values only.
     costQuantiles: finite(s?.cost_q),
@@ -93,7 +114,51 @@ export async function getTraceList(
       pricedSpanCount: num(r.priced_span_count),
       totalTokens: num(r.total_tokens),
       models: r.models ?? [],
+      metadataValue: input.metadataKey
+        ? metaByTrace.get(r.trace_id) || null
+        : null,
     })),
+  };
+}
+
+/** Distinct metadata keys in the window (most-frequent first) — the pinned
+ * column / metadata filter's key picker. */
+export async function getMetadataKeys(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: { projectId: string; from: Date; to: Date },
+) {
+  await requireProjectAccess(db, userId, input.projectId);
+  const rows = await queryMetadataKeys(ch, {
+    projectId: input.projectId,
+    from: toClickHouseDateTime(input.from),
+    to: toClickHouseDateTime(input.to),
+  });
+  return rows.map((r) => r.key);
+}
+
+const METADATA_VALUE_LIMIT = 50;
+
+/** Top values for one metadata key (most-frequent first), capped — `truncated`
+ * tells the UI to offer free-text entry beyond the listed values. */
+export async function getMetadataValues(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: { projectId: string; key: string; from: Date; to: Date },
+) {
+  await requireProjectAccess(db, userId, input.projectId);
+  const rows = await queryMetadataValues(ch, {
+    projectId: input.projectId,
+    key: input.key,
+    from: toClickHouseDateTime(input.from),
+    to: toClickHouseDateTime(input.to),
+    limit: METADATA_VALUE_LIMIT + 1,
+  });
+  return {
+    values: rows.slice(0, METADATA_VALUE_LIMIT).map((r) => r.value),
+    truncated: rows.length > METADATA_VALUE_LIMIT,
   };
 }
 
