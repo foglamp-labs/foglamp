@@ -3,6 +3,33 @@ title: Changelog
 description: "What's new in Foglamp."
 ---
 
+<Update label="August 7, 2026">
+
+## Updates
+
+**Faster filtering on Traces.** Long filter dropdowns on
+[Traces](/dashboard/traces) now have inline typeahead, so picking a model,
+agent, workflow, or customer from a large list is a keystroke instead of a
+scroll. A new **Metadata** filter lets you narrow by any `key = value` you've
+tagged, with a free-text fallback when a key has too many values to enumerate.
+Pin a metadata key as its own column, and every filter, sort, and pinned
+column is reflected in the URL — copy the link and a teammate lands on the
+same view.
+
+**Trace detail upgrades.** The trace detail page now leads with a
+**time composition** strip that breaks a run into model, tools, other, and
+idle time at a glance, and surfaces a **low rate-limit headroom** banner when
+a provider is close to your TPM/RPM ceiling. Token and request counters sit
+next to the cost breakdown, and a **workflow run** chip jumps straight to the
+[workflow run](/dashboard/workflows) the trace belongs to.
+
+**Waterfall filtering and collapse.** The waterfall now has span-type filter
+chips (model, tool, other) to focus on the spans you care about, and any
+subtree can be collapsed — the collapsed row shows a hidden-count indicator
+so long tool loops stay readable.
+
+</Update>
+
 <Update label="July 24, 2026">
 
 ## Updates
