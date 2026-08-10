@@ -50,7 +50,7 @@ export function ProjectIcon({
 }) {
   const box =
     size === "md"
-      ? "size-6 rounded-lg corner-squircle shadow-(--custom-shadow)"
+      ? "size-5.5 rounded-lg corner-squircle shadow-(--custom-shadow)"
       : size === "sm"
         ? "size-5 rounded-lg corner-squircle"
         : "size-3.25 rounded-md corner-squircle";

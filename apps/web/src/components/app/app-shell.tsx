@@ -77,7 +77,7 @@ function ProjectSwitcher() {
             render={
               <SidebarMenuButton
                 size="default"
-                className="my-2 px-1 pr-2 pl-[5px]"
+                className="my-2 mb-1 px-1 pr-2 pl-1.5"
               />
             }
           >
@@ -95,7 +95,6 @@ function ProjectSwitcher() {
             side="right"
             className="min-w-(--anchor-width)"
           >
-            <DropdownMenuLabel>Projects</DropdownMenuLabel>
             {projects.map((p) => (
               <DropdownMenuItem key={p.id} onClick={() => setProjectId(p.id)}>
                 <ProjectIcon url={p.url} name={p.name} size="sm" />
