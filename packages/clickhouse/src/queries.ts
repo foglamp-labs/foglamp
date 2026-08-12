@@ -1484,7 +1484,8 @@ export function queryCostTimeseriesByCategory(
 		"start_time < {to:DateTime}",
 	];
 	if (params.agentName) filters.push("agent_name = {agentName:String}");
-	if (params.workflowName) filters.push("workflow_name = {workflowName:String}");
+	if (params.workflowName)
+		filters.push("workflow_name = {workflowName:String}");
 	// Columns are `spans.`-qualified so ClickHouse's alias substitution can't
 	// fold an output alias (e.g. `AS prompt_cost`) back into the aggregate,
 	// which would nest sums and fail with ILLEGAL_AGGREGATION.
@@ -1554,7 +1555,8 @@ export function queryToolBreakdown(
 		"start_time < {to:DateTime}",
 	];
 	if (params.agentName) filters.push("agent_name = {agentName:String}");
-	if (params.workflowName) filters.push("workflow_name = {workflowName:String}");
+	if (params.workflowName)
+		filters.push("workflow_name = {workflowName:String}");
 	return rows<ToolBreakdownRow>(
 		client,
 		`SELECT
@@ -1623,6 +1625,8 @@ export type AgentBreakdownRow = {
 	total_tokens: string;
 	/** [p50, p95, p99] llm latency in milliseconds. */
 	duration_quantiles: number[];
+	/** Most recent activity bucket (minute resolution). */
+	last_run: string;
 };
 
 /** Per-agent rollup over a window (for the per-agent detail stats). */
@@ -1645,7 +1649,8 @@ export function queryAgentBreakdown(
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
        sum(total_tokens) AS total_tokens,
-       quantilesTDigestMergeIf(0.5, 0.95, 0.99)(duration_quantiles, span_type = 'llm') AS duration_quantiles
+       quantilesTDigestMergeIf(0.5, 0.95, 0.99)(duration_quantiles, span_type = 'llm') AS duration_quantiles,
+       max(bucket) AS last_run
      FROM metrics_by_minute
      WHERE project_id = {projectId:String}
        AND bucket >= {from:DateTime} AND bucket < {to:DateTime}
@@ -1659,11 +1664,11 @@ export function queryAgentBreakdown(
 export type AgentSortField =
 	| "name"
 	| "spans"
-	| "llm"
 	| "tokens"
 	| "latency"
 	| "errors"
-	| "cost";
+	| "cost"
+	| "lastRun";
 
 // Whitelist of sortable agent columns → SQL expression (aliases from the SELECT,
 // so the ORDER BY — which can't be parameterized — is never attacker-controlled).
@@ -1671,11 +1676,11 @@ export type AgentSortField =
 const AGENT_SORT_COLUMN: Record<AgentSortField, string> = {
 	name: "agent_name",
 	spans: "span_count",
-	llm: "llm_span_count",
 	tokens: "total_tokens",
 	latency: "duration_quantiles[2]",
 	errors: "error_count",
 	cost: "total_cost",
+	lastRun: "last_run",
 };
 
 /**
@@ -1722,7 +1727,8 @@ export function listAgents(
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
        sum(total_tokens) AS total_tokens,
-       quantilesTDigestMergeIf(0.5, 0.95, 0.99)(duration_quantiles, span_type = 'llm') AS duration_quantiles
+       quantilesTDigestMergeIf(0.5, 0.95, 0.99)(duration_quantiles, span_type = 'llm') AS duration_quantiles,
+       max(bucket) AS last_run
      FROM metrics_by_minute
      WHERE ${where.join(" AND ")}
      GROUP BY agent_name
