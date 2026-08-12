@@ -78,6 +78,7 @@ import {
 	formatCost,
 	formatCount,
 	formatDuration,
+	formatSpanDuration,
 	formatPercent,
 	formatTokens,
 } from "@/lib/format";
@@ -472,7 +473,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
 										<CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
 											<span>{formatCount(activeRun.traceCount)} traces</span>
 											<span>·</span>
-											<span>{formatDuration(activeRun.durationMs)}</span>
+											<span>{formatSpanDuration(activeRun.durationMs)}</span>
 											<span>·</span>
 											<span>{formatCost(activeRun.totalCost)}</span>
 											<span>·</span>
@@ -617,7 +618,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
 													thresholds={durationQuantiles}
 													metric="duration"
 												>
-													{formatDuration(r.durationMs)}
+													{formatSpanDuration(r.durationMs)}
 												</HeatCell>
 												<HeatCell
 													value={r.totalCost}

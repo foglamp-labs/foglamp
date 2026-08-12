@@ -88,6 +88,7 @@ import {
 	formatCost,
 	formatCount,
 	formatDuration,
+	formatSpanDuration,
 	formatPercent,
 	formatTokens,
 } from "@/lib/format";
@@ -523,7 +524,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 										<CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
 											<span>{formatCount(activeTrace.spanCount)} spans</span>
 											<span>·</span>
-											<span>{formatDuration(activeTrace.durationMs)}</span>
+											<span>{formatSpanDuration(activeTrace.durationMs)}</span>
 											<span>·</span>
 											<span>{formatCost(activeTrace.totalCost)}</span>
 											<span>·</span>
@@ -720,7 +721,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 															thresholds={durationQuantiles}
 															metric="duration"
 														>
-															{formatDuration(t.durationMs)}
+															{formatSpanDuration(t.durationMs)}
 														</HeatCell>
 														<HeatCell
 															value={t.totalCost}

@@ -72,6 +72,7 @@ import {
 	formatCost,
 	formatCount,
 	formatDuration,
+	formatSpanDuration,
 	formatTokens,
 } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
@@ -794,7 +795,7 @@ export function TracesClient() {
 													thresholds={durationQuantiles}
 													metric="duration"
 												>
-													{formatDuration(t.durationMs)}
+													{formatSpanDuration(t.durationMs)}
 												</HeatCell>
 												<HeatCell
 													value={t.totalCost}

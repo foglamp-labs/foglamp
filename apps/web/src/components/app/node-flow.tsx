@@ -4,7 +4,11 @@ import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
 
-import { formatDateTime, formatDuration } from "@/lib/format";
+import {
+	formatDateTime,
+	formatDuration,
+	formatSpanDuration,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type FlowNode = {
@@ -90,7 +94,7 @@ export function NodeFlow({
 								{formatDateTime(node.timestamp)}
 								<br />
 								{node.durationMs != null && (
-									<>{formatDuration(node.durationMs)}</>
+									<>{formatSpanDuration(node.durationMs)}</>
 								)}
 							</span>
 						</>

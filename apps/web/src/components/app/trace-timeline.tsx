@@ -28,7 +28,12 @@ import {
 	spanTypeVariant,
 } from "@/components/app/span-type";
 import { ModelLogo, modelBrandColor } from "@/components/model-logo";
-import { formatCost, formatDuration, formatTokens } from "@/lib/format";
+import {
+	formatCost,
+	formatDuration,
+	formatSpanDuration,
+	formatTokens,
+} from "@/lib/format";
 import {
 	type TraceSpan,
 	computeWindow,
@@ -514,7 +519,7 @@ export function TraceTimeline({
 											/>
 											<TooltipContent className="flex flex-col gap-0.5">
 												<span>
-													{formatDuration(span.durationMs)} · starts +
+													{formatSpanDuration(span.durationMs)} · starts +
 													{formatDuration(offsetMs)}
 												</span>
 												{modelCallMs != null && (
@@ -552,7 +557,7 @@ export function TraceTimeline({
 									</div>
 									<div className="flex flex-col items-end pr-1 text-right">
 										<span className="text-[11px] font-medium text-foreground/80 tabular-nums">
-											{formatDuration(span.durationMs)}
+											{formatSpanDuration(span.durationMs)}
 										</span>
 										{(span.totalCost != null || span.totalTokens > 0) && (
 											<span className="whitespace-nowrap text-[10px] text-muted-foreground tabular-nums">

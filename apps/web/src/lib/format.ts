@@ -65,6 +65,14 @@ export function formatDuration(ms: number): string {
 	return parts.slice(0, 2).join(" ") || "0s";
 }
 
+/** A recorded span/trace duration. Storage is whole milliseconds, so an exact 0
+ * means "finished in under 1ms", not "took no time" — render it as such. Axes
+ * and aggregates should keep using formatDuration ("0s" at the origin). */
+export function formatSpanDuration(ms: number): string {
+	if (ms === 0) return "<1ms";
+	return formatDuration(ms);
+}
+
 export function formatPercent(fraction: number | null | undefined): string {
 	if (fraction === null || fraction === undefined) return "—";
 	return `${Math.round(fraction * 100)}%`;

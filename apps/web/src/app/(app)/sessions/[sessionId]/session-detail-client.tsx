@@ -45,6 +45,7 @@ import {
 	formatCount,
 	formatDateTime,
 	formatDuration,
+	formatSpanDuration,
 	formatTokens,
 } from "@/lib/format";
 import { toMs } from "@/lib/trace-timeline";
@@ -190,7 +191,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
 							label="Duration"
 							value={
 								<span className="flex items-baseline gap-1.5">
-									{durationMs == null ? "—" : formatDuration(durationMs)}
+									{durationMs == null ? "—" : formatSpanDuration(durationMs)}
 									{stats?.firstSeen && (
 										<span className="text-xs font-normal text-muted-foreground">
 											started <RelativeTime value={stats.firstSeen} />
@@ -352,7 +353,7 @@ function TurnBlock({
 				<span>·</span>
 				<span>{formatTokens(turn.totalTokens)} tokens</span>
 				<span>·</span>
-				<span>{formatDuration(turn.durationMs)}</span>
+				<span>{formatSpanDuration(turn.durationMs)}</span>
 				{turn.workflowName && (
 					<Link
 						// biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route

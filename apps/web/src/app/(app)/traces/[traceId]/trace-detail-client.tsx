@@ -70,6 +70,7 @@ import {
 	formatCount,
 	formatDateTime,
 	formatDuration,
+	formatSpanDuration,
 	formatTokens,
 } from "@/lib/format";
 import {
@@ -886,7 +887,10 @@ function TraceDetail({
 				>
 					<div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
 						<Field label="Started" value={formatDateTime(trace.startTime)} />
-						<Field label="Duration" value={formatDuration(trace.durationMs)} />
+						<Field
+							label="Duration"
+							value={formatSpanDuration(trace.durationMs)}
+						/>
 						<Field label="Cost" value={formatCost(trace.cost)} />
 						<Field label="Tokens" value={formatTokens(trace.tokens)} />
 						<Field label="Spans" value={formatCount(trace.spanCount)} />
@@ -1024,7 +1028,10 @@ function SpanDetail({
 					<div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
 						<Field label="Started" value={formatDateTime(span.startTime)} />
 						<Field label="Cost" value={formatCost(span.totalCost)} />
-						<Field label="Duration" value={formatDuration(span.durationMs)} />
+						<Field
+							label="Duration"
+							value={formatSpanDuration(span.durationMs)}
+						/>
 						<Field
 							label="TTFT"
 							value={
