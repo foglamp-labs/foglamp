@@ -39,15 +39,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       # Decide what to (re)deploy from the diff. Shared inputs — packages/**,
       # Dockerfile, bun.lock, and this workflow — rebuild everything; the
       # app-specific dirs gate only their own service.
+      #
+      # Diff the whole push range (event.before..HEAD), not HEAD^..HEAD — a
+      # multi-commit push whose final commit is web-only would otherwise skip
+      # backend changes made in earlier commits of the same push.
       - name: Detect changes
         id: changes
         run: |
-          files=$(git diff --name-only HEAD^ HEAD)
+          base="${{ github.event.before }}"
+          case "$base" in ""|0000000*) base=$(git rev-parse HEAD^);; esac
+          git cat-file -e "$base" 2>/dev/null || base=$(git rev-parse HEAD^)
+          files=$(git diff --name-only "$base" HEAD)
           shared='^(packages/|Dockerfile$|bun\.lock$|\.github/workflows/deploy-gcp\.yml$)'
 
           if echo "$files" | grep -qE "$shared|^apps/server/|^apps/ingest/"; then
