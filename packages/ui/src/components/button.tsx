@@ -1,6 +1,6 @@
-import * as React from "react";
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
-import { cva, type VariantProps } from "class-variance-authority";
+import { type VariantProps, cva } from "class-variance-authority";
+import * as React from "react";
 
 import { cn } from "@foglamp/ui/lib/utils";
 
@@ -32,7 +32,7 @@ const buttonVariants = cva(
         xs: "h-6 gap-[4.5px] rounded-full px-2.5 text-xs in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2 [&_svg:not([class*='size-'])]:size-[11px]",
         sm: "h-7 gap-[5px] rounded-full px-3 in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-[9px] has-[>svg:last-child]:pr-[9px]",
         default:
-          "h-8 gap-[5.5px] px-[13px] in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-2.5 has-[>svg:last-child]:pr-2.5",
+          "h-8 gap-[5.5px] px-3 in-data-[slot=button-group]:rounded-full has-[>svg:first-child]:pl-2.5 has-[>svg:last-child]:pr-2.5",
         lg: "h-8.5 gap-1.5 px-[15px] has-[>svg:first-child]:pl-3 has-[>svg:last-child]:pr-3 [&_svg:not([class*='size-'])]:size-3.5",
         icon: "size-8",
         "icon-xs":
