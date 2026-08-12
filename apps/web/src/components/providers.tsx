@@ -16,39 +16,39 @@ import { ThemeProvider } from "./theme-provider";
 // CSS tokens, chart vars, and overscroll all read dark). App and auth routes
 // pass no forced theme and stay user-switchable.
 const MARKETING_PATHS = new Set([
-  "/",
-  "/homepage",
-  "/pricing",
-  "/privacy",
-  "/terms",
-  // The scan LANDING page only — exact match, so /scan/[slug] (which has
-  // its own theme toggle) stays user-switchable.
-  "/scan",
+	"/",
+	"/homepage",
+	"/pricing",
+	"/privacy",
+	"/terms",
+	// The scan LANDING page only — exact match, so /scan/[slug] (which has
+	// its own theme toggle) stays user-switchable.
+	"/scan",
 ]);
 
 function isMarketingPath(pathname: string): boolean {
-  return MARKETING_PATHS.has(pathname) || pathname.startsWith("/features");
+	return MARKETING_PATHS.has(pathname) || pathname.startsWith("/features");
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const forcedTheme = isMarketingPath(pathname) ? "dark" : undefined;
+	const pathname = usePathname();
+	const forcedTheme = isMarketingPath(pathname) ? "dark" : undefined;
 
-  return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="dark"
-      enableSystem
-      disableTransitionOnChange
-      forcedTheme={forcedTheme}
-    >
-      <PostHogProvider>
-        <QueryClientProvider client={queryClient}>
-          {children}
-          {/* <ReactQueryDevtools /> */}
-        </QueryClientProvider>
-        <Toaster />
-      </PostHogProvider>
-    </ThemeProvider>
-  );
+	return (
+		<ThemeProvider
+			attribute="class"
+			defaultTheme="dark"
+			enableSystem
+			disableTransitionOnChange
+			forcedTheme={forcedTheme}
+		>
+			<PostHogProvider>
+				<QueryClientProvider client={queryClient}>
+					{children}
+					{/* <ReactQueryDevtools /> */}
+				</QueryClientProvider>
+				<Toaster />
+			</PostHogProvider>
+		</ThemeProvider>
+	);
 }

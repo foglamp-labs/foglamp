@@ -10,19 +10,19 @@ import type { ReactNode } from "react";
  * `children` — already rendered on the server — and only the beam is client-side.
  */
 export function FeaturedBeam({ children }: { children: ReactNode }) {
-  return (
-    // borderRadius matches the Card's rounded-3xl (22px in our token scale) so
-    // the beam's circular-arc corners line up with the card. The card pairs this
-    // with corner-round! (in page.tsx) to drop its default squircle, which the
-    // beam can't reproduce.
-    <BorderBeam
-      size="pulse-outside"
-      colorVariant="colorful"
-      strength={0.4}
-      borderRadius={22}
-      className="h-fit"
-    >
-      {children}
-    </BorderBeam>
-  );
+	return (
+		// borderRadius matches the Card's rounded-3xl (22px in our token scale) so
+		// the beam's circular-arc corners line up with the card. The card pairs this
+		// with corner-round! (in page.tsx) to drop its default squircle, which the
+		// beam can't reproduce.
+		<BorderBeam
+			size="pulse-outside"
+			colorVariant="colorful"
+			strength={0.4}
+			borderRadius={22}
+			className="h-fit"
+		>
+			{children}
+		</BorderBeam>
+	);
 }

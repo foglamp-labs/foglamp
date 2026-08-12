@@ -10,14 +10,14 @@ import { formatRelative } from "@/lib/format";
  * Self-contained: only the text node re-renders, not the table around it.
  */
 export function RelativeTime({
-  value,
+	value,
 }: {
-  value: string | Date | null | undefined;
+	value: string | Date | null | undefined;
 }) {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 15_000);
-    return () => clearInterval(t);
-  }, []);
-  return <>{formatRelative(value)}</>;
+	const [, setTick] = useState(0);
+	useEffect(() => {
+		const t = setInterval(() => setTick((n) => n + 1), 15_000);
+		return () => clearInterval(t);
+	}, []);
+	return <>{formatRelative(value)}</>;
 }

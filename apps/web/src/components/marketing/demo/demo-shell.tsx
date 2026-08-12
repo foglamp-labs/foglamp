@@ -16,60 +16,60 @@ import { motion, useReducedMotion } from "motion/react";
 const EASE: [number, number, number, number] = [0.32, 0.72, 0, 1];
 
 export function DemoShell({
-  sidebar,
-  children,
+	sidebar,
+	children,
 }: {
-  sidebar: React.ReactNode;
-  children: React.ReactNode;
+	sidebar: React.ReactNode;
+	children: React.ReactNode;
 }) {
-  const reduce = useReducedMotion();
+	const reduce = useReducedMotion();
 
-  // Step 2 — sidebar items.
-  const sidebarReveal = reduce
-    ? {}
-    : {
-        initial: { opacity: 0, filter: "blur(0px)" },
-        animate: { opacity: 1, filter: "blur(0px)" },
-        transition: { duration: 0.6, ease: EASE, delay: 0.7 },
-      };
+	// Step 2 — sidebar items.
+	const sidebarReveal = reduce
+		? {}
+		: {
+				initial: { opacity: 0, filter: "blur(0px)" },
+				animate: { opacity: 1, filter: "blur(0px)" },
+				transition: { duration: 0.6, ease: EASE, delay: 0.7 },
+			};
 
-  // Step 3 — inset content, a 0.3s beat after the sidebar.
-  const insetReveal = reduce
-    ? {}
-    : {
-        initial: { opacity: 0, filter: "blur(0px)" },
-        animate: { opacity: 1, filter: "blur(0px)" },
-        transition: { duration: 0.6, ease: EASE, delay: 0.75 },
-      };
+	// Step 3 — inset content, a 0.3s beat after the sidebar.
+	const insetReveal = reduce
+		? {}
+		: {
+				initial: { opacity: 0, filter: "blur(0px)" },
+				animate: { opacity: 1, filter: "blur(0px)" },
+				transition: { duration: 0.6, ease: EASE, delay: 0.75 },
+			};
 
-  return (
-    <>
-      {/* Sidebar surface — step 2 */}
-      <motion.div
-        {...sidebarReveal}
-        style={{ willChange: "opacity, filter" }}
-        className="hidden w-56 shrink-0 md:block "
-      >
-        {sidebar}
-      </motion.div>
+	return (
+		<>
+			{/* Sidebar surface — step 2 */}
+			<motion.div
+				{...sidebarReveal}
+				style={{ willChange: "opacity, filter" }}
+				className="hidden w-56 shrink-0 md:block "
+			>
+				{sidebar}
+			</motion.div>
 
-      {/* Inset surface — static, part of the chrome; only its content (step 3)
+			{/* Inset surface — static, part of the chrome; only its content (step 3)
           blurs in. It carries the shadow because this surface paints *above* the
           sidebar, so the shadow rims the seam between them (a placeholder one
           layer up can't — the sidebar covers it as it reveals). A matching
           placeholder in <HeroDemo> carries the shadow too, so it's already there
           for the frame or two before this lazy surface mounts. */}
-      <div className="relative m-2 ml-0 flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl corner-squircle bg-background dark:shadow-(--custom-shadow) max-md:ml-2">
-        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-          <motion.div
-            {...insetReveal}
-            style={{ willChange: "opacity, filter" }}
-            className="mx-auto flex max-w-380 flex-col gap-6 p-6 lg:p-10"
-          >
-            {children}
-          </motion.div>
-        </div>
-      </div>
-    </>
-  );
+			<div className="relative m-2 ml-0 flex min-w-0 flex-1 flex-col overflow-hidden rounded-md squircle:rounded-xl corner-squircle bg-background dark:shadow-(--custom-shadow) max-md:ml-2">
+				<div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+					<motion.div
+						{...insetReveal}
+						style={{ willChange: "opacity, filter" }}
+						className="mx-auto flex max-w-380 flex-col gap-6 p-6 lg:p-10"
+					>
+						{children}
+					</motion.div>
+				</div>
+			</div>
+		</>
+	);
 }

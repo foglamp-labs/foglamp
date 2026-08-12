@@ -28,13 +28,26 @@ type Preset = {
 };
 
 export const RANGE_PRESETS: Preset[] = [
-  { key: "1h", label: "Last hour", resolve: (n) => ({ from: subHours(n, 1), to: n }) },
+  {
+    key: "1h",
+    label: "Last hour",
+    resolve: (n) => ({ from: subHours(n, 1), to: n }),
+  },
   {
     key: "24h",
     label: "Last 24 hours",
     resolve: (n) => ({ from: subHours(n, 24), to: n }),
   },
-  { key: "7d", label: "Last 7 days", resolve: (n) => ({ from: subDays(n, 7), to: n }) },
+  {
+    key: "3d",
+    label: "Last 3 days",
+    resolve: (n) => ({ from: subDays(n, 3), to: n }),
+  },
+  {
+    key: "7d",
+    label: "Last 7 days",
+    resolve: (n) => ({ from: subDays(n, 7), to: n }),
+  },
   {
     key: "30d",
     label: "Last 30 days",
@@ -45,7 +58,11 @@ export const RANGE_PRESETS: Preset[] = [
     label: "Last 90 days",
     resolve: (n) => ({ from: subDays(n, 90), to: n }),
   },
-  { key: "today", label: "Today", resolve: (n) => ({ from: startOfDay(n), to: n }) },
+  {
+    key: "today",
+    label: "Today",
+    resolve: (n) => ({ from: startOfDay(n), to: n }),
+  },
   {
     key: "month",
     label: "This month",
@@ -78,12 +95,29 @@ export function customRange(from: Date, to: Date): RangeValue {
   return { key: "custom", label: formatRangeLabel(f, t), from: f, to: t };
 }
 
+/** Absolute readout of a resolved window, minute precision — "Aug 10, 14:32 –
+ * Aug 11, 14:32". The year only appears when it isn't the current one. */
+export function formatRangeWindow(
+  from: Date,
+  to: Date,
+  now: Date = new Date()
+): string {
+  const fmt = (d: Date) =>
+    format(
+      d,
+      d.getFullYear() === now.getFullYear()
+        ? "MMM d, HH:mm"
+        : "MMM d, yyyy, HH:mm"
+    );
+  return `${fmt(from)} to ${fmt(to)}`;
+}
+
 export function formatRangeLabel(from: Date, to: Date): string {
   const sameDay = startOfDay(from).getTime() === startOfDay(to).getTime();
   if (sameDay) return format(from, "MMM d, yyyy");
   const sameYear = from.getFullYear() === to.getFullYear();
   return `${format(from, sameYear ? "MMM d" : "MMM d, yyyy")} – ${format(
     to,
-    "MMM d, yyyy",
+    "MMM d, yyyy"
   )}`;
 }

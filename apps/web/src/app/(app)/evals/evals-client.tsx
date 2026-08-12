@@ -78,7 +78,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AgentIcon } from "@/components/app/agent-icon";
-import { HeatCell } from "@/components/app/heat-cell";
 import {
   ClearFiltersButton,
   FilterSelect,
@@ -88,6 +87,7 @@ import {
   sortRows,
   useTableSort,
 } from "@/components/app/data-table";
+import { HeatCell } from "@/components/app/heat-cell";
 import {
   useDelayedLoading,
   useEntranceOnce,
@@ -105,7 +105,7 @@ import {
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
-import { RangePicker } from "@/components/app/range-picker";
+import { RangeControl } from "@/components/app/range-picker";
 import {
   formatCost,
   formatCount,
@@ -250,7 +250,7 @@ export function EvalsClient() {
   const [sourceFilter, setSourceFilter] = useState<"" | "code" | "llm">("");
   const [levelFilter, setLevelFilter] = useState<"" | "trace" | "span">("");
   const [stateFilter, setStateFilter] = useState<"" | "enabled" | "disabled">(
-    "",
+    ""
   );
   const { sort, toggle } = useTableSort<EvalSortKey>();
 
@@ -298,7 +298,7 @@ export function EvalsClient() {
       from: new Date(0).toISOString(),
       to: new Date().toISOString(),
     }),
-    [],
+    []
   );
   const agents = useQuery({
     ...trpc.agents.names.queryOptions({
@@ -311,7 +311,7 @@ export function EvalsClient() {
 
   const selectedPreset = useMemo(
     () => presets.data?.find((p) => p.id === form.presetId) ?? null,
-    [presets.data, form.presetId],
+    [presets.data, form.presetId]
   );
   // presetId → friendly name, for the table's Check badge.
   const presetName = useMemo(() => {
@@ -321,7 +321,7 @@ export function EvalsClient() {
       id.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
   }, [presets.data]);
   const configuredProviders = new Set(
-    (providerKeys.data?.keys ?? []).map((k) => k.provider),
+    (providerKeys.data?.keys ?? []).map((k) => k.provider)
   );
   // Existing agent names → combobox suggestions (free typing still allowed).
   const agentNames = agents.data ?? [];
@@ -336,7 +336,7 @@ export function EvalsClient() {
         toast.success("Eval created, scoring new traffic from now.");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
   const update = useMutation(
     trpc.evals.update.mutationOptions({
@@ -345,7 +345,7 @@ export function EvalsClient() {
         toast.success(variables.enabled ? "Eval resumed" : "Eval paused");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
   const remove = useMutation(
     trpc.evals.delete.mutationOptions({
@@ -355,7 +355,7 @@ export function EvalsClient() {
         toast.success("Eval deleted");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
@@ -386,7 +386,7 @@ export function EvalsClient() {
   // windowed stat-strip totals (avg score / avg pass rate / spend).
   const spendThresholds = useMemo(
     () => costThresholds(visible.map((r) => r.cost)),
-    [visible],
+    [visible]
   );
   // Stat-strip totals track the filtered/searched list (`visible`), so the cards
   // always reflect whatever the toolbar is currently showing.
@@ -531,6 +531,10 @@ export function EvalsClient() {
     }) ||
     !!promptOverrideError(selectedPreset, form.promptOverride);
 
+  // With no evals at all, the create button lives inside the empty state
+  // (more discoverable there) instead of the header.
+  const noEvals = !evals.isLoading && rows.length === 0;
+
   return (
     <>
       {/* Wrapped here (not inside EvalsHeader) so the copy rendered by
@@ -538,348 +542,339 @@ export function EvalsClient() {
       <div className={cn(entrance && "page-fade-in")}>
         <EvalsHeader
           actions={
-            <>
+            noEvals ? null : (
               <Button size="sm" onClick={() => setOpen(true)}>
                 <IconPlus />
                 New eval
               </Button>
-              <Dialog
-                open={open}
-                onOpenChange={(o) => {
-                  setOpen(o);
-                  if (!o) {
-                    setStep(1);
-                    setForm(DEFAULT_FORM);
-                  }
-                }}
-              >
-                {/* Opened from the header (no data) or toolbar (with data) — controlled. */}
-                <DialogContent className="block w-auto max-w-[calc(100vw-2rem)] gap-0 overflow-hidden p-0 sm:max-w-none">
-                  <motion.div
-                    initial={false}
-                    animate={{
-                      width: step === 2 ? 800 : step === 3 ? 600 : 460,
-                    }}
-                    transition={MORPH}
-                    className="overflow-hidden"
-                  >
-                    {/* Enter advances the wizard (or creates on the last step). */}
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        if (step < 3) {
-                          if (!nextDisabled) setStep((s) => s + 1);
-                        } else if (!createDisabled) {
-                          submit();
-                        }
-                      }}
-                      className="flex flex-col gap-6 py-6"
-                    >
-                      <DialogHeader className="px-6">
-                        <DialogTitle>New eval</DialogTitle>
-                        <DialogDescription>
-                          {step === 1 && "What should this eval run on?"}
-                          {step === 2 && "What do you want to check?"}
-                          {step === 3 && "How should it score?"}
-                        </DialogDescription>
-                      </DialogHeader>
-
-                      <AutoHeight>
-                        <motion.div
-                          key={step}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.18 }}
-                        >
-                          {step === 1 && (
-                            <div className="flex flex-col gap-4">
-                              <Field>
-                                <FieldLabel>Name</FieldLabel>
-                                <Input
-                                  placeholder="e.g. Support answer relevance"
-                                  value={form.name}
-                                  maxLength={200}
-                                  onChange={(e) =>
-                                    set({ name: e.target.value })
-                                  }
-                                />
-                              </Field>
-                              <Field>
-                                <FieldLabel>Level</FieldLabel>
-                                <Select
-                                  value={form.targetLevel}
-                                  onValueChange={(v) =>
-                                    set({ targetLevel: v as "trace" | "span" })
-                                  }
-                                >
-                                  <SelectTrigger className="w-full">
-                                    <SelectValue>
-                                      {(value) => {
-                                        const lvl = LEVELS.find(
-                                          (l) => l.value === value,
-                                        );
-                                        if (!lvl) return null;
-                                        const LIcon = lvl.icon;
-                                        return (
-                                          <span className="flex items-center gap-1.5">
-                                            <LIcon className="size-4 text-muted-foreground" />
-                                            {lvl.label}
-                                            <span className="text-muted-foreground">
-                                              · {lvl.description}
-                                            </span>
-                                          </span>
-                                        );
-                                      }}
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {LEVELS.map((l) => {
-                                      const LIcon = l.icon;
-                                      return (
-                                        <SelectItem
-                                          key={l.value}
-                                          value={l.value}
-                                          label={l.label}
-                                        >
-                                          <LIcon className="size-4 text-muted-foreground mt-0.5" />
-                                          <span className="flex flex-col">
-                                            <span>{l.label}</span>
-                                            <span className="text-xs text-muted-foreground">
-                                              {l.description}
-                                            </span>
-                                          </span>
-                                        </SelectItem>
-                                      );
-                                    })}
-                                  </SelectContent>
-                                </Select>
-                              </Field>
-                              <div className="grid grid-cols-2 gap-3">
-                                <Field>
-                                  <FieldLabel>Agent (optional)</FieldLabel>
-                                  <Combobox
-                                    items={agentNames}
-                                    inputValue={form.agentName}
-                                    onInputValueChange={(v) =>
-                                      set({ agentName: v })
-                                    }
-                                  >
-                                    <ComboboxInput
-                                      placeholder="any"
-                                      className="w-full"
-                                    />
-                                    <ComboboxContent>
-                                      <ComboboxList>
-                                        {(item: string) => (
-                                          <ComboboxItem key={item} value={item}>
-                                            <span className="flex items-center gap-1.5">
-                                              <AgentIcon
-                                                name={item}
-                                                className="size-3.5"
-                                              />
-                                              {item}
-                                            </span>
-                                          </ComboboxItem>
-                                        )}
-                                      </ComboboxList>
-                                      <ComboboxEmpty>
-                                        No matching agents.
-                                      </ComboboxEmpty>
-                                    </ComboboxContent>
-                                  </Combobox>
-                                </Field>
-                                <Field>
-                                  <FieldLabel>Trace name (optional)</FieldLabel>
-                                  <Input
-                                    placeholder="any"
-                                    value={form.traceName}
-                                    onChange={(e) =>
-                                      set({ traceName: e.target.value })
-                                    }
-                                  />
-                                </Field>
-                                {form.targetLevel === "span" && (
-                                  <>
-                                    <Field>
-                                      <FieldLabel>
-                                        Span type (optional)
-                                      </FieldLabel>
-                                      <Select
-                                        value={form.spanType}
-                                        onValueChange={(v) =>
-                                          set({ spanType: v as string })
-                                        }
-                                      >
-                                        <SelectTrigger className="w-full">
-                                          <SelectValue placeholder="any" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="">any</SelectItem>
-                                          <SelectItem value="llm">
-                                            llm
-                                          </SelectItem>
-                                          <SelectItem value="tool">
-                                            tool
-                                          </SelectItem>
-                                          <SelectItem value="embedding">
-                                            embedding
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </Field>
-                                    <Field>
-                                      <FieldLabel>Model (optional)</FieldLabel>
-                                      <Input
-                                        placeholder="any"
-                                        value={form.modelId}
-                                        onChange={(e) =>
-                                          set({ modelId: e.target.value })
-                                        }
-                                      />
-                                    </Field>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {step === 2 && (
-                            <ScrollFade
-                              className="max-h-[55vh]"
-                              fromClassName="from-popover"
-                            >
-                              <div className="flex flex-col gap-5">
-                                {(
-                                  [
-                                    {
-                                      source: "code",
-                                      label: "Code",
-                                    },
-                                    { source: "llm", label: "LLM-as-a-judge" },
-                                  ] as const
-                                ).map((group) => (
-                                  <div
-                                    key={group.source}
-                                    className="flex flex-col gap-2"
-                                  >
-                                    <p className="text-sm font-medium text-muted-foreground">
-                                      {group.label}
-                                    </p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                      {(presets.data ?? [])
-                                        .filter(
-                                          (p) => p.source === group.source,
-                                        )
-                                        .sort(
-                                          (a, b) =>
-                                            familyRank(a.id) - familyRank(b.id),
-                                        )
-                                        .map((p) => {
-                                          const { icon: PIcon, family } =
-                                            presetMeta(p.id);
-                                          const selected =
-                                            form.presetId === p.id;
-                                          return (
-                                            <button
-                                              key={p.id}
-                                              type="button"
-                                              onClick={() => pickPreset(p.id)}
-                                              data-selected={selected}
-                                              className="group flex cursor-pointer items-start gap-3 rounded-3xl corner-squircle border border-border/60 p-3 text-left transition-colors hover:bg-muted/50 data-[selected=true]:border-primary/5 data-[selected=true]:bg-primary/5 dark:data-[selected=true]:bg-primary/10"
-                                            >
-                                              <PIcon
-                                                className={cn(
-                                                  "size-6 shrink-0 rounded-xl corner-squircle p-1",
-                                                  FAMILY_CHIP[family],
-                                                )}
-                                              />
-                                              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                                <span className="text-sm font-medium leading-none">
-                                                  {p.name}
-                                                </span>
-                                                <span className="truncate text-xs leading-snug text-muted-foreground">
-                                                  {p.description}
-                                                </span>
-                                              </span>
-                                            </button>
-                                          );
-                                        })}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </ScrollFade>
-                          )}
-
-                          {step === 3 && selectedPreset && (
-                            <EvalSettingsFields
-                              preset={selectedPreset}
-                              judgeModel={form.judgeModel}
-                              judgeProvider={form.judgeProvider}
-                              sampleRate={form.sampleRate}
-                              substring={form.substring}
-                              pattern={form.pattern}
-                              maxChars={form.maxChars}
-                              promptOverride={form.promptOverride}
-                              defaultPrompt={selectedPreset.prompt ?? undefined}
-                              configuredProviders={configuredProviders}
-                              onChange={set}
-                              segmentedLayoutId="create-sample-rate-pill"
-                            />
-                          )}
-                        </motion.div>
-                      </AutoHeight>
-
-                      <DialogFooter className="px-6">
-                        {step > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => setStep((s) => s - 1)}
-                          >
-                            Back
-                          </Button>
-                        )}
-                        {step < 3 ? (
-                          <Button type="submit" disabled={nextDisabled}>
-                            Next
-                          </Button>
-                        ) : (
-                          <Button type="submit" disabled={createDisabled}>
-                            Create eval
-                          </Button>
-                        )}
-                      </DialogFooter>
-                    </form>
-                  </motion.div>
-                </DialogContent>
-              </Dialog>
-            </>
+            )
           }
         />
       </div>
 
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          setOpen(o);
+          if (!o) {
+            setStep(1);
+            setForm(DEFAULT_FORM);
+          }
+        }}
+      >
+        {/* Opened from the header (with data) or the empty state (none) — controlled. */}
+        <DialogContent className="block w-auto max-w-[calc(100vw-2rem)] gap-0 overflow-hidden p-0 sm:max-w-none">
+          <motion.div
+            initial={false}
+            animate={{
+              width: step === 2 ? 800 : step === 3 ? 600 : 460,
+            }}
+            transition={MORPH}
+            className="overflow-hidden"
+          >
+            {/* Enter advances the wizard (or creates on the last step). */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (step < 3) {
+                  if (!nextDisabled) setStep((s) => s + 1);
+                } else if (!createDisabled) {
+                  submit();
+                }
+              }}
+              className="flex flex-col gap-6 py-6"
+            >
+              <DialogHeader className="px-6">
+                <DialogTitle>New eval</DialogTitle>
+                <DialogDescription>
+                  {step === 1 && "What should this eval run on?"}
+                  {step === 2 && "What do you want to check?"}
+                  {step === 3 && "How should it score?"}
+                </DialogDescription>
+              </DialogHeader>
+
+              <AutoHeight>
+                <motion.div
+                  key={step}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  {step === 1 && (
+                    <div className="flex flex-col gap-4">
+                      <Field>
+                        <FieldLabel>Name</FieldLabel>
+                        <Input
+                          placeholder="e.g. Support answer relevance"
+                          value={form.name}
+                          maxLength={200}
+                          onChange={(e) => set({ name: e.target.value })}
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel>Level</FieldLabel>
+                        <Select
+                          value={form.targetLevel}
+                          onValueChange={(v) =>
+                            set({ targetLevel: v as "trace" | "span" })
+                          }
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue>
+                              {(value) => {
+                                const lvl = LEVELS.find(
+                                  (l) => l.value === value
+                                );
+                                if (!lvl) return null;
+                                const LIcon = lvl.icon;
+                                return (
+                                  <span className="flex items-center gap-1.5">
+                                    <LIcon className="size-4 text-muted-foreground" />
+                                    {lvl.label}
+                                    <span className="text-muted-foreground">
+                                      · {lvl.description}
+                                    </span>
+                                  </span>
+                                );
+                              }}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {LEVELS.map((l) => {
+                              const LIcon = l.icon;
+                              return (
+                                <SelectItem
+                                  key={l.value}
+                                  value={l.value}
+                                  label={l.label}
+                                >
+                                  <LIcon className="size-4 text-muted-foreground mt-0.5" />
+                                  <span className="flex flex-col">
+                                    <span>{l.label}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {l.description}
+                                    </span>
+                                  </span>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field>
+                          <FieldLabel>Agent (optional)</FieldLabel>
+                          <Combobox
+                            items={agentNames}
+                            inputValue={form.agentName}
+                            onInputValueChange={(v) => set({ agentName: v })}
+                          >
+                            <ComboboxInput
+                              placeholder="any"
+                              className="w-full"
+                            />
+                            <ComboboxContent>
+                              <ComboboxList>
+                                {(item: string) => (
+                                  <ComboboxItem key={item} value={item}>
+                                    <span className="flex items-center gap-1.5">
+                                      <AgentIcon
+                                        name={item}
+                                        className="size-3.5"
+                                      />
+                                      {item}
+                                    </span>
+                                  </ComboboxItem>
+                                )}
+                              </ComboboxList>
+                              <ComboboxEmpty>No matching agents.</ComboboxEmpty>
+                            </ComboboxContent>
+                          </Combobox>
+                        </Field>
+                        <Field>
+                          <FieldLabel>Trace name (optional)</FieldLabel>
+                          <Input
+                            placeholder="any"
+                            value={form.traceName}
+                            onChange={(e) => set({ traceName: e.target.value })}
+                          />
+                        </Field>
+                        {form.targetLevel === "span" && (
+                          <>
+                            <Field>
+                              <FieldLabel>Span type (optional)</FieldLabel>
+                              <Select
+                                value={form.spanType}
+                                onValueChange={(v) =>
+                                  set({ spanType: v as string })
+                                }
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="any" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">any</SelectItem>
+                                  <SelectItem value="llm">llm</SelectItem>
+                                  <SelectItem value="tool">tool</SelectItem>
+                                  <SelectItem value="embedding">
+                                    embedding
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </Field>
+                            <Field>
+                              <FieldLabel>Model (optional)</FieldLabel>
+                              <Input
+                                placeholder="any"
+                                value={form.modelId}
+                                onChange={(e) =>
+                                  set({ modelId: e.target.value })
+                                }
+                              />
+                            </Field>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 2 && (
+                    <ScrollFade
+                      className="max-h-[55vh]"
+                      fromClassName="from-popover"
+                    >
+                      <div className="flex flex-col gap-5">
+                        {(
+                          [
+                            {
+                              source: "code",
+                              label: "Code",
+                            },
+                            { source: "llm", label: "LLM-as-a-judge" },
+                          ] as const
+                        ).map((group) => (
+                          <div
+                            key={group.source}
+                            className="flex flex-col gap-2"
+                          >
+                            <p className="text-sm font-medium text-muted-foreground">
+                              {group.label}
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {(presets.data ?? [])
+                                .filter((p) => p.source === group.source)
+                                .sort(
+                                  (a, b) => familyRank(a.id) - familyRank(b.id)
+                                )
+                                .map((p) => {
+                                  const { icon: PIcon, family } = presetMeta(
+                                    p.id
+                                  );
+                                  const selected = form.presetId === p.id;
+                                  return (
+                                    <button
+                                      key={p.id}
+                                      type="button"
+                                      onClick={() => pickPreset(p.id)}
+                                      data-selected={selected}
+                                      className="group flex cursor-pointer items-start gap-3 rounded-lg squircle:rounded-3xl corner-squircle border border-border/60 p-3 text-left transition-colors hover:bg-muted/50 data-[selected=true]:border-primary/5 data-[selected=true]:bg-primary/5 dark:data-[selected=true]:bg-primary/10"
+                                    >
+                                      <PIcon
+                                        className={cn(
+                                          "size-6 shrink-0 rounded-md squircle:rounded-xl corner-squircle p-1",
+                                          FAMILY_CHIP[family]
+                                        )}
+                                      />
+                                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                        <span className="text-sm font-medium leading-none">
+                                          {p.name}
+                                        </span>
+                                        <span className="truncate text-xs leading-snug text-muted-foreground">
+                                          {p.description}
+                                        </span>
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollFade>
+                  )}
+
+                  {step === 3 && selectedPreset && (
+                    <EvalSettingsFields
+                      preset={selectedPreset}
+                      judgeModel={form.judgeModel}
+                      judgeProvider={form.judgeProvider}
+                      sampleRate={form.sampleRate}
+                      substring={form.substring}
+                      pattern={form.pattern}
+                      maxChars={form.maxChars}
+                      promptOverride={form.promptOverride}
+                      defaultPrompt={selectedPreset.prompt ?? undefined}
+                      configuredProviders={configuredProviders}
+                      onChange={set}
+                      segmentedLayoutId="create-sample-rate-pill"
+                    />
+                  )}
+                </motion.div>
+              </AutoHeight>
+
+              <DialogFooter className="px-6">
+                {step > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setStep((s) => s - 1)}
+                  >
+                    Back
+                  </Button>
+                )}
+                {step < 3 ? (
+                  <Button type="submit" disabled={nextDisabled}>
+                    Next
+                  </Button>
+                ) : (
+                  <Button type="submit" disabled={createDisabled}>
+                    Create eval
+                  </Button>
+                )}
+              </DialogFooter>
+            </form>
+          </motion.div>
+        </DialogContent>
+      </Dialog>
+
       {evals.isLoading ? (
         showSkeleton ? (
-          <div className={cn(entrance && "page-fade-in")}>
+          <div className={cn(entrance && "page-fade-in", "px-8")}>
             <TableSkeleton />
           </div>
         ) : null
       ) : rows.length === 0 ? (
-        <EmptyState
-          icon={IconGaugeFilled}
-          title="No evals yet"
-          description="Create an eval to score your production traces and spans."
-          className={cn(entrance && !skeletonShown && "page-fade-in")}
-        />
+        <div className="px-8">
+          <EmptyState
+            icon={IconGaugeFilled}
+            title="No evals yet"
+            description="Create an eval to score your production traces and spans."
+            className={cn(entrance && !skeletonShown && "page-fade-in")}
+          >
+            <Button className="mt-2" onClick={() => setOpen(true)}>
+              <IconPlus />
+              New eval
+            </Button>
+          </EmptyState>
+        </div>
       ) : (
         <div
           className={cn(
             "flex flex-col gap-4",
-            entrance && !skeletonShown && "page-fade-in",
+            entrance && !skeletonShown && "page-fade-in"
           )}
         >
-          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <section className="grid grid-cols-2 gap-4 md:grid-cols-4 px-5.5">
             <StatCard
               icon={IconGaugeFilled}
               iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
@@ -988,7 +983,7 @@ export function EvalsClient() {
                 {formatCount(visible.length)}{" "}
                 {visible.length === 1 ? "eval" : "evals"}
               </span>
-              <RangePicker value={range} onChange={setRange} />
+              <RangeControl value={range} onChange={setRange} />
             </div>
           </Toolbar>
 
@@ -1003,7 +998,7 @@ export function EvalsClient() {
             // table doesn't reflow as sorting changes which rows are visible.
             // The text/badge columns truncate (see cells below).
             <TooltipProvider delay={150}>
-              <Table className="table-fixed">
+              <Table className="table-fixed -mt-2">
                 <TableHeader>
                   <TableRow>
                     <SortableHead
@@ -1068,7 +1063,7 @@ export function EvalsClient() {
                           // aren't scoring, so they read at a glance.
                           (r.status === "error" ||
                             r.status === "paused_no_key") &&
-                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
+                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
                         )}
                       >
                         <TableCell className="truncate font-medium">
@@ -1114,7 +1109,7 @@ export function EvalsClient() {
                                 r.passRate >= 0.9
                                   ? "text-emerald-600 dark:text-emerald-400"
                                   : r.passRate < 0.5 &&
-                                      "text-rose-600 dark:text-rose-400",
+                                      "text-rose-600 dark:text-rose-400"
                               )}
                             >
                               {formatPercent(r.passRate)}
@@ -1213,6 +1208,6 @@ export function EvalsClient() {
 
 function clean(obj: Record<string, string>): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(obj).filter(([, v]) => v.trim() !== ""),
+    Object.entries(obj).filter(([, v]) => v.trim() !== "")
   );
 }

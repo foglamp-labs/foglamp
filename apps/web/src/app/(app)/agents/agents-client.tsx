@@ -1,21 +1,5 @@
 "use client";
 
-import { Badge } from "@foglamp/ui/components/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@foglamp/ui/components/card";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@foglamp/ui/components/pagination";
 import {
   Table,
   TableBody,
@@ -32,14 +16,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import {
-  HEAT_SHADES,
-  HeatCell,
-  percentileBucket,
-} from "@/components/app/heat-cell";
-import { pageWindow } from "@/components/app/trend-charts";
-import { Stat } from "@/components/app/stat";
-import {
   ClearFiltersButton,
+  PaginationFooter,
   SearchInput,
   SortableHead,
   ToggleChip,
@@ -48,6 +26,7 @@ import {
   parseSortParam,
   useUrlFilters,
 } from "@/components/app/data-table";
+import { HeatCell } from "@/components/app/heat-cell";
 import {
   useDebouncedValue,
   useDelayedLoading,
@@ -57,7 +36,6 @@ import {
 import { InstrumentEmptyState } from "@/components/app/instrument-empty-state";
 import { navItem } from "@/components/app/nav";
 import {
-  CardsSkeleton,
   EmptyState,
   NoProject,
   PageHeader,
@@ -65,8 +43,8 @@ import {
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
-import { RangePicker } from "@/components/app/range-picker";
-import { ViewToggle, useViewMode } from "@/components/app/view-toggle";
+import { RangeControl } from "@/components/app/range-picker";
+import { RelativeTime } from "@/components/app/relative-time";
 import {
   formatCost,
   formatCount,
@@ -76,25 +54,25 @@ import {
 import { trpc } from "@/utils/trpc";
 import { AgentsHeader } from "./header";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZES = [25, 50, 100];
 
 type AgentSortKey =
   | "name"
   | "spans"
-  | "llm"
   | "tokens"
   | "latency"
   | "errors"
-  | "cost";
+  | "cost"
+  | "lastRun";
 
 const AGENT_SORT_KEYS = [
   "name",
   "spans",
-  "llm",
   "tokens",
   "latency",
   "errors",
   "cost",
+  "lastRun",
 ] as const satisfies readonly AgentSortKey[];
 
 export function AgentsClient() {
@@ -102,8 +80,6 @@ export function AgentsClient() {
   const { projectId } = useProject();
   const router = useRouter();
   const { range, setRange } = useRange();
-  const [view, setView] = useViewMode("agents", "cards");
-
   // Filters + sorting (applied server-side across the full result set) live in
   // the URL so the view survives reload/back and can be shared. The search box
   // keeps local state for typing; the debounced value syncs to ?q=.
@@ -112,6 +88,7 @@ export function AgentsClient() {
     errors: "",
     sort: "",
     page: "1",
+    size: "25",
   });
   const [search, setSearch] = useState(params.q);
   const debouncedSearch = useDebouncedValue(search);
@@ -129,6 +106,9 @@ export function AgentsClient() {
     patchParams({ sort: cycleSortParam(sort, key) });
   const page = Math.max(0, (Number.parseInt(params.page, 10) || 1) - 1);
   const setPage = (p: number) => patchParams({ page: String(p + 1) });
+  const pageSize = PAGE_SIZES.includes(Number(params.size))
+    ? Number(params.size)
+    : 25;
   const hasFilters = !!(debouncedSearch.trim() || errorsOnly);
 
   // Filter/sort changes reset the page inside patchParams; project and range
@@ -152,8 +132,8 @@ export function AgentsClient() {
       agentName: debouncedSearch.trim() || undefined,
       errorsOnly: errorsOnly || undefined,
       sort: sort ? { field: sort.key, dir: sort.dir } : undefined,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
+      limit: pageSize,
+      offset: page * pageSize,
     }),
     enabled: !!projectId,
     // Keep the current page visible while the next one loads.
@@ -183,11 +163,6 @@ export function AgentsClient() {
   const costQuantiles = agents.data?.costQuantiles ?? [];
   const summary = agents.data?.summary;
   const agentCount = summary?.agentCount ?? 0;
-  // Total pages from the filtered count (all pages), so we can render numbered
-  // page links. Falls back to "at least the current page" before the count loads.
-  const totalPages = Math.max(page + 1, Math.ceil(agentCount / PAGE_SIZE) || 1);
-  const currentPage = page + 1;
-  const pages = pageWindow(currentPage, totalPages);
 
   return (
     <>
@@ -198,24 +173,26 @@ export function AgentsClient() {
       </div>
       {agents.isLoading ? (
         showSkeleton ? (
-          <div className={cn(entrance && "page-fade-in")}>
-            {view === "cards" ? <CardsSkeleton count={6} /> : <TableSkeleton />}
+          <div className={cn(entrance && "page-fade-in", "px-8")}>
+            <TableSkeleton />
           </div>
         ) : null
       ) : rows.length === 0 && page === 0 && !hasFilters ? (
-        <div className={cn(entrance && !skeletonShown && "page-fade-in")}>
+        <div
+          className={cn(entrance && !skeletonShown && "page-fade-in", "px-8")}
+        >
           <InstrumentEmptyState
             feature="agent"
             icon={IconGhostFilled}
             title="No agent activity"
-            description="Set agentName on the SDK integration to break down by agent."
+            description="Set agentName to break down by agent."
           />
         </div>
       ) : (
         <div
           className={cn(
-            "flex flex-col gap-4",
-            entrance && !skeletonShown && "page-fade-in",
+            "flex flex-col gap-4 mt-1",
+            entrance && !skeletonShown && "page-fade-in"
           )}
         >
           <Toolbar>
@@ -239,243 +216,146 @@ export function AgentsClient() {
               }}
             />
             <div className="ml-auto flex items-center gap-3">
-              <ViewToggle value={view} onChange={setView} />
-              <RangePicker value={range} onChange={setRange} />
+              <RangeControl value={range} onChange={setRange} />
             </div>
           </Toolbar>
 
           {rows.length === 0 && page === 0 ? (
-            <EmptyState
-              icon={IconGhostFilled}
-              title="No matching agents"
-              description="Try a different search or clearing filters."
-            />
-          ) : view === "cards" ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {rows.map((a) => {
-                const bucket = percentileBucket(a.totalCost, costQuantiles);
-                return (
-                  <Card
-                    key={a.agentName}
-                    size="sm"
-                    className="cursor-pointer transition-colors hover:bg-accent/40"
-                    onClick={() =>
-                      router.push(`/agents/${encodeURIComponent(a.agentName)}`)
-                    }
-                  >
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <AgentIcon name={a.agentName} className="size-4" />
-                        <span className="truncate">{a.agentName}</span>
-                        {a.errorCount > 0 && (
-                          <Badge variant="rose" className="ml-auto shrink-0">
-                            <IconAlertTriangle className="size-3" />
-                            {formatCount(a.errorCount)}
-                          </Badge>
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-y-3 text-sm">
-                      <Stat
-                        label="Spans"
-                        value={`${formatCount(a.spanCount)} · ${formatCount(
-                          a.llmSpanCount,
-                        )} LLM`}
-                      />
-                      <Stat
-                        label="Tokens"
-                        value={formatTokens(a.totalTokens)}
-                      />
-                      <Stat
-                        label="Latency p95"
-                        value={formatDuration(a.latencyMs.p95)}
-                      />
-                      <Stat
-                        label="Cost"
-                        value={formatCost(a.totalCost)}
-                        emphasis
-                        valueClassName={
-                          (bucket != null && HEAT_SHADES[bucket]) || undefined
-                        }
-                      />
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <div className="px-8">
+              <EmptyState
+                icon={IconGhostFilled}
+                title="No matching agents"
+                description="Try a different search or clearing filters."
+              />
             </div>
           ) : (
-            <TooltipProvider delay={150}>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableHead sortKey="name" sort={sort} onSort={toggle}>
-                      Agent
-                    </SortableHead>
-                    <SortableHead
-                      sortKey="spans"
-                      sort={sort}
-                      onSort={toggle}
-                      align="right"
-                      className="w-28"
-                    >
-                      Spans
-                    </SortableHead>
-                    <SortableHead
-                      sortKey="llm"
-                      sort={sort}
-                      onSort={toggle}
-                      align="right"
-                      className="w-28"
-                    >
-                      LLM
-                    </SortableHead>
-                    <SortableHead
-                      sortKey="tokens"
-                      sort={sort}
-                      onSort={toggle}
-                      align="right"
-                      className="w-28"
-                    >
-                      Tokens
-                    </SortableHead>
-                    <SortableHead
-                      sortKey="latency"
-                      sort={sort}
-                      onSort={toggle}
-                      align="right"
-                      className="w-36"
-                    >
-                      Latency p95
-                    </SortableHead>
-                    <SortableHead
-                      sortKey="cost"
-                      sort={sort}
-                      onSort={toggle}
-                      align="right"
-                      className="w-36"
-                    >
-                      Cost
-                    </SortableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((a) => (
-                    <TableRow
-                      key={a.agentName}
-                      interactive
-                      onClick={() =>
-                        router.push(
-                          `/agents/${encodeURIComponent(a.agentName)}`,
-                        )
-                      }
-                      className={cn(
-                        // Left accent bar on errored agents — scannable at a glance.
-                        a.errorCount > 0 &&
-                          "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
-                      )}
-                    >
-                      <TableCell>
-                        <div className="flex min-w-0 items-center justify-between gap-2">
+            // Single column with no gap so the pagination footer's top border
+            // sits flush against the table's last row.
+            <div className="flex flex-col -mt-2">
+              <TooltipProvider delay={150}>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableHead sortKey="name" sort={sort} onSort={toggle}>
+                        Agent
+                      </SortableHead>
+                      <SortableHead
+                        sortKey="spans"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-28"
+                      >
+                        Spans
+                      </SortableHead>
+                      <SortableHead
+                        sortKey="tokens"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-28"
+                      >
+                        Tokens
+                      </SortableHead>
+                      <SortableHead
+                        sortKey="latency"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-36"
+                      >
+                        Latency p95
+                      </SortableHead>
+                      <SortableHead
+                        sortKey="cost"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-36"
+                      >
+                        Cost
+                      </SortableHead>
+                      <SortableHead
+                        sortKey="lastRun"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-36"
+                      >
+                        Last run
+                      </SortableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((a) => (
+                      <TableRow
+                        key={a.agentName}
+                        interactive
+                        onClick={() =>
+                          router.push(
+                            `/agents/${encodeURIComponent(a.agentName)}`
+                          )
+                        }
+                      >
+                        <TableCell className="h-12">
                           <div className="flex min-w-0 items-center gap-2">
                             <AgentIcon name={a.agentName} className="size-4" />
                             <span className="truncate font-medium">
                               {a.agentName}
                             </span>
+                            {/* Compact error count — colored text, no pill. */}
+                            {a.errorCount > 0 && (
+                              <span
+                                title={`${a.errorCount} ${a.errorCount === 1 ? "error" : "errors"}`}
+                                className="flex shrink-0 items-center gap-1 ml-1 font-sans text-sm text-red-600 dark:text-red-400"
+                              >
+                                <IconAlertTriangle className="size-3.5 fill-current/20" />
+                                {formatCount(a.errorCount)}
+                              </span>
+                            )}
                           </div>
-                          {a.errorCount > 0 && (
-                            <Badge
-                              variant="rose"
-                              className="shrink-0 font-sans"
-                            >
-                              <IconAlertTriangle />
-                              {formatCount(a.errorCount)}
-                              {a.errorCount === 1 ? "error" : "errors"}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell align="right" className="tabular-nums">
-                        {formatCount(a.spanCount)}
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        className="tabular-nums text-muted-foreground"
-                      >
-                        {formatCount(a.llmSpanCount)}
-                      </TableCell>
-                      <TableCell align="right" className="tabular-nums">
-                        {formatTokens(a.totalTokens)}
-                      </TableCell>
-                      <TableCell align="right" className="tabular-nums">
-                        {formatDuration(a.latencyMs.p95)}
-                      </TableCell>
-                      <HeatCell
-                        value={a.totalCost}
-                        thresholds={costQuantiles}
-                        bold
-                      >
-                        {formatCost(a.totalCost)}
-                      </HeatCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TooltipProvider>
-          )}
-
-          {rows.length > 0 && (
-            <div className="flex items-center justify-between px-1">
-              <span className="text-sm text-muted-foreground/50 tabular-nums">
-                {`Showing ${page * PAGE_SIZE + 1}–${
-                  page * PAGE_SIZE + rows.length
-                } of ${formatCount(agentCount)}`}
-              </span>
-              <Pagination className="mx-0 w-auto justify-end">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      aria-disabled={page === 0 || agents.isFetching}
-                      className={cn(
-                        (page === 0 || agents.isFetching) &&
-                          "pointer-events-none opacity-50",
-                      )}
-                      onClick={() => setPage(Math.max(0, page - 1))}
-                    />
-                  </PaginationItem>
-                  {pages.map((p, i) =>
-                    p === "ellipsis" ? (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: positional separator
-                      <PaginationItem key={`ellipsis-${i}`}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : (
-                      <PaginationItem key={p}>
-                        <PaginationLink
-                          isActive={p === currentPage}
-                          className={cn(
-                            agents.isFetching && "pointer-events-none",
-                          )}
-                          onClick={() => setPage(p - 1)}
+                        </TableCell>
+                        <TableCell align="right" className="tabular-nums">
+                          {formatCount(a.spanCount)}
+                        </TableCell>
+                        <TableCell align="right" className="tabular-nums">
+                          {formatTokens(a.totalTokens)}
+                        </TableCell>
+                        <TableCell align="right" className="tabular-nums">
+                          {formatDuration(a.latencyMs.p95)}
+                        </TableCell>
+                        <HeatCell
+                          value={a.totalCost}
+                          thresholds={costQuantiles}
+                          bold
                         >
-                          {p}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ),
-                  )}
-                  <PaginationItem>
-                    <PaginationNext
-                      aria-disabled={
-                        currentPage >= totalPages || agents.isFetching
-                      }
-                      className={cn(
-                        (currentPage >= totalPages || agents.isFetching) &&
-                          "pointer-events-none opacity-50",
-                      )}
-                      onClick={() => setPage(page + 1)}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+                          {formatCost(a.totalCost)}
+                        </HeatCell>
+                        <TableCell
+                          align="right"
+                          className="text-muted-foreground"
+                        >
+                          <RelativeTime value={a.lastRun} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TooltipProvider>
+
+              {rows.length > 0 && (
+                <PaginationFooter
+                  page={page}
+                  pageSize={pageSize}
+                  total={agentCount}
+                  shown={rows.length}
+                  noun={["agent", "agents"]}
+                  isFetching={agents.isFetching}
+                  onPageChange={setPage}
+                  onPageSizeChange={(s) => patchParams({ size: String(s) })}
+                  pageSizes={PAGE_SIZES}
+                />
+              )}
             </div>
           )}
         </div>

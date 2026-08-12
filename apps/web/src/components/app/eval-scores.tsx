@@ -214,7 +214,7 @@ export function ScoreRow({
 		<Link
 			// biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
 			href={scoreHref(s) as any}
-			className="group flex items-center gap-3 rounded-2xl corner-squircle py-2 hover:bg-accent px-2"
+			className="group flex items-center gap-3 rounded-md squircle:rounded-2xl corner-squircle py-2 hover:bg-accent px-2"
 		>
 			<span
 				className={cn(

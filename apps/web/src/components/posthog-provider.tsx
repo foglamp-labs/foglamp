@@ -19,36 +19,36 @@ const ENABLED = Boolean(POSTHOG_KEY) && process.env.NODE_ENV === "production";
 let started = false;
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
-  if (!ENABLED) return <>{children}</>;
-  return <PostHogInner>{children}</PostHogInner>;
+	if (!ENABLED) return <>{children}</>;
+	return <PostHogInner>{children}</PostHogInner>;
 }
 
 function PostHogInner({ children }: { children: React.ReactNode }) {
-  const { data: session } = authClient.useSession();
-  const userId = session?.user?.id;
-  const email = session?.user?.email;
-  const name = session?.user?.name;
+	const { data: session } = authClient.useSession();
+	const userId = session?.user?.id;
+	const email = session?.user?.email;
+	const name = session?.user?.name;
 
-  useEffect(() => {
-    if (started) return;
-    started = true;
-    posthog.init(POSTHOG_KEY!, {
-      api_host: env.NEXT_PUBLIC_POSTHOG_HOST,
-      // SPA pageview + pageleave autocapture for the App Router (2025-05-24 preset).
-      defaults: "2025-05-24",
-      // Authed dashboard — don't create anonymous profiles for unidentified hits.
-      person_profiles: "identified_only",
-    });
-  }, []);
+	useEffect(() => {
+		if (started) return;
+		started = true;
+		posthog.init(POSTHOG_KEY!, {
+			api_host: env.NEXT_PUBLIC_POSTHOG_HOST,
+			// SPA pageview + pageleave autocapture for the App Router (2025-05-24 preset).
+			defaults: "2025-05-24",
+			// Authed dashboard — don't create anonymous profiles for unidentified hits.
+			person_profiles: "identified_only",
+		});
+	}, []);
 
-  // Tie events to the logged-in user; clear identity on logout.
-  useEffect(() => {
-    if (userId) {
-      posthog.identify(userId, { email, name });
-    } else {
-      posthog.reset();
-    }
-  }, [userId, email, name]);
+	// Tie events to the logged-in user; clear identity on logout.
+	useEffect(() => {
+		if (userId) {
+			posthog.identify(userId, { email, name });
+		} else {
+			posthog.reset();
+		}
+	}, [userId, email, name]);
 
-  return <PHProvider client={posthog}>{children}</PHProvider>;
+	return <PHProvider client={posthog}>{children}</PHProvider>;
 }

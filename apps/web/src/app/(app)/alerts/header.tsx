@@ -4,12 +4,5 @@ import { RouteHeader } from "@/components/app/route-header";
 
 /** Shared between loading.tsx and alerts-client.tsx — see RouteHeader. */
 export function AlertsHeader({ actions }: { actions?: React.ReactNode }) {
-  return (
-    <RouteHeader
-      href="/alerts"
-      title="Alerts"
-      description="Threshold rules evaluated against your metrics."
-      actions={actions}
-    />
-  );
+	return <RouteHeader href="/alerts" title="Alerts" actions={actions} />;
 }

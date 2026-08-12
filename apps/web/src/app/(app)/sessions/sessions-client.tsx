@@ -1,15 +1,5 @@
 "use client";
 
-import { Badge } from "@foglamp/ui/components/badge";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@foglamp/ui/components/pagination";
 import {
   Table,
   TableBody,
@@ -22,6 +12,7 @@ import { TooltipProvider } from "@foglamp/ui/components/tooltip";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAlertTriangle,
+  IconAlertTriangleFilled,
   IconGhost,
   IconMessage2Filled,
   IconUser,
@@ -32,13 +23,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
-import { CopyButton } from "@/components/app/copy-button";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
-import { HeatCell } from "@/components/app/heat-cell";
-import { pageWindow } from "@/components/app/trend-charts";
 import {
   ClearFiltersButton,
   FilterSelect,
+  PaginationFooter,
   SearchInput,
   SortableHead,
   ToggleChip,
@@ -47,6 +36,7 @@ import {
   parseSortParam,
   useUrlFilters,
 } from "@/components/app/data-table";
+import { HeatCell } from "@/components/app/heat-cell";
 import {
   useDebouncedValue,
   useDelayedLoading,
@@ -63,13 +53,13 @@ import {
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
-import { RangePicker } from "@/components/app/range-picker";
+import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
 import { formatCost, formatCount, formatTokens } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { SessionsHeader } from "./header";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZES = [25, 50, 100];
 
 type SessionSortKey = "last" | "cost" | "tokens" | "turns";
 
@@ -96,6 +86,7 @@ export function SessionsClient() {
     errors: "",
     sort: "",
     page: "1",
+    size: "25",
   });
   const [search, setSearch] = useState(params.q);
   const debouncedSearch = useDebouncedValue(search);
@@ -115,6 +106,9 @@ export function SessionsClient() {
     patchParams({ sort: cycleSortParam(sort, key) });
   const page = Math.max(0, (Number.parseInt(params.page, 10) || 1) - 1);
   const setPage = (p: number) => patchParams({ page: String(p + 1) });
+  const pageSize = PAGE_SIZES.includes(Number(params.size))
+    ? Number(params.size)
+    : 25;
   const hasFilters = !!(
     debouncedSearch.trim() ||
     agentFilter ||
@@ -165,8 +159,8 @@ export function SessionsClient() {
       sessionId: debouncedSearch.trim() || undefined,
       errorsOnly: errorsOnly || undefined,
       sort: sort ? { field: sort.key, dir: sort.dir } : undefined,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
+      limit: pageSize,
+      offset: page * pageSize,
     }),
     enabled: !!projectId,
     placeholderData: (prev) => prev,
@@ -195,14 +189,6 @@ export function SessionsClient() {
   // Global cost quintile thresholds (from the API) drive the cost heatmap.
   const costQuantiles = sessions.data?.costQuantiles ?? [];
   const summary = sessions.data?.summary;
-  // Total pages from the filtered count (all pages), so we can render numbered
-  // page links. Falls back to "at least the current page" before the count loads.
-  const totalPages = Math.max(
-    page + 1,
-    Math.ceil((summary?.sessionCount ?? 0) / PAGE_SIZE) || 1,
-  );
-  const currentPage = page + 1;
-  const pages = pageWindow(currentPage, totalPages);
   const agentOptions = (agentsList.data ?? []).map((name) => ({
     value: name,
     label: name,
@@ -234,24 +220,26 @@ export function SessionsClient() {
       </div>
       {sessions.isLoading ? (
         showSkeleton ? (
-          <div className={cn(entrance && "page-fade-in")}>
+          <div className={cn(entrance && "page-fade-in", "px-8")}>
             <TableSkeleton />
           </div>
         ) : null
       ) : rows.length === 0 && page === 0 && !hasFilters ? (
-        <div className={cn(entrance && !skeletonShown && "page-fade-in")}>
+        <div
+          className={cn(entrance && !skeletonShown && "page-fade-in", "px-8")}
+        >
           <InstrumentEmptyState
             feature="session"
             icon={IconMessage2Filled}
             title="No sessions yet"
-            description="Pass a sessionId via the SDK integration to group calls into conversations."
+            description="Pass a sessionId to group calls into conversations."
           />
         </div>
       ) : (
         <div
           className={cn(
-            "flex flex-col gap-4",
-            entrance && !skeletonShown && "page-fade-in",
+            "flex flex-col gap-4 mt-1",
+            entrance && !skeletonShown && "page-fade-in"
           )}
         >
           <Toolbar>
@@ -288,23 +276,21 @@ export function SessionsClient() {
                 patchParams({ q: "", agent: "", customer: "", errors: "" });
               }}
             />
-            <div className="ml-auto flex items-center gap-3">
-              <span className="hidden whitespace-nowrap text-sm text-muted-foreground/50 tabular-nums sm:inline">
-                {formatCount(summary?.sessionCount ?? 0)}{" "}
-                {(summary?.sessionCount ?? 0) === 1 ? "session" : "sessions"}
-              </span>
-              <RangePicker value={range} onChange={setRange} />
+            <div className="ml-auto">
+              <RangeControl value={range} onChange={setRange} />
             </div>
           </Toolbar>
 
           {rows.length === 0 && page === 0 ? (
-            <EmptyState
-              icon={IconMessage2Filled}
-              title="No matching sessions"
-              description="Try a different search or clearing filters."
-            />
+            <div className="px-8">
+              <EmptyState
+                icon={IconMessage2Filled}
+                title="No matching sessions"
+                description="Try a different search or clearing filters."
+              />
+            </div>
           ) : (
-            <>
+            <div className="flex flex-col -mt-2">
               <TooltipProvider delay={150}>
                 <Table>
                   <TableHeader>
@@ -357,36 +343,24 @@ export function SessionsClient() {
                         interactive
                         onClick={() =>
                           router.push(
-                            `/sessions/${encodeURIComponent(s.sessionId)}`,
+                            `/sessions/${encodeURIComponent(s.sessionId)}`
                           )
                         }
-                        className={cn(
-                          // Left accent bar on errored sessions — scannable at a glance.
-                          s.errorCount > 0 &&
-                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
-                        )}
                       >
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
+                        <TableCell className="font-mono text-xs text-muted-foreground h-12">
+                          <div className="flex items-center gap-2">
                             <span className="truncate max-w-72">
                               {s.sessionId}
                             </span>
-                            <CopyButton
-                              value={s.sessionId}
-                              title="Copy session ID"
-                              stopPropagation
-                              iconSize="size-3"
-                              className="p-0.5 text-muted-foreground/50"
-                            />
+                            {/* Compact error count — colored text, no pill. */}
                             {s.errorCount > 0 && (
-                              <Badge
-                                variant="rose"
-                                className="font-sans ml-auto"
+                              <span
+                                title={`${s.errorCount} ${s.errorCount === 1 ? "error" : "errors"}`}
+                                className="ml-1 flex items-center gap-1 font-sans text-sm text-red-600 dark:text-red-400"
                               >
-                                <IconAlertTriangle />
+                                <IconAlertTriangle className="size-3.5 fill-current/20" />
                                 {s.errorCount}
-                                {s.errorCount === 1 ? "error" : "errors"}
-                              </Badge>
+                              </span>
                             )}
                           </div>
                         </TableCell>
@@ -409,7 +383,7 @@ export function SessionsClient() {
                               // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
                               href={
                                 `/traces?customer=${encodeURIComponent(
-                                  s.customerId,
+                                  s.customerId
                                 )}` as any
                               }
                               onClick={(e) => e.stopPropagation()}
@@ -417,6 +391,7 @@ export function SessionsClient() {
                               className="flex min-w-0 items-center gap-2 transition-colors hover:text-foreground"
                             >
                               <CustomerAvatar
+                                filled
                                 customerId={s.customerId}
                                 customerName={s.customerName}
                                 imageUrl={s.customerImageUrl}
@@ -427,7 +402,7 @@ export function SessionsClient() {
                               </span>
                             </Link>
                           ) : (
-                            "—"
+                            <span className="text-muted-foreground/50">—</span>
                           )}
                         </TableCell>
                         <TableCell align="right">
@@ -456,62 +431,18 @@ export function SessionsClient() {
                 </Table>
               </TooltipProvider>
 
-              <div className="flex items-center justify-between px-1">
-                <p className="text-sm text-muted-foreground/50 tabular-nums">
-                  {rows.length > 0
-                    ? `Showing ${page * PAGE_SIZE + 1}–${
-                        page * PAGE_SIZE + rows.length
-                      } of ${formatCount(summary?.sessionCount ?? 0)}`
-                    : "No more sessions"}
-                </p>
-                <Pagination className="mx-0 w-auto justify-end">
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        aria-disabled={page === 0 || sessions.isFetching}
-                        className={cn(
-                          (page === 0 || sessions.isFetching) &&
-                            "pointer-events-none opacity-50",
-                        )}
-                        onClick={() => setPage(Math.max(0, page - 1))}
-                      />
-                    </PaginationItem>
-                    {pages.map((p, i) =>
-                      p === "ellipsis" ? (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: positional separator
-                        <PaginationItem key={`ellipsis-${i}`}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : (
-                        <PaginationItem key={p}>
-                          <PaginationLink
-                            isActive={p === currentPage}
-                            className={cn(
-                              sessions.isFetching && "pointer-events-none",
-                            )}
-                            onClick={() => setPage(p - 1)}
-                          >
-                            {p}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ),
-                    )}
-                    <PaginationItem>
-                      <PaginationNext
-                        aria-disabled={
-                          currentPage >= totalPages || sessions.isFetching
-                        }
-                        className={cn(
-                          (currentPage >= totalPages || sessions.isFetching) &&
-                            "pointer-events-none opacity-50",
-                        )}
-                        onClick={() => setPage(page + 1)}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              </div>
-            </>
+              <PaginationFooter
+                page={page}
+                pageSize={pageSize}
+                total={summary?.sessionCount ?? 0}
+                shown={rows.length}
+                noun={["session", "sessions"]}
+                isFetching={sessions.isFetching}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => patchParams({ size: String(s) })}
+                pageSizes={PAGE_SIZES}
+              />
+            </div>
           )}
         </div>
       )}

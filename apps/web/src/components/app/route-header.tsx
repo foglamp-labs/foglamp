@@ -5,17 +5,17 @@ import type { Route } from "next";
 import { navItem } from "./nav";
 import { PageHeader } from "./page-parts";
 import { useRange } from "./range-context";
-import { RangePicker } from "./range-picker";
+import { RangeControl } from "./range-picker";
 
 /**
- * RangePicker bound to the shared range context. The context lives in the app
+ * RangeControl bound to the shared range context. The context lives in the app
  * shell (above the page boundary), so a picker rendered by a route's
  * loading.tsx is fully live during the suspense window — changing the range
  * while a page streams in carries over to the mounted page.
  */
 function LiveRangePicker() {
-  const { range, setRange } = useRange();
-  return <RangePicker value={range} onChange={setRange} />;
+	const { range, setRange } = useRange();
+	return <RangeControl value={range} onChange={setRange} />;
 }
 
 /**
@@ -25,51 +25,51 @@ function LiveRangePicker() {
  * a header.tsx next to its page.tsx; don't inline titles in two places.
  */
 export function RouteHeader({
-  href,
-  title,
-  description,
-  back,
-  noIcon,
-  withRange,
-  actions,
+	href,
+	title,
+	description,
+	back,
+	noIcon,
+	withRange,
+	actions,
 }: {
-  /** Nav href used to look up the section icon (and the back crumb target). */
-  href: Route;
-  title: string;
-  description?: React.ReactNode;
-  /** Render a breadcrumb back to `href` instead of the section icon. */
-  back?: boolean;
-  /** Skip the section icon (settings/operator pages render a plain title). */
-  noIcon?: boolean;
-  /** Append the live range picker to the actions. */
-  withRange?: boolean;
-  actions?: React.ReactNode;
+	/** Nav href used to look up the section icon (and the back crumb target). */
+	href: Route;
+	title: string;
+	description?: React.ReactNode;
+	/** Render a breadcrumb back to `href` instead of the section icon. */
+	back?: boolean;
+	/** Skip the section icon (settings/operator pages render a plain title). */
+	noIcon?: boolean;
+	/** Append the live range picker to the actions. */
+	withRange?: boolean;
+	actions?: React.ReactNode;
 }) {
-  const item = navItem(href);
-  const composedActions =
-    withRange || actions ? (
-      <>
-        {actions}
-        {withRange && <LiveRangePicker />}
-      </>
-    ) : undefined;
-  if (back) {
-    return (
-      <PageHeader
-        title={title}
-        back={item}
-        description={description}
-        actions={composedActions}
-      />
-    );
-  }
-  return (
-    <PageHeader
-      title={title}
-      icon={noIcon ? undefined : item?.icon}
-      iconClassName={noIcon ? undefined : item?.iconClassName}
-      description={description}
-      actions={composedActions}
-    />
-  );
+	const item = navItem(href);
+	const composedActions =
+		withRange || actions ? (
+			<>
+				{actions}
+				{withRange && <LiveRangePicker />}
+			</>
+		) : undefined;
+	if (back) {
+		return (
+			<PageHeader
+				title={title}
+				back={item}
+				description={description}
+				actions={composedActions}
+			/>
+		);
+	}
+	return (
+		<PageHeader
+			title={title}
+			icon={noIcon ? undefined : item?.icon}
+			iconClassName={noIcon ? undefined : item?.iconClassName}
+			description={description}
+			actions={composedActions}
+		/>
+	);
 }

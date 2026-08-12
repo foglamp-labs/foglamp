@@ -1,746 +1,746 @@
 "use client";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
 } from "@foglamp/ui/components/alert-dialog";
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
 } from "@foglamp/ui/components/avatar";
 import { Button } from "@foglamp/ui/components/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
 } from "@foglamp/ui/components/card";
 import { Input } from "@foglamp/ui/components/input";
 import {
-  NativeSelect,
-  NativeSelectOption,
+	NativeSelect,
+	NativeSelectOption,
 } from "@foglamp/ui/components/native-select";
 import {
-  IconBoltFilled,
-  IconBuilding,
-  IconBuildingSkyscraper,
-  IconCoinFilled,
-  IconCreditCard,
-  IconEyeFilled,
-  IconFolderFilled,
-  IconGiftFilled,
-  IconStack2Filled,
-  IconUserFilled,
-  IconUserPlus,
-  IconZoomScanFilled,
-  type Icon,
+	type Icon,
+	IconBoltFilled,
+	IconBuilding,
+	IconBuildingSkyscraper,
+	IconCoinFilled,
+	IconCreditCard,
+	IconEyeFilled,
+	IconFolderFilled,
+	IconGiftFilled,
+	IconStack2Filled,
+	IconUserFilled,
+	IconUserPlus,
+	IconZoomScanFilled,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { cn } from "@foglamp/ui/lib/utils";
 import { useEntranceOnce } from "@/components/app/hooks";
 import { PageHeader, StatCard } from "@/components/app/page-parts";
 import { formatCount } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
+import { cn } from "@foglamp/ui/lib/utils";
 
 function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB", "TB"];
-  let value = bytes;
-  let unit = "B";
-  for (const u of units) {
-    value /= 1024;
-    unit = u;
-    if (value < 1024) break;
-  }
-  return `${value.toFixed(value >= 100 ? 0 : 1)} ${unit}`;
+	if (bytes < 1024) return `${bytes} B`;
+	const units = ["KB", "MB", "GB", "TB"];
+	let value = bytes;
+	let unit = "B";
+	for (const u of units) {
+		value /= 1024;
+		unit = u;
+		if (value < 1024) break;
+	}
+	return `${value.toFixed(value >= 100 ? 0 : 1)} ${unit}`;
 }
 
 function formatMrr(cents: number | null): string {
-  if (cents === null) return "—";
-  const dollars = cents / 100;
-  return `$${dollars.toLocaleString("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: dollars % 1 === 0 ? 0 : 2,
-  })}/mo`;
+	if (cents === null) return "—";
+	const dollars = cents / 100;
+	return `$${dollars.toLocaleString("en-US", {
+		minimumFractionDigits: 0,
+		maximumFractionDigits: dollars % 1 === 0 ? 0 : 2,
+	})}/mo`;
 }
 
 function initials(value: string): string {
-  return value.slice(0, 2).toUpperCase();
+	return value.slice(0, 2).toUpperCase();
 }
 
 // Icon + accent per plan, so the Plans card reads like the Signup funnel.
 // Unknown plans fall back to a neutral card icon.
 const PLAN_STYLE: Record<string, { icon: Icon; className: string }> = {
-  free: { icon: IconUserFilled, className: "text-sky-500" },
-  pro: { icon: IconBoltFilled, className: "text-amber-500" },
-  team: { icon: IconBuilding, className: "text-violet-500" },
-  enterprise: { icon: IconBuildingSkyscraper, className: "text-emerald-500" },
-  comp: { icon: IconGiftFilled, className: "text-fuchsia-500" },
+	free: { icon: IconUserFilled, className: "text-sky-500" },
+	pro: { icon: IconBoltFilled, className: "text-amber-500" },
+	team: { icon: IconBuilding, className: "text-violet-500" },
+	enterprise: { icon: IconBuildingSkyscraper, className: "text-emerald-500" },
+	comp: { icon: IconGiftFilled, className: "text-fuchsia-500" },
 };
 const PLAN_STYLE_FALLBACK = {
-  icon: IconCreditCard,
-  className: "text-muted-foreground",
+	icon: IconCreditCard,
+	className: "text-muted-foreground",
 };
 
 // Comp an org to enterprise limits for a chosen window. Grants are enforced at
 // plan-resolution time (getOrgPlan), so revocations/expiries apply within ~60s
 // (the ingest plan cache TTL).
 function AccessGrantsCard({ className }: { className?: string }) {
-  const qc = useQueryClient();
-  const [query, setQuery] = useState("");
-  const [days, setDays] = useState("30");
-  // Target kept set while the dialog animates closed so its name doesn't
-  // blank out mid-animation; `revokeOpen` alone drives visibility.
-  const [revokeTarget, setRevokeTarget] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const [revokeOpen, setRevokeOpen] = useState(false);
+	const qc = useQueryClient();
+	const [query, setQuery] = useState("");
+	const [days, setDays] = useState("30");
+	// Target kept set while the dialog animates closed so its name doesn't
+	// blank out mid-animation; `revokeOpen` alone drives visibility.
+	const [revokeTarget, setRevokeTarget] = useState<{
+		id: string;
+		name: string;
+	} | null>(null);
+	const [revokeOpen, setRevokeOpen] = useState(false);
 
-  const search = useQuery({
-    ...trpc.platform.searchOrgs.queryOptions({ query }),
-    enabled: query.trim().length > 0,
-  });
-  const grants = useQuery(trpc.platform.accessGrants.queryOptions());
+	const search = useQuery({
+		...trpc.platform.searchOrgs.queryOptions({ query }),
+		enabled: query.trim().length > 0,
+	});
+	const grants = useQuery(trpc.platform.accessGrants.queryOptions());
 
-  const refresh = () => {
-    void qc.invalidateQueries({
-      queryKey: trpc.platform.accessGrants.queryKey(),
-    });
-    void qc.invalidateQueries({
-      queryKey: trpc.platform.searchOrgs.queryKey(),
-    });
-  };
+	const refresh = () => {
+		void qc.invalidateQueries({
+			queryKey: trpc.platform.accessGrants.queryKey(),
+		});
+		void qc.invalidateQueries({
+			queryKey: trpc.platform.searchOrgs.queryKey(),
+		});
+	};
 
-  const grant = useMutation(
-    trpc.platform.grantAccess.mutationOptions({
-      onSuccess: () => {
-        toast.success("Unlimited access granted.");
-        refresh();
-      },
-      onError: (e) => toast.error(e.message),
-    }),
-  );
-  const revoke = useMutation(
-    trpc.platform.revokeAccess.mutationOptions({
-      onSuccess: () => {
-        toast.success("Access grant revoked.");
-        setRevokeOpen(false);
-        refresh();
-      },
-      onError: (e) => toast.error(e.message),
-    }),
-  );
+	const grant = useMutation(
+		trpc.platform.grantAccess.mutationOptions({
+			onSuccess: () => {
+				toast.success("Unlimited access granted.");
+				refresh();
+			},
+			onError: (e) => toast.error(e.message),
+		}),
+	);
+	const revoke = useMutation(
+		trpc.platform.revokeAccess.mutationOptions({
+			onSuccess: () => {
+				toast.success("Access grant revoked.");
+				setRevokeOpen(false);
+				refresh();
+			},
+			onError: (e) => toast.error(e.message),
+		}),
+	);
 
-  const grantLabel = (expiresAt: Date | string | null) => {
-    if (!expiresAt) return "no expiry";
-    const d = new Date(expiresAt);
-    return d.getTime() < Date.now()
-      ? `expired ${d.toLocaleDateString()}`
-      : `until ${d.toLocaleDateString()}`;
-  };
+	const grantLabel = (expiresAt: Date | string | null) => {
+		if (!expiresAt) return "no expiry";
+		const d = new Date(expiresAt);
+		return d.getTime() < Date.now()
+			? `expired ${d.toLocaleDateString()}`
+			: `until ${d.toLocaleDateString()}`;
+	};
 
-  return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Access grants</CardTitle>
-        <CardDescription>
-          Comp an org to enterprise limits (unlimited spans, 90-day retention)
-          for a period. Takes effect within a minute.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Search orgs by name, slug, or owner email…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <NativeSelect
-            value={days}
-            onChange={(e) => setDays(e.target.value)}
-            className="w-32 shrink-0"
-          >
-            <NativeSelectOption value="7">7 days</NativeSelectOption>
-            <NativeSelectOption value="30">30 days</NativeSelectOption>
-            <NativeSelectOption value="90">90 days</NativeSelectOption>
-            <NativeSelectOption value="365">1 year</NativeSelectOption>
-            <NativeSelectOption value="forever">No expiry</NativeSelectOption>
-          </NativeSelect>
-        </div>
+	return (
+		<Card className={className}>
+			<CardHeader>
+				<CardTitle>Access grants</CardTitle>
+				<CardDescription>
+					Comp an org to enterprise limits (unlimited spans, 90-day retention)
+					for a period. Takes effect within a minute.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="flex flex-col gap-4">
+				<div className="flex gap-2">
+					<Input
+						placeholder="Search orgs by name, slug, or owner email…"
+						value={query}
+						onChange={(e) => setQuery(e.target.value)}
+					/>
+					<NativeSelect
+						value={days}
+						onChange={(e) => setDays(e.target.value)}
+						className="w-32 shrink-0"
+					>
+						<NativeSelectOption value="7">7 days</NativeSelectOption>
+						<NativeSelectOption value="30">30 days</NativeSelectOption>
+						<NativeSelectOption value="90">90 days</NativeSelectOption>
+						<NativeSelectOption value="365">1 year</NativeSelectOption>
+						<NativeSelectOption value="forever">No expiry</NativeSelectOption>
+					</NativeSelect>
+				</div>
 
-        {query.trim().length > 0 && (
-          <div className="flex flex-col">
-            {(search.data ?? []).map((org) => (
-              <div
-                key={org.id}
-                className="flex items-center justify-between border-t border-border/50 py-1.5 text-sm"
-              >
-                <div className="min-w-0">
-                  <span className="truncate">{org.name}</span>{" "}
-                  <span className="text-xs text-muted-foreground">
-                    {org.ownerEmail ?? "no owner"}
-                    {org.planOverride
-                      ? ` · comped (${grantLabel(org.overrideExpiresAt)})`
-                      : ""}
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  disabled={grant.isPending}
-                  onClick={() =>
-                    grant.mutate({
-                      orgId: org.id,
-                      days: days === "forever" ? null : Number(days),
-                    })
-                  }
-                >
-                  Grant
-                </Button>
-              </div>
-            ))}
-            {search.isSuccess && search.data.length === 0 && (
-              <p className="py-2 text-sm text-muted-foreground">
-                No orgs match.
-              </p>
-            )}
-          </div>
-        )}
+				{query.trim().length > 0 && (
+					<div className="flex flex-col">
+						{(search.data ?? []).map((org) => (
+							<div
+								key={org.id}
+								className="flex items-center justify-between border-t border-border/50 py-1.5 text-sm"
+							>
+								<div className="min-w-0">
+									<span className="truncate">{org.name}</span>{" "}
+									<span className="text-xs text-muted-foreground">
+										{org.ownerEmail ?? "no owner"}
+										{org.planOverride
+											? ` · comped (${grantLabel(org.overrideExpiresAt)})`
+											: ""}
+									</span>
+								</div>
+								<Button
+									size="sm"
+									disabled={grant.isPending}
+									onClick={() =>
+										grant.mutate({
+											orgId: org.id,
+											days: days === "forever" ? null : Number(days),
+										})
+									}
+								>
+									Grant
+								</Button>
+							</div>
+						))}
+						{search.isSuccess && search.data.length === 0 && (
+							<p className="py-2 text-sm text-muted-foreground">
+								No orgs match.
+							</p>
+						)}
+					</div>
+				)}
 
-        <div>
-          <p className="mb-1 text-xs font-medium text-muted-foreground">
-            Active grants
-          </p>
-          {(grants.data ?? []).map((org) => (
-            <div
-              key={org.id}
-              className="flex items-center justify-between border-t border-border/50 py-1.5 text-sm"
-            >
-              <div className="min-w-0">
-                <span className="truncate">{org.name}</span>{" "}
-                <span className="text-xs text-muted-foreground">
-                  {org.ownerEmail ?? "no owner"} ·{" "}
-                  {grantLabel(org.overrideExpiresAt)}
-                </span>
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-destructive"
-                disabled={revoke.isPending}
-                onClick={() => {
-                  setRevokeTarget({ id: org.id, name: org.name });
-                  setRevokeOpen(true);
-                }}
-              >
-                Revoke
-              </Button>
-            </div>
-          ))}
-          {grants.isSuccess && grants.data.length === 0 && (
-            <p className="py-2 text-sm text-muted-foreground">
-              No orgs are comped right now.
-            </p>
-          )}
-        </div>
-      </CardContent>
+				<div>
+					<p className="mb-1 text-xs font-medium text-muted-foreground">
+						Active grants
+					</p>
+					{(grants.data ?? []).map((org) => (
+						<div
+							key={org.id}
+							className="flex items-center justify-between border-t border-border/50 py-1.5 text-sm"
+						>
+							<div className="min-w-0">
+								<span className="truncate">{org.name}</span>{" "}
+								<span className="text-xs text-muted-foreground">
+									{org.ownerEmail ?? "no owner"} ·{" "}
+									{grantLabel(org.overrideExpiresAt)}
+								</span>
+							</div>
+							<Button
+								size="sm"
+								variant="ghost"
+								className="text-destructive"
+								disabled={revoke.isPending}
+								onClick={() => {
+									setRevokeTarget({ id: org.id, name: org.name });
+									setRevokeOpen(true);
+								}}
+							>
+								Revoke
+							</Button>
+						</div>
+					))}
+					{grants.isSuccess && grants.data.length === 0 && (
+						<p className="py-2 text-sm text-muted-foreground">
+							No orgs are comped right now.
+						</p>
+					)}
+				</div>
+			</CardContent>
 
-      <AlertDialog open={revokeOpen} onOpenChange={setRevokeOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Revoke access for {revokeTarget?.name}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              The org drops back to its paid or free plan limits within a
-              minute.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={revoke.isPending}
-              onClick={() =>
-                revokeTarget && revoke.mutate({ orgId: revokeTarget.id })
-              }
-            >
-              Revoke
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Card>
-  );
+			<AlertDialog open={revokeOpen} onOpenChange={setRevokeOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							Revoke access for {revokeTarget?.name}?
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							The org drops back to its paid or free plan limits within a
+							minute.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
+							disabled={revoke.isPending}
+							onClick={() =>
+								revokeTarget && revoke.mutate({ orgId: revokeTarget.id })
+							}
+						>
+							Revoke
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</Card>
+	);
 }
 
 // Operator-only platform overview (gated server-side by PLATFORM_ADMIN_EMAILS;
 // the stats query 403s for anyone else, so this page renders nothing useful
 // even if reached directly).
 export function PlatformClient() {
-  const entrance = useEntranceOnce();
-  const stats = useQuery({
-    ...trpc.platform.stats.queryOptions(),
-    refetchInterval: 60_000,
-  });
+	const entrance = useEntranceOnce();
+	const stats = useQuery({
+		...trpc.platform.stats.queryOptions(),
+		refetchInterval: 60_000,
+	});
 
-  if (stats.error) {
-    return (
-      <>
-        <PageHeader title="Platform" />
-        <p className="text-sm text-muted-foreground">
-          You don&apos;t have access to platform stats.
-        </p>
-      </>
-    );
-  }
+	if (stats.error) {
+		return (
+			<>
+				<PageHeader title="Platform" />
+				<p className="text-sm text-muted-foreground">
+					You don&apos;t have access to platform stats.
+				</p>
+			</>
+		);
+	}
 
-  const d = stats.data;
-  if (!d) {
-    return (
-      <>
-        <PageHeader title="Platform" />
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </>
-    );
-  }
+	const d = stats.data;
+	if (!d) {
+		return (
+			<>
+				<PageHeader title="Platform" />
+				<p className="text-sm text-muted-foreground">Loading…</p>
+			</>
+		);
+	}
 
-  const funnelSteps = [
-    {
-      label: "Signed up",
-      value: d.funnel.users,
-      icon: IconUserFilled,
-      iconClassName: "text-sky-500",
-    },
-    {
-      label: "Org with a project",
-      value: d.funnel.orgsWithProjects,
-      icon: IconFolderFilled,
-      iconClassName: "text-emerald-500",
-    },
-    {
-      label: "Sent spans (30d)",
-      value: d.funnel.orgsActive30d,
-      icon: IconStack2Filled,
-      iconClassName: "text-fuchsia-500",
-    },
-    {
-      label: "Paying",
-      value: d.funnel.paidOrgs,
-      icon: IconCoinFilled,
-      iconClassName: "text-amber-500",
-    },
-  ];
-  const funnelMax = Math.max(1, ...funnelSteps.map((s) => s.value));
-  const planMax = Math.max(1, ...d.plans.map((p) => p.orgs));
+	const funnelSteps = [
+		{
+			label: "Signed up",
+			value: d.funnel.users,
+			icon: IconUserFilled,
+			iconClassName: "text-sky-500",
+		},
+		{
+			label: "Org with a project",
+			value: d.funnel.orgsWithProjects,
+			icon: IconFolderFilled,
+			iconClassName: "text-emerald-500",
+		},
+		{
+			label: "Sent spans (30d)",
+			value: d.funnel.orgsActive30d,
+			icon: IconStack2Filled,
+			iconClassName: "text-fuchsia-500",
+		},
+		{
+			label: "Paying",
+			value: d.funnel.paidOrgs,
+			icon: IconCoinFilled,
+			iconClassName: "text-amber-500",
+		},
+	];
+	const funnelMax = Math.max(1, ...funnelSteps.map((s) => s.value));
+	const planMax = Math.max(1, ...d.plans.map((p) => p.orgs));
 
-  return (
-    <>
-      {/* This page has no header.tsx shared with loading.tsx, so its own
+	return (
+		<>
+			{/* This page has no header.tsx shared with loading.tsx, so its own
           header is a plain top-level slot — fade it along with the rest. */}
-      <div className={cn(entrance && "page-fade-in")}>
-        <PageHeader
-          title="Platform"
-          description="Cross-org numbers for the hosted deployment. Refreshes every minute."
-        />
-      </div>
+			<div className={cn(entrance && "page-fade-in")}>
+				<PageHeader
+					title="Platform"
+					description="Cross-org numbers for the hosted deployment. Refreshes every minute."
+				/>
+			</div>
 
-      <div
-        className={cn(
-          "grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5",
-          entrance && "page-fade-in",
-        )}
-      >
-        <StatCard
-          label="MRR"
-          size="sm"
-          value={d.mrrCents ?? "—"}
-          formatValue={formatMrr}
-          icon={IconCoinFilled}
-          iconClassName="text-amber-500"
-        />
-        <StatCard
-          label="Users"
-          size="sm"
-          value={d.totals.users}
-          formatValue={formatCount}
-          icon={IconUserFilled}
-          iconClassName="text-sky-500"
-        />
-        <StatCard
-          label="New users (7d)"
-          size="sm"
-          value={d.totals.usersLast7d}
-          formatValue={formatCount}
-          icon={IconUserPlus}
-          iconClassName="text-emerald-500"
-        />
-        <StatCard
-          label="Organizations"
-          size="sm"
-          value={d.totals.orgs}
-          formatValue={formatCount}
-          icon={IconBuilding}
-          iconClassName="text-violet-500"
-        />
-        <StatCard
-          label="Projects"
-          size="sm"
-          value={d.totals.projects}
-          formatValue={formatCount}
-          icon={IconFolderFilled}
-          iconClassName="text-teal-500"
-        />
-        <StatCard
-          label="Paid subs"
-          size="sm"
-          value={d.totals.activeSubscriptions}
-          formatValue={formatCount}
-          icon={IconCreditCard}
-          iconClassName="text-rose-500"
-        />
-        <StatCard
-          label="Spans (24h)"
-          size="sm"
-          value={d.spans.last24h}
-          formatValue={formatCount}
-          icon={IconStack2Filled}
-          iconClassName="text-fuchsia-500"
-        />
-        <StatCard
-          label="Scans"
-          size="sm"
-          value={d.scans.total}
-          formatValue={formatCount}
-          icon={IconZoomScanFilled}
-          iconClassName="text-orange-500"
-        />
-        <StatCard
-          label="New scans (7d)"
-          size="sm"
-          value={d.scans.last7d}
-          formatValue={formatCount}
-          icon={IconZoomScanFilled}
-          iconClassName="text-lime-500"
-        />
-        <StatCard
-          label="Scan views"
-          size="sm"
-          value={d.scans.views}
-          formatValue={formatCount}
-          icon={IconEyeFilled}
-          iconClassName="text-cyan-500"
-        />
-      </div>
+			<div
+				className={cn(
+					"grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5",
+					entrance && "page-fade-in",
+				)}
+			>
+				<StatCard
+					label="MRR"
+					size="sm"
+					value={d.mrrCents ?? "—"}
+					formatValue={formatMrr}
+					icon={IconCoinFilled}
+					iconClassName="text-amber-500"
+				/>
+				<StatCard
+					label="Users"
+					size="sm"
+					value={d.totals.users}
+					formatValue={formatCount}
+					icon={IconUserFilled}
+					iconClassName="text-sky-500"
+				/>
+				<StatCard
+					label="New users (7d)"
+					size="sm"
+					value={d.totals.usersLast7d}
+					formatValue={formatCount}
+					icon={IconUserPlus}
+					iconClassName="text-emerald-500"
+				/>
+				<StatCard
+					label="Organizations"
+					size="sm"
+					value={d.totals.orgs}
+					formatValue={formatCount}
+					icon={IconBuilding}
+					iconClassName="text-violet-500"
+				/>
+				<StatCard
+					label="Projects"
+					size="sm"
+					value={d.totals.projects}
+					formatValue={formatCount}
+					icon={IconFolderFilled}
+					iconClassName="text-teal-500"
+				/>
+				<StatCard
+					label="Paid subs"
+					size="sm"
+					value={d.totals.activeSubscriptions}
+					formatValue={formatCount}
+					icon={IconCreditCard}
+					iconClassName="text-rose-500"
+				/>
+				<StatCard
+					label="Spans (24h)"
+					size="sm"
+					value={d.spans.last24h}
+					formatValue={formatCount}
+					icon={IconStack2Filled}
+					iconClassName="text-fuchsia-500"
+				/>
+				<StatCard
+					label="Scans"
+					size="sm"
+					value={d.scans.total}
+					formatValue={formatCount}
+					icon={IconZoomScanFilled}
+					iconClassName="text-orange-500"
+				/>
+				<StatCard
+					label="New scans (7d)"
+					size="sm"
+					value={d.scans.last7d}
+					formatValue={formatCount}
+					icon={IconZoomScanFilled}
+					iconClassName="text-lime-500"
+				/>
+				<StatCard
+					label="Scan views"
+					size="sm"
+					value={d.scans.views}
+					formatValue={formatCount}
+					icon={IconEyeFilled}
+					iconClassName="text-cyan-500"
+				/>
+			</div>
 
-      <div
-        className={cn("grid gap-4 lg:grid-cols-3", entrance && "page-fade-in")}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>Signup funnel</CardTitle>
-            <CardDescription>Signup → project → usage → paid</CardDescription>
-          </CardHeader>
-          <CardContent className="mt-2 flex flex-col gap-6">
-            {funnelSteps.map((step) => (
-              <div key={step.label} className="flex flex-col gap-3.5">
-                <div className="flex justify-between text-sm">
-                  <span className="flex items-center gap-2">
-                    <step.icon className={`size-4 ${step.iconClassName}`} />
-                    {step.label}
-                  </span>
-                  <span className="tabular-nums text-muted-foreground">
-                    {formatCount(step.value)}
-                  </span>
-                </div>
-                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{
-                      width: `${Math.min(100, (step.value / funnelMax) * 100)}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+			<div
+				className={cn("grid gap-4 lg:grid-cols-3", entrance && "page-fade-in")}
+			>
+				<Card>
+					<CardHeader>
+						<CardTitle>Signup funnel</CardTitle>
+						<CardDescription>Signup → project → usage → paid</CardDescription>
+					</CardHeader>
+					<CardContent className="mt-2 flex flex-col gap-6">
+						{funnelSteps.map((step) => (
+							<div key={step.label} className="flex flex-col gap-3.5">
+								<div className="flex justify-between text-sm">
+									<span className="flex items-center gap-2">
+										<step.icon className={`size-4 ${step.iconClassName}`} />
+										{step.label}
+									</span>
+									<span className="tabular-nums text-muted-foreground">
+										{formatCount(step.value)}
+									</span>
+								</div>
+								<div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+									<div
+										className="h-full rounded-full bg-primary"
+										style={{
+											width: `${Math.min(100, (step.value / funnelMax) * 100)}%`,
+										}}
+									/>
+								</div>
+							</div>
+						))}
+					</CardContent>
+				</Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Plans</CardTitle>
-            <CardDescription>Organizations by plan</CardDescription>
-          </CardHeader>
-          <CardContent className="mt-2 flex flex-col gap-6">
-            {d.plans.map((p) => {
-              const style = PLAN_STYLE[p.plan] ?? PLAN_STYLE_FALLBACK;
-              return (
-                <div key={p.plan} className="flex flex-col gap-3.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2 capitalize">
-                      <style.icon className={`size-4 ${style.className}`} />
-                      {p.plan}
-                    </span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {formatCount(p.orgs)}
-                    </span>
-                  </div>
-                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{
-                        width: `${Math.min(100, (p.orgs / planMax) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+				<Card>
+					<CardHeader>
+						<CardTitle>Plans</CardTitle>
+						<CardDescription>Organizations by plan</CardDescription>
+					</CardHeader>
+					<CardContent className="mt-2 flex flex-col gap-6">
+						{d.plans.map((p) => {
+							const style = PLAN_STYLE[p.plan] ?? PLAN_STYLE_FALLBACK;
+							return (
+								<div key={p.plan} className="flex flex-col gap-3.5">
+									<div className="flex justify-between text-sm">
+										<span className="flex items-center gap-2 capitalize">
+											<style.icon className={`size-4 ${style.className}`} />
+											{p.plan}
+										</span>
+										<span className="tabular-nums text-muted-foreground">
+											{formatCount(p.orgs)}
+										</span>
+									</div>
+									<div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+										<div
+											className="h-full rounded-full bg-primary"
+											style={{
+												width: `${Math.min(100, (p.orgs / planMax) * 100)}%`,
+											}}
+										/>
+									</div>
+								</div>
+							);
+						})}
+					</CardContent>
+				</Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Signups, last 30 days</CardTitle>
-            <CardDescription>New users per day</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
-              <tbody>
-                {[...d.signupsByDay].reverse().map((row) => (
-                  <tr key={row.day} className="border-t border-border/50">
-                    <td className="py-1 tabular-nums">{row.day}</td>
-                    <td className="py-1 text-right tabular-nums">
-                      {formatCount(row.users)}
-                    </td>
-                  </tr>
-                ))}
-                {d.signupsByDay.length === 0 && (
-                  <tr>
-                    <td className="py-3 text-center text-muted-foreground">
-                      No signups in the last 30 days.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      </div>
+				<Card>
+					<CardHeader>
+						<CardTitle>Signups, last 30 days</CardTitle>
+						<CardDescription>New users per day</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<table className="w-full text-sm">
+							<tbody>
+								{[...d.signupsByDay].reverse().map((row) => (
+									<tr key={row.day} className="border-t border-border/50">
+										<td className="py-1 tabular-nums">{row.day}</td>
+										<td className="py-1 text-right tabular-nums">
+											{formatCount(row.users)}
+										</td>
+									</tr>
+								))}
+								{d.signupsByDay.length === 0 && (
+									<tr>
+										<td className="py-3 text-center text-muted-foreground">
+											No signups in the last 30 days.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					</CardContent>
+				</Card>
+			</div>
 
-      <div
-        className={cn("grid gap-4 lg:grid-cols-2", entrance && "page-fade-in")}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>Ingestion, last 30 days</CardTitle>
-            <CardDescription>
-              {formatCount(d.spans.last30d)} spans total
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="py-1 font-medium">Day</th>
-                  <th className="py-1 text-right font-medium">Spans</th>
-                  <th className="py-1 text-right font-medium">Errors</th>
-                  <th className="py-1 text-right font-medium">Error rate</th>
-                  <th className="py-1 text-right font-medium">Active orgs</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...d.usageByDay].reverse().map((row) => (
-                  <tr key={row.day} className="border-t border-border/50">
-                    <td className="py-2.5 tabular-nums">{row.day}</td>
-                    <td className="py-2.5 text-right tabular-nums">
-                      {formatCount(row.spans)}
-                    </td>
-                    <td className="py-2.5 text-right tabular-nums">
-                      {formatCount(row.errors)}
-                    </td>
-                    <td
-                      className={`py-2.5 text-right tabular-nums ${
-                        row.errorRate > 0.05 ? "text-destructive" : ""
-                      }`}
-                    >
-                      {(row.errorRate * 100).toFixed(1)}%
-                    </td>
-                    <td className="py-2.5 text-right tabular-nums">
-                      {row.activeOrgs}
-                    </td>
-                  </tr>
-                ))}
-                {d.usageByDay.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="py-3 text-center text-muted-foreground"
-                    >
-                      No usage yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+			<div
+				className={cn("grid gap-4 lg:grid-cols-2", entrance && "page-fade-in")}
+			>
+				<Card>
+					<CardHeader>
+						<CardTitle>Ingestion, last 30 days</CardTitle>
+						<CardDescription>
+							{formatCount(d.spans.last30d)} spans total
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<table className="w-full text-sm">
+							<thead>
+								<tr className="text-left text-xs text-muted-foreground">
+									<th className="py-1 font-medium">Day</th>
+									<th className="py-1 text-right font-medium">Spans</th>
+									<th className="py-1 text-right font-medium">Errors</th>
+									<th className="py-1 text-right font-medium">Error rate</th>
+									<th className="py-1 text-right font-medium">Active orgs</th>
+								</tr>
+							</thead>
+							<tbody>
+								{[...d.usageByDay].reverse().map((row) => (
+									<tr key={row.day} className="border-t border-border/50">
+										<td className="py-2.5 tabular-nums">{row.day}</td>
+										<td className="py-2.5 text-right tabular-nums">
+											{formatCount(row.spans)}
+										</td>
+										<td className="py-2.5 text-right tabular-nums">
+											{formatCount(row.errors)}
+										</td>
+										<td
+											className={`py-2.5 text-right tabular-nums ${
+												row.errorRate > 0.05 ? "text-destructive" : ""
+											}`}
+										>
+											{(row.errorRate * 100).toFixed(1)}%
+										</td>
+										<td className="py-2.5 text-right tabular-nums">
+											{row.activeOrgs}
+										</td>
+									</tr>
+								))}
+								{d.usageByDay.length === 0 && (
+									<tr>
+										<td
+											colSpan={5}
+											className="py-3 text-center text-muted-foreground"
+										>
+											No usage yet.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					</CardContent>
+				</Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Top organizations, last 30 days</CardTitle>
-            <CardDescription>
-              By span volume · includes new orgs
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col">
-            {d.topOrgs.map((org) => (
-              <div
-                key={org.orgId}
-                className="flex items-center justify-between gap-3 border-t border-border/50 py-2.5 first:border-t-0"
-              >
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <Avatar size="sm">
-                    {org.ownerImage ? (
-                      <AvatarImage src={org.ownerImage} alt="" />
-                    ) : null}
-                    <AvatarFallback>
-                      {initials(org.ownerEmail ?? org.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm">{org.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {org.ownerEmail ?? "no owner"}
-                    </span>
-                  </div>
-                </div>
-                <span className="shrink-0 text-sm tabular-nums">
-                  {org.spans > 0 ? (
-                    formatCount(org.spans)
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </span>
-              </div>
-            ))}
-            {d.topOrgs.length === 0 && (
-              <p className="py-3 text-center text-sm text-muted-foreground">
-                No organizations yet.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+				<Card>
+					<CardHeader>
+						<CardTitle>Top organizations, last 30 days</CardTitle>
+						<CardDescription>
+							By span volume · includes new orgs
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="flex flex-col">
+						{d.topOrgs.map((org) => (
+							<div
+								key={org.orgId}
+								className="flex items-center justify-between gap-3 border-t border-border/50 py-2.5 first:border-t-0"
+							>
+								<div className="flex min-w-0 items-center gap-2.5">
+									<Avatar size="sm">
+										{org.ownerImage ? (
+											<AvatarImage src={org.ownerImage} alt="" />
+										) : null}
+										<AvatarFallback>
+											{initials(org.ownerEmail ?? org.name)}
+										</AvatarFallback>
+									</Avatar>
+									<div className="flex min-w-0 flex-col">
+										<span className="truncate text-sm">{org.name}</span>
+										<span className="truncate text-xs text-muted-foreground">
+											{org.ownerEmail ?? "no owner"}
+										</span>
+									</div>
+								</div>
+								<span className="shrink-0 text-sm tabular-nums">
+									{org.spans > 0 ? (
+										formatCount(org.spans)
+									) : (
+										<span className="text-muted-foreground">—</span>
+									)}
+								</span>
+							</div>
+						))}
+						{d.topOrgs.length === 0 && (
+							<p className="py-3 text-center text-sm text-muted-foreground">
+								No organizations yet.
+							</p>
+						)}
+					</CardContent>
+				</Card>
+			</div>
 
-      <AccessGrantsCard className={cn(entrance && "page-fade-in")} />
+			<AccessGrantsCard className={cn(entrance && "page-fade-in")} />
 
-      <div
-        className={cn("grid gap-4 lg:grid-cols-3", entrance && "page-fade-in")}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle>ClickHouse storage</CardTitle>
-            <CardDescription>Active parts per table</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="py-1 font-medium">Table</th>
-                  <th className="py-1 text-right font-medium">Rows</th>
-                  <th className="py-1 text-right font-medium">On disk</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.clickhouse.tables.map((t) => (
-                  <tr key={t.table} className="border-t border-border/50">
-                    <td className="py-1 font-mono text-xs">{t.table}</td>
-                    <td className="py-1 text-right tabular-nums">
-                      {formatCount(t.rows)}
-                    </td>
-                    <td className="py-1 text-right tabular-nums">
-                      {formatBytes(t.bytes)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+			<div
+				className={cn("grid gap-4 lg:grid-cols-3", entrance && "page-fade-in")}
+			>
+				<Card>
+					<CardHeader>
+						<CardTitle>ClickHouse storage</CardTitle>
+						<CardDescription>Active parts per table</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<table className="w-full text-sm">
+							<thead>
+								<tr className="text-left text-xs text-muted-foreground">
+									<th className="py-1 font-medium">Table</th>
+									<th className="py-1 text-right font-medium">Rows</th>
+									<th className="py-1 text-right font-medium">On disk</th>
+								</tr>
+							</thead>
+							<tbody>
+								{d.clickhouse.tables.map((t) => (
+									<tr key={t.table} className="border-t border-border/50">
+										<td className="py-1 font-mono text-xs">{t.table}</td>
+										<td className="py-1 text-right tabular-nums">
+											{formatCount(t.rows)}
+										</td>
+										<td className="py-1 text-right tabular-nums">
+											{formatBytes(t.bytes)}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</CardContent>
+				</Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Postgres storage</CardTitle>
-            <CardDescription>
-              {formatBytes(d.postgres.totalBytes)} total · heaviest tables
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="py-1 font-medium">Table</th>
-                  <th className="py-1 text-right font-medium">Size</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.postgres.tables.map((t) => (
-                  <tr key={t.table} className="border-t border-border/50">
-                    <td className="py-1 font-mono text-xs">{t.table}</td>
-                    <td className="py-1 text-right tabular-nums">
-                      {formatBytes(t.bytes)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+				<Card>
+					<CardHeader>
+						<CardTitle>Postgres storage</CardTitle>
+						<CardDescription>
+							{formatBytes(d.postgres.totalBytes)} total · heaviest tables
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<table className="w-full text-sm">
+							<thead>
+								<tr className="text-left text-xs text-muted-foreground">
+									<th className="py-1 font-medium">Table</th>
+									<th className="py-1 text-right font-medium">Size</th>
+								</tr>
+							</thead>
+							<tbody>
+								{d.postgres.tables.map((t) => (
+									<tr key={t.table} className="border-t border-border/50">
+										<td className="py-1 font-mono text-xs">{t.table}</td>
+										<td className="py-1 text-right tabular-nums">
+											{formatBytes(t.bytes)}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</CardContent>
+				</Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>ClickHouse disks</CardTitle>
-            <CardDescription>
-              Watch free space — the VM disk fills before anything else breaks.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {d.clickhouse.disks.map((disk) => {
-              const used = disk.totalBytes - disk.freeBytes;
-              const pct = disk.totalBytes ? used / disk.totalBytes : 0;
-              return (
-                <div key={disk.name} className="flex flex-col gap-1">
-                  <div className="flex items-baseline justify-between text-sm">
-                    <span className="font-mono text-xs">{disk.name}</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {formatBytes(used)} / {formatBytes(disk.totalBytes)} (
-                      {Math.round(pct * 100)}%)
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full rounded bg-muted">
-                    <div
-                      className={`h-1.5 rounded ${pct > 0.85 ? "bg-destructive" : "bg-primary"}`}
-                      style={{ width: `${Math.min(100, pct * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      </div>
-    </>
-  );
+				<Card>
+					<CardHeader>
+						<CardTitle>ClickHouse disks</CardTitle>
+						<CardDescription>
+							Watch free space — the VM disk fills before anything else breaks.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="flex flex-col gap-3">
+						{d.clickhouse.disks.map((disk) => {
+							const used = disk.totalBytes - disk.freeBytes;
+							const pct = disk.totalBytes ? used / disk.totalBytes : 0;
+							return (
+								<div key={disk.name} className="flex flex-col gap-1">
+									<div className="flex items-baseline justify-between text-sm">
+										<span className="font-mono text-xs">{disk.name}</span>
+										<span className="tabular-nums text-muted-foreground">
+											{formatBytes(used)} / {formatBytes(disk.totalBytes)} (
+											{Math.round(pct * 100)}%)
+										</span>
+									</div>
+									<div className="h-1.5 w-full rounded bg-muted">
+										<div
+											className={`h-1.5 rounded ${pct > 0.85 ? "bg-destructive" : "bg-primary"}`}
+											style={{ width: `${Math.min(100, pct * 100)}%` }}
+										/>
+									</div>
+								</div>
+							);
+						})}
+					</CardContent>
+				</Card>
+			</div>
+		</>
+	);
 }

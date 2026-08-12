@@ -1,46 +1,54 @@
 "use client";
 
 import {
-  Children,
-  createContext,
-  isValidElement,
-  use,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type ComponentProps,
-  type FC,
-  type ReactElement,
-  type ReactNode,
+	type ChartConfig,
+	ChartContainer,
+	LoadingIndicator,
+	axisValueToPercentFormatter,
+	getColorsCount,
+	getLoadingData,
+} from "@/components/evilcharts/ui/chart";
+import { ChartDot, type DotVariant } from "@/components/evilcharts/ui/dot";
+import {
+	EvilBrush,
+	type EvilBrushRange,
+	useEvilBrush,
+} from "@/components/evilcharts/ui/evil-brush";
+import {
+	ChartLegend,
+	ChartLegendContent,
+	type ChartLegendVariant,
+} from "@/components/evilcharts/ui/legend";
+import {
+	ChartTooltip,
+	ChartTooltipContent,
+	type TooltipRoundness,
+	type TooltipVariant,
+} from "@/components/evilcharts/ui/tooltip";
+import { motion, useReducedMotion } from "motion/react";
+import {
+	Children,
+	type ComponentProps,
+	type FC,
+	type ReactElement,
+	type ReactNode,
+	createContext,
+	isValidElement,
+	use,
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
 } from "react";
 import {
-  axisValueToPercentFormatter,
-  type ChartConfig,
-  ChartContainer,
-  getColorsCount,
-  getLoadingData,
-  LoadingIndicator,
-} from "@/components/evilcharts/ui/chart";
-import {
-  Area as RechartsArea,
-  AreaChart as RechartsAreaChart,
-  CartesianGrid,
-  XAxis as RechartsXAxis,
-  YAxis as RechartsYAxis,
+	CartesianGrid,
+	Area as RechartsArea,
+	AreaChart as RechartsAreaChart,
+	XAxis as RechartsXAxis,
+	YAxis as RechartsYAxis,
 } from "recharts";
-import {
-  ChartTooltip,
-  ChartTooltipContent,
-  type TooltipRoundness,
-  type TooltipVariant,
-} from "@/components/evilcharts/ui/tooltip";
-import { ChartLegend, ChartLegendContent, type ChartLegendVariant } from "@/components/evilcharts/ui/legend";
-import { EvilBrush, useEvilBrush, type EvilBrushRange } from "@/components/evilcharts/ui/evil-brush";
-import { ChartDot, type DotVariant } from "@/components/evilcharts/ui/dot";
-import { motion, useReducedMotion } from "motion/react";
 
 // Constants
 const STROKE_WIDTH = 0.8;
@@ -53,7 +61,13 @@ const REVEAL_EASE: [number, number, number, number] = [0, 0.7, 0.5, 1]; // intro
 type CurveType = ComponentProps<typeof RechartsArea>["type"];
 type AreaDotProp = ComponentProps<typeof RechartsArea>["dot"];
 type AreaActiveDotProp = ComponentProps<typeof RechartsArea>["activeDot"];
-type AreaVariant = "gradient" | "gradient-reverse" | "solid" | "dotted" | "lines" | "hatched";
+type AreaVariant =
+	| "gradient"
+	| "gradient-reverse"
+	| "solid"
+	| "dotted"
+	| "lines"
+	| "hatched";
 type StrokeVariant = "solid" | "dashed" | "animated-dashed";
 type StackType = "default" | "expanded" | "stacked";
 
@@ -66,7 +80,12 @@ type StackType = "default" | "expanded" | "stacked";
  * static chart. `"none"` opts out entirely; it is also what a device with the
  * OS "reduce motion" preference falls back to automatically.
  */
-type AreaAnimationType = "none" | "left-to-right" | "right-to-left" | "center-out" | "edges-in";
+type AreaAnimationType =
+	| "none"
+	| "left-to-right"
+	| "right-to-left"
+	| "center-out"
+	| "edges-in";
 type RevealAnimationType = Exclude<AreaAnimationType, "none">;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,29 +98,29 @@ type RevealAnimationType = Exclude<AreaAnimationType, "none">;
  * Sub-components are composed freely — the provider is the single source of truth.
  */
 type AreaChartContextValue = {
-  config: ChartConfig; // colors + labels for every series
-  curveType: CurveType; // default curve interpolation each <Area /> inherits
-  animationType: AreaAnimationType; // default intro reveal each <Area /> inherits
-  isStacked: boolean; // whether areas stack on top of each other
-  isExpanded: boolean; // whether the stack is normalized to 100%
-  isLoading: boolean; // whether the chart shows its loading skeleton
-  selectedDataKey: string | null; // currently selected series, or null when none
-  selectDataKey: (dataKey: string | null) => void; // sets the selected series
+	config: ChartConfig; // colors + labels for every series
+	curveType: CurveType; // default curve interpolation each <Area /> inherits
+	animationType: AreaAnimationType; // default intro reveal each <Area /> inherits
+	isStacked: boolean; // whether areas stack on top of each other
+	isExpanded: boolean; // whether the stack is normalized to 100%
+	isLoading: boolean; // whether the chart shows its loading skeleton
+	selectedDataKey: string | null; // currently selected series, or null when none
+	selectDataKey: (dataKey: string | null) => void; // sets the selected series
 };
 
 const AreaChartContext = createContext<AreaChartContextValue | null>(null);
 
 // Reads the chart context, throwing a helpful error when used outside <EvilAreaChart />
 function useAreaChart() {
-  const context = use(AreaChartContext);
+	const context = use(AreaChartContext);
 
-  if (!context) {
-    throw new Error(
-      "Area chart parts (<Area />, <XAxis />, …) must be used within <EvilAreaChart />",
-    );
-  }
+	if (!context) {
+		throw new Error(
+			"Area chart parts (<Area />, <XAxis />, …) must be used within <EvilAreaChart />",
+		);
+	}
 
-  return context;
+	return context;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,36 +129,36 @@ function useAreaChart() {
 
 // Validates that every config key also exists on the data row type
 type ValidateConfigKeys<TData, TConfig> = {
-  [K in keyof TConfig]: K extends keyof TData ? ChartConfig[string] : never;
+	[K in keyof TConfig]: K extends keyof TData ? ChartConfig[string] : never;
 };
 
 type EvilAreaChartBaseProps<
-  TData extends Record<string, unknown>,
-  TConfig extends Record<string, ChartConfig[string]>,
+	TData extends Record<string, unknown>,
+	TConfig extends Record<string, ChartConfig[string]>,
 > = {
-  config: TConfig & ValidateConfigKeys<TData, TConfig>; // series colors + labels
-  data: TData[]; // rows rendered by the chart
-  children: ReactNode; // composed parts — <Area />, <XAxis />, <Legend />, …
-  className?: string; // extra classes for the chart container
-  chartProps?: ComponentProps<typeof RechartsAreaChart>; // escape hatch for the raw Recharts chart
-  curveType?: CurveType; // default curve interpolation for every <Area />
-  animationType?: AreaAnimationType; // default intro reveal for every <Area />
-  stackType?: StackType; // how multiple areas combine
-  selectedDataKey?: string | null; // controlled selected series — drives selection from outside the chart
-  defaultSelectedDataKey?: string | null; // series selected on first render (uncontrolled)
-  onSelectionChange?: (selectedDataKey: string | null) => void; // fires when the selected series changes
-  isLoading?: boolean; // shows the animated loading skeleton
-  loadingPoints?: number; // number of points in the loading skeleton
-  showBrush?: boolean; // renders a zoom brush below the chart
-  xDataKey?: keyof TData & string; // x-axis key — only needed for the brush footer
-  brushHeight?: number; // height of the brush preview in pixels
-  brushFormatLabel?: (value: unknown, index: number) => string; // formats brush axis labels
-  onBrushChange?: (range: EvilBrushRange) => void; // fires when the brush range changes
+	config: TConfig & ValidateConfigKeys<TData, TConfig>; // series colors + labels
+	data: TData[]; // rows rendered by the chart
+	children: ReactNode; // composed parts — <Area />, <XAxis />, <Legend />, …
+	className?: string; // extra classes for the chart container
+	chartProps?: ComponentProps<typeof RechartsAreaChart>; // escape hatch for the raw Recharts chart
+	curveType?: CurveType; // default curve interpolation for every <Area />
+	animationType?: AreaAnimationType; // default intro reveal for every <Area />
+	stackType?: StackType; // how multiple areas combine
+	selectedDataKey?: string | null; // controlled selected series — drives selection from outside the chart
+	defaultSelectedDataKey?: string | null; // series selected on first render (uncontrolled)
+	onSelectionChange?: (selectedDataKey: string | null) => void; // fires when the selected series changes
+	isLoading?: boolean; // shows the animated loading skeleton
+	loadingPoints?: number; // number of points in the loading skeleton
+	showBrush?: boolean; // renders a zoom brush below the chart
+	xDataKey?: keyof TData & string; // x-axis key — only needed for the brush footer
+	brushHeight?: number; // height of the brush preview in pixels
+	brushFormatLabel?: (value: unknown, index: number) => string; // formats brush axis labels
+	onBrushChange?: (range: EvilBrushRange) => void; // fires when the brush range changes
 };
 
 type EvilAreaChartProps<
-  TData extends Record<string, unknown>,
-  TConfig extends Record<string, ChartConfig[string]>,
+	TData extends Record<string, unknown>,
+	TConfig extends Record<string, ChartConfig[string]>,
 > = EvilAreaChartBaseProps<TData, TConfig>;
 
 /**
@@ -149,118 +168,128 @@ type EvilAreaChartProps<
  * so a consumer renders exactly the parts they need.
  */
 export function EvilAreaChart<
-  TData extends Record<string, unknown>,
-  TConfig extends Record<string, ChartConfig[string]>,
+	TData extends Record<string, unknown>,
+	TConfig extends Record<string, ChartConfig[string]>,
 >({
-  config,
-  data,
-  children,
-  className,
-  chartProps,
-  curveType = "linear",
-  animationType = "left-to-right",
-  stackType = "default",
-  selectedDataKey: controlledSelectedDataKey,
-  defaultSelectedDataKey = null,
-  onSelectionChange,
-  isLoading = false,
-  loadingPoints,
-  showBrush = false,
-  xDataKey,
-  brushHeight,
-  brushFormatLabel,
-  onBrushChange,
+	config,
+	data,
+	children,
+	className,
+	chartProps,
+	curveType = "linear",
+	animationType = "left-to-right",
+	stackType = "default",
+	selectedDataKey: controlledSelectedDataKey,
+	defaultSelectedDataKey = null,
+	onSelectionChange,
+	isLoading = false,
+	loadingPoints,
+	showBrush = false,
+	xDataKey,
+	brushHeight,
+	brushFormatLabel,
+	onBrushChange,
 }: EvilAreaChartProps<TData, TConfig>) {
-  const chartId = useId().replace(/:/g, ""); // colon-free id keeps CSS/SVG selectors valid
-  const [internalSelectedDataKey, setInternalSelectedDataKey] =
-    useState<string | null>(defaultSelectedDataKey);
-  const { loadingData, onShimmerExit } = useLoadingData(isLoading, loadingPoints);
-  const { visibleData, brushProps } = useEvilBrush({ data });
+	const chartId = useId().replace(/:/g, ""); // colon-free id keeps CSS/SVG selectors valid
+	const [internalSelectedDataKey, setInternalSelectedDataKey] = useState<
+		string | null
+	>(defaultSelectedDataKey);
+	const { loadingData, onShimmerExit } = useLoadingData(
+		isLoading,
+		loadingPoints,
+	);
+	const { visibleData, brushProps } = useEvilBrush({ data });
 
-  // Controlled when a `selectedDataKey` prop is passed, otherwise self-managed.
-  const isControlled = controlledSelectedDataKey !== undefined;
-  const selectedDataKey = isControlled ? controlledSelectedDataKey : internalSelectedDataKey;
+	// Controlled when a `selectedDataKey` prop is passed, otherwise self-managed.
+	const isControlled = controlledSelectedDataKey !== undefined;
+	const selectedDataKey = isControlled
+		? controlledSelectedDataKey
+		: internalSelectedDataKey;
 
-  const isExpanded = stackType === "expanded";
-  const isStacked = stackType === "stacked" || isExpanded;
-  const displayData = showBrush && !isLoading ? visibleData : data;
+	const isExpanded = stackType === "expanded";
+	const isStacked = stackType === "stacked" || isExpanded;
+	const displayData = showBrush && !isLoading ? visibleData : data;
 
-  // Updates selection state and notifies the parent
-  const selectDataKey = useCallback(
-    (newSelectedDataKey: string | null) => {
-      if (!isControlled) setInternalSelectedDataKey(newSelectedDataKey);
-      onSelectionChange?.(newSelectedDataKey);
-    },
-    [isControlled, onSelectionChange],
-  );
+	// Updates selection state and notifies the parent
+	const selectDataKey = useCallback(
+		(newSelectedDataKey: string | null) => {
+			if (!isControlled) setInternalSelectedDataKey(newSelectedDataKey);
+			onSelectionChange?.(newSelectedDataKey);
+		},
+		[isControlled, onSelectionChange],
+	);
 
-  const contextValue = useMemo<AreaChartContextValue>(
-    () => ({
-      config,
-      curveType,
-      animationType,
-      isStacked,
-      isExpanded,
-      isLoading,
-      selectedDataKey,
-      selectDataKey,
-    }),
-    [
-      config,
-      curveType,
-      animationType,
-      isStacked,
-      isExpanded,
-      isLoading,
-      selectedDataKey,
-      selectDataKey,
-    ],
-  );
+	const contextValue = useMemo<AreaChartContextValue>(
+		() => ({
+			config,
+			curveType,
+			animationType,
+			isStacked,
+			isExpanded,
+			isLoading,
+			selectedDataKey,
+			selectDataKey,
+		}),
+		[
+			config,
+			curveType,
+			animationType,
+			isStacked,
+			isExpanded,
+			isLoading,
+			selectedDataKey,
+			selectDataKey,
+		],
+	);
 
-  return (
-    <AreaChartContext value={contextValue}>
-      <ChartContainer
-        className={className}
-        config={config}
-        footer={
-          showBrush &&
-          !isLoading && (
-            <EvilBrush
-              data={data}
-              chartConfig={config}
-              xDataKey={xDataKey}
-              variant="area"
-              curveType={curveType}
-              height={brushHeight}
-              formatLabel={brushFormatLabel}
-              stacked={isStacked}
-              skipStyle
-              className="mt-1"
-              {...brushProps}
-              onChange={(range) => {
-                brushProps.onChange(range);
-                onBrushChange?.(range);
-              }}
-            />
-          )
-        }
-      >
-        <LoadingIndicator isLoading={isLoading} />
-        <RechartsAreaChart
-          id={chartId}
-          accessibilityLayer
-          stackOffset={isExpanded ? "expand" : undefined}
-          data={isLoading ? loadingData : displayData}
-          {...chartProps}
-        >
-          {children}
-          {isLoading && (
-            <LoadingArea chartId={chartId} curveType={curveType} onShimmerExit={onShimmerExit} />
-          )}
-        </RechartsAreaChart>
-      </ChartContainer>
-    </AreaChartContext>
-  );
+	return (
+		<AreaChartContext value={contextValue}>
+			<ChartContainer
+				className={className}
+				config={config}
+				footer={
+					showBrush &&
+					!isLoading && (
+						<EvilBrush
+							data={data}
+							chartConfig={config}
+							xDataKey={xDataKey}
+							variant="area"
+							curveType={curveType}
+							height={brushHeight}
+							formatLabel={brushFormatLabel}
+							stacked={isStacked}
+							skipStyle
+							className="mt-1"
+							{...brushProps}
+							onChange={(range) => {
+								brushProps.onChange(range);
+								onBrushChange?.(range);
+							}}
+						/>
+					)
+				}
+			>
+				<LoadingIndicator isLoading={isLoading} />
+				<RechartsAreaChart
+					id={chartId}
+					accessibilityLayer
+					stackOffset={isExpanded ? "expand" : undefined}
+					data={isLoading ? loadingData : displayData}
+					{...chartProps}
+				>
+					{children}
+					{isLoading && (
+						<LoadingArea
+							chartId={chartId}
+							curveType={curveType}
+							onShimmerExit={onShimmerExit}
+						/>
+					)}
+				</RechartsAreaChart>
+			</ChartContainer>
+		</AreaChartContext>
+	);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -268,16 +297,16 @@ export function EvilAreaChart<
 // ─────────────────────────────────────────────────────────────────────────────
 
 type AreaProps = {
-  dataKey: string; // series key — must exist on the data and config
-  variant?: AreaVariant; // fill style for this area only
-  strokeVariant?: StrokeVariant; // stroke style for this area
-  curveType?: CurveType; // curve interpolation — falls back to the chart default
-  animationType?: AreaAnimationType; // intro reveal — falls back to the chart default
-  connectNulls?: boolean; // join segments across null/missing values
-  isClickable?: boolean; // lets this area be selected by clicking it
-  enableBufferLine?: boolean; // dashes this area's last stroke segment (fill stays solid)
-  children?: ReactNode; // optional <Dot /> and <ActiveDot /> composition
-  areaProps?: ComponentProps<typeof RechartsArea>; // escape hatch for raw Recharts Area props
+	dataKey: string; // series key — must exist on the data and config
+	variant?: AreaVariant; // fill style for this area only
+	strokeVariant?: StrokeVariant; // stroke style for this area
+	curveType?: CurveType; // curve interpolation — falls back to the chart default
+	animationType?: AreaAnimationType; // intro reveal — falls back to the chart default
+	connectNulls?: boolean; // join segments across null/missing values
+	isClickable?: boolean; // lets this area be selected by clicking it
+	enableBufferLine?: boolean; // dashes this area's last stroke segment (fill stays solid)
+	children?: ReactNode; // optional <Dot /> and <ActiveDot /> composition
+	areaProps?: ComponentProps<typeof RechartsArea>; // escape hatch for raw Recharts Area props
 };
 
 /**
@@ -288,119 +317,134 @@ type AreaProps = {
  * point markers.
  */
 export function Area({
-  dataKey,
-  variant = "gradient",
-  strokeVariant = "dashed",
-  curveType,
-  animationType,
-  connectNulls = false,
-  isClickable = false,
-  enableBufferLine,
-  children,
-  areaProps,
+	dataKey,
+	variant = "gradient",
+	strokeVariant = "dashed",
+	curveType,
+	animationType,
+	connectNulls = false,
+	isClickable = false,
+	enableBufferLine,
+	children,
+	areaProps,
 }: AreaProps) {
-  const {
-    config,
-    curveType: defaultCurve,
-    animationType: defaultAnimation,
-    isStacked,
-    isExpanded,
-    isLoading,
-    selectedDataKey,
-    selectDataKey,
-  } = useAreaChart();
-  const id = useId().replace(/:/g, ""); // unique id scopes this area's style defs
-  // Devices set to "reduce motion" skip the intro reveal entirely
-  const shouldReduceMotion = useReducedMotion();
+	const {
+		config,
+		curveType: defaultCurve,
+		animationType: defaultAnimation,
+		isStacked,
+		isExpanded,
+		isLoading,
+		selectedDataKey,
+		selectDataKey,
+	} = useAreaChart();
+	const id = useId().replace(/:/g, ""); // unique id scopes this area's style defs
+	// Devices set to "reduce motion" skip the intro reveal entirely
+	const shouldReduceMotion = useReducedMotion();
 
-  // The root renders the skeleton area while loading, so real areas step aside
-  if (isLoading) return null;
+	// The root renders the skeleton area while loading, so real areas step aside
+	if (isLoading) return null;
 
-  const resolvedCurve = curveType ?? defaultCurve;
+	const resolvedCurve = curveType ?? defaultCurve;
 
-  // The reveal is an animated SVG mask — heavier than a static chart — so
-  // `"none"` and the OS reduce-motion preference both opt out of it.
-  const revealType: AreaAnimationType = shouldReduceMotion
-    ? "none"
-    : (animationType ?? defaultAnimation);
-  const maskId = revealType === "none" ? undefined : `${id}-reveal-mask`;
+	// The reveal is an animated SVG mask — heavier than a static chart — so
+	// `"none"` and the OS reduce-motion preference both opt out of it.
+	const revealType: AreaAnimationType = shouldReduceMotion
+		? "none"
+		: (animationType ?? defaultAnimation);
+	const maskId = revealType === "none" ? undefined : `${id}-reveal-mask`;
 
-  const isSelected = selectedDataKey === dataKey;
-  const hasSelection = selectedDataKey !== null;
-  const opacity = getOpacity(selectedDataKey, dataKey);
-  const showUnselected = hasSelection && !isSelected;
+	const isSelected = selectedDataKey === dataKey;
+	const hasSelection = selectedDataKey !== null;
+	const opacity = getOpacity(selectedDataKey, dataKey);
+	const showUnselected = hasSelection && !isSelected;
 
-  const { dot, activeDot } = resolveDots(children, id, dataKey, opacity.dot, maskId);
+	const { dot, activeDot } = resolveDots(
+		children,
+		id,
+		dataKey,
+		opacity.dot,
+		maskId,
+	);
 
-  const isAnimatedDashed = strokeVariant === "animated-dashed";
-  const isDashed = strokeVariant === "dashed" || isAnimatedDashed;
+	const isAnimatedDashed = strokeVariant === "animated-dashed";
+	const isDashed = strokeVariant === "dashed" || isAnimatedDashed;
 
-  // A consumer-controlled buffer (defined, even when false) gets a unique marker
-  // class so <BufferDash> can find this area's stroke path and toggle the dash.
-  const bufferActive = enableBufferLine !== undefined;
-  const bufferClass = `evil-buffer-${id}`;
-  // An objectBoundingBox gradient paints nothing when the referencing path's
-  // bounding box has zero height — which is exactly what a flat series' stroke
-  // path is — so single-color series stroke with the color directly.
-  const strokeColorsCount = getColorsCount(config[dataKey] ?? {});
-  const strokePaint =
-    strokeColorsCount === 1
-      ? `var(--color-${dataKey}-0)`
-      : `url(#${id}-colors-${dataKey})`;
-  const areaClassName =
-    [areaProps?.className, bufferActive ? bufferClass : null]
-      .filter(Boolean)
-      .join(" ") || undefined;
+	// A consumer-controlled buffer (defined, even when false) gets a unique marker
+	// class so <BufferDash> can find this area's stroke path and toggle the dash.
+	const bufferActive = enableBufferLine !== undefined;
+	const bufferClass = `evil-buffer-${id}`;
+	// An objectBoundingBox gradient paints nothing when the referencing path's
+	// bounding box has zero height — which is exactly what a flat series' stroke
+	// path is — so single-color series stroke with the color directly.
+	const strokeColorsCount = getColorsCount(config[dataKey] ?? {});
+	const strokePaint =
+		strokeColorsCount === 1
+			? `var(--color-${dataKey}-0)`
+			: `url(#${id}-colors-${dataKey})`;
+	const areaClassName =
+		[areaProps?.className, bufferActive ? bufferClass : null]
+			.filter(Boolean)
+			.join(" ") || undefined;
 
-  return (
-    <>
-      <RechartsArea
-        type={resolvedCurve}
-        dataKey={dataKey}
-        connectNulls={connectNulls}
-        fillOpacity={opacity.fill}
-        strokeOpacity={opacity.stroke}
-        fill={getFillPattern(variant, showUnselected, id)}
-        stroke={strokePaint}
-        stackId={isStacked ? STACK_ID : undefined}
-        dot={dot}
-        activeDot={activeDot}
-        strokeWidth={STROKE_WIDTH}
-        strokeDasharray={isDashed ? "3 3" : undefined}
-        // Recharts' built-in area animation is permanently disabled — it drew
-        // the line after the dots had already popped in. The motion.dev reveal
-        // mask drives the intro instead, wiping fill, stroke, and dots in together.
-        isAnimationActive={false}
-        style={{
-          ...(maskId ? { mask: `url(#${maskId})` } : {}),
-          ...(isClickable ? { cursor: "pointer" } : {}),
-        }}
-        onClick={() => {
-          if (!isClickable) return;
-          // Clicking the selected area clears the selection, otherwise selects it
-          selectDataKey(isSelected ? null : dataKey);
-        }}
-        {...areaProps}
-        className={areaClassName}
-      >
-        {isAnimatedDashed && !hasSelection && <AnimatedDashedStroke />}
-      </RechartsArea>
-      {bufferActive && (
-        <BufferDash targetClass={bufferClass} active={!!enableBufferLine} />
-      )}
-      <defs>
-        {revealType !== "none" && <RevealMask id={id} type={revealType} />}
-        <ColorGradient id={id} dataKey={dataKey} config={config} isExpanded={isExpanded} />
-        {variant === "gradient" && <GradientPattern id={id} dataKey={dataKey} />}
-        {variant === "gradient-reverse" && <ReverseGradientPattern id={id} dataKey={dataKey} />}
-        {variant === "solid" && <SolidPattern id={id} dataKey={dataKey} />}
-        {variant === "dotted" && <DottedPattern id={id} dataKey={dataKey} />}
-        {variant === "lines" && <LinesPattern id={id} dataKey={dataKey} />}
-        {variant === "hatched" && <HatchedPattern id={id} dataKey={dataKey} />}
-        {showUnselected && <UnselectedPattern id={id} dataKey={dataKey} />}
-      </defs>
-    </>
-  );
+	return (
+		<>
+			<RechartsArea
+				type={resolvedCurve}
+				dataKey={dataKey}
+				connectNulls={connectNulls}
+				fillOpacity={opacity.fill}
+				strokeOpacity={opacity.stroke}
+				fill={getFillPattern(variant, showUnselected, id)}
+				stroke={strokePaint}
+				stackId={isStacked ? STACK_ID : undefined}
+				dot={dot}
+				activeDot={activeDot}
+				strokeWidth={STROKE_WIDTH}
+				strokeDasharray={isDashed ? "3 3" : undefined}
+				// Recharts' built-in area animation is permanently disabled — it drew
+				// the line after the dots had already popped in. The motion.dev reveal
+				// mask drives the intro instead, wiping fill, stroke, and dots in together.
+				isAnimationActive={false}
+				style={{
+					...(maskId ? { mask: `url(#${maskId})` } : {}),
+					...(isClickable ? { cursor: "pointer" } : {}),
+				}}
+				onClick={() => {
+					if (!isClickable) return;
+					// Clicking the selected area clears the selection, otherwise selects it
+					selectDataKey(isSelected ? null : dataKey);
+				}}
+				{...areaProps}
+				className={areaClassName}
+			>
+				{isAnimatedDashed && !hasSelection && <AnimatedDashedStroke />}
+			</RechartsArea>
+			{bufferActive && (
+				<BufferDash targetClass={bufferClass} active={!!enableBufferLine} />
+			)}
+			<defs>
+				{revealType !== "none" && <RevealMask id={id} type={revealType} />}
+				<ColorGradient
+					id={id}
+					dataKey={dataKey}
+					config={config}
+					isExpanded={isExpanded}
+				/>
+				{variant === "gradient" && (
+					<GradientPattern id={id} dataKey={dataKey} />
+				)}
+				{variant === "gradient-reverse" && (
+					<ReverseGradientPattern id={id} dataKey={dataKey} />
+				)}
+				{variant === "solid" && <SolidPattern id={id} dataKey={dataKey} />}
+				{variant === "dotted" && <DottedPattern id={id} dataKey={dataKey} />}
+				{variant === "lines" && <LinesPattern id={id} dataKey={dataKey} />}
+				{variant === "hatched" && <HatchedPattern id={id} dataKey={dataKey} />}
+				{showUnselected && <UnselectedPattern id={id} dataKey={dataKey} />}
+			</defs>
+		</>
+	);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -414,49 +458,49 @@ const BUFFER_GAP_SIZE = 3;
 // Binary-search the path for the length at which path.x ≈ targetX, using the
 // browser's native getPointAtLength for exact curve measurement.
 const findLengthAtX = (
-  path: SVGPathElement,
-  totalLength: number,
-  targetX: number,
+	path: SVGPathElement,
+	totalLength: number,
+	targetX: number,
 ): number => {
-  let lo = 0;
-  let hi = totalLength;
-  while (hi - lo > 0.5) {
-    const mid = (lo + hi) / 2;
-    const pt = path.getPointAtLength(mid);
-    if (pt.x < targetX) lo = mid;
-    else hi = mid;
-  }
-  return (lo + hi) / 2;
+	let lo = 0;
+	let hi = totalLength;
+	while (hi - lo > 0.5) {
+		const mid = (lo + hi) / 2;
+		const pt = path.getPointAtLength(mid);
+		if (pt.x < targetX) lo = mid;
+		else hi = mid;
+	}
+	return (lo + hi) / 2;
 };
 
 // x of the second-to-last vertex — where solid meets dashed. Parsed from the
 // path's M/L command coordinates (linear curve), the same split point the line
 // chart derives from its computed points.
 const secondToLastVertexX = (path: SVGPathElement): number | null => {
-  const d = path.getAttribute("d");
-  if (!d) return null;
-  const coords = [...d.matchAll(/[ML]\s*(-?[\d.]+)[,\s]+(-?[\d.]+)/g)];
-  if (coords.length < 2) return null;
-  return Number(coords[coords.length - 2]![1]);
+	const d = path.getAttribute("d");
+	if (!d) return null;
+	const coords = [...d.matchAll(/[ML]\s*(-?[\d.]+)[,\s]+(-?[\d.]+)/g)];
+	if (coords.length < 2) return null;
+	return Number(coords[coords.length - 2]![1]);
 };
 
 // Splits the path's stroke-dasharray into a solid run then a dashed last segment.
 const applyBufferDash = (path: SVGPathElement) => {
-  const splitX = secondToLastVertexX(path);
-  if (splitX === null) {
-    path.removeAttribute("stroke-dasharray");
-    return;
-  }
-  const totalLength = path.getTotalLength();
-  const solidLength = findLengthAtX(path, totalLength, splitX);
-  const lastSegmentLength = totalLength - solidLength;
-  const reps =
-    Math.ceil(lastSegmentLength / (BUFFER_DASH_SIZE + BUFFER_GAP_SIZE)) + 1;
-  const dashedPart = Array.from(
-    { length: reps },
-    () => `${BUFFER_DASH_SIZE} ${BUFFER_GAP_SIZE}`,
-  ).join(" ");
-  path.setAttribute("stroke-dasharray", `${solidLength} 0 ${dashedPart}`);
+	const splitX = secondToLastVertexX(path);
+	if (splitX === null) {
+		path.removeAttribute("stroke-dasharray");
+		return;
+	}
+	const totalLength = path.getTotalLength();
+	const solidLength = findLengthAtX(path, totalLength, splitX);
+	const lastSegmentLength = totalLength - solidLength;
+	const reps =
+		Math.ceil(lastSegmentLength / (BUFFER_DASH_SIZE + BUFFER_GAP_SIZE)) + 1;
+	const dashedPart = Array.from(
+		{ length: reps },
+		() => `${BUFFER_DASH_SIZE} ${BUFFER_GAP_SIZE}`,
+	).join(" ");
+	path.setAttribute("stroke-dasharray", `${solidLength} 0 ${dashedPart}`);
 };
 
 /**
@@ -468,28 +512,28 @@ const applyBufferDash = (path: SVGPathElement) => {
  * bufferLineShape. Renders nothing; it only runs the side effect.
  */
 function BufferDash({
-  targetClass,
-  active,
+	targetClass,
+	active,
 }: {
-  targetClass: string;
-  active: boolean;
+	targetClass: string;
+	active: boolean;
 }) {
-  // No dep array: re-runs every commit so it tracks the data/resize/selection
-  // re-renders that regenerate the path geometry. React leaves stroke-dasharray
-  // alone (the prop stays undefined), so toggling `active` off must clear it.
-  useEffect(() => {
-    const path = document
-      .querySelector(`.${targetClass}`)
-      ?.querySelector<SVGPathElement>(".recharts-area-curve");
-    if (!path) return;
-    if (active) applyBufferDash(path);
-    else path.removeAttribute("stroke-dasharray");
-  });
-  return null;
+	// No dep array: re-runs every commit so it tracks the data/resize/selection
+	// re-renders that regenerate the path geometry. React leaves stroke-dasharray
+	// alone (the prop stays undefined), so toggling `active` off must clear it.
+	useEffect(() => {
+		const path = document
+			.querySelector(`.${targetClass}`)
+			?.querySelector<SVGPathElement>(".recharts-area-curve");
+		if (!path) return;
+		if (active) applyBufferDash(path);
+		else path.removeAttribute("stroke-dasharray");
+	});
+	return null;
 }
 
 type DotProps = {
-  variant?: DotVariant; // visual style of the point marker
+	variant?: DotVariant; // visual style of the point marker
 };
 
 /**
@@ -513,25 +557,25 @@ type XAxisProps = ComponentProps<typeof RechartsXAxis>;
  * passed straight through. Hidden automatically while the chart is loading.
  */
 export function XAxis({
-  tickLine = false,
-  axisLine = false,
-  tickMargin = 8,
-  minTickGap = 8,
-  ...props
+	tickLine = false,
+	axisLine = false,
+	tickMargin = 8,
+	minTickGap = 8,
+	...props
 }: XAxisProps) {
-  const { isLoading } = useAreaChart();
+	const { isLoading } = useAreaChart();
 
-  if (isLoading) return null;
+	if (isLoading) return null;
 
-  return (
-    <RechartsXAxis
-      tickLine={tickLine}
-      axisLine={axisLine}
-      tickMargin={tickMargin}
-      minTickGap={minTickGap}
-      {...props}
-    />
-  );
+	return (
+		<RechartsXAxis
+			tickLine={tickLine}
+			axisLine={axisLine}
+			tickMargin={tickMargin}
+			minTickGap={minTickGap}
+			{...props}
+		/>
+	);
 }
 
 type YAxisProps = ComponentProps<typeof RechartsYAxis>;
@@ -542,29 +586,29 @@ type YAxisProps = ComponentProps<typeof RechartsYAxis>;
  * Hidden automatically while the chart is loading.
  */
 export function YAxis({
-  tickLine = false,
-  axisLine = false,
-  tickMargin = 8,
-  minTickGap = 8,
-  width = "auto",
-  tickFormatter,
-  ...props
+	tickLine = false,
+	axisLine = false,
+	tickMargin = 8,
+	minTickGap = 8,
+	width = "auto",
+	tickFormatter,
+	...props
 }: YAxisProps) {
-  const { isLoading, isExpanded } = useAreaChart();
+	const { isLoading, isExpanded } = useAreaChart();
 
-  if (isLoading) return null;
+	if (isLoading) return null;
 
-  return (
-    <RechartsYAxis
-      tickLine={tickLine}
-      axisLine={axisLine}
-      tickMargin={tickMargin}
-      minTickGap={minTickGap}
-      width={width}
-      tickFormatter={isExpanded ? axisValueToPercentFormatter : tickFormatter}
-      {...props}
-    />
-  );
+	return (
+		<RechartsYAxis
+			tickLine={tickLine}
+			axisLine={axisLine}
+			tickMargin={tickMargin}
+			minTickGap={minTickGap}
+			width={width}
+			tickFormatter={isExpanded ? axisValueToPercentFormatter : tickFormatter}
+			{...props}
+		/>
+	);
 }
 
 type GridProps = ComponentProps<typeof CartesianGrid>;
@@ -573,21 +617,31 @@ type GridProps = ComponentProps<typeof CartesianGrid>;
  * The background grid lines. Defaults to horizontal-only dashed lines and
  * forwards every Recharts CartesianGrid prop for full control.
  */
-export function Grid({ vertical = false, strokeDasharray = "3 3", ...props }: GridProps) {
-  return <CartesianGrid vertical={vertical} strokeDasharray={strokeDasharray} {...props} />;
+export function Grid({
+	vertical = false,
+	strokeDasharray = "3 3",
+	...props
+}: GridProps) {
+	return (
+		<CartesianGrid
+			vertical={vertical}
+			strokeDasharray={strokeDasharray}
+			{...props}
+		/>
+	);
 }
 
 type TooltipProps = {
-  variant?: TooltipVariant; // visual style of the tooltip surface
-  roundness?: TooltipRoundness; // border-radius of the tooltip
-  defaultIndex?: number; // data index shown by default with no hover
-  cursor?: boolean; // whether the vertical cursor line follows the pointer
-  // Formats the tooltip's heading (the x value), e.g. a raw bucket → a date.
-  labelFormatter?: ComponentProps<typeof ChartTooltipContent>["labelFormatter"];
-  // Formats each row's numeric value, e.g. raw ms → "1.70s".
-  valueFormatter?: ComponentProps<typeof ChartTooltipContent>["valueFormatter"];
-  // Lists the rows in reverse series order (top series first).
-  reverse?: ComponentProps<typeof ChartTooltipContent>["reverse"];
+	variant?: TooltipVariant; // visual style of the tooltip surface
+	roundness?: TooltipRoundness; // border-radius of the tooltip
+	defaultIndex?: number; // data index shown by default with no hover
+	cursor?: boolean; // whether the vertical cursor line follows the pointer
+	// Formats the tooltip's heading (the x value), e.g. a raw bucket → a date.
+	labelFormatter?: ComponentProps<typeof ChartTooltipContent>["labelFormatter"];
+	// Formats each row's numeric value, e.g. raw ms → "1.70s".
+	valueFormatter?: ComponentProps<typeof ChartTooltipContent>["valueFormatter"];
+	// Lists the rows in reverse series order (top series first).
+	reverse?: ComponentProps<typeof ChartTooltipContent>["reverse"];
 };
 
 /**
@@ -595,41 +649,43 @@ type TooltipProps = {
  * dims unselected series. Hidden automatically while the chart is loading.
  */
 export function Tooltip({
-  variant,
-  roundness,
-  defaultIndex,
-  cursor = true,
-  labelFormatter,
-  valueFormatter,
-  reverse,
+	variant,
+	roundness,
+	defaultIndex,
+	cursor = true,
+	labelFormatter,
+	valueFormatter,
+	reverse,
 }: TooltipProps) {
-  const { isLoading, selectedDataKey } = useAreaChart();
+	const { isLoading, selectedDataKey } = useAreaChart();
 
-  if (isLoading) return null;
+	if (isLoading) return null;
 
-  return (
-    <ChartTooltip
-      defaultIndex={defaultIndex}
-      cursor={cursor ? { strokeDasharray: "3 3", strokeWidth: STROKE_WIDTH } : false}
-      content={
-        <ChartTooltipContent
-          selected={selectedDataKey}
-          roundness={roundness}
-          variant={variant}
-          labelFormatter={labelFormatter}
-          valueFormatter={valueFormatter}
-          reverse={reverse}
-        />
-      }
-    />
-  );
+	return (
+		<ChartTooltip
+			defaultIndex={defaultIndex}
+			cursor={
+				cursor ? { strokeDasharray: "3 3", strokeWidth: STROKE_WIDTH } : false
+			}
+			content={
+				<ChartTooltipContent
+					selected={selectedDataKey}
+					roundness={roundness}
+					variant={variant}
+					labelFormatter={labelFormatter}
+					valueFormatter={valueFormatter}
+					reverse={reverse}
+				/>
+			}
+		/>
+	);
 }
 
 type LegendProps = {
-  variant?: ChartLegendVariant; // visual style of the legend indicators
-  align?: "left" | "center" | "right"; // horizontal placement
-  verticalAlign?: "top" | "middle" | "bottom"; // vertical placement
-  isClickable?: boolean; // lets each entry toggle selection of its series
+	variant?: ChartLegendVariant; // visual style of the legend indicators
+	align?: "left" | "center" | "right"; // horizontal placement
+	verticalAlign?: "top" | "middle" | "bottom"; // vertical placement
+	isClickable?: boolean; // lets each entry toggle selection of its series
 };
 
 /**
@@ -637,27 +693,27 @@ type LegendProps = {
  * its series, driving the shared selection state read by every <Area />.
  */
 export function Legend({
-  variant,
-  align = "right",
-  verticalAlign = "top",
-  isClickable = false,
+	variant,
+	align = "right",
+	verticalAlign = "top",
+	isClickable = false,
 }: LegendProps) {
-  const { selectedDataKey, selectDataKey } = useAreaChart();
+	const { selectedDataKey, selectDataKey } = useAreaChart();
 
-  return (
-    <ChartLegend
-      verticalAlign={verticalAlign}
-      align={align}
-      content={
-        <ChartLegendContent
-          selected={selectedDataKey}
-          onSelectChange={selectDataKey}
-          isClickable={isClickable}
-          variant={variant}
-        />
-      }
-    />
-  );
+	return (
+		<ChartLegend
+			verticalAlign={verticalAlign}
+			align={align}
+			content={
+				<ChartLegendContent
+					selected={selectedDataKey}
+					onSelectChange={selectDataKey}
+					isClickable={isClickable}
+					variant={variant}
+				/>
+			}
+		/>
+	);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -666,21 +722,25 @@ export function Legend({
 
 // Returns fill/stroke/dot opacity — dims a series only when another is selected
 const getOpacity = (selectedDataKey: string | null, dataKey: string) => {
-  if (selectedDataKey === null) {
-    return { fill: 0.8, stroke: 0.8, dot: 1 };
-  }
+	if (selectedDataKey === null) {
+		return { fill: 0.8, stroke: 0.8, dot: 1 };
+	}
 
-  return selectedDataKey === dataKey
-    ? { fill: 0.8, stroke: 0.8, dot: 1 }
-    : { fill: 0.2, stroke: 0.3, dot: 0.3 };
+	return selectedDataKey === dataKey
+		? { fill: 0.8, stroke: 0.8, dot: 1 }
+		: { fill: 0.2, stroke: 0.3, dot: 0.3 };
 };
 
 // Resolves the SVG paint reference for an area's fill based on its variant
-const getFillPattern = (variant: AreaVariant, showUnselected: boolean, id: string): string => {
-  // A non-selected area in a clickable chart is striped to recede visually
-  if (showUnselected) return `url(#${id}-unselected)`;
+const getFillPattern = (
+	variant: AreaVariant,
+	showUnselected: boolean,
+	id: string,
+): string => {
+	// A non-selected area in a clickable chart is striped to recede visually
+	if (showUnselected) return `url(#${id}-unselected)`;
 
-  return `url(#${id}-${variant})`;
+	return `url(#${id}-${variant})`;
 };
 
 // Pulls <Dot /> and <ActiveDot /> out of an area's children into Recharts dot slots.
@@ -688,40 +748,45 @@ const getFillPattern = (variant: AreaVariant, showUnselected: boolean, id: strin
 // wipes in with the line; the active dot is always left unmasked since it only
 // appears on hover, after the intro has finished.
 const resolveDots = (
-  children: ReactNode,
-  id: string,
-  dataKey: string,
-  dotOpacity: number,
-  maskId: string | undefined,
+	children: ReactNode,
+	id: string,
+	dataKey: string,
+	dotOpacity: number,
+	maskId: string | undefined,
 ): { dot: AreaDotProp; activeDot: AreaActiveDotProp } => {
-  let dot: AreaDotProp = false;
-  let activeDot: AreaActiveDotProp = false;
+	let dot: AreaDotProp = false;
+	let activeDot: AreaActiveDotProp = false;
 
-  Children.forEach(children, (child) => {
-    if (!isValidElement(child)) return;
+	Children.forEach(children, (child) => {
+		if (!isValidElement(child)) return;
 
-    if (child.type === Dot) {
-      const { variant } = (child as ReactElement<DotProps>).props;
-      dot = (
-        <ChartDot
-          type={variant}
-          dataKey={dataKey}
-          chartId={id}
-          fillOpacity={dotOpacity}
-          maskId={maskId}
-        />
-      );
-    }
+		if (child.type === Dot) {
+			const { variant } = (child as ReactElement<DotProps>).props;
+			dot = (
+				<ChartDot
+					type={variant}
+					dataKey={dataKey}
+					chartId={id}
+					fillOpacity={dotOpacity}
+					maskId={maskId}
+				/>
+			);
+		}
 
-    if (child.type === ActiveDot) {
-      const { variant } = (child as ReactElement<DotProps>).props;
-      activeDot = (
-        <ChartDot type={variant} dataKey={dataKey} chartId={id} fillOpacity={dotOpacity} />
-      );
-    }
-  });
+		if (child.type === ActiveDot) {
+			const { variant } = (child as ReactElement<DotProps>).props;
+			activeDot = (
+				<ChartDot
+					type={variant}
+					dataKey={dataKey}
+					chartId={id}
+					fillOpacity={dotOpacity}
+				/>
+			);
+		}
+	});
 
-  return { dot, activeDot };
+	return { dot, activeDot };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -729,38 +794,41 @@ const resolveDots = (
 // ─────────────────────────────────────────────────────────────────────────────
 
 type StyleProps = {
-  id: string; // unique id of the owning <Area />
-  dataKey: string; // series key the colors belong to
+	id: string; // unique id of the owning <Area />
+	dataKey: string; // series key the colors belong to
 };
 
 // Animated dashed-stroke effect, rendered as a child of the Recharts Area
 const AnimatedDashedStroke = () => {
-  return (
-    <>
-      <animate
-        attributeName="stroke-dasharray"
-        values="3 3; 0 3; 3 3"
-        dur="1s"
-        repeatCount="indefinite"
-        keyTimes="0;0.5;1"
-      />
-      <animate
-        attributeName="stroke-dashoffset"
-        values="0; -6"
-        dur="1s"
-        repeatCount="indefinite"
-        keyTimes="0;1"
-      />
-    </>
-  );
+	return (
+		<>
+			<animate
+				attributeName="stroke-dasharray"
+				values="3 3; 0 3; 3 3"
+				dur="1s"
+				repeatCount="indefinite"
+				keyTimes="0;0.5;1"
+			/>
+			<animate
+				attributeName="stroke-dashoffset"
+				values="0; -6"
+				dur="1s"
+				repeatCount="indefinite"
+				keyTimes="0;1"
+			/>
+		</>
+	);
 };
 
 // motion `originX` for each single-rect reveal — the edge the wipe grows from.
 // 0 = left edge, 1 = right edge, 0.5 = centre (grows outward to both edges).
-const SINGLE_REVEAL_ORIGIN: Record<Exclude<RevealAnimationType, "edges-in">, number> = {
-  "left-to-right": 0,
-  "right-to-left": 1,
-  "center-out": 0.5,
+const SINGLE_REVEAL_ORIGIN: Record<
+	Exclude<RevealAnimationType, "edges-in">,
+	number
+> = {
+	"left-to-right": 0,
+	"right-to-left": 1,
+	"center-out": 0.5,
 };
 
 /**
@@ -775,59 +843,62 @@ const SINGLE_REVEAL_ORIGIN: Record<Exclude<RevealAnimationType, "edges-in">, num
  * Each rect animates `scaleX` 0 → 1; `originX` decides which edge it grows from.
  * "edges-in" needs two rects — each half grows inward from an opposite edge.
  */
-const RevealMask = ({ id, type }: { id: string; type: RevealAnimationType }) => {
-  const reveal = {
-    initial: { scaleX: 0 },
-    animate: { scaleX: 1 },
-    transition: { duration: REVEAL_DURATION, ease: REVEAL_EASE },
-  };
+const RevealMask = ({
+	id,
+	type,
+}: { id: string; type: RevealAnimationType }) => {
+	const reveal = {
+		initial: { scaleX: 0 },
+		animate: { scaleX: 1 },
+		transition: { duration: REVEAL_DURATION, ease: REVEAL_EASE },
+	};
 
-  return (
-    <mask
-      id={`${id}-reveal-mask`}
-      maskUnits="userSpaceOnUse"
-      maskContentUnits="userSpaceOnUse"
-      x="0"
-      y="0"
-      width="100%"
-      height="100%"
-    >
-      {type === "edges-in" ? (
-        <>
-          {/* left half wipes inward from the left edge toward the centre */}
-          <motion.rect
-            {...reveal}
-            x="0"
-            y="0"
-            width="50%"
-            height="100%"
-            fill="white"
-            style={{ originX: 0 }}
-          />
-          {/* right half wipes inward from the right edge toward the centre */}
-          <motion.rect
-            {...reveal}
-            x="50%"
-            y="0"
-            width="50%"
-            height="100%"
-            fill="white"
-            style={{ originX: 1 }}
-          />
-        </>
-      ) : (
-        <motion.rect
-          {...reveal}
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-          fill="white"
-          style={{ originX: SINGLE_REVEAL_ORIGIN[type] }}
-        />
-      )}
-    </mask>
-  );
+	return (
+		<mask
+			id={`${id}-reveal-mask`}
+			maskUnits="userSpaceOnUse"
+			maskContentUnits="userSpaceOnUse"
+			x="0"
+			y="0"
+			width="100%"
+			height="100%"
+		>
+			{type === "edges-in" ? (
+				<>
+					{/* left half wipes inward from the left edge toward the centre */}
+					<motion.rect
+						{...reveal}
+						x="0"
+						y="0"
+						width="50%"
+						height="100%"
+						fill="white"
+						style={{ originX: 0 }}
+					/>
+					{/* right half wipes inward from the right edge toward the centre */}
+					<motion.rect
+						{...reveal}
+						x="50%"
+						y="0"
+						width="50%"
+						height="100%"
+						fill="white"
+						style={{ originX: 1 }}
+					/>
+				</>
+			) : (
+				<motion.rect
+					{...reveal}
+					x="0"
+					y="0"
+					width="100%"
+					height="100%"
+					fill="white"
+					style={{ originX: SINGLE_REVEAL_ORIGIN[type] }}
+				/>
+			)}
+		</mask>
+	);
 };
 
 /**
@@ -835,240 +906,295 @@ const RevealMask = ({ id, type }: { id: string; type: RevealAnimationType }) => 
  * fill variant, the stroke, and the dots all paint from this single gradient.
  */
 const ColorGradient = ({
-  id,
-  dataKey,
-  config,
-  isExpanded,
+	id,
+	dataKey,
+	config,
+	isExpanded,
 }: StyleProps & { config: ChartConfig; isExpanded: boolean }) => {
-  const colorsCount = getColorsCount(config[dataKey] ?? {});
+	const colorsCount = getColorsCount(config[dataKey] ?? {});
 
-  return (
-    <linearGradient
-      id={`${id}-colors-${dataKey}`}
-      x1="0"
-      y1="0"
-      x2="1"
-      y2="0"
-      gradientUnits={isExpanded ? "userSpaceOnUse" : "objectBoundingBox"}
-    >
-      {colorsCount === 1 ? (
-        <>
-          <stop offset="0%" stopColor={`var(--color-${dataKey}-0)`} />
-          <stop offset="100%" stopColor={`var(--color-${dataKey}-0)`} />
-        </>
-      ) : (
-        Array.from({ length: colorsCount }, (_, index) => {
-          const offset = `${(index / (colorsCount - 1)) * 100}%`;
-          return (
-            <stop
-              key={offset}
-              offset={offset}
-              stopColor={`var(--color-${dataKey}-${index}, var(--color-${dataKey}-0))`}
-            />
-          );
-        })
-      )}
-    </linearGradient>
-  );
+	return (
+		<linearGradient
+			id={`${id}-colors-${dataKey}`}
+			x1="0"
+			y1="0"
+			x2="1"
+			y2="0"
+			gradientUnits={isExpanded ? "userSpaceOnUse" : "objectBoundingBox"}
+		>
+			{colorsCount === 1 ? (
+				<>
+					<stop offset="0%" stopColor={`var(--color-${dataKey}-0)`} />
+					<stop offset="100%" stopColor={`var(--color-${dataKey}-0)`} />
+				</>
+			) : (
+				Array.from({ length: colorsCount }, (_, index) => {
+					const offset = `${(index / (colorsCount - 1)) * 100}%`;
+					return (
+						<stop
+							key={offset}
+							offset={offset}
+							stopColor={`var(--color-${dataKey}-${index}, var(--color-${dataKey}-0))`}
+						/>
+					);
+				})
+			)}
+		</linearGradient>
+	);
 };
 
 /** Gradient fill that fades from visible at the top to transparent at the bottom. */
 const GradientPattern = ({ id, dataKey }: StyleProps) => {
-  return (
-    <>
-      <linearGradient id={`${id}-vertical-fade`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="white" stopOpacity={0.1} />
-        <stop offset="100%" stopColor="white" stopOpacity={0} />
-      </linearGradient>
-      <mask id={`${id}-gradient-mask`}>
-        <rect width="100%" height="100%" fill={`url(#${id}-vertical-fade)`} />
-      </mask>
-      <pattern id={`${id}-gradient`} patternUnits="userSpaceOnUse" width="100%" height="100%">
-        <rect
-          width="100%"
-          height="100%"
-          fill={`url(#${id}-colors-${dataKey})`}
-          mask={`url(#${id}-gradient-mask)`}
-        />
-      </pattern>
-    </>
-  );
+	return (
+		<>
+			<linearGradient id={`${id}-vertical-fade`} x1="0" y1="0" x2="0" y2="1">
+				<stop offset="0%" stopColor="white" stopOpacity={0.1} />
+				<stop offset="100%" stopColor="white" stopOpacity={0} />
+			</linearGradient>
+			<mask id={`${id}-gradient-mask`}>
+				<rect width="100%" height="100%" fill={`url(#${id}-vertical-fade)`} />
+			</mask>
+			<pattern
+				id={`${id}-gradient`}
+				patternUnits="userSpaceOnUse"
+				width="100%"
+				height="100%"
+			>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-colors-${dataKey})`}
+					mask={`url(#${id}-gradient-mask)`}
+				/>
+			</pattern>
+		</>
+	);
 };
 
 /** Gradient fill that fades from transparent at the top to visible at the bottom. */
 const ReverseGradientPattern = ({ id, dataKey }: StyleProps) => {
-  return (
-    <>
-      <linearGradient id={`${id}-vertical-fade-reverse`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="white" stopOpacity={0} />
-        <stop offset="100%" stopColor="white" stopOpacity={0.1} />
-      </linearGradient>
-      <mask id={`${id}-gradient-reverse-mask`}>
-        <rect width="100%" height="100%" fill={`url(#${id}-vertical-fade-reverse)`} />
-      </mask>
-      <pattern
-        id={`${id}-gradient-reverse`}
-        patternUnits="userSpaceOnUse"
-        width="100%"
-        height="100%"
-      >
-        <rect
-          width="100%"
-          height="100%"
-          fill={`url(#${id}-colors-${dataKey})`}
-          mask={`url(#${id}-gradient-reverse-mask)`}
-        />
-      </pattern>
-    </>
-  );
+	return (
+		<>
+			<linearGradient
+				id={`${id}-vertical-fade-reverse`}
+				x1="0"
+				y1="0"
+				x2="0"
+				y2="1"
+			>
+				<stop offset="0%" stopColor="white" stopOpacity={0} />
+				<stop offset="100%" stopColor="white" stopOpacity={0.1} />
+			</linearGradient>
+			<mask id={`${id}-gradient-reverse-mask`}>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-vertical-fade-reverse)`}
+				/>
+			</mask>
+			<pattern
+				id={`${id}-gradient-reverse`}
+				patternUnits="userSpaceOnUse"
+				width="100%"
+				height="100%"
+			>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-colors-${dataKey})`}
+					mask={`url(#${id}-gradient-reverse-mask)`}
+				/>
+			</pattern>
+		</>
+	);
 };
 
 /** Uniform low-opacity gradient fill with no vertical fade. */
 const SolidPattern = ({ id, dataKey }: StyleProps) => {
-  return (
-    <>
-      <linearGradient id={`${id}-solid-fade`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="white" stopOpacity={0.1} />
-        <stop offset="100%" stopColor="white" stopOpacity={0.1} />
-      </linearGradient>
-      <mask id={`${id}-solid-mask`}>
-        <rect width="100%" height="100%" fill={`url(#${id}-solid-fade)`} />
-      </mask>
-      <pattern id={`${id}-solid`} patternUnits="userSpaceOnUse" width="100%" height="100%">
-        <rect
-          width="100%"
-          height="100%"
-          fill={`url(#${id}-colors-${dataKey})`}
-          mask={`url(#${id}-solid-mask)`}
-        />
-      </pattern>
-    </>
-  );
+	return (
+		<>
+			<linearGradient id={`${id}-solid-fade`} x1="0" y1="0" x2="0" y2="1">
+				<stop offset="0%" stopColor="white" stopOpacity={0.1} />
+				<stop offset="100%" stopColor="white" stopOpacity={0.1} />
+			</linearGradient>
+			<mask id={`${id}-solid-mask`}>
+				<rect width="100%" height="100%" fill={`url(#${id}-solid-fade)`} />
+			</mask>
+			<pattern
+				id={`${id}-solid`}
+				patternUnits="userSpaceOnUse"
+				width="100%"
+				height="100%"
+			>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-colors-${dataKey})`}
+					mask={`url(#${id}-solid-mask)`}
+				/>
+			</pattern>
+		</>
+	);
 };
 
 /** Diagonal-line texture fill, masked from the series color gradient. */
 const LinesPattern = ({ id, dataKey }: StyleProps) => {
-  return (
-    <>
-      <pattern
-        id={`${id}-lines-texture`}
-        patternUnits="userSpaceOnUse"
-        width="5"
-        height="5"
-        patternTransform="rotate(45)"
-      >
-        <line x1="0" y1="0" x2="0" y2="5" stroke="white" strokeWidth="1" />
-      </pattern>
-      <mask id={`${id}-lines-mask`}>
-        <rect width="100%" height="100%" fill={`url(#${id}-lines-texture)`} fillOpacity="0.3" />
-      </mask>
-      <pattern id={`${id}-lines`} patternUnits="userSpaceOnUse" width="100%" height="100%">
-        <rect
-          width="100%"
-          height="100%"
-          fill={`url(#${id}-colors-${dataKey})`}
-          mask={`url(#${id}-lines-mask)`}
-        />
-      </pattern>
-    </>
-  );
+	return (
+		<>
+			<pattern
+				id={`${id}-lines-texture`}
+				patternUnits="userSpaceOnUse"
+				width="5"
+				height="5"
+				patternTransform="rotate(45)"
+			>
+				<line x1="0" y1="0" x2="0" y2="5" stroke="white" strokeWidth="1" />
+			</pattern>
+			<mask id={`${id}-lines-mask`}>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-lines-texture)`}
+					fillOpacity="0.3"
+				/>
+			</mask>
+			<pattern
+				id={`${id}-lines`}
+				patternUnits="userSpaceOnUse"
+				width="100%"
+				height="100%"
+			>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-colors-${dataKey})`}
+					mask={`url(#${id}-lines-mask)`}
+				/>
+			</pattern>
+		</>
+	);
 };
 
 /** Dotted texture fill, masked from the series color gradient. */
 const DottedPattern = ({ id, dataKey }: StyleProps) => {
-  return (
-    <>
-      <pattern
-        id={`${id}-dotted-texture`}
-        x="0"
-        y="0"
-        width="6"
-        height="6"
-        patternUnits="userSpaceOnUse"
-      >
-        <circle cx="4" cy="4" r="0.5" fill="white" />
-      </pattern>
-      <mask id={`${id}-dotted-mask`}>
-        <rect width="100%" height="100%" fill={`url(#${id}-dotted-texture)`} fillOpacity="0.5" />
-      </mask>
-      <pattern id={`${id}-dotted`} patternUnits="userSpaceOnUse" width="100%" height="100%">
-        <rect
-          width="100%"
-          height="100%"
-          fill={`url(#${id}-colors-${dataKey})`}
-          mask={`url(#${id}-dotted-mask)`}
-        />
-      </pattern>
-    </>
-  );
+	return (
+		<>
+			<pattern
+				id={`${id}-dotted-texture`}
+				x="0"
+				y="0"
+				width="6"
+				height="6"
+				patternUnits="userSpaceOnUse"
+			>
+				<circle cx="4" cy="4" r="0.5" fill="white" />
+			</pattern>
+			<mask id={`${id}-dotted-mask`}>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-dotted-texture)`}
+					fillOpacity="0.5"
+				/>
+			</mask>
+			<pattern
+				id={`${id}-dotted`}
+				patternUnits="userSpaceOnUse"
+				width="100%"
+				height="100%"
+			>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-colors-${dataKey})`}
+					mask={`url(#${id}-dotted-mask)`}
+				/>
+			</pattern>
+		</>
+	);
 };
 
 /** Hatched striped fill with a soft gradient across each stripe. */
 const HatchedPattern = ({ id, dataKey }: StyleProps) => {
-  return (
-    <>
-      <linearGradient id={`${id}-hatched-stripe`} x1="0" y1="0" x2="1" y2="0">
-        <stop offset="50%" stopColor="white" stopOpacity={0.2} />
-        <stop offset="50%" stopColor="white" stopOpacity={1} />
-      </linearGradient>
-      <pattern
-        id={`${id}-hatched-texture`}
-        x="0"
-        y="0"
-        width="20"
-        height="10"
-        patternUnits="userSpaceOnUse"
-        overflow="visible"
-        patternTransform="rotate(20)"
-      >
-        <rect width="20" height="10" fill={`url(#${id}-hatched-stripe)`} />
-      </pattern>
-      <mask id={`${id}-hatched-mask`}>
-        <rect width="100%" height="100%" fill={`url(#${id}-hatched-texture)`} fillOpacity="0.2" />
-      </mask>
-      <pattern id={`${id}-hatched`} patternUnits="userSpaceOnUse" width="100%" height="100%">
-        <rect
-          width="100%"
-          height="100%"
-          fill={`url(#${id}-colors-${dataKey})`}
-          mask={`url(#${id}-hatched-mask)`}
-        />
-      </pattern>
-    </>
-  );
+	return (
+		<>
+			<linearGradient id={`${id}-hatched-stripe`} x1="0" y1="0" x2="1" y2="0">
+				<stop offset="50%" stopColor="white" stopOpacity={0.2} />
+				<stop offset="50%" stopColor="white" stopOpacity={1} />
+			</linearGradient>
+			<pattern
+				id={`${id}-hatched-texture`}
+				x="0"
+				y="0"
+				width="20"
+				height="10"
+				patternUnits="userSpaceOnUse"
+				overflow="visible"
+				patternTransform="rotate(20)"
+			>
+				<rect width="20" height="10" fill={`url(#${id}-hatched-stripe)`} />
+			</pattern>
+			<mask id={`${id}-hatched-mask`}>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-hatched-texture)`}
+					fillOpacity="0.2"
+				/>
+			</mask>
+			<pattern
+				id={`${id}-hatched`}
+				patternUnits="userSpaceOnUse"
+				width="100%"
+				height="100%"
+			>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-colors-${dataKey})`}
+					mask={`url(#${id}-hatched-mask)`}
+				/>
+			</pattern>
+		</>
+	);
 };
 
 /** Diagonal-line fill used to push a non-selected area into the background. */
 const UnselectedPattern = ({ id, dataKey }: StyleProps) => {
-  return (
-    <>
-      <pattern
-        id={`${id}-unselected-texture`}
-        patternUnits="userSpaceOnUse"
-        width="5"
-        height="5"
-        patternTransform="rotate(45)"
-      >
-        <line x1="0" y1="0" x2="0" y2="5" stroke="white" strokeWidth="1" />
-      </pattern>
-      <mask id={`${id}-unselected-mask`}>
-        <rect
-          width="100%"
-          height="100%"
-          fill={`url(#${id}-unselected-texture)`}
-          fillOpacity="0.3"
-        />
-      </mask>
-      <pattern id={`${id}-unselected`} patternUnits="userSpaceOnUse" width="100%" height="100%">
-        <rect
-          width="100%"
-          height="100%"
-          fill={`url(#${id}-colors-${dataKey})`}
-          mask={`url(#${id}-unselected-mask)`}
-        />
-      </pattern>
-    </>
-  );
+	return (
+		<>
+			<pattern
+				id={`${id}-unselected-texture`}
+				patternUnits="userSpaceOnUse"
+				width="5"
+				height="5"
+				patternTransform="rotate(45)"
+			>
+				<line x1="0" y1="0" x2="0" y2="5" stroke="white" strokeWidth="1" />
+			</pattern>
+			<mask id={`${id}-unselected-mask`}>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-unselected-texture)`}
+					fillOpacity="0.3"
+				/>
+			</mask>
+			<pattern
+				id={`${id}-unselected`}
+				patternUnits="userSpaceOnUse"
+				width="100%"
+				height="100%"
+			>
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${id}-colors-${dataKey})`}
+					mask={`url(#${id}-unselected-mask)`}
+				/>
+			</pattern>
+		</>
+	);
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1077,17 +1203,20 @@ const UnselectedPattern = ({ id, dataKey }: StyleProps) => {
 
 // Builds bell-curve eased gradient stops for the loading shimmer
 const generateEasedGradientStops = (
-  steps: number = 17,
-  minOpacity: number = 0.05,
-  maxOpacity: number = 0.9,
+	steps = 17,
+	minOpacity = 0.05,
+	maxOpacity = 0.9,
 ) => {
-  return Array.from({ length: steps }, (_, i) => {
-    const t = i / (steps - 1); // 0 to 1
-    // Sine-based bell curve easing: peaks at center (t=0.5), smooth falloff at edges
-    const eased = Math.sin(t * Math.PI) ** 2;
-    const opacity = minOpacity + eased * (maxOpacity - minOpacity);
-    return { offset: `${(t * 100).toFixed(0)}%`, opacity: Number(opacity.toFixed(3)) };
-  });
+	return Array.from({ length: steps }, (_, i) => {
+		const t = i / (steps - 1); // 0 to 1
+		// Sine-based bell curve easing: peaks at center (t=0.5), smooth falloff at edges
+		const eased = Math.sin(t * Math.PI) ** 2;
+		const opacity = minOpacity + eased * (maxOpacity - minOpacity);
+		return {
+			offset: `${(t * 100).toFixed(0)}%`,
+			opacity: Number(opacity.toFixed(3)),
+		};
+	});
 };
 
 /**
@@ -1097,24 +1226,24 @@ const generateEasedGradientStops = (
  * when the shimmer has completely exited the visible area. This eliminates
  * timing drift issues from setTimeout/setInterval.
  */
-export function useLoadingData(isLoading: boolean, loadingPoints: number = 14) {
-  const [loadingDataKey, setLoadingDataKey] = useState(false);
+export function useLoadingData(isLoading: boolean, loadingPoints = 14) {
+	const [loadingDataKey, setLoadingDataKey] = useState(false);
 
-  // Callback fired by motion.dev when the shimmer exits the visible area
-  const onShimmerExit = useCallback(() => {
-    if (isLoading) {
-      setLoadingDataKey((prev) => !prev);
-    }
-  }, [isLoading]);
+	// Callback fired by motion.dev when the shimmer exits the visible area
+	const onShimmerExit = useCallback(() => {
+		if (isLoading) {
+			setLoadingDataKey((prev) => !prev);
+		}
+	}, [isLoading]);
 
-  const loadingData = useMemo(
-    () => getLoadingData(loadingPoints),
-    // loadingDataKey toggle triggers re-computation when the shimmer exits
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loadingPoints, loadingDataKey],
-  );
+	const loadingData = useMemo(
+		() => getLoadingData(loadingPoints),
+		// loadingDataKey toggle triggers re-computation when the shimmer exits
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[loadingPoints, loadingDataKey],
+	);
 
-  return { loadingData, onShimmerExit };
+	return { loadingData, onShimmerExit };
 }
 
 /**
@@ -1122,35 +1251,35 @@ export function useLoadingData(isLoading: boolean, loadingPoints: number = 14) {
  * place of the real areas, paired with its own masked shimmer pattern.
  */
 const LoadingArea = ({
-  chartId,
-  curveType,
-  onShimmerExit,
+	chartId,
+	curveType,
+	onShimmerExit,
 }: {
-  chartId: string;
-  curveType: CurveType;
-  onShimmerExit: () => void;
+	chartId: string;
+	curveType: CurveType;
+	onShimmerExit: () => void;
 }) => {
-  return (
-    <>
-      <RechartsArea
-        type={curveType}
-        dataKey={LOADING_AREA_DATA_KEY}
-        fillOpacity={0.05}
-        fill="currentColor"
-        stroke="currentColor"
-        strokeOpacity={0.5}
-        isAnimationActive={false}
-        legendType="none"
-        tooltipType="none"
-        activeDot={false}
-        dot={false}
-        style={{ mask: `url(#${chartId}-loading-mask)` }}
-      />
-      <defs>
-        <LoadingPattern chartId={chartId} onShimmerExit={onShimmerExit} />
-      </defs>
-    </>
-  );
+	return (
+		<>
+			<RechartsArea
+				type={curveType}
+				dataKey={LOADING_AREA_DATA_KEY}
+				fillOpacity={0.05}
+				fill="currentColor"
+				stroke="currentColor"
+				strokeOpacity={0.5}
+				isAnimationActive={false}
+				legendType="none"
+				tooltipType="none"
+				activeDot={false}
+				dot={false}
+				style={{ mask: `url(#${chartId}-loading-mask)` }}
+			/>
+			<defs>
+				<LoadingPattern chartId={chartId} onShimmerExit={onShimmerExit} />
+			</defs>
+		</>
+	);
 };
 
 /**
@@ -1162,68 +1291,83 @@ const LoadingArea = ({
  * data swap happen while the shimmer is off-screen for a seamless loop.
  */
 const LoadingPattern = ({
-  chartId,
-  onShimmerExit,
+	chartId,
+	onShimmerExit,
 }: {
-  chartId: string;
-  onShimmerExit: () => void;
+	chartId: string;
+	onShimmerExit: () => void;
 }) => {
-  const gradientStops = generateEasedGradientStops();
+	const gradientStops = generateEasedGradientStops();
 
-  // 1 (left buffer) + 1 (visible) + 1 (right buffer)
-  const patternWidth = 3;
-  const startX = -1;
-  const endX = 2;
+	// 1 (left buffer) + 1 (visible) + 1 (right buffer)
+	const patternWidth = 3;
+	const startX = -1;
+	const endX = 2;
 
-  // Tracks the last x value to detect the exit threshold crossing
-  const lastXRef = useRef(startX);
+	// Tracks the last x value to detect the exit threshold crossing
+	const lastXRef = useRef(startX);
 
-  return (
-    <>
-      <linearGradient id={`${chartId}-loading-gradient`} x1="0" y1="0" x2="1" y2="0">
-        {gradientStops.map(({ offset, opacity }) => (
-          <stop key={offset} offset={offset} stopColor="white" stopOpacity={opacity} />
-        ))}
-      </linearGradient>
-      <pattern
-        id={`${chartId}-loading-pattern`}
-        patternUnits="objectBoundingBox"
-        patternContentUnits="objectBoundingBox"
-        patternTransform="rotate(25)"
-        width={patternWidth}
-        height="1"
-        x="0"
-        y="0"
-      >
-        <motion.rect
-          y="0"
-          width="1"
-          height="1"
-          fill={`url(#${chartId}-loading-gradient)`}
-          initial={{ x: startX }}
-          animate={{ x: endX }}
-          transition={{
-            duration: LOADING_ANIMATION_DURATION / 1000,
-            ease: "linear",
-            repeat: Infinity,
-            repeatType: "loop",
-          }}
-          onUpdate={(latest) => {
-            const xValue = typeof latest.x === "number" ? latest.x : startX;
-            const lastX = lastXRef.current;
+	return (
+		<>
+			<linearGradient
+				id={`${chartId}-loading-gradient`}
+				x1="0"
+				y1="0"
+				x2="1"
+				y2="0"
+			>
+				{gradientStops.map(({ offset, opacity }) => (
+					<stop
+						key={offset}
+						offset={offset}
+						stopColor="white"
+						stopOpacity={opacity}
+					/>
+				))}
+			</linearGradient>
+			<pattern
+				id={`${chartId}-loading-pattern`}
+				patternUnits="objectBoundingBox"
+				patternContentUnits="objectBoundingBox"
+				patternTransform="rotate(25)"
+				width={patternWidth}
+				height="1"
+				x="0"
+				y="0"
+			>
+				<motion.rect
+					y="0"
+					width="1"
+					height="1"
+					fill={`url(#${chartId}-loading-gradient)`}
+					initial={{ x: startX }}
+					animate={{ x: endX }}
+					transition={{
+						duration: LOADING_ANIMATION_DURATION / 1000,
+						ease: "linear",
+						repeat: Number.POSITIVE_INFINITY,
+						repeatType: "loop",
+					}}
+					onUpdate={(latest) => {
+						const xValue = typeof latest.x === "number" ? latest.x : startX;
+						const lastX = lastXRef.current;
 
-            // Fire once per loop, when the shimmer fully exits the visible area
-            if (xValue >= 1 && lastX < 1) {
-              onShimmerExit();
-            }
+						// Fire once per loop, when the shimmer fully exits the visible area
+						if (xValue >= 1 && lastX < 1) {
+							onShimmerExit();
+						}
 
-            lastXRef.current = xValue;
-          }}
-        />
-      </pattern>
-      <mask id={`${chartId}-loading-mask`} maskUnits="userSpaceOnUse">
-        <rect width="100%" height="100%" fill={`url(#${chartId}-loading-pattern)`} />
-      </mask>
-    </>
-  );
+						lastXRef.current = xValue;
+					}}
+				/>
+			</pattern>
+			<mask id={`${chartId}-loading-mask`} maskUnits="userSpaceOnUse">
+				<rect
+					width="100%"
+					height="100%"
+					fill={`url(#${chartId}-loading-pattern)`}
+				/>
+			</mask>
+		</>
+	);
 };

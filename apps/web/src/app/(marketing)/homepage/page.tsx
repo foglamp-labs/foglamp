@@ -10,9 +10,9 @@ import { LandingPage } from "@/components/marketing/landing/landing-page";
 // answer engines consolidate all signals onto the home URL instead of splitting
 // rank between two identical pages. (It's also kept out of sitemap.ts.)
 export const metadata: Metadata = {
-  alternates: { canonical: "/" },
+	alternates: { canonical: "/" },
 };
 
 export default function HomepagePage() {
-  return <LandingPage />;
+	return <LandingPage />;
 }

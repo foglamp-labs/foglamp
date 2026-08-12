@@ -1,10 +1,10 @@
 import { EvalDetailClient } from "./eval-detail-client";
 
 export default async function EvalDetailPage({
-  params,
+	params,
 }: {
-  params: Promise<{ id: string }>;
+	params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  return <EvalDetailClient evalId={decodeURIComponent(id)} />;
+	const { id } = await params;
+	return <EvalDetailClient evalId={decodeURIComponent(id)} />;
 }

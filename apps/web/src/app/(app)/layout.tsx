@@ -5,17 +5,17 @@ import { AppShell } from "@/components/app/app-shell";
 import { authClient } from "@/lib/auth-client";
 
 export default async function AppLayout({
-  children,
+	children,
 }: {
-  children: React.ReactNode;
+	children: React.ReactNode;
 }) {
-  const { data: session } = await authClient.getSession({
-    fetchOptions: { headers: await headers() },
-  });
+	const { data: session } = await authClient.getSession({
+		fetchOptions: { headers: await headers() },
+	});
 
-  if (!session?.user) {
-    redirect("/login");
-  }
+	if (!session?.user) {
+		redirect("/login");
+	}
 
-  return <AppShell>{children}</AppShell>;
+	return <AppShell>{children}</AppShell>;
 }

@@ -29,64 +29,64 @@ import { WorkflowsTab } from "./tabs/workflows-tab";
 // from the landing page since the charts inside are SSR-fragile.
 
 function TabView({ tab }: { tab: DemoTab }) {
-  switch (tab) {
-    case "overview":
-      return <OverviewTab />;
-    case "workflows":
-      return <WorkflowsTab />;
-    case "agents":
-      return <AgentsTab />;
-    case "sessions":
-      return <SessionsTab />;
-    case "traces":
-      return <TracesTab />;
-    case "evals":
-      return <EvalsTab />;
-    case "alerts":
-      return <AlertsTab />;
-  }
+	switch (tab) {
+		case "overview":
+			return <OverviewTab />;
+		case "workflows":
+			return <WorkflowsTab />;
+		case "agents":
+			return <AgentsTab />;
+		case "sessions":
+			return <SessionsTab />;
+		case "traces":
+			return <TracesTab />;
+		case "evals":
+			return <EvalsTab />;
+		case "alerts":
+			return <AlertsTab />;
+	}
 }
 
 function DetailViewSwitch({ detail }: { detail: NonNullable<DetailView> }) {
-  switch (detail.type) {
-    case "trace":
-      return <TraceDetail traceId={detail.id} />;
-    case "eval":
-      return <EvalDetail evalId={detail.id} />;
-    case "agent":
-      return <AgentDetail agentName={detail.id} />;
-    case "workflow":
-      return <WorkflowDetail workflowName={detail.id} />;
-    case "session":
-      return <SessionDetail sessionId={detail.id} />;
-  }
+	switch (detail.type) {
+		case "trace":
+			return <TraceDetail traceId={detail.id} />;
+		case "eval":
+			return <EvalDetail evalId={detail.id} />;
+		case "agent":
+			return <AgentDetail agentName={detail.id} />;
+		case "workflow":
+			return <WorkflowDetail workflowName={detail.id} />;
+		case "session":
+			return <SessionDetail sessionId={detail.id} />;
+	}
 }
 
 export function DashboardDemo() {
-  const [tab, setTabState] = useState<DemoTab>("overview");
-  const [detail, setDetail] = useState<DetailView>(null);
+	const [tab, setTabState] = useState<DemoTab>("overview");
+	const [detail, setDetail] = useState<DetailView>(null);
 
-  // Switching tabs always drops any open detail view — you land on the list.
-  const setTab = (next: DemoTab) => {
-    setDetail(null);
-    setTabState(next);
-  };
+	// Switching tabs always drops any open detail view — you land on the list.
+	const setTab = (next: DemoTab) => {
+		setDetail(null);
+		setTabState(next);
+	};
 
-  return (
-    <DemoProvider
-      value={{
-        tab,
-        setTab,
-        detail,
-        openDetail: (d) => setDetail(d),
-        closeDetail: () => setDetail(null),
-      }}
-    >
-      <DemoShell sidebar={<DemoSidebar />}>
-        {detail ? <DetailViewSwitch detail={detail} /> : <TabView tab={tab} />}
-      </DemoShell>
-    </DemoProvider>
-  );
+	return (
+		<DemoProvider
+			value={{
+				tab,
+				setTab,
+				detail,
+				openDetail: (d) => setDetail(d),
+				closeDetail: () => setDetail(null),
+			}}
+		>
+			<DemoShell sidebar={<DemoSidebar />}>
+				{detail ? <DetailViewSwitch detail={detail} /> : <TabView tab={tab} />}
+			</DemoShell>
+		</DemoProvider>
+	);
 }
 
 export default DashboardDemo;

@@ -12,38 +12,38 @@ import { useCopied } from "@/components/app/use-copied";
  * - `iconSize` — Tailwind size class applied to both icons (default `"size-4"`).
  * - `className` — additional classes for the `<button>` element. */
 export function CopyButton({
-  value,
-  title,
-  stopPropagation,
-  iconSize = "size-4",
-  className,
+	value,
+	title,
+	stopPropagation,
+	iconSize = "size-4",
+	className,
 }: {
-  value: string;
-  title: string;
-  stopPropagation?: boolean;
-  iconSize?: string;
-  className?: string;
+	value: string;
+	title: string;
+	stopPropagation?: boolean;
+	iconSize?: string;
+	className?: string;
 }) {
-  const { copied, markCopied } = useCopied();
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={(e) => {
-        if (stopPropagation) e.stopPropagation();
-        void navigator.clipboard.writeText(value);
-        markCopied();
-      }}
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded p-1 text-muted-foreground/60 cursor-pointer transition-colors hover:text-foreground",
-        className
-      )}
-    >
-      <CopyIcon
-        copied={copied}
-        className={iconSize}
-        checkClassName={cn(iconSize)}
-      />
-    </button>
-  );
+	const { copied, markCopied } = useCopied();
+	return (
+		<button
+			type="button"
+			title={title}
+			onClick={(e) => {
+				if (stopPropagation) e.stopPropagation();
+				void navigator.clipboard.writeText(value);
+				markCopied();
+			}}
+			className={cn(
+				"inline-flex shrink-0 items-center justify-center rounded p-1 text-muted-foreground/60 cursor-pointer transition-colors hover:text-foreground",
+				className,
+			)}
+		>
+			<CopyIcon
+				copied={copied}
+				className={iconSize}
+				checkClassName={cn(iconSize)}
+			/>
+		</button>
+	);
 }

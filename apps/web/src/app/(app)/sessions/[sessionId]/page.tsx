@@ -1,10 +1,10 @@
 import { SessionDetailClient } from "./session-detail-client";
 
 export default async function SessionDetailPage({
-  params,
+	params,
 }: {
-  params: Promise<{ sessionId: string }>;
+	params: Promise<{ sessionId: string }>;
 }) {
-  const { sessionId } = await params;
-  return <SessionDetailClient sessionId={decodeURIComponent(sessionId)} />;
+	const { sessionId } = await params;
+	return <SessionDetailClient sessionId={decodeURIComponent(sessionId)} />;
 }

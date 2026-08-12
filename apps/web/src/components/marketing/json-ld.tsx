@@ -8,12 +8,12 @@
 // user input), so dangerouslySetInnerHTML is safe here. We escape `<` to keep a
 // stray "</script>" inside any string from terminating the tag early.
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(data).replace(/</g, "\\u003c"),
-      }}
-    />
-  );
+	return (
+		<script
+			type="application/ld+json"
+			dangerouslySetInnerHTML={{
+				__html: JSON.stringify(data).replace(/</g, "\\u003c"),
+			}}
+		/>
+	);
 }

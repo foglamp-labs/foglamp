@@ -4,11 +4,5 @@ import { RouteHeader } from "@/components/app/route-header";
 
 /** Shared between loading.tsx and workflows-client.tsx — see RouteHeader. */
 export function WorkflowsHeader() {
-  return (
-    <RouteHeader
-      href="/workflows"
-      title="Workflows"
-      description="Grouped runs by workflow."
-    />
-  );
+	return <RouteHeader href="/workflows" title="Workflows" />;
 }

@@ -38,10 +38,10 @@ const BODY = `# Foglamp
 `;
 
 export function GET() {
-  return new Response(BODY, {
-    headers: {
-      "content-type": "text/plain; charset=utf-8",
-      "cache-control": "public, max-age=0, s-maxage=86400",
-    },
-  });
+	return new Response(BODY, {
+		headers: {
+			"content-type": "text/plain; charset=utf-8",
+			"cache-control": "public, max-age=0, s-maxage=86400",
+		},
+	});
 }

@@ -11,15 +11,6 @@ import {
   DialogTitle,
 } from "@foglamp/ui/components/dialog";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@foglamp/ui/components/pagination";
-import {
   Table,
   TableBody,
   TableCell,
@@ -38,7 +29,7 @@ import {
   IconForbidFilled,
   IconGauge,
   IconGaugeFilled,
-  IconPencil,
+  IconPencilFilled,
   IconStack2,
   IconTargetArrow,
 } from "@tabler/icons-react";
@@ -49,8 +40,11 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { CopyButton } from "@/components/app/copy-button";
-import { pageWindow } from "@/components/app/trend-charts";
-import { SortableHead, useTableSort } from "@/components/app/data-table";
+import {
+  PaginationFooter,
+  SortableHead,
+  useTableSort,
+} from "@/components/app/data-table";
 import {
   useDelayedLoading,
   useEntranceOnce,
@@ -67,9 +61,9 @@ import {
 import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
-import { RangePicker } from "@/components/app/range-picker";
+import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
-import { formatCost, formatCount } from "@/lib/format";
+import { formatCost } from "@/lib/format";
 import { type RouterOutputs, trpc } from "@/utils/trpc";
 
 import {
@@ -88,7 +82,7 @@ import { presetMeta } from "../preset-meta";
 
 type ScoreRow = RouterOutputs["evals"]["recentScores"]["scores"][number];
 
-const PAGE_SIZE = 25;
+const PAGE_SIZES = [25, 50, 100];
 
 // Edit-dialog draft: the subset of an eval that the "How should it score?"
 // fields can change (judge model + sample rate, or a code check's params).
@@ -118,6 +112,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
   const focusRef = useRef<HTMLTableRowElement>(null);
   // Current page of the recent-scores table (0-based).
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   // Score-column sort (server-side, since the table is paginated). `null` keeps
   // the default recency order.
   const { sort, toggle } = useTableSort<"score">();
@@ -156,8 +151,8 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
   const recent = useQuery({
     ...trpc.evals.recentScores.queryOptions({
       evalId,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
+      limit: pageSize,
+      offset: page * pageSize,
       from: range.from,
       to: range.to,
       sort: sort ? { field: "score", dir: sort.dir } : undefined,
@@ -194,12 +189,6 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
       focusRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
     }
   }, [focusScore, scores]);
-  // Total pages from the filtered count (all pages). Falls back to "at least
-  // the current page" before the count loads.
-  const totalPages = Math.max(page + 1, Math.ceil(scoreTotal / PAGE_SIZE) || 1);
-  const currentPage = page + 1;
-  const pages = pageWindow(currentPage, totalPages);
-
   const ev = list.data?.find((e) => e.id === evalId) ?? null;
 
   const update = useMutation(
@@ -210,11 +199,11 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
         toast.success("Eval updated");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   const configuredProviders = new Set(
-    (providerKeys.data?.keys ?? []).map((k) => k.provider),
+    (providerKeys.data?.keys ?? []).map((k) => k.provider)
   );
 
   // Seed the draft from the current eval, then open the dialog.
@@ -298,7 +287,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
     const scored = buckets.reduce((n, b) => n + b.scoredCount, 0);
     const scoreSum = buckets.reduce(
       (n, b) => n + (b.avgScore ?? 0) * b.scoredCount,
-      0,
+      0
     );
     const cost = buckets.reduce((n, b) => n + (b.cost ?? 0), 0);
     return {
@@ -329,24 +318,24 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
         <PageHeader
           title={ev?.name ?? "Eval"}
           back={back}
-          description={
-            <span className="inline-flex items-center gap-1 font-mono text-xs">
-              {evalId}
-              <CopyButton
-                value={evalId}
-                title="Copy eval ID"
-                iconSize="size-3.5"
-                className="p-0.5"
-              />
-            </span>
+          titleTrailing={
+            <CopyButton
+              value={evalId}
+              title="Copy eval ID"
+              iconSize="size-3.5"
+              className="p-0.5"
+            />
           }
           actions={
-            ev ? (
-              <Button size="sm" variant="secondary" onClick={openEdit}>
-                <IconPencil />
-                Edit
-              </Button>
-            ) : undefined
+            <>
+              <RangeControl value={range} onChange={setRange} />
+              {ev && (
+                <Button variant="secondary" onClick={openEdit}>
+                  <IconPencilFilled />
+                  Edit
+                </Button>
+              )}
+            </>
           }
         />
       </div>
@@ -355,8 +344,8 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
       {ev && (
         <div
           className={cn(
-            "-mt-1 flex flex-wrap items-center gap-2",
-            entrance && "page-fade-in",
+            "-mt-1 flex flex-wrap items-center gap-2 px-8",
+            entrance && "page-fade-in"
           )}
         >
           <Badge variant={ev.scorerSource === "llm" ? "violet" : "secondary"}>
@@ -375,8 +364,8 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 
       <div
         className={cn(
-          "grid gap-4 sm:grid-cols-2 lg:grid-cols-4",
-          entrance && "page-fade-in",
+          "grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-8",
+          entrance && "page-fade-in"
         )}
       >
         <StatCard
@@ -414,12 +403,10 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-medium">Recent scores</h2>
-          <RangePicker value={range} onChange={setRange} />
-        </div>
         {pinnedScore && (
-          <FocusedRun score={pinnedScore} projectId={projectId} />
+          <div className="px-8">
+            <FocusedRun score={pinnedScore} projectId={projectId} />
+          </div>
         )}
         {recent.isLoading ? (
           showRecentSkeleton ? (
@@ -432,22 +419,24 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
             icon={IconGauge}
             title="No scores yet"
             description="Scores appear here as new matching traffic is sampled and scored."
-            className={cn(entrance && !recentSkeletonShown && "page-fade-in")}
+            className={cn(
+              entrance && !recentSkeletonShown && "page-fade-in",
+              "px-8"
+            )}
           />
         ) : (
-          // This wrapper replaced a fragment, so it mirrors the parent's
-          // `flex flex-col gap-3` to keep the table↔pagination spacing.
+          // Keep the footer flush with the table's last row, matching the
+          // other paginated main tables.
           <div
             className={cn(
-              "flex flex-col gap-3",
-              entrance && !recentSkeletonShown && "page-fade-in",
+              "flex flex-col",
+              entrance && !recentSkeletonShown && "page-fade-in"
             )}
           >
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-8" />
-                  <TableHead className="border-l-0 pl-0 w-72">Target</TableHead>
+                  <TableHead className="w-72">Target</TableHead>
                   <SortableHead
                     sortKey="score"
                     sort={sort}
@@ -472,19 +461,21 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                         onClick={() => setExpanded(isOpen ? null : s.scoreId)}
                         className={cn(
                           isFocused &&
-                            "shadow-[inset_2px_0_0_0_var(--color-primary)]",
+                            "shadow-[inset_2px_0_0_0_var(--color-primary)]"
                         )}
                       >
-                        <TableCell className="text-muted-foreground/50 pr-2">
-                          <IconChevronRight
-                            className={cn(
-                              "size-3.5 transition-transform",
-                              isOpen && "rotate-90",
-                            )}
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-96 border-l-0 pl-0">
-                          {s.targetType}:{s.targetId}
+                        <TableCell className="max-w-96 text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <IconChevronRight
+                              className={cn(
+                                "size-3.5 shrink-0 transition-transform",
+                                isOpen && "rotate-90"
+                              )}
+                            />
+                            <span className="truncate font-mono text-xs">
+                              {s.targetType}:{s.targetId}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell>
                           {s.passed !== null ? (
@@ -520,7 +511,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                         <ScoreDetail
                           score={s}
                           projectId={projectId}
-                          colSpan={5}
+                          colSpan={4}
                         />
                       )}
                     </Fragment>
@@ -529,61 +520,20 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
               </TableBody>
             </Table>
 
-            <div className="flex items-center justify-between px-1">
-              <span className="text-sm text-muted-foreground/50 tabular-nums">
-                {scores.length === 0
-                  ? `Showing 0 of ${formatCount(scoreTotal)}`
-                  : `Showing ${page * PAGE_SIZE + 1}–${
-                      page * PAGE_SIZE + scores.length
-                    } of ${formatCount(scoreTotal)}`}
-              </span>
-              <Pagination className="mx-0 w-auto justify-end">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      aria-disabled={page === 0 || recent.isFetching}
-                      className={cn(
-                        (page === 0 || recent.isFetching) &&
-                          "pointer-events-none opacity-50",
-                      )}
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    />
-                  </PaginationItem>
-                  {pages.map((p, i) =>
-                    p === "ellipsis" ? (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: positional separator
-                      <PaginationItem key={`ellipsis-${i}`}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
-                    ) : (
-                      <PaginationItem key={p}>
-                        <PaginationLink
-                          isActive={p === currentPage}
-                          className={cn(
-                            recent.isFetching && "pointer-events-none",
-                          )}
-                          onClick={() => setPage(p - 1)}
-                        >
-                          {p}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ),
-                  )}
-                  <PaginationItem>
-                    <PaginationNext
-                      aria-disabled={
-                        currentPage >= totalPages || recent.isFetching
-                      }
-                      className={cn(
-                        (currentPage >= totalPages || recent.isFetching) &&
-                          "pointer-events-none opacity-50",
-                      )}
-                      onClick={() => setPage((p) => p + 1)}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
+            <PaginationFooter
+              page={page}
+              pageSize={pageSize}
+              total={scoreTotal}
+              shown={scores.length}
+              noun={["run", "runs"]}
+              isFetching={recent.isFetching}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(0);
+              }}
+              pageSizes={PAGE_SIZES}
+            />
           </div>
         )}
       </div>
@@ -633,7 +583,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                 }) ||
                 !!promptOverrideError(
                   ev ? { source: ev.scorerSource } : null,
-                  draft.promptOverride,
+                  draft.promptOverride
                 )
               }
               onClick={saveEdit}
@@ -660,7 +610,7 @@ function ScoreDetail({
   colSpan: number;
 }) {
   const detail = useQuery(
-    trpc.traces.get.queryOptions({ projectId, traceId: score.traceId }),
+    trpc.traces.get.queryOptions({ projectId, traceId: score.traceId })
   );
   const spans = detail.data?.spans ?? [];
   // Span score → that exact span; trace score → the root span (whole run).
@@ -674,7 +624,7 @@ function ScoreDetail({
   const href =
     score.targetType === "span"
       ? `/traces/${encodeURIComponent(score.traceId)}?span=${encodeURIComponent(
-          score.targetId,
+          score.targetId
         )}`
       : `/traces/${encodeURIComponent(score.traceId)}`;
 
@@ -735,7 +685,7 @@ function FocusedRun({
   projectId: string;
 }) {
   const detail = useQuery(
-    trpc.traces.get.queryOptions({ projectId, traceId: score.traceId }),
+    trpc.traces.get.queryOptions({ projectId, traceId: score.traceId })
   );
   const spans = detail.data?.spans ?? [];
   const target =
@@ -748,7 +698,7 @@ function FocusedRun({
   const href =
     score.targetType === "span"
       ? `/traces/${encodeURIComponent(score.traceId)}?span=${encodeURIComponent(
-          score.targetId,
+          score.targetId
         )}`
       : `/traces/${encodeURIComponent(score.traceId)}`;
 

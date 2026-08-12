@@ -10,34 +10,34 @@ import { FogBank } from "./noise-overlay";
 // oversized, and without clipping it stretches the page's scroll area (a
 // horizontal scrollbar and a phantom gap under the footer).
 export function FooterFog() {
-  // Don't animate (or even render the texture) while the footer is off-screen.
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { margin: "30% 0px 30% 0px" });
-  return (
-    <div
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-40 overflow-hidden opacity-20"
-      style={{
-        // Dense at the very bottom, thinning out toward the copyright row.
-        WebkitMaskImage:
-          "linear-gradient(to top, #000 0%, #000 20%, transparent 100%)",
-        maskImage:
-          "linear-gradient(to top, #000 0%, #000 20%, transparent 100%)",
-      }}
-    >
-      {inView ? (
-        <div
-          className="fog-layer absolute inset-[-40%]"
-          style={{
-            filter: "blur(12px)",
-            animationName: "fog-drift-footer",
-            animationDuration: "22s",
-          }}
-        >
-          <FogBank id="footer-fog" freq={0.014} seed={11} />
-        </div>
-      ) : null}
-    </div>
-  );
+	// Don't animate (or even render the texture) while the footer is off-screen.
+	const ref = useRef<HTMLDivElement>(null);
+	const inView = useInView(ref, { margin: "30% 0px 30% 0px" });
+	return (
+		<div
+			ref={ref}
+			aria-hidden
+			className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-40 overflow-hidden opacity-20"
+			style={{
+				// Dense at the very bottom, thinning out toward the copyright row.
+				WebkitMaskImage:
+					"linear-gradient(to top, #000 0%, #000 20%, transparent 100%)",
+				maskImage:
+					"linear-gradient(to top, #000 0%, #000 20%, transparent 100%)",
+			}}
+		>
+			{inView ? (
+				<div
+					className="fog-layer absolute inset-[-40%]"
+					style={{
+						filter: "blur(12px)",
+						animationName: "fog-drift-footer",
+						animationDuration: "22s",
+					}}
+				>
+					<FogBank id="footer-fog" freq={0.014} seed={11} />
+				</div>
+			) : null}
+		</div>
+	);
 }

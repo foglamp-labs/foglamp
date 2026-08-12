@@ -122,7 +122,7 @@ export default function LoginForm({
   if (resetSentTo) {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 p-6">
-        <div className="size-10 rounded-2xl corner-squircle shadow-(--custom-shadow) bg-muted flex justify-center items-center">
+        <div className="size-10 rounded-md squircle:rounded-2xl corner-squircle shadow-(--custom-shadow) bg-muted flex justify-center items-center">
           <BrandMark className="w-7" />
         </div>
         <div className="mt-3 flex flex-col gap-2">
@@ -153,7 +153,7 @@ export default function LoginForm({
   if (sentTo) {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 p-6">
-        <div className="size-10 rounded-2xl corner-squircle shadow-(--custom-shadow) bg-muted flex justify-center items-center">
+        <div className="size-10 rounded-md squircle:rounded-2xl corner-squircle shadow-(--custom-shadow) bg-muted flex justify-center items-center">
           <BrandMark className="w-7" />
         </div>
         <div className="mt-5 flex flex-col gap-2">
@@ -182,7 +182,7 @@ export default function LoginForm({
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col p-6">
-      <div className="size-10 rounded-2xl corner-squircle bg-muted shadow-(--custom-shadow) flex justify-center items-center">
+      <div className="size-10 rounded-md squircle:rounded-2xl corner-squircle bg-muted shadow-(--custom-shadow) flex justify-center items-center">
         <BrandMark className="w-7" />
       </div>
       <h1 className="mt-5 mb-1 w-full text-start text-lg font-medium text-balance">

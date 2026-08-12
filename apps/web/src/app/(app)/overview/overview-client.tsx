@@ -1,18 +1,6 @@
 "use client";
 
 import {
-  IconAlertTriangleFilled,
-  IconChartAreaFilled,
-  IconCircleCheckFilled,
-  IconCirclesFilled,
-  IconCirclePercentageFilled,
-  IconCoinFilled,
-  IconGaugeFilled,
-  IconSitemapFilled,
-  IconUserFilled,
-} from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
-import {
   Card,
   CardContent,
   CardDescription,
@@ -28,33 +16,35 @@ import {
   EmptyTitle,
 } from "@foglamp/ui/components/empty";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
+import {
+  IconAlertTriangleFilled,
+  IconBoxModel,
+  IconBoxModel2,
+  IconChartAreaFilled,
+  IconCircleCheckFilled,
+  IconCirclePercentageFilled,
+  IconCirclesFilled,
+  IconCoinFilled,
+  IconCpu,
+  IconGaugeFilled,
+  IconGhostFilled,
+  IconSitemapFilled,
+  IconUserFilled,
+} from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import type { Route } from "next";
-import Link from "next/link";
 import { useTheme } from "next-themes";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import * as AreaChart from "@/components/evilcharts/charts/area-chart";
-import {
-  formatBucketFull,
-  makeBucketLabel,
-  makeEdgeTick,
-  thinTicks,
-} from "@/components/app/trend-charts";
-import * as BarChart from "@/components/evilcharts/charts/bar-chart";
-import type { ChartConfig } from "@/components/evilcharts/ui/chart";
-import {
-  ModelLogo,
-  modelBrandColor,
-  formatModelName,
-} from "@/components/model-logo";
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
-import { useProject } from "@/components/app/project-context";
 import {
   useDelayedLoading,
   useEntranceOnce,
   useSkeletonShown,
 } from "@/components/app/hooks";
+import { navItem } from "@/components/app/nav";
 import { OnboardingPanel } from "@/components/app/onboarding-panel";
 import {
   CardSparkline,
@@ -66,9 +56,24 @@ import {
   StatCard,
   TableSkeleton,
 } from "@/components/app/page-parts";
-import { navItem } from "@/components/app/nav";
+import { useProject } from "@/components/app/project-context";
+import {
+  formatBucketFull,
+  makeBucketLabel,
+  makeEdgeTick,
+  thinTicks,
+} from "@/components/app/trend-charts";
+import * as AreaChart from "@/components/evilcharts/charts/area-chart";
+import * as BarChart from "@/components/evilcharts/charts/bar-chart";
+import type { ChartConfig } from "@/components/evilcharts/ui/chart";
+import {
+  ModelLogo,
+  formatModelName,
+  modelBrandColor,
+} from "@/components/model-logo";
 import { OverviewHeader } from "./header";
 
+import { useRange } from "@/components/app/range-context";
 import {
   formatCost,
   formatCount,
@@ -78,9 +83,8 @@ import {
   formatTokens,
   projectMonthlyCost,
 } from "@/lib/format";
-import { cn } from "@foglamp/ui/lib/utils";
-import { useRange } from "@/components/app/range-context";
 import { trpc } from "@/utils/trpc";
+import { cn } from "@foglamp/ui/lib/utils";
 
 // Fallback palette for model series whose vendor has no brand color.
 const MODEL_COLORS = [
@@ -100,7 +104,7 @@ const themed = (color: string) => ({ light: [color], dark: [color] });
 function shadeHex(hex: string, t: number): string {
   const m = /^#([0-9a-f]{6})$/i.exec(hex);
   if (!m || t === 0) return hex;
-  const n = parseInt(m[1]!, 16);
+  const n = Number.parseInt(m[1]!, 16);
   const target = t > 0 ? 255 : 0;
   const f = Math.abs(t);
   const mix = (c: number) => Math.round(c + (target - c) * f);
@@ -170,7 +174,7 @@ function ChartLegend({
             className={cn(
               "text-muted-foreground flex cursor-pointer items-center gap-1.5 text-sm transition-all hover:text-foreground",
               dimmed && "opacity-30",
-              active && "text-foreground",
+              active && "text-foreground"
             )}
           >
             {it.color && (
@@ -207,7 +211,7 @@ function StatCardsSkeleton({
             {/* Icon + label row, mirroring the real StatCard header. */}
             <div className="flex items-center justify-between gap-1.5">
               <div className="flex items-center gap-1.5">
-                <Skeleton className="size-[13px] rounded-full" />
+                <Skeleton className="size-[13px] rounded-full squircle:rounded-full" />
                 <Skeleton className="h-3 w-14" />
               </div>
               <Skeleton className="h-3 w-9" />
@@ -220,7 +224,7 @@ function StatCardsSkeleton({
           </CardHeader>
           {/* Bottom chart strip — bleeds to the card edge like the real chart. */}
           <div className="mt-3 -mb-5">
-            <Skeleton className="h-8 w-full rounded-b-none" />
+            <Skeleton className="h-8 w-full rounded-b-none squircle:rounded-b-none" />
           </div>
         </Card>
       ))}
@@ -252,11 +256,8 @@ function ListCardSkeleton({ className }: { className?: string }) {
       size="sm"
       className={cn("pb-0! group-data-[size=sm]/card:pb-0!", className)}
     >
-      <CardHeader>
-        <Skeleton className="h-4 w-20" />
-      </CardHeader>
-      <CardContent className="mt-3">
-        <TableSkeleton />
+      <CardContent>
+        <TableSkeleton rows={4} />
       </CardContent>
     </Card>
   );
@@ -325,7 +326,7 @@ function BreakdownRow({
   href?: Route;
 }) {
   const rowClassName =
-    "flex items-center justify-between gap-6 py-3 first:pt-0 last:pb-0 px-0.5";
+    "flex items-center justify-between gap-6 py-3 last:pb-0 px-5 last:pb-6";
   const inner = (
     <>
       {/* Left: name + secondary metrics. */}
@@ -374,7 +375,7 @@ export function OverviewClient() {
   const { resolvedTheme } = useTheme();
   const { from, to } = useMemo(
     () => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
-    [range],
+    [range]
   );
   const windowMs = range.to.getTime() - range.from.getTime();
   const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
@@ -501,7 +502,7 @@ export function OverviewClient() {
         tokens: r.totalTokens,
         cost: r.totalCost ?? 0,
       })),
-    [timeseries.data],
+    [timeseries.data]
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between
@@ -518,15 +519,15 @@ export function OverviewClient() {
         p95Abs: r.p95,
         p99Abs: r.p99,
       })),
-    [seriesData],
+    [seriesData]
   );
   const seriesTicks = useMemo(
     () =>
       thinTicks(
         seriesData.map((d) => d.bucket),
-        bucketLabel,
+        bucketLabel
       ),
-    [seriesData, bucketLabel],
+    [seriesData, bucketLabel]
   );
 
   // Is the final bucket the current, still-filling one? True when "now" still
@@ -561,7 +562,7 @@ export function OverviewClient() {
       brandSeen.set(base, repeat + 1);
       const color = shadeHex(
         base,
-        VENDOR_SHADE_STEPS[repeat % VENDOR_SHADE_STEPS.length]!,
+        VENDOR_SHADE_STEPS[repeat % VENDOR_SHADE_STEPS.length]!
       );
       config[key] = {
         label: formatModelName(id),
@@ -616,11 +617,11 @@ export function OverviewClient() {
         const row: Record<string, string | number> = { bucket };
         for (const k of seriesKeys) row[k] = costs[k] ?? 0;
         return row;
-      },
+      }
     );
     const ticks = thinTicks(
       sorted.map(([bucket]) => bucket),
-      bucketLabel,
+      bucketLabel
     );
     return {
       costData: data,
@@ -676,7 +677,7 @@ export function OverviewClient() {
       cost,
       ticks: thinTicks(
         rows.map((r) => r.bucket),
-        bucketLabel,
+        bucketLabel
       ),
     };
   }, [range, bucketLabel]);
@@ -705,11 +706,11 @@ export function OverviewClient() {
   const maxAgentCost = Math.max(1, ...agentRows.map((a) => a.totalCost ?? 0));
   const maxWorkflowCost = Math.max(
     1,
-    ...workflowRows.map((w) => w.totalCost ?? 0),
+    ...workflowRows.map((w) => w.totalCost ?? 0)
   );
   const maxCustomerCost = Math.max(
     1,
-    ...customerRows.map((c) => c.totalCost ?? 0),
+    ...customerRows.map((c) => c.totalCost ?? 0)
   );
   // Raw load flags for empty-state detection: a chart is only "empty" once its
   // own queries have actually resolved (rendering is gated on pageLoading).
@@ -739,7 +740,7 @@ export function OverviewClient() {
       key,
       label: entry.label,
       color: entry.colors.light[0],
-    }),
+    })
   );
   const latencyItems: LegendItem[] = Object.entries(latencyConfig).map(
     ([key, entry]) => ({
@@ -748,7 +749,7 @@ export function OverviewClient() {
       color: (resolvedTheme === "dark"
         ? entry.colors.dark
         : entry.colors.light)[0],
-    }),
+    })
   );
 
   // The fade class goes on each card slot (not the page wrapper) so cards
@@ -778,14 +779,14 @@ export function OverviewClient() {
         showSkeleton ? (
           <StatCardsSkeleton
             count={4}
-            className={cn(entrance && "page-fade-in")}
+            className={cn(entrance && "page-fade-in", "px-8")}
           />
         ) : null
       ) : (
         <section
           className={cn(
-            "grid gap-4 md:grid-cols-2 xl:grid-cols-4",
-            entrance && !skeletonShown && "page-fade-in",
+            "grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8",
+            entrance && !skeletonShown && "page-fade-in"
           )}
         >
           <StatCard
@@ -861,9 +862,311 @@ export function OverviewClient() {
         </section>
       )}
 
+      {/* By model + by agent + by workflow + by customer, side by side */}
+      <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4 px-8">
+        {pageLoading ? (
+          showSkeleton ? (
+            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
+          ) : null
+        ) : (
+          <Card
+            size="sm"
+            className={cn(
+              "pb-0! group-data-[size=sm]/card:pb-0",
+              entrance && !skeletonShown && "page-fade-in"
+            )}
+          >
+            <CardHeader>
+              <CardTitle>Models</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+              {modelRows.length === 0 ? (
+                <EmptyState
+                  icon={IconCpu}
+                  title="No model yet"
+                  description="Models are picked up automatically."
+                  className="border-none mb-6"
+                />
+              ) : (
+                <ScrollFade className="max-h-60">
+                  <div className="divide-y divide-border/40 pb-6">
+                    {modelRows.map((m) => (
+                      <BreakdownRow
+                        key={m.modelId}
+                        href={
+                          // "(unknown)" isn't a real model id — the traces model
+                          // filter can't match it, so those rows stay inert.
+                          m.modelId === "(unknown)"
+                            ? undefined
+                            : (`/traces?model=${encodeURIComponent(m.modelId)}` as Route)
+                        }
+                        renderIcon={(cls) => (
+                          <ModelLogo
+                            modelId={m.modelId}
+                            className={cn(cls, "size-3")}
+                          />
+                        )}
+                        title={formatModelName(m.modelId)}
+                        value={formatCost(m.totalCost, 3)}
+                        fraction={(m.totalCost ?? 0) / maxModelCost}
+                        color={
+                          modelBrandColor(null, m.modelId) ?? "var(--chart-2)"
+                        }
+                        metrics={`${formatCount(m.spanCount)} req · ${formatTokens(m.totalTokens)} tok`}
+                      />
+                    ))}
+                  </div>
+                </ScrollFade>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {pageLoading ? (
+          showSkeleton ? (
+            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
+          ) : null
+        ) : (
+          <Card
+            size="sm"
+            className={cn(
+              "pb-0! group-data-[size=sm]/card:pb-0!",
+              entrance && !skeletonShown && "page-fade-in"
+            )}
+          >
+            <CardHeader>
+              <CardTitle>Agents</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+              {agentRows.length === 0 ? (
+                <EmptyState
+                  icon={IconGhostFilled}
+                  title="No agent yet"
+                  description="Set agentName on a call to group it under an agent."
+                  className="border-none mb-6"
+                />
+              ) : (
+                <ScrollFade className="max-h-60">
+                  <div className="divide-y divide-border/40 pb-6">
+                    {agentRows.map((a) => (
+                      <BreakdownRow
+                        key={a.agentName}
+                        href={
+                          `/agents/${encodeURIComponent(a.agentName)}` as Route
+                        }
+                        renderIcon={(cls) => (
+                          <AgentIcon name={a.agentName} className={cls} />
+                        )}
+                        title={a.agentName}
+                        value={formatCost(a.totalCost, 3)}
+                        fraction={(a.totalCost ?? 0) / maxAgentCost}
+                        color={agentColor(a.agentName)}
+                        metrics={`${formatCount(a.spanCount)} req · ${formatCount(a.errorCount)} errors`}
+                      />
+                    ))}
+                  </div>
+                </ScrollFade>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {pageLoading ? (
+          showSkeleton ? (
+            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
+          ) : null
+        ) : (
+          <Card
+            size="sm"
+            className={cn(
+              "pb-0! group-data-[size=sm]/card:pb-0!",
+              entrance && !skeletonShown && "page-fade-in"
+            )}
+          >
+            <CardHeader>
+              <CardTitle>Workflows</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+              {workflowRows.length === 0 ? (
+                <EmptyState
+                  icon={IconSitemapFilled}
+                  title="No workflow yet"
+                  description="Set workflowName to group it under a workflow."
+                  className="border-none mb-6"
+                />
+              ) : (
+                <ScrollFade className="max-h-60">
+                  <div className="divide-y divide-border/40 pb-6">
+                    {workflowRows.map((w) => (
+                      <BreakdownRow
+                        key={w.workflowName ?? "~ungrouped"}
+                        href={
+                          w.workflowName
+                            ? (`/workflows/${encodeURIComponent(w.workflowName)}` as Route)
+                            : undefined
+                        }
+                        renderIcon={(cls) => (
+                          <IconSitemapFilled
+                            className={cn(cls, "text-emerald-500")}
+                          />
+                        )}
+                        title={w.workflowName ?? "Ungrouped"}
+                        value={formatCost(w.totalCost, 3)}
+                        fraction={(w.totalCost ?? 0) / maxWorkflowCost}
+                        color="var(--color-emerald-500)"
+                        metrics={`${formatCount(w.runCount)} runs · ${formatCount(w.errorCount)} errors`}
+                      />
+                    ))}
+                  </div>
+                </ScrollFade>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {pageLoading ? (
+          showSkeleton ? (
+            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
+          ) : null
+        ) : (
+          <Card
+            size="sm"
+            className={cn(
+              "pb-0! group-data-[size=sm]/card:pb-0!",
+              entrance && !skeletonShown && "page-fade-in"
+            )}
+          >
+            <CardHeader>
+              <CardTitle>Customers</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+              {customerRows.length === 0 ? (
+                <EmptyState
+                  icon={IconUserFilled}
+                  title="No customer yet"
+                  description="Set customer to attribute its cost."
+                  className="border-none mb-6"
+                />
+              ) : (
+                <ScrollFade className="max-h-60">
+                  <div className="divide-y divide-border/40">
+                    {customerRows.map((c) => (
+                      <BreakdownRow
+                        key={c.customerId ?? "~unidentified"}
+                        href={
+                          c.customerId
+                            ? (`/traces?customer=${encodeURIComponent(c.customerId)}` as Route)
+                            : undefined
+                        }
+                        renderIcon={(cls) =>
+                          c.customerId ? (
+                            <CustomerAvatar
+                              customerId={c.customerId}
+                              customerName={c.customerName}
+                              imageUrl={c.customerImageUrl}
+                              filled
+                              className={cls}
+                            />
+                          ) : (
+                            <IconUserFilled
+                              className={cn(cls, "text-muted-foreground/60")}
+                            />
+                          )
+                        }
+                        title={
+                          c.customerName ?? c.customerId ?? "Not identified"
+                        }
+                        value={formatCost(c.totalCost, 3)}
+                        fraction={(c.totalCost ?? 0) / maxCustomerCost}
+                        color={
+                          c.customerId
+                            ? agentColor(c.customerId)
+                            : "var(--muted-foreground)"
+                        }
+                        metrics={`${formatCount(c.spanCount)} req · ${formatCount(c.errorCount)} errors`}
+                      />
+                    ))}
+                  </div>
+                </ScrollFade>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {/* Cost over time, stacked by model */}
+      <div className="px-8">
+        {pageLoading ? (
+          showSkeleton ? (
+            <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
+          ) : null
+        ) : (
+          <Card
+            size="sm"
+            className={cn(entrance && !skeletonShown && "page-fade-in")}
+          >
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <CardTitle>Cost over time</CardTitle>
+              {costItems.length > 0 && (
+                <ChartLegend
+                  items={costItems}
+                  selected={costSelected}
+                  onSelect={setCostSelected}
+                />
+              )}
+            </CardHeader>
+            <CardContent className="mt-3">
+              <MaybeEmptyOverlay empty={costEmpty}>
+                <BarChart.EvilBarChart
+                  config={costChartConfig}
+                  data={costChartData}
+                  stackType="stacked"
+                  selectedDataKey={costSelected}
+                  onSelectionChange={setCostSelected}
+                  className="h-[260px] w-full"
+                  chartProps={{
+                    // left: 2 (vs Recharts' default 5) tucks the auto-width
+                    // y-axis labels closer to the card content edge.
+                    margin: { top: 5, right: 5, bottom: 5, left: 2 },
+                    // Wider gap between buckets (Recharts default: 10%) keeps
+                    // the bars slim at any bucket count.
+                    barCategoryGap: "40%",
+                  }}
+                >
+                  <BarChart.Grid />
+                  <BarChart.XAxis
+                    dataKey="bucket"
+                    ticks={costChartTicks}
+                    tickFormatter={bucketLabel}
+                    interval={0}
+                    tick={edgeTick}
+                  />
+                  <BarChart.YAxis
+                    tickFormatter={(v) => costAxisUsd.format(Number(v))}
+                  />
+                  <BarChart.Tooltip
+                    labelFormatter={(v) => formatBucketFull(String(v))}
+                    valueFormatter={(v) => formatCost(Number(v))}
+                    reverse
+                  />
+                  {costChartKeys.map((k) => (
+                    <BarChart.Bar
+                      key={k}
+                      dataKey={k}
+                      isClickable
+                      bufferBar={costBuffer}
+                    />
+                  ))}
+                </BarChart.EvilBarChart>
+              </MaybeEmptyOverlay>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {/* Volume + errors and latency, side by side. Each card mirrors the KPI
           gate: nothing pre-delay, a card skeleton after it, the chart once loaded. */}
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-2 px-8">
         {pageLoading ? (
           showSkeleton ? (
             <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
@@ -1005,345 +1308,51 @@ export function OverviewClient() {
         )}
       </section>
 
-      {/* Cost over time, stacked by model */}
-      {pageLoading ? (
-        showSkeleton ? (
-          <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
-        ) : null
-      ) : (
-        <Card
-          size="sm"
-          className={cn(entrance && !skeletonShown && "page-fade-in")}
-        >
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <CardTitle>Cost over time</CardTitle>
-            {costItems.length > 0 && (
-              <ChartLegend
-                items={costItems}
-                selected={costSelected}
-                onSelect={setCostSelected}
-              />
-            )}
-          </CardHeader>
-          <CardContent className="mt-3">
-            <MaybeEmptyOverlay
-              empty={costEmpty}
-              description="Instrument a call with the SDK to populate this chart."
-            >
-              <BarChart.EvilBarChart
-                config={costChartConfig}
-                data={costChartData}
-                stackType="stacked"
-                selectedDataKey={costSelected}
-                onSelectionChange={setCostSelected}
-                className="h-[260px] w-full"
-                chartProps={{
-                  // left: 2 (vs Recharts' default 5) tucks the auto-width
-                  // y-axis labels closer to the card content edge.
-                  margin: { top: 5, right: 5, bottom: 5, left: 2 },
-                  // Wider gap between buckets (Recharts default: 10%) keeps
-                  // the bars slim at any bucket count.
-                  barCategoryGap: "40%",
-                }}
-              >
-                <BarChart.Grid />
-                <BarChart.XAxis
-                  dataKey="bucket"
-                  ticks={costChartTicks}
-                  tickFormatter={bucketLabel}
-                  interval={0}
-                  tick={edgeTick}
-                />
-                <BarChart.YAxis
-                  tickFormatter={(v) => costAxisUsd.format(Number(v))}
-                />
-                <BarChart.Tooltip
-                  labelFormatter={(v) => formatBucketFull(String(v))}
-                  valueFormatter={(v) => formatCost(Number(v))}
-                  reverse
-                />
-                {costChartKeys.map((k) => (
-                  <BarChart.Bar
-                    key={k}
-                    dataKey={k}
-                    isClickable
-                    bufferBar={costBuffer}
-                  />
-                ))}
-              </BarChart.EvilBarChart>
-            </MaybeEmptyOverlay>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Cache efficiency — how much input was served from cache, and what
+      <div className="px-8">
+        {/* Cache efficiency — how much input was served from cache, and what
           those reads saved vs paying each span's own full input rate. */}
-      {pageLoading ? (
-        showSkeleton ? (
-          <StatCardsSkeleton
-            count={2}
-            className={cn(
-              "md:grid-cols-2 xl:grid-cols-2",
-              entrance && "page-fade-in",
-            )}
-          />
-        ) : null
-      ) : (
-        <section
-          className={cn(
-            "grid gap-4 md:grid-cols-2",
-            entrance && !skeletonShown && "page-fade-in",
-          )}
-        >
-          <StatCard
-            label="Cache hit rate"
-            icon={IconCirclePercentageFilled}
-            value={cacheSummary.data?.hitRate ?? "—"}
-            formatValue={formatPercent}
-            hint={
-              (cacheSummary.data?.inputTokens ?? 0) > 0
-                ? `${formatTokens(cacheSummary.data?.cachedInputTokens ?? 0)} of ${formatTokens(cacheSummary.data?.inputTokens ?? 0)} input tokens read from cache`
-                : "No input tokens in this range"
-            }
-          />
-          <StatCard
-            label="Cache savings"
-            icon={IconCoinFilled}
-            value={cacheSummary.data?.estimatedSavings ?? "—"}
-            formatValue={(n) => formatCost(n)}
-            hint={
-              cacheDiscount != null
-                ? `cached reads cost ${formatPercent(cacheDiscount)} less than the full input rate`
-                : "vs paying the full input rate for cached tokens"
-            }
-          />
-        </section>
-      )}
-
-      {/* By model + by agent + by workflow + by customer, side by side */}
-      <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         {pageLoading ? (
           showSkeleton ? (
-            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
+            <StatCardsSkeleton
+              count={2}
+              className={cn(
+                "md:grid-cols-2 xl:grid-cols-2",
+                entrance && "page-fade-in"
+              )}
+            />
           ) : null
         ) : (
-          <Card
-            size="sm"
+          <section
             className={cn(
-              "pb-0! group-data-[size=sm]/card:pb-0",
-              entrance && !skeletonShown && "page-fade-in",
+              "grid gap-4 md:grid-cols-2",
+              entrance && !skeletonShown && "page-fade-in"
             )}
           >
-            <CardHeader>
-              <CardTitle>Models</CardTitle>
-            </CardHeader>
-            <CardContent className="mt-3">
-              {modelRows.length === 0 ? (
-                <EmptyState
-                  icon={IconChartAreaFilled}
-                  title="No model usage yet"
-                  description="Models are picked up automatically from instrumented calls."
-                  className="mb-6"
-                />
-              ) : (
-                <ScrollFade className="max-h-88 pr-1">
-                  <div className="divide-y divide-border/40 pb-6">
-                    {modelRows.map((m) => (
-                      <BreakdownRow
-                        key={m.modelId}
-                        renderIcon={(cls) => (
-                          <ModelLogo
-                            modelId={m.modelId}
-                            className={cn(cls, "size-3")}
-                          />
-                        )}
-                        title={formatModelName(m.modelId)}
-                        value={formatCost(m.totalCost, 3)}
-                        fraction={(m.totalCost ?? 0) / maxModelCost}
-                        color={
-                          modelBrandColor(null, m.modelId) ?? "var(--chart-2)"
-                        }
-                        metrics={`${formatCount(m.spanCount)} req · ${formatTokens(m.totalTokens)} tok`}
-                      />
-                    ))}
-                  </div>
-                </ScrollFade>
-              )}
-            </CardContent>
-          </Card>
+            <StatCard
+              label="Cache hit rate"
+              icon={IconCirclePercentageFilled}
+              value={cacheSummary.data?.hitRate ?? "—"}
+              formatValue={formatPercent}
+              hint={
+                (cacheSummary.data?.inputTokens ?? 0) > 0
+                  ? `${formatTokens(cacheSummary.data?.cachedInputTokens ?? 0)} of ${formatTokens(cacheSummary.data?.inputTokens ?? 0)} input tokens read from cache`
+                  : "No input tokens in this range"
+              }
+            />
+            <StatCard
+              label="Cache savings"
+              icon={IconCoinFilled}
+              value={cacheSummary.data?.estimatedSavings ?? "—"}
+              formatValue={(n) => formatCost(n)}
+              hint={
+                cacheDiscount != null
+                  ? `cached reads cost ${formatPercent(cacheDiscount)} less than the full input rate`
+                  : "vs paying the full input rate for cached tokens"
+              }
+            />
+          </section>
         )}
-
-        {pageLoading ? (
-          showSkeleton ? (
-            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
-          <Card
-            size="sm"
-            className={cn(
-              "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && !skeletonShown && "page-fade-in",
-            )}
-          >
-            <CardHeader>
-              <CardTitle>Agents</CardTitle>
-            </CardHeader>
-            <CardContent className="mt-3">
-              {agentRows.length === 0 ? (
-                <EmptyState
-                  icon={IconChartAreaFilled}
-                  title="No agent activity yet"
-                  description="Set agentName on a call to group it under an agent."
-                  className="mb-6"
-                />
-              ) : (
-                <ScrollFade className="max-h-88 pr-1">
-                  <div className="divide-y divide-border/40 pb-6">
-                    {agentRows.map((a) => (
-                      <BreakdownRow
-                        key={a.agentName}
-                        href={
-                          `/agents/${encodeURIComponent(a.agentName)}` as Route
-                        }
-                        renderIcon={(cls) => (
-                          <AgentIcon name={a.agentName} className={cls} />
-                        )}
-                        title={a.agentName}
-                        value={formatCost(a.totalCost, 3)}
-                        fraction={(a.totalCost ?? 0) / maxAgentCost}
-                        color={agentColor(a.agentName)}
-                        metrics={`${formatCount(a.spanCount)} req · ${formatCount(a.errorCount)} err`}
-                      />
-                    ))}
-                  </div>
-                </ScrollFade>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {pageLoading ? (
-          showSkeleton ? (
-            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
-          <Card
-            size="sm"
-            className={cn(
-              "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && !skeletonShown && "page-fade-in",
-            )}
-          >
-            <CardHeader>
-              <CardTitle>Workflows</CardTitle>
-            </CardHeader>
-            <CardContent className="mt-3">
-              {workflowRows.length === 0 ? (
-                <EmptyState
-                  icon={IconChartAreaFilled}
-                  title="No workflow activity yet"
-                  description="Set workflowName on a call to group it under a workflow."
-                  className="mb-6"
-                />
-              ) : (
-                <ScrollFade className="max-h-88 pr-1">
-                  <div className="divide-y divide-border/40 pb-6">
-                    {workflowRows.map((w) => (
-                      <BreakdownRow
-                        key={w.workflowName ?? "~ungrouped"}
-                        href={
-                          w.workflowName
-                            ? (`/workflows/${encodeURIComponent(w.workflowName)}` as Route)
-                            : undefined
-                        }
-                        renderIcon={(cls) => (
-                          <IconSitemapFilled
-                            className={cn(cls, "text-emerald-500")}
-                          />
-                        )}
-                        title={w.workflowName ?? "Ungrouped"}
-                        value={formatCost(w.totalCost, 3)}
-                        fraction={(w.totalCost ?? 0) / maxWorkflowCost}
-                        color="var(--color-emerald-500)"
-                        metrics={`${formatCount(w.runCount)} runs · ${formatCount(w.errorCount)} err`}
-                      />
-                    ))}
-                  </div>
-                </ScrollFade>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {pageLoading ? (
-          showSkeleton ? (
-            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
-          <Card
-            size="sm"
-            className={cn(
-              "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && !skeletonShown && "page-fade-in",
-            )}
-          >
-            <CardHeader>
-              <CardTitle>Customers</CardTitle>
-            </CardHeader>
-            <CardContent className="mt-3">
-              {customerRows.length === 0 ? (
-                <EmptyState
-                  icon={IconChartAreaFilled}
-                  title="No customer activity yet"
-                  description="Set customer on a call to attribute its cost to an end-customer."
-                  className="mb-6"
-                />
-              ) : (
-                <ScrollFade className="max-h-88 pr-1">
-                  <div className="divide-y divide-border/40 pb-6">
-                    {customerRows.map((c) => (
-                      <BreakdownRow
-                        key={c.customerId ?? "~unidentified"}
-                        href={
-                          c.customerId
-                            ? (`/traces?customer=${encodeURIComponent(c.customerId)}` as Route)
-                            : undefined
-                        }
-                        renderIcon={(cls) =>
-                          c.customerId ? (
-                            <CustomerAvatar
-                              customerId={c.customerId}
-                              customerName={c.customerName}
-                              imageUrl={c.customerImageUrl}
-                              filled
-                              className={cls}
-                            />
-                          ) : (
-                            <IconUserFilled
-                              className={cn(cls, "text-muted-foreground/60")}
-                            />
-                          )
-                        }
-                        title={
-                          c.customerName ?? c.customerId ?? "Not identified"
-                        }
-                        value={formatCost(c.totalCost, 3)}
-                        fraction={(c.totalCost ?? 0) / maxCustomerCost}
-                        color={
-                          c.customerId
-                            ? agentColor(c.customerId)
-                            : "var(--muted-foreground)"
-                        }
-                        metrics={`${formatCount(c.spanCount)} req · ${formatCount(c.errorCount)} err`}
-                      />
-                    ))}
-                  </div>
-                </ScrollFade>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </section>
+      </div>
     </>
   );
 }

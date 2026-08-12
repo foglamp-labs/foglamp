@@ -18,7 +18,7 @@ export const HUD_DOCS_URL = "https://docs.foglamp.dev/sdk/hud";
 // hand-off), plus the closing notes. `startStep` numbers them continuously
 // after the caller's own preamble steps.
 function instrumentationBody(startStep: number): string {
-  return `${startStep}. Fetch ${AGENT_DOCS_URL} (written for coding agents) and follow it. First
+	return `${startStep}. Fetch ${AGENT_DOCS_URL} (written for coding agents) and follow it. First
    check which Vercel AI SDK major this repo uses and take the matching path:
    on v4–v6 wrap the \`ai\` module with \`wrap()\` from \`foglamp/wrap\`; on v7
    attach \`fog.integration(...)\` to my generateText / streamText calls. Either
@@ -53,7 +53,7 @@ index: ${LLMS_INDEX_URL}`;
 // Signed-in onboarding: the key is minted server-side and inlined so the prompt
 // is truly paste-and-go.
 export function buildKeyedPrompt(apiKey: string): string {
-  return `Instrument this app with Foglamp tracing (observability for Vercel AI SDK apps).
+	return `Instrument this app with Foglamp tracing (observability for Vercel AI SDK apps).
 
 1. Install the \`foglamp\` package with this repo's package manager (npm/pnpm/yarn/bun).
 2. Add to .env:      FOGLAMP_API_KEY=${apiKey}
@@ -63,7 +63,7 @@ ${instrumentationBody(3)}`;
 // Pre-signup (landing page): no account yet, so the agent runs the CLI, which
 // opens a browser to sign up / sign in and writes FOGLAMP_API_KEY to .env.
 export function buildLandingPrompt(): string {
-  return `Instrument this app with Foglamp tracing (observability for Vercel AI SDK apps).
+	return `Instrument this app with Foglamp tracing (observability for Vercel AI SDK apps).
 
 1. Run \`npx foglamp login\`. It prints a URL and a code, then waits — show me the
    URL so I can open it, sign up for Foglamp, and approve. On approval it writes

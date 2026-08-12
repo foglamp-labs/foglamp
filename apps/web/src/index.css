@@ -9,64 +9,75 @@
    next/font in the root layout as --font-host-grotesk) and is used only on
    marketing/product-page headings; the app dashboard stays on Inter. */
 @theme inline {
-  --font-display: var(--font-host-grotesk);
+	--font-display: var(--font-host-grotesk);
 }
 
 /* Shiki dual-theme (github-light / vesper). CodeBlock highlights with
    defaultColor:false, so each token carries both --shiki-light and
    --shiki-dark (+ *-bg); the .dark class selects which to use. */
 .shiki {
-  background-color: var(--shiki-light-bg);
+	background-color: var(--shiki-light-bg);
 }
 .shiki,
 .shiki span {
-  color: var(--shiki-light);
+	color: var(--shiki-light);
 }
 .dark .shiki {
-  background-color: var(--shiki-dark-bg);
+	background-color: var(--shiki-dark-bg);
 }
 .dark .shiki,
 .dark .shiki span {
-  color: var(--shiki-dark);
+	color: var(--shiki-dark);
 }
 
 /* Crisp 1px inner outline on top of any surface (theme-aware). */
 .border-overlay {
-  outline: 1px solid rgba(0, 0, 0, 0.1);
-  outline-offset: -1px;
+	outline: 1px solid rgba(0, 0, 0, 0.1);
+	outline-offset: -1px;
 }
 .dark .border-overlay {
-  outline-color: rgba(255, 255, 255, 0.1);
+	outline-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Match the light inset's exact three-layer geometry while Foggy is carved
+   into the bottom edge. Only the colors change for dark mode: a faint light
+   perimeter plus compact dark depth, with the same 0 / 0.5 / 1px offsets.
+   Set as box-shadow on the inset itself — redefining --custom-shadow here
+   would cascade into every descendant using the var (page-header icon tiles,
+   cards), splitting them from their siblings outside the panel. */
+.dark .foggy-inset-closed {
+	box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.09), 0 0.5px 2px -0.5px
+		rgba(0, 0, 0, 0.24), 0 1px 4px 0 rgba(0, 0, 0, 0.16);
 }
 
 /* Poster map edge pulses — CSS-driven so dozens of edges don't each run a JS
    animation loop. Offset matches the "4 156" dash pattern (one period = 160). */
 @keyframes poster-pulse {
-  to {
-    stroke-dashoffset: -160;
-  }
+	to {
+		stroke-dashoffset: -160;
+	}
 }
 @keyframes poster-fade {
-  to {
-    opacity: 1;
-  }
+	to {
+		opacity: 1;
+	}
 }
 
 /* Page entrance — opacity-only fade, played once per hard load (gated by a
    module-scope flag at the call site, Linear-style): client-side navigations
    back to the page render instantly. */
 @keyframes page-fade-in {
-  from {
-    opacity: 0;
-  }
+	from {
+		opacity: 0;
+	}
 }
 .page-fade-in {
-  animation: page-fade-in 75ms ease-out;
+	animation: page-fade-in 75ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .page-fade-in {
-    animation: none;
-  }
+	.page-fade-in {
+		animation: none;
+	}
 }
 
 /* Marketing fog drift — CSS keyframes instead of JS-driven Motion so the
@@ -75,34 +86,66 @@
    JS version made every hover on the page feel laggy). will-change pins the
    layer; translate percentages are relative to the (oversized) layer. */
 @keyframes fog-drift-a {
-  0%, 100% { transform: translate(-3%, -2%); }
-  50% { transform: translate(4%, 2%); }
+	0%,
+	100% {
+		transform: translate(-3%, -2%);
+	}
+	50% {
+		transform: translate(4%, 2%);
+	}
 }
 @keyframes fog-drift-b {
-  0%, 100% { transform: translate(3%, 2%); }
-  50% { transform: translate(-4%, -3%); }
+	0%,
+	100% {
+		transform: translate(3%, 2%);
+	}
+	50% {
+		transform: translate(-4%, -3%);
+	}
 }
 @keyframes fog-drift-c {
-  0%, 100% { transform: translate(-2%, 3%); }
-  50% { transform: translate(3%, -2%); }
+	0%,
+	100% {
+		transform: translate(-2%, 3%);
+	}
+	50% {
+		transform: translate(3%, -2%);
+	}
 }
 @keyframes fog-drift-d {
-  0%, 100% { transform: translate(2%, -2%); }
-  50% { transform: translate(-3%, 3%); }
+	0%,
+	100% {
+		transform: translate(2%, -2%);
+	}
+	50% {
+		transform: translate(-3%, 3%);
+	}
 }
 @keyframes fog-drift-e {
-  0%, 100% { transform: translate(-2%, 1%); }
-  50% { transform: translate(2%, -2%); }
+	0%,
+	100% {
+		transform: translate(-2%, 1%);
+	}
+	50% {
+		transform: translate(2%, -2%);
+	}
 }
 @keyframes fog-drift-footer {
-  0%, 100% { transform: translate(-3%, -10%); }
-  50% { transform: translate(3%, 10%); }
+	0%,
+	100% {
+		transform: translate(-3%, -10%);
+	}
+	50% {
+		transform: translate(3%, 10%);
+	}
 }
 .fog-layer {
-  will-change: transform;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
+	will-change: transform;
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .fog-layer { animation: none; }
+	.fog-layer {
+		animation: none;
+	}
 }

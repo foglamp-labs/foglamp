@@ -9,20 +9,20 @@ import type { AuthMethods } from "@/components/login-form";
 // If the server is unreachable during SSR, fall back to the self-host floor
 // (password + magic link) rather than rendering an empty form.
 const FALLBACK_METHODS: AuthMethods = {
-  emailPassword: true,
-  magicLink: true,
-  google: false,
+	emailPassword: true,
+	magicLink: true,
+	google: false,
 };
 
 export async function fetchAuthMethods(): Promise<AuthMethods> {
-  // SSR may need the in-cluster URL (docker-compose web → server), same as the
-  // auth client.
-  const base = env.INTERNAL_SERVER_URL || env.NEXT_PUBLIC_SERVER_URL;
-  try {
-    const res = await fetch(`${base}/api/auth-methods`, { cache: "no-store" });
-    if (!res.ok) return FALLBACK_METHODS;
-    return (await res.json()) as AuthMethods;
-  } catch {
-    return FALLBACK_METHODS;
-  }
+	// SSR may need the in-cluster URL (docker-compose web → server), same as the
+	// auth client.
+	const base = env.INTERNAL_SERVER_URL || env.NEXT_PUBLIC_SERVER_URL;
+	try {
+		const res = await fetch(`${base}/api/auth-methods`, { cache: "no-store" });
+		if (!res.ok) return FALLBACK_METHODS;
+		return (await res.json()) as AuthMethods;
+	} catch {
+		return FALLBACK_METHODS;
+	}
 }

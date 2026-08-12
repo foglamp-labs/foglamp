@@ -11,16 +11,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
  * resolve sooner never show the skeleton. Render `null` (not the empty state)
  * while loading but this is still false. */
 export function useDelayedLoading(loading: boolean, delay = 700): boolean {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    if (!loading) {
-      setShow(false);
-      return;
-    }
-    const id = setTimeout(() => setShow(true), delay);
-    return () => clearTimeout(id);
-  }, [loading, delay]);
-  return show;
+	const [show, setShow] = useState(false);
+	useEffect(() => {
+		if (!loading) {
+			setShow(false);
+			return;
+		}
+		const id = setTimeout(() => setShow(true), delay);
+		return () => clearTimeout(id);
+	}, [loading, delay]);
+	return show;
 }
 
 // Linear-style entrance gate, shared across every app page: module state
@@ -32,11 +32,11 @@ let entrancePlayed = false;
 /** True only on the first page mount after a hard load. Pair with the
  * `page-fade-in` class (see index.css) on the page header and card slots. */
 export function useEntranceOnce(): boolean {
-  const [animate] = useState(() => !entrancePlayed);
-  useEffect(() => {
-    entrancePlayed = true;
-  }, []);
-  return animate;
+	const [animate] = useState(() => !entrancePlayed);
+	useEffect(() => {
+		entrancePlayed = true;
+	}, []);
+	return animate;
 }
 
 /** Latches whether a slot's delayed skeleton has ever been shown this visit.
@@ -45,36 +45,36 @@ export function useEntranceOnce(): boolean {
  * skeleton→card swap itself stays instant, so a card whose slot already showed
  * a skeleton must skip the fade. */
 export function useSkeletonShown(showing: boolean): boolean {
-  const ever = useRef(false);
-  if (showing) ever.current = true;
-  return ever.current;
+	const ever = useRef(false);
+	if (showing) ever.current = true;
+	return ever.current;
 }
 
 /** Debounces a rapidly-changing value (e.g. a search box) so server-backed
  * tables don't refetch on every keystroke. */
 export function useDebouncedValue<T>(value: T, delay = 300): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced;
+	const [debounced, setDebounced] = useState(value);
+	useEffect(() => {
+		const id = setTimeout(() => setDebounced(value), delay);
+		return () => clearTimeout(id);
+	}, [value, delay]);
+	return debounced;
 }
 
 /** Convenience: debounced-free filter for a free-text search over one or more
  * string fields of a row. Case-insensitive substring match. */
 export function useTextFilter<T>(
-  rows: readonly T[],
-  query: string,
-  fields: (row: T) => (string | null | undefined)[]
+	rows: readonly T[],
+	query: string,
+	fields: (row: T) => (string | null | undefined)[],
 ): T[] {
-  return useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [...rows];
-    return rows.filter((row) =>
-      fields(row).some((f) => f?.toLowerCase().includes(q))
-    );
-    // `fields` is a stable inline accessor; intentionally omitted from deps.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, query]);
+	return useMemo(() => {
+		const q = query.trim().toLowerCase();
+		if (!q) return [...rows];
+		return rows.filter((row) =>
+			fields(row).some((f) => f?.toLowerCase().includes(q)),
+		);
+		// `fields` is a stable inline accessor; intentionally omitted from deps.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [rows, query]);
 }
