@@ -21,12 +21,7 @@ import {
 	SpanScoreDots,
 	type TraceScore,
 } from "@/components/app/eval-scores";
-import {
-	SpanTypeChip,
-	spanTypeBar,
-	spanTypeIcon,
-	spanTypeVariant,
-} from "@/components/app/span-type";
+import { SpanTypeChip, spanTypeBar } from "@/components/app/span-type";
 import { ModelLogo, modelBrandColor } from "@/components/model-logo";
 import {
 	formatCost,
@@ -50,6 +45,84 @@ const EMPTY_PRESET_NAME = new Map<string, string>();
 /** Sentinel `selected` value for the synthetic whole-trace root row — distinct
  * from any real span id, so the parent can render a trace-level inspector. */
 export const WHOLE_TRACE_ID = "__whole_trace__";
+
+type SpanRow = {
+	kind: "span";
+	span: TraceSpan;
+	depth: number;
+	hasChildren: boolean;
+	descendants: number;
+};
+
+/** A run of identical siblings, rendered as one `×N name` row. When expanded the
+ * row stays as the header above its members, so the fold can be undone. */
+type GroupRow = {
+	kind: "group";
+	key: string;
+	depth: number;
+	spans: TraceSpan[];
+	expanded: boolean;
+};
+
+type Row = SpanRow | GroupRow;
+
+/** Below this, folding costs more than it saves — three rows of the same thing
+ * is where a loop starts reading as noise. */
+const GROUP_MIN_RUN = 3;
+
+/**
+ * Fold adjacent runs of identical leaf siblings into one row.
+ *
+ * "Identical" means same parent, same depth, same name, same type. Two rules
+ * keep the feature from hiding what you came for: a run containing an errored or
+ * aborted span never folds, and spans with children never fold (a repeated
+ * sub-agent keeps its subtree). Runs the reader has expanded pass through
+ * unfolded.
+ */
+function groupRepeatedSiblings(
+	rows: SpanRow[],
+	expanded: ReadonlySet<string>,
+): Row[] {
+	const out: Row[] = [];
+	let i = 0;
+	while (i < rows.length) {
+		const head = rows[i];
+		const foldable = (r: SpanRow) =>
+			!r.hasChildren &&
+			r.span.status !== "error" &&
+			r.span.status !== "aborted";
+		let end = i + 1;
+		if (foldable(head)) {
+			while (
+				end < rows.length &&
+				foldable(rows[end]) &&
+				rows[end].depth === head.depth &&
+				rows[end].span.parentSpanId === head.span.parentSpanId &&
+				rows[end].span.name === head.span.name &&
+				rows[end].span.spanType === head.span.spanType
+			) {
+				end++;
+			}
+		}
+		const run = end - i;
+		const key = `${head.span.parentSpanId ?? "root"}|${head.span.name}|${head.span.spanId}`;
+		if (run >= GROUP_MIN_RUN) {
+			const isExpanded = expanded.has(key);
+			out.push({
+				kind: "group",
+				key,
+				depth: head.depth,
+				spans: rows.slice(i, end).map((r) => r.span),
+				expanded: isExpanded,
+			});
+			if (isExpanded) for (let j = i; j < end; j++) out.push(rows[j]);
+		} else {
+			for (let j = i; j < end; j++) out.push(rows[j]);
+		}
+		i = end;
+	}
+	return out;
+}
 
 /**
  * The trace hero: a span waterfall on one shared time axis, topped by a time
@@ -80,18 +153,18 @@ export function TraceTimeline({
 	const ordered = useMemo(() => orderSpans(spans), [spans]);
 	const total = window.span;
 
-	// Span-type visibility chips + per-row collapse. Both are view-local state:
-	// hiding a type filters individual rows (agent containers always stay), and
-	// collapsing a row hides its whole subtree.
-	const [hiddenTypes, setHiddenTypes] = useState<ReadonlySet<string>>(
+	// Per-row collapse — view-local state; collapsing a row hides its subtree.
+	const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+	// Runs of identical siblings fold by default; this holds the ones the reader
+	// has since opened back up.
+	const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(
 		new Set(),
 	);
-	const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-	const toggleType = (type: string) =>
-		setHiddenTypes((prev) => {
+	const expandGroup = (key: string) =>
+		setExpandedGroups((prev) => {
 			const next = new Set(prev);
-			if (next.has(type)) next.delete(type);
-			else next.add(type);
+			if (next.has(key)) next.delete(key);
+			else next.add(key);
 			return next;
 		});
 	const toggleCollapse = (spanId: string) =>
@@ -102,28 +175,14 @@ export function TraceTimeline({
 			return next;
 		});
 
-	// Non-agent span counts per type — the filter chips (agent rows are the
-	// tree's skeleton, so they're not filterable).
-	const typeCounts = useMemo(() => {
-		const m = new Map<string, number>();
-		for (const s of spans) {
-			if (s.spanType === "agent") continue;
-			m.set(s.spanType, (m.get(s.spanType) ?? 0) + 1);
-		}
-		return [...m.entries()];
-	}, [spans]);
-
 	// The rows actually rendered: walk the depth-first order once, dropping
-	// subtrees under a collapsed row (tracked as a stack of collapsed depths)
-	// and rows whose type is hidden. Descendant counts feed the "+N" collapse
-	// indicator and double as hasChildren.
+	// subtrees under a collapsed row (tracked as a stack of collapsed
+	// depths). Descendant counts feed the "+N" collapse
+	// indicator and double as hasChildren. A second pass folds runs of identical
+	// siblings into one row, since a 12-call search loop is what makes a
+	// waterfall unreadable.
 	const visibleRows = useMemo(() => {
-		const out: {
-			span: TraceSpan;
-			depth: number;
-			hasChildren: boolean;
-			descendants: number;
-		}[] = [];
+		const flat: SpanRow[] = [];
 		const collapseDepths: number[] = [];
 		for (let i = 0; i < ordered.length; i++) {
 			const { span, depth } = ordered[i];
@@ -136,15 +195,20 @@ export function TraceTimeline({
 			const hiddenByAncestor = collapseDepths.length > 0;
 			if (collapsed.has(span.spanId)) collapseDepths.push(depth);
 			if (hiddenByAncestor) continue;
-			if (hiddenTypes.has(span.spanType) && span.spanType !== "agent") continue;
 			let descendants = 0;
 			for (let j = i + 1; j < ordered.length && ordered[j].depth > depth; j++) {
 				descendants++;
 			}
-			out.push({ span, depth, hasChildren: descendants > 0, descendants });
+			flat.push({
+				kind: "span",
+				span,
+				depth,
+				hasChildren: descendants > 0,
+				descendants,
+			});
 		}
-		return out;
-	}, [ordered, collapsed, hiddenTypes]);
+		return groupRepeatedSiblings(flat, expandedGroups);
+	}, [ordered, collapsed, expandedGroups]);
 
 	// Trace-wide cost/token rollup for the synthetic "Whole trace" root row.
 	const traceTotals = useMemo(() => {
@@ -179,34 +243,6 @@ export function TraceTimeline({
 
 	return (
 		<div className="flex flex-col">
-			{/* Span-type filter chips — only worth the row once there's a mix. */}
-			{typeCounts.length > 1 && (
-				<div className="mb-2 flex flex-wrap items-center gap-1.5">
-					{typeCounts.map(([type, count]) => {
-						const TypeIcon = spanTypeIcon(type);
-						const hidden = hiddenTypes.has(type);
-						return (
-							<button
-								key={type}
-								type="button"
-								aria-pressed={!hidden}
-								onClick={() => toggleType(type)}
-								title={hidden ? `Show ${type} spans` : `Hide ${type} spans`}
-								className="cursor-pointer"
-							>
-								<Badge
-									variant={hidden ? "secondary" : spanTypeVariant(type)}
-									className={cn("gap-1 font-sans", hidden && "opacity-45")}
-								>
-									<TypeIcon className="size-3" />
-									{type} · {count}
-								</Badge>
-							</button>
-						);
-					})}
-				</div>
-			)}
-
 			{/* Time ruler, aligned to the bar track. */}
 			<div className="grid grid-cols-[11rem_minmax(0,1fr)_6.5rem] items-center">
 				<div />
@@ -278,7 +314,19 @@ export function TraceTimeline({
 							</div>
 						</button>
 
-						{visibleRows.map(({ span, depth, hasChildren, descendants }) => {
+						{visibleRows.map((row) => {
+							if (row.kind === "group") {
+								return (
+									<GroupedRow
+										key={row.key}
+										row={row}
+										window={window}
+										total={total}
+										onToggle={() => expandGroup(row.key)}
+									/>
+								);
+							}
+							const { span, depth, hasChildren, descendants } = row;
 							const isCollapsed = collapsed.has(span.spanId);
 							const offsetMs = toMs(span.startTime) - window.start;
 							const offset = (offsetMs / total) * 100;
@@ -576,6 +624,99 @@ export function TraceTimeline({
 				</TooltipProvider>
 			</div>
 		</div>
+	);
+}
+
+/**
+ * One row standing in for a run of identical siblings: `×12 web_search`, their
+ * summed duration and cost, and a bar spanning the whole run with a tick per
+ * call — so a search loop reads as one loop, and you can still see the rhythm of
+ * the calls inside it. Clicking unfolds the run in place.
+ */
+function GroupedRow({
+	row,
+	window,
+	total,
+	onToggle,
+}: {
+	row: GroupRow;
+	window: { start: number; span: number };
+	total: number;
+	onToggle: () => void;
+}) {
+	const { spans, depth, expanded } = row;
+	const starts = spans.map((s) => toMs(s.startTime) - window.start);
+	const first = Math.min(...starts);
+	const last = Math.max(...spans.map((s, i) => starts[i] + s.durationMs));
+	const offset = (first / total) * 100;
+	const width = Math.min(
+		Math.max(((last - first) / total) * 100, 1.5),
+		Math.max(100 - offset, 0),
+	);
+	const durationMs = spans.reduce((sum, s) => sum + s.durationMs, 0);
+	const tokens = spans.reduce((sum, s) => sum + s.totalTokens, 0);
+	const priced = spans.some((s) => s.totalCost != null);
+	const cost = priced
+		? spans.reduce((sum, s) => sum + (s.totalCost ?? 0), 0)
+		: null;
+	const head = spans[0];
+	return (
+		<button
+			type="button"
+			onClick={onToggle}
+			title={expanded ? "Fold repeated calls" : "Show each call"}
+			className="grid cursor-pointer grid-cols-[11rem_minmax(0,1fr)_6.5rem] items-center rounded-md py-1 text-left text-sm hover:bg-accent/50"
+		>
+			<div
+				className="flex min-w-0 items-start gap-2 pr-3"
+				style={{ paddingLeft: (depth + 1) * 14 + 4 }}
+			>
+				<span className="mt-[3px] flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/50">
+					<IconChevronRight
+						className={cn(
+							"size-3 transition-transform",
+							expanded && "rotate-90",
+						)}
+					/>
+				</span>
+				<SpanTypeChip type={head.spanType} />
+				<span className="min-w-0 break-words">
+					<span className="text-muted-foreground tabular-nums">
+						×{spans.length}
+					</span>{" "}
+					{head.name}
+				</span>
+			</div>
+			<div className="relative h-5">
+				<div
+					className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs bg-muted-foreground/25"
+					style={{ left: `${offset}%`, width: `${width}%` }}
+				>
+					{/* One tick per call, positioned within the run's span. */}
+					{spans.map((s, i) => (
+						<div
+							key={s.spanId}
+							className={cn("absolute inset-y-0 w-px", spanTypeBar(s.spanType))}
+							style={{
+								left: `${last > first ? ((starts[i] - first) / (last - first)) * 100 : 0}%`,
+							}}
+						/>
+					))}
+				</div>
+			</div>
+			<div className="flex flex-col items-end pr-1 text-right">
+				<span className="text-[11px] font-medium text-foreground/80 tabular-nums">
+					{formatSpanDuration(durationMs)}
+				</span>
+				{(cost != null || tokens > 0) && (
+					<span className="whitespace-nowrap text-[10px] text-muted-foreground tabular-nums">
+						{cost != null && formatCost(cost)}
+						{cost != null && tokens > 0 && " · "}
+						{tokens > 0 && formatTokens(tokens)}
+					</span>
+				)}
+			</div>
+		</button>
 	);
 }
 
