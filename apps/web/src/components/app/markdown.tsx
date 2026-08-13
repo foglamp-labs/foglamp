@@ -53,5 +53,19 @@ export const markdownComponents = {
 	td: ({ children }: ComponentProps<"td">) => (
 		<td className="px-3 py-1.5 align-top">{children}</td>
 	),
+	// Streamdown wraps images in a <div> for its hover controls, but markdown puts
+	// images inside paragraphs — a <div> inside a <p> is invalid HTML, and React
+	// throws a hydration error on it. A bare <img> is valid wherever an image can
+	// legally appear, so it renders the same in every context.
+	img: ({ src, alt, ...rest }: ComponentProps<"img">) => (
+		// Deliberately not next/image: these are arbitrary remote URLs from model
+		// output, not assets the optimizer can be pointed at.
+		<img
+			{...rest}
+			src={typeof src === "string" ? src : undefined}
+			alt={alt ?? ""}
+			className="my-1.5 inline-block max-h-64 max-w-full rounded-md"
+		/>
+	),
 	hr: () => <hr className="my-3 border-border/60" />,
 };
