@@ -378,16 +378,11 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
   const back = navItem("/traces");
   const ctx = detail.data;
 
-  // Content-first header title: the trace's user message, then an explicit
-  // trace name (the SDK defaults it to the agent name, which the chips below
-  // already show), then the raw id. The id itself demotes to muted mono next
-  // to the copy button once a readable title exists.
-  const traceTitle =
-    ctx?.userMessage ??
-    (ctx?.traceName && ctx.traceName !== ctx.agentName
-      ? ctx.traceName
-      : null) ??
-    traceId;
+  // Header title: an explicit trace name when one was set, else the raw id.
+  // (The user-message snippet stays a list-page affordance — as a title here
+  // it read like a system prompt.) With a name, the id demotes to muted mono
+  // next to the copy button.
+  const traceTitle = ctx?.traceName ?? traceId;
 
   if (!projectId) {
     return (
