@@ -710,15 +710,21 @@ function ContextChip({
 	label: string;
 }) {
 	return (
-		<Link
-			// biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
-			href={href as any}
-			className="inline-flex max-w-xs items-center gap-[5px] rounded-full bg-card px-2.5 pl-2 py-1 text-muted-foreground shadow-(--custom-shadow) transition-colors hover:text-foreground"
+		<Button
+			variant="outline"
+			// The FilterSelect trigger surface from the traces list, minus the
+			// dropdown-only bits: outline Button, no press scale, instant background
+			// hover, and the dark border swapped for the outline shadow.
+			className="max-w-xs justify-start font-normal transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)"
+			render={
+				// biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
+				<Link href={href as any} />
+			}
 		>
 			<Icon className={cn("size-3.5 shrink-0", iconClassName)} />
 			<span className="truncate">{label}</span>
-			<IconArrowUpRight className={cn("size-3.5 shrink-0 -ml-0.5 mt-px")} />
-		</Link>
+			<IconArrowUpRight className="size-3.5 shrink-0 -ml-0.5 mt-px text-muted-foreground" />
+		</Button>
 	);
 }
 
