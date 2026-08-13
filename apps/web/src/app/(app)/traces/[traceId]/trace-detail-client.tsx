@@ -1150,10 +1150,21 @@ function DetailPanel({
 	const drag = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(
 		null,
 	);
+	// Live while a drag is in flight — keeps the edge light on after the pointer
+	// leaves the thin handle (same trick as the Foggy panel).
+	const [resizing, setResizing] = useState(false);
+	const endDrag = (e: React.PointerEvent) => {
+		if (drag.current?.pointerId !== e.pointerId) return;
+		drag.current = null;
+		setResizing(false);
+		document.body.style.cursor = "";
+		document.body.style.userSelect = "";
+		localStorage.setItem(PANEL_WIDTH_KEY, String(widthRef.current));
+	};
 
 	return (
 		<aside
-			className="sticky top-0 shrink-0 self-start"
+			className="group/panel sticky top-0 shrink-0 self-start"
 			style={{ width }}
 		>
 			{/* Resize handle on the panel's left edge. Pointer capture keeps the
@@ -1163,6 +1174,8 @@ function DetailPanel({
 				role="separator"
 				aria-orientation="vertical"
 				aria-label="Resize panel"
+				data-trace-resize=""
+				data-resizing={resizing || undefined}
 				onPointerDown={(e) => {
 					e.preventDefault();
 					drag.current = {
@@ -1170,6 +1183,12 @@ function DetailPanel({
 						startX: e.clientX,
 						startWidth: widthRef.current,
 					};
+					setResizing(true);
+					// The pointer leaves the thin handle immediately while dragging, so
+					// pin the resize cursor (and disable text selection) globally until
+					// release.
+					document.body.style.cursor = "col-resize";
+					document.body.style.userSelect = "none";
 					e.currentTarget.setPointerCapture(e.pointerId);
 				}}
 				onPointerMove={(e) => {
@@ -1178,15 +1197,18 @@ function DetailPanel({
 					// The panel sits on the right, so dragging left widens it.
 					setWidth(clampPanelWidth(d.startWidth + (d.startX - e.clientX)));
 				}}
-				onPointerUp={(e) => {
-					if (drag.current?.pointerId !== e.pointerId) return;
-					drag.current = null;
-					localStorage.setItem(PANEL_WIDTH_KEY, String(widthRef.current));
-				}}
-				className="group absolute inset-y-0 -left-3 z-10 w-3 cursor-col-resize touch-none"
-			>
-				<div className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-border opacity-0 transition-opacity group-hover:opacity-100" />
-			</div>
+				onPointerUp={endDrag}
+				onPointerCancel={endDrag}
+				className="absolute inset-y-0 -left-3 z-10 w-3 cursor-col-resize touch-none"
+			/>
+			{/* Lights up the sheet's left edge while the handle is hovered or
+			    dragged — the same affordance as the Foggy panel, whose shell edge
+			    lights via these data attributes and :has(). Follows the Card's
+			    rounding so the lit border hugs its corners. */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 z-10 rounded-lg squircle:rounded-3xl corner-squircle border-l border-border opacity-0 transition-opacity duration-200 group-has-[[data-trace-resize]:hover]/panel:opacity-100 group-has-[[data-trace-resize][data-resizing]]/panel:opacity-100"
+			/>
 			{trace ? (
 				<TraceDetail
 					trace={trace}
