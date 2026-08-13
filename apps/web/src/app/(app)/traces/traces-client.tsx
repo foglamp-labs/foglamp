@@ -51,17 +51,13 @@ import {
 	useUrlFilters,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
-import {
-	useDelayedLoading,
-	useEntranceOnce,
-	useSkeletonShown,
-} from "@/components/app/hooks";
+import { useDelayedLoading, useEntranceOnce } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
 	EmptyState,
 	NoProject,
 	PageHeader,
-	TableSkeleton,
+	TableRowsSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
@@ -347,10 +343,9 @@ export function TracesClient() {
 		placeholderData: (prev) => prev,
 	});
 	// Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+	// Only the table body waits on data — the toolbar and column headers are
+	// static chrome and paint immediately.
 	const showSkeleton = useDelayedLoading(traces.isLoading);
-	// Latch for the entrance fade: the content slot only fades in if its skeleton
-	// never painted first (see useSkeletonShown).
-	const skeletonShown = useSkeletonShown(showSkeleton);
 
 	if (!projectId) {
 		return (
@@ -427,203 +422,214 @@ export function TracesClient() {
 			<div className={cn(entrance && "page-fade-in")}>
 				<TracesHeader />
 			</div>
-			{traces.isLoading ? (
-				showSkeleton ? (
-					<div className={cn(entrance && "page-fade-in", "px-8")}>
-						<TableSkeleton />
-					</div>
-				) : null
-			) : rows.length === 0 && page === 0 && !hasFilters ? (
-				<div className="px-8">
-					<EmptyState
-						icon={IconAffiliateFilled}
-						title="No traces yet"
-						description="Run an instrumented call to see traces here."
-						className={cn(entrance && !skeletonShown && "page-fade-in")}
-					/>
-				</div>
-			) : (
-				<div
-					className={cn(
-						"flex flex-col gap-4 mt-1",
-						entrance && !skeletonShown && "page-fade-in",
-					)}
-				>
-					<Toolbar>
-						{/* Hero filters stay inline; the rest live behind "+ Filter" and
+			{/* Toolbar and table chrome always render — even for an empty result —
+			    so the range picker and filters stay reachable (an empty range needs
+			    the range picker to escape). The empty states swap in for the table
+			    only; the body rows wait on the query (skeleton rows below). */}
+			<div
+				className={cn("flex flex-col gap-4 mt-1", entrance && "page-fade-in")}
+			>
+				<Toolbar>
+					{/* Hero filters stay inline; the rest live behind "+ Filter" and
                 only occupy the toolbar while applied (or freshly summoned). */}
+					<FilterSelect
+						value={agentFilter}
+						onChange={(v) => patchParams({ agent: v })}
+						allLabel="Any agent"
+						icon={IconGhost}
+						options={agentOptions}
+					/>
+					<FilterSelect
+						value={modelFilter}
+						onChange={(v) => patchParams({ model: v })}
+						allLabel="Any model"
+						icon={IconCpu}
+						options={modelOptions}
+					/>
+					{showWorkflow && (
 						<FilterSelect
-							value={agentFilter}
-							onChange={(v) => patchParams({ agent: v })}
-							allLabel="Any agent"
-							icon={IconGhost}
-							options={agentOptions}
-						/>
-						<FilterSelect
-							value={modelFilter}
-							onChange={(v) => patchParams({ model: v })}
-							allLabel="Any model"
-							icon={IconCpu}
-							options={modelOptions}
-						/>
-						{showWorkflow && (
-							<FilterSelect
-								value={workflowFilter}
-								onChange={(v) => {
-									patchParams({ workflow: v });
-									// Resetting to "Any" dismisses a summoned filter entirely.
-									if (!v) removeFilter("workflow");
-								}}
-								allLabel="Any workflow"
-								icon={IconSitemap}
-								options={workflowOptions}
-							/>
-						)}
-						{showCustomer && (
-							<FilterSelect
-								value={customerFilter}
-								onChange={(v) => {
-									patchParams({ customer: v });
-									if (!v) removeFilter("customer");
-								}}
-								allLabel="Any customer"
-								icon={IconUser}
-								options={customerOptions}
-							/>
-						)}
-						{/* Metadata: picking a key pins its value as a column and reveals
-                the value picker; picking a value filters the trace set. */}
-						{showMeta && (
-							<FilterSelect
-								value={metaKeyFilter}
-								onChange={(v) => {
-									patchParams({ metaKey: v, metaValue: "" });
-									if (!v) removeFilter("meta");
-								}}
-								allLabel="Any metadata"
-								icon={IconTag}
-								options={metaKeyOptions}
-							/>
-						)}
-						{showMeta && metaKeyFilter && (
-							<FilterSelect
-								value={metaValueFilter}
-								onChange={(v) => patchParams({ metaValue: v })}
-								allLabel={`Any ${metaKeyFilter}`}
-								icon={IconTag}
-								options={metaValueOptions}
-								allowFreeText={metaValuesList.data?.truncated ?? false}
-							/>
-						)}
-						{canAddFilter && (
-							<AddFilterMenu
-								showWorkflow={showWorkflow}
-								showCustomer={showCustomer}
-								showMeta={showMeta}
-								onAdd={addFilter}
-							/>
-						)}
-						<ToggleChip
-							active={errorsOnly}
-							onClick={() => patchParams({ errors: errorsOnly ? "" : "1" })}
-						>
-							<IconAlertTriangle className="size-3.5" />
-							Errors only
-						</ToggleChip>
-						<ClearFiltersButton
-							show={hasFilters}
-							onClick={() => {
-								patchParams({
-									agent: "",
-									workflow: "",
-									customer: "",
-									model: "",
-									metaKey: "",
-									metaValue: "",
-									errors: "",
-								});
-								setAdded(new Set());
+							value={workflowFilter}
+							onChange={(v) => {
+								patchParams({ workflow: v });
+								// Resetting to "Any" dismisses a summoned filter entirely.
+								if (!v) removeFilter("workflow");
 							}}
+							allLabel="Any workflow"
+							icon={IconSitemap}
+							options={workflowOptions}
 						/>
-						<div className="ml-auto">
-							<RangeControl value={range} onChange={setRange} />
-						</div>
-					</Toolbar>
+					)}
+					{showCustomer && (
+						<FilterSelect
+							value={customerFilter}
+							onChange={(v) => {
+								patchParams({ customer: v });
+								if (!v) removeFilter("customer");
+							}}
+							allLabel="Any customer"
+							icon={IconUser}
+							options={customerOptions}
+						/>
+					)}
+					{/* Metadata: picking a key pins its value as a column and reveals
+                the value picker; picking a value filters the trace set. */}
+					{showMeta && (
+						<FilterSelect
+							value={metaKeyFilter}
+							onChange={(v) => {
+								patchParams({ metaKey: v, metaValue: "" });
+								if (!v) removeFilter("meta");
+							}}
+							allLabel="Any metadata"
+							icon={IconTag}
+							options={metaKeyOptions}
+						/>
+					)}
+					{showMeta && metaKeyFilter && (
+						<FilterSelect
+							value={metaValueFilter}
+							onChange={(v) => patchParams({ metaValue: v })}
+							allLabel={`Any ${metaKeyFilter}`}
+							icon={IconTag}
+							options={metaValueOptions}
+							allowFreeText={metaValuesList.data?.truncated ?? false}
+						/>
+					)}
+					{canAddFilter && (
+						<AddFilterMenu
+							showWorkflow={showWorkflow}
+							showCustomer={showCustomer}
+							showMeta={showMeta}
+							onAdd={addFilter}
+						/>
+					)}
+					<ToggleChip
+						active={errorsOnly}
+						onClick={() => patchParams({ errors: errorsOnly ? "" : "1" })}
+					>
+						<IconAlertTriangle className="size-3.5" />
+						Errors only
+					</ToggleChip>
+					<ClearFiltersButton
+						show={hasFilters}
+						onClick={() => {
+							patchParams({
+								agent: "",
+								workflow: "",
+								customer: "",
+								model: "",
+								metaKey: "",
+								metaValue: "",
+								errors: "",
+							});
+							setAdded(new Set());
+						}}
+					/>
+					<div className="ml-auto">
+						<RangeControl value={range} onChange={setRange} />
+					</div>
+				</Toolbar>
 
-					{rows.length === 0 && page === 0 ? (
-						<div className="px-8">
+				{!traces.isLoading && rows.length === 0 && page === 0 ? (
+					<div className="px-8">
+						{hasFilters ? (
 							<EmptyState
 								icon={IconAffiliateFilled}
 								title="No matching traces"
 								description="Try a different search or clearing filters."
 							/>
-						</div>
-					) : (
-						// Single column with no gap so the pagination footer's top border
-						// sits flush against the table's last row.
-						<div className="flex flex-col -mt-2">
-							<TooltipProvider delay={150}>
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>Details</TableHead>
-											{metaKeyFilter && (
-												<TableHead className="w-40">
-													<span className="inline-flex items-center gap-1.5">
-														<IconTagFilled className="size-3.5 text-fuchsia-500" />
-														{metaKeyFilter}
-													</span>
-												</TableHead>
-											)}
-											<SortableHead
-												sortKey="spans"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-28"
-											>
-												Spans
-											</SortableHead>
-											<SortableHead
-												sortKey="tokens"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-28"
-											>
-												Tokens
-											</SortableHead>
-											<SortableHead
-												sortKey="duration"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-32"
-											>
-												Duration
-											</SortableHead>
-											<SortableHead
-												sortKey="cost"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-36"
-											>
-												Cost
-											</SortableHead>
-											<SortableHead
-												sortKey="when"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-32"
-											>
-												When
-											</SortableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{rows.map((t) => (
+						) : (
+							<EmptyState
+								icon={IconAffiliateFilled}
+								title="No traces yet"
+								description="Run an instrumented call to see traces here."
+							/>
+						)}
+					</div>
+				) : (
+					// Single column with no gap so the pagination footer's top border
+					// sits flush against the table's last row.
+					<div className="flex flex-col -mt-2">
+						<TooltipProvider delay={150}>
+							{/* Fixed layout: column widths come from the header's w-* classes,
+								    so the skeleton→data swap can't re-measure and shift columns. */}
+							<Table className="table-fixed">
+								<TableHeader>
+									<TableRow>
+										<TableHead>Details</TableHead>
+										{metaKeyFilter && (
+											<TableHead className="w-40">
+												<span className="inline-flex items-center gap-1.5">
+													<IconTagFilled className="size-3.5 text-fuchsia-500" />
+													{metaKeyFilter}
+												</span>
+											</TableHead>
+										)}
+										<SortableHead
+											sortKey="spans"
+											sort={sort}
+											onSort={toggle}
+											align="right"
+											className="w-32"
+										>
+											Spans
+										</SortableHead>
+										<SortableHead
+											sortKey="tokens"
+											sort={sort}
+											onSort={toggle}
+											align="right"
+											className="w-36"
+										>
+											Tokens
+										</SortableHead>
+										<SortableHead
+											sortKey="duration"
+											sort={sort}
+											onSort={toggle}
+											align="right"
+											className="w-40"
+										>
+											Duration
+										</SortableHead>
+										<SortableHead
+											sortKey="cost"
+											sort={sort}
+											onSort={toggle}
+											align="right"
+											className="w-36"
+										>
+											Cost
+										</SortableHead>
+										<SortableHead
+											sortKey="when"
+											sort={sort}
+											onSort={toggle}
+											align="right"
+											className="w-36"
+										>
+											When
+										</SortableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{traces.isLoading ? (
+										showSkeleton ? (
+											// The meta column only exists while a meta filter is set.
+											<TableRowsSkeleton
+												cols={
+													metaKeyFilter
+														? [
+																SKELETON_COLS[0],
+																{ w: "w-24" },
+																...SKELETON_COLS.slice(1),
+															]
+														: SKELETON_COLS
+												}
+											/>
+										) : null
+									) : (
+										rows.map((t) => (
 											<TableRow
 												key={t.traceId}
 												interactive
@@ -740,7 +746,9 @@ export function TracesClient() {
 																		type="button"
 																		onClick={(e) => {
 																			e.stopPropagation();
-																			patchParams({ customer: t.customerId! });
+																			patchParams({
+																				customer: t.customerId!,
+																			});
 																		}}
 																		title="Filter by customer"
 																		className="inline-flex min-w-0 shrink cursor-pointer items-center gap-1 transition-colors hover:text-foreground"
@@ -809,11 +817,13 @@ export function TracesClient() {
 													<RelativeTime value={t.startTime} />
 												</TableCell>
 											</TableRow>
-										))}
-									</TableBody>
-								</Table>
-							</TooltipProvider>
+										))
+									)}
+								</TableBody>
+							</Table>
+						</TooltipProvider>
 
+						{!traces.isLoading && rows.length > 0 && (
 							<PaginationFooter
 								page={page}
 								pageSize={pageSize}
@@ -825,10 +835,20 @@ export function TracesClient() {
 								onPageSizeChange={(s) => patchParams({ size: String(s) })}
 								pageSizes={PAGE_SIZES}
 							/>
-						</div>
-					)}
-				</div>
-			)}
+						)}
+					</div>
+				)}
+			</div>
 		</>
 	);
 }
+
+// Skeleton column spec for the loading body rows (see TableRowsSkeleton).
+const SKELETON_COLS = [
+	{ icon: true, w: "w-40" },
+	{ align: "right", w: "w-10" },
+	{ align: "right", w: "w-12" },
+	{ align: "right", w: "w-14" },
+	{ align: "right", w: "w-16" },
+	{ align: "right", w: "w-14" },
+] as const;

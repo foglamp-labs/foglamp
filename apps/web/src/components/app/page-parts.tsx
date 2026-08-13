@@ -44,6 +44,7 @@ import {
 	EmptyTitle,
 } from "@foglamp/ui/components/empty";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
+import { TableCell, TableRow } from "@foglamp/ui/components/table";
 
 /**
  * A clickable parent crumb rendered before the page title, e.g. an "Evals"
@@ -647,6 +648,55 @@ export function EmptyState({
 				</EmptyContent>
 			</EmptyHeader>
 		</Empty>
+	);
+}
+
+/** One column of a `TableRowsSkeleton` row. Omit `w` for an empty cell (e.g.
+ * an actions column). `icon` adds a small square blob before the text blob. */
+export type SkeletonCol = {
+	w?: string;
+	align?: "left" | "right";
+	icon?: boolean;
+};
+
+/**
+ * Placeholder body rows for a list table while its query is in flight. The
+ * page's chrome (toolbar, column headers) renders immediately; only these
+ * rows shimmer, one blob per column, mirroring the real cells' alignment.
+ * Pair with a `table-fixed` Table so the skeleton→data swap can't shift
+ * column widths.
+ */
+export function TableRowsSkeleton({
+	rows = 3,
+	cols,
+}: {
+	rows?: number;
+	cols: readonly SkeletonCol[];
+}) {
+	return (
+		<>
+			{Array.from({ length: rows }).map((_, i) => (
+				<TableRow key={i}>
+					{cols.map((c, j) => (
+						<TableCell key={j} align={c.align} className="h-12">
+							{c.w && (
+								<div
+									className={cn(
+										"flex items-center gap-2",
+										c.align === "right" && "justify-end",
+									)}
+								>
+									{c.icon && (
+										<Skeleton className="size-4 shrink-0 rounded-md" />
+									)}
+									<Skeleton className={cn("h-4", c.w)} />
+								</div>
+							)}
+						</TableCell>
+					))}
+				</TableRow>
+			))}
+		</>
 	);
 }
 
