@@ -763,6 +763,35 @@ export function getSessionTurns(
 	);
 }
 
+export type TraceRootInputRow = {
+	trace_id: string;
+	input: string;
+};
+
+/**
+ * The root `agent` span's input for each requested trace — the serialized
+ * messages array the traces list mines for a user-message snippet. Same
+ * `LIMIT 1 BY trace_id` collapse as `getSessionTurns`: earliest agent span
+ * wins, so sub-agent spans never shadow the root.
+ */
+export function getTraceRootInputs(
+	client: ClickHouseClient,
+	params: { projectId: string; traceIds: string[] },
+): Promise<TraceRootInputRow[]> {
+	if (params.traceIds.length === 0) return Promise.resolve([]);
+	return rows<TraceRootInputRow>(
+		client,
+		`SELECT trace_id, input
+     FROM spans FINAL
+     WHERE project_id = {projectId:String}
+       AND trace_id IN {ids:Array(String)}
+       AND span_type = 'agent'
+     ORDER BY start_time ASC, span_id ASC
+     LIMIT 1 BY trace_id`,
+		{ projectId: params.projectId, ids: params.traceIds },
+	);
+}
+
 export type SessionToolCallRow = {
 	trace_id: string;
 	name: string;
@@ -865,6 +894,7 @@ export type SpanDetailRow = {
 	chunk_jitter_max: number | null;
 	// Trace-level context (stable across a trace's spans), so the detail header
 	// can link back to the owning session/workflow/agent.
+	trace_name: string;
 	agent_name: string;
 	workflow_name: string;
 	workflow_run_id: string;
@@ -902,7 +932,7 @@ export function getTraceSpans(
        response_time_ms, effective_output_tps, effective_total_tps, output_tps, input_tps,
        chunk_jitter_min, chunk_jitter_p10, chunk_jitter_median,
        chunk_jitter_avg, chunk_jitter_p90, chunk_jitter_max,
-       agent_name, workflow_name, workflow_run_id, session_id, customer_id
+       trace_name, agent_name, workflow_name, workflow_run_id, session_id, customer_id
      FROM spans FINAL
      WHERE project_id = {projectId:String} AND trace_id = {traceId:String}
      ORDER BY start_time ASC, span_id ASC

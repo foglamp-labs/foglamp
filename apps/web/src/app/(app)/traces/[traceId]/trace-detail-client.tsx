@@ -378,6 +378,17 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
   const back = navItem("/traces");
   const ctx = detail.data;
 
+  // Content-first header title: the trace's user message, then an explicit
+  // trace name (the SDK defaults it to the agent name, which the chips below
+  // already show), then the raw id. The id itself demotes to muted mono next
+  // to the copy button once a readable title exists.
+  const traceTitle =
+    ctx?.userMessage ??
+    (ctx?.traceName && ctx.traceName !== ctx.agentName
+      ? ctx.traceName
+      : null) ??
+    traceId;
+
   if (!projectId) {
     return (
       <>
@@ -394,9 +405,18 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 			    RouteHeader is a separate render) so only the page's own header fades. */}
       <div className={cn(entrance && "page-fade-in")}>
         <PageHeader
-          title={traceId}
+          title={traceTitle}
           back={back}
-          titleTrailing={<CopyButton value={traceId} title="Copy trace ID" />}
+          titleTrailing={
+            <span className="flex min-w-0 items-center gap-0.5">
+              {traceTitle !== traceId && (
+                <span className="hidden max-w-44 truncate font-mono text-xs font-normal text-muted-foreground sm:inline">
+                  {traceId}
+                </span>
+              )}
+              <CopyButton value={traceId} title="Copy trace ID" />
+            </span>
+          }
           actions={
             sessionId && (
               <TurnNav

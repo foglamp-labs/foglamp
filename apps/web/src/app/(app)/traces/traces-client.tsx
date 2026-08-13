@@ -646,10 +646,17 @@ export function TracesClient() {
 														    next column instead of truncating. */}
                             <div className="min-w-0 flex flex-col gap-1">
                               <div className="flex items-center gap-2">
+                                {/* Content-first title: the trace's user
+                                    message, then an explicit trace name (the
+                                    SDK falls back to the agent name, which is
+                                    just noise repeated down the column), then
+                                    the raw id. */}
                                 <span className="truncate font-medium text-[13px]">
-                                  {t.traceName ??
-                                    t.agentName ??
-                                    "Untitled trace"}
+                                  {t.userMessage ??
+                                    (t.traceName && t.traceName !== t.agentName
+                                      ? t.traceName
+                                      : null) ??
+                                    t.traceId}
                                 </span>
                                 {/* Compact error count — colored text, no pill. */}
                                 {t.errorCount > 0 && (

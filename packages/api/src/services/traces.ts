@@ -2,6 +2,7 @@ import {
   getCustomerDisplays,
   getSessionTraceNeighbors,
   getTraceAggregate,
+  getTraceRootInputs,
   getTraceSpans,
   listTraces,
   queryMetadataKeys,
@@ -13,9 +14,21 @@ import {
   type TraceSortField,
 } from "@foglamp/clickhouse";
 
+import { extractUserMessage } from "../lib/user-message";
 import { decimalOrNull, finite, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
+
+// Max chars of the extracted user message used as a trace's display title
+// (list rows and the detail header) — one line of context, not a transcript.
+const USER_MESSAGE_SNIPPET_CAP = 300;
+
+// Titles render on a single line; collapse the snippet's internal whitespace
+// so newlines in the prompt don't break truncation.
+function oneLine(s: string | null): string | null {
+  if (!s) return null;
+  return s.replace(/\s+/g, " ").trim() || null;
+}
 
 export async function getTraceList(
   db: Db,
@@ -73,8 +86,9 @@ export async function getTraceList(
   // customers dimension in one lookup and map them back.
   const customerIds = [...new Set(rows.map((r) => r.customer_id).filter(Boolean))];
   // The pinned metadata column: resolve the chosen key's value for this page's
-  // traces (bounded id-list lookup) alongside the customer display decoration.
-  const [dims, metaRows] = await Promise.all([
+  // traces (bounded id-list lookup) alongside the customer display decoration
+  // and each trace's root-span input (mined for a user-message title snippet).
+  const [dims, metaRows, rootInputs] = await Promise.all([
     getCustomerDisplays(ch, { projectId: input.projectId, customerIds }),
     input.metadataKey
       ? queryTraceMetadataValues(ch, {
@@ -83,9 +97,19 @@ export async function getTraceList(
           traceIds: rows.map((r) => r.trace_id),
         })
       : Promise.resolve([]),
+    getTraceRootInputs(ch, {
+      projectId: input.projectId,
+      traceIds: rows.map((r) => r.trace_id),
+    }),
   ]);
   const customerById = new Map(dims.map((d) => [d.customer_id, d]));
   const metaByTrace = new Map(metaRows.map((m) => [m.trace_id, m.value]));
+  const snippetByTrace = new Map(
+    rootInputs.map((r) => [
+      r.trace_id,
+      oneLine(extractUserMessage(r.input, USER_MESSAGE_SNIPPET_CAP)),
+    ]),
+  );
   return {
     // 20/40/60/80th percentile thresholds; finite values only.
     costQuantiles: finite(s?.cost_q),
@@ -99,6 +123,7 @@ export async function getTraceList(
     traces: rows.map((r) => ({
       traceId: r.trace_id,
       traceName: r.trace_name || null,
+      userMessage: snippetByTrace.get(r.trace_id) ?? null,
       agentName: r.agent_name || null,
       workflowName: r.workflow_name || null,
       workflowRunId: r.workflow_run_id || null,
@@ -281,8 +306,15 @@ export async function getTraceDetail(
   const customerDim = customerId
     ? (await getCustomerDisplays(ch, { projectId: input.projectId, customerIds: [customerId] }))[0]
     : undefined;
+  // Rows arrive ordered by start time, so the first agent row is the trace's
+  // root turn — its input carries the user message the header titles with.
+  const rootAgent = rows.find((r) => r.span_type === "agent");
   return {
     traceId: input.traceId,
+    traceName: firstNonEmpty((r) => r.trace_name),
+    userMessage: oneLine(
+      extractUserMessage(rootAgent?.input, USER_MESSAGE_SNIPPET_CAP),
+    ),
     agentName: firstNonEmpty((r) => r.agent_name),
     workflowName: firstNonEmpty((r) => r.workflow_name),
     workflowRunId: firstNonEmpty((r) => r.workflow_run_id),

@@ -10,6 +10,7 @@ import {
   type TraceListRow,
 } from "@foglamp/clickhouse";
 
+import { extractUserMessage } from "../lib/user-message";
 import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
@@ -165,7 +166,7 @@ export async function getSessionDetail(
       endTime: c.end_time,
       durationMs: m ? num(m.duration_ms) : 0,
       status: c.status,
-      userMessage: extractUserMessage(c.input),
+      userMessage: extractUserMessage(c.input, USER_MESSAGE_CAP),
       assistantOutput: c.output || null,
       rawInput: c.input ? c.input.slice(0, RAW_INPUT_CAP) : null,
       totalCost: decimalOrNull(m?.total_cost),
@@ -186,42 +187,4 @@ export async function getSessionDetail(
   };
 
   return { sessionId: input.sessionId, agentName: turns[0]?.agentName ?? null, customer, stats, turns };
-}
-
-/**
- * Best-effort: the root span `input` is usually a JSON messages array (each call
- * passes the running history), so surface the last user message as the turn's
- * prompt. Falls back to the raw string when it isn't a recognizable messages
- * array. Never throws.
- */
-function extractUserMessage(input: string | undefined): string | null {
-  if (!input) return null;
-  const cap = (s: string) => (s.length > USER_MESSAGE_CAP ? `${s.slice(0, USER_MESSAGE_CAP)}…` : s);
-  try {
-    const parsed: unknown = JSON.parse(input);
-    if (Array.isArray(parsed)) {
-      for (let i = parsed.length - 1; i >= 0; i--) {
-        const msg = parsed[i] as { role?: unknown; content?: unknown } | null;
-        if (msg && typeof msg === "object" && msg.role === "user") {
-          return cap(stringifyContent(msg.content));
-        }
-      }
-    }
-  } catch {
-    /* not JSON — fall through to raw */
-  }
-  return cap(input);
-}
-
-// AI SDK message content is either a string or an array of parts ({type,text,…}).
-function stringifyContent(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) {
-    const text = content
-      .map((p) => (p && typeof p === "object" && "text" in p ? String((p as { text: unknown }).text) : ""))
-      .filter(Boolean)
-      .join("");
-    if (text) return text;
-  }
-  return JSON.stringify(content);
 }
