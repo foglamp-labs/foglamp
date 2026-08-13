@@ -37,26 +37,33 @@ const MAX_SPANS_PER_TRACE = 2_000;
 const ERROR_MESSAGE_CAP = 8_192;
 
 // Reconstruct per-step time windows for a non-streaming result (no per-step
-// timestamps are exposed). In a tool loop, step k runs up to tool k's start and
-// resumes after it ends, so tool windows are the natural boundaries; any missing
-// boundary splits the remaining span evenly.
-function reconstructStepTimes(
+// timestamps are exposed). `stepToolWindows[k]` holds the measured execution
+// windows of the tools *step k requested* (matched by toolCallId — a step may
+// request many tools in parallel, so windows are grouped per step, never
+// consumed one-per-step). Step k's generation runs from the cursor up to the
+// first of its own tools; the next step resumes once the last of them ends.
+// A step with no matched windows splits the remaining span evenly.
+// Exported for tests.
+export function reconstructStepTimes(
   start: number,
   end: number,
-  steps: number,
-  toolWindows: ReadonlyArray<[number, number]>,
+  stepToolWindows: ReadonlyArray<ReadonlyArray<[number, number]>>,
 ): Array<[number, number]> {
-  if (steps <= 1) return [[start, end]];
-  const sorted = [...toolWindows].sort((a, b) => a[0] - b[0]);
+  const steps = stepToolWindows.length;
+  if (steps === 0) return [];
   const out: Array<[number, number]> = [];
   let cursor = start;
   for (let i = 0; i < steps; i++) {
-    if (i === steps - 1) {
+    const windows = stepToolWindows[i]!;
+    const last = i === steps - 1;
+    if (windows.length > 0) {
+      const firstToolStart = Math.min(...windows.map((w) => w[0]));
+      const lastToolEnd = Math.max(...windows.map((w) => w[1]));
+      const boundary = Math.min(Math.max(cursor, firstToolStart), end);
+      out.push([Math.min(cursor, end), boundary]);
+      cursor = Math.min(Math.max(boundary, lastToolEnd), end);
+    } else if (last) {
       out.push([Math.min(cursor, end), end]);
-    } else if (sorted[i]) {
-      const boundary = Math.max(cursor, sorted[i]![0]);
-      out.push([cursor, boundary]);
-      cursor = Math.max(boundary, sorted[i]![1]);
     } else {
       const span = Math.max(0, (end - cursor) / (steps - i));
       const stop = cursor + span;
@@ -65,6 +72,21 @@ function reconstructStepTimes(
     }
   }
   return out;
+}
+
+// The toolCallIds a step requested, read from its toolCalls/toolResults —
+// present on v4 through v7 step results. Used to attribute measured tool
+// windows (and tool spans) to the step that requested them.
+function stepToolCallIds(step: StepView | undefined): string[] {
+  const ids = new Set<string>();
+  for (const list of [step?.toolCalls, step?.toolResults]) {
+    if (!Array.isArray(list)) continue;
+    for (const entry of list) {
+      const id = (entry as { toolCallId?: unknown } | null)?.toolCallId;
+      if (typeof id === "string" && id.length > 0) ids.add(id);
+    }
+  }
+  return [...ids];
 }
 
 export interface StepView {
@@ -119,7 +141,10 @@ export class WrapCollector {
   private finalized = false;
 
   private readonly spans: Span[] = [];
-  private readonly toolWindows: Array<[number, number]> = [];
+  // Measured tool executions keyed by toolCallId, so steps can claim their own
+  // tools (window → step timing, span → re-parenting under the step).
+  private readonly toolWindowByCallId = new Map<string, [number, number]>();
+  private readonly toolSpanByCallId = new Map<string, Span>();
 
   // Streaming state. `streamStepIndex` is the in-flight step that text-deltas
   // attribute to; `lastBoundary` is its start (previous step's end, or call start).
@@ -171,8 +196,9 @@ export class WrapCollector {
     const isError = args.error !== undefined;
     const id = args.toolCallId ?? `${this.spans.length}`;
     const end = Math.max(args.start, args.end);
-    this.toolWindows.push([args.start, end]);
-    this.spans.push({
+    // Parent to root for now; the step that requested this tool claims it
+    // (re-parents it under the step span) when that step closes.
+    const span: Span = {
       spanId: `${this.traceId}:tool:${id}`,
       parentSpanId: `${this.traceId}:root`,
       spanType: "tool",
@@ -187,8 +213,29 @@ export class WrapCollector {
       output: this.config.recordOutputs
         ? serialize(isError ? errMsg(args.error) : args.output, this.config.maxPayloadChars)
         : undefined,
-    });
+    };
+    this.spans.push(span);
+    if (args.toolCallId) {
+      this.toolWindowByCallId.set(args.toolCallId, [args.start, end]);
+      this.toolSpanByCallId.set(args.toolCallId, span);
+    }
     if (end > this.endTime) this.endTime = end;
+  }
+
+  // Attach a step's tools to it: re-parent their spans under the step span and
+  // return their measured windows. Steps consume their tools exactly once.
+  private claimStepTools(step: StepView | undefined, stepNumber: number): Array<[number, number]> {
+    const windows: Array<[number, number]> = [];
+    for (const id of stepToolCallIds(step)) {
+      const window = this.toolWindowByCallId.get(id);
+      if (!window) continue;
+      windows.push(window);
+      this.toolWindowByCallId.delete(id);
+      const span = this.toolSpanByCallId.get(id);
+      if (span) span.parentSpanId = `${this.traceId}:step:${stepNumber}`;
+      this.toolSpanByCallId.delete(id);
+    }
+    return windows;
   }
 
   // --- streaming (streamText) --------------------------------------------
@@ -244,8 +291,17 @@ export class WrapCollector {
   addStreamStep(step: StepView | undefined): void {
     const stepNumber = this.streamStepIndex;
     const start = this.lastBoundary;
-    const end = Date.now();
-    this.lastBoundary = end;
+    const now = Date.now();
+    this.lastBoundary = now;
+    // The step span covers generation only: onStepFinish fires after the
+    // step's tools have executed, so when the step requested tools, close the
+    // span at the first tool's start — the tool spans (children of this step)
+    // carry the execution time themselves.
+    const toolWindows = this.claimStepTools(step, stepNumber);
+    const end =
+      toolWindows.length > 0
+        ? Math.min(Math.max(start, Math.min(...toolWindows.map((w) => w[0]))), now)
+        : now;
     const usage = withWebSearch(mapUsageWrap(step?.usage as never), step);
     // Close reasoning blocks that never saw a reasoning-end (best effort:
     // count them as running until the step boundary).
@@ -303,7 +359,12 @@ export class WrapCollector {
         ...this.stepSignals(result as StepView | undefined),
       });
     } else {
-      const times = reconstructStepTimes(this.startTime, end, steps.length, this.toolWindows);
+      // Claim each step's tools first (matched by toolCallId): re-parents the
+      // tool spans under their step and yields the per-step windows that bound
+      // the reconstruction. Parallel tool calls all belong to one step, so the
+      // grouping is what keeps a 13-tool step from collapsing later steps to 0ms.
+      const stepWindows = steps.map((s, i) => this.claimStepTools(s, i));
+      const times = reconstructStepTimes(this.startTime, end, stepWindows);
       steps.forEach((s, i) => {
         const [st, en] = times[i] ?? [this.startTime, end];
         this.pushLlmSpan({

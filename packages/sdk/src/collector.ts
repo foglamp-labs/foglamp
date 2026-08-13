@@ -259,6 +259,10 @@ interface TraceBuilder {
   stepInput: Map<number, string>;
   ttft: Map<number, number>;
   toolStart: Map<string, number>;
+  // toolCallId → the step that requested it (currentStep when execution began).
+  // Parents the tool span under that step's llm span and lets the step exclude
+  // tool time from its own duration.
+  toolStep: Map<string, number>;
   // Streaming text accounting, keyed by stepNumber. chunkTextLen /
   // reasoningTextLen are running text lengths (they feed the HUD's live token
   // estimate via CHARS_PER_TOKEN); streamingStep marks the step currently
@@ -457,6 +461,7 @@ export class Collector implements Telemetry {
         stepInput: new Map(),
         ttft: new Map(),
         toolStart: new Map(),
+        toolStep: new Map(),
         chunkTextLen: new Map(),
         reasoningTextLen: new Map(),
         streamingStep: undefined,
@@ -515,8 +520,9 @@ export class Collector implements Telemetry {
   // Pure model-call timing: these fire around the provider invocation only,
   // before any client-side tool execution. They carry no stepNumber, so the
   // measurement attributes to the step that's currently running (set in
-  // onStepStart). The llm span still covers the whole step — modelCallMs is an
-  // annotation on it, from which tool time is derived (durationMs - modelCallMs).
+  // onStepStart). Besides annotating modelCallMs, this window bounds the llm
+  // span itself — the span covers generation only, ending at the measured
+  // model-call end (tool time lives in the step's tool child spans).
   onLanguageModelCallStart: NonNullable<Telemetry["onLanguageModelCallStart"]> = (event) => {
     this.guard(() => {
       const e = event as LmCallView;
@@ -717,6 +723,25 @@ export class Collector implements Telemetry {
     const modelCallMs = responseTimeMs ?? builder.modelCallMs.get(e.stepNumber);
     const chunkJitter = buildChunkJitter(perf?.timeBetweenOutputChunksMs);
 
+    // The llm span covers generation only — the step's tool executions are its
+    // child spans, not part of its duration. onStepEnd fires after those tools
+    // complete, so close the span at the measured model-call end when we have
+    // one, else at the first of this step's tool executions, else now.
+    const modelCallStartWall = builder.modelCallStart.get(e.stepNumber);
+    const stepSpanId = `${e.callId}:step:${e.stepNumber}`;
+    const firstToolStart = builder.spans.reduce<number | undefined>(
+      (min, s) =>
+        s.spanType === "tool" && s.parentSpanId === stepSpanId
+          ? Math.min(min ?? s.startTime, s.startTime)
+          : min,
+      undefined,
+    );
+    const generationEnd =
+      modelCallStartWall !== undefined && modelCallMs !== undefined
+        ? modelCallStartWall + modelCallMs
+        : firstToolStart;
+    const endTime = Math.min(Math.max(start, generationEnd ?? now), now);
+
     // This step is done streaming; drop its scratch state.
     builder.chunkTextLen.delete(e.stepNumber);
     builder.reasoningTextLen.delete(e.stepNumber);
@@ -727,12 +752,12 @@ export class Collector implements Telemetry {
     if (builder.streamingStep === e.stepNumber) builder.streamingStep = undefined;
 
     builder.spans.push({
-      spanId: `${e.callId}:step:${e.stepNumber}`,
+      spanId: stepSpanId,
       parentSpanId: `${e.callId}:root`,
       spanType: "llm",
       name: `step ${e.stepNumber}`,
       startTime: start,
-      endTime: now,
+      endTime,
       status: e.finishReason === "error" ? "error" : "ok",
       provider: e.model?.provider ?? builder.provider,
       modelId: e.model?.modelId ?? builder.modelId,
@@ -767,7 +792,7 @@ export class Collector implements Telemetry {
         status: e.finishReason === "error" ? "error" : "ok",
         usage,
         ttftMs,
-        durationMs: Math.max(0, now - start),
+        durationMs: Math.max(0, endTime - start),
         outputTps: perf?.outputTokensPerSecond,
         modelCallMs,
       });
@@ -892,6 +917,7 @@ export class Collector implements Telemetry {
       const id = e.toolCall?.toolCallId;
       if (!builder || !id) return;
       builder.toolStart.set(id, Date.now());
+      if (builder.currentStep !== undefined) builder.toolStep.set(id, builder.currentStep);
 
       if (this.config.hud) {
         this.emitHud({
@@ -920,10 +946,17 @@ export class Collector implements Telemetry {
       const start =
         builder.toolStart.get(id) ?? Math.max(builder.startTime, now - (e.durationMs ?? 0));
       const isError = e.toolOutput?.type === "tool-error";
+      // Parent under the step that requested this tool; root only when no step
+      // is attributable (a tool firing outside any step lifecycle).
+      const requestingStep = builder.toolStep.get(id) ?? builder.currentStep;
+      builder.toolStep.delete(id);
 
       builder.spans.push({
         spanId: `${e.callId}:tool:${id}`,
-        parentSpanId: `${e.callId}:root`,
+        parentSpanId:
+          requestingStep !== undefined
+            ? `${e.callId}:step:${requestingStep}`
+            : `${e.callId}:root`,
         spanType: "tool",
         name: e.toolCall?.toolName ?? "tool",
         startTime: start,

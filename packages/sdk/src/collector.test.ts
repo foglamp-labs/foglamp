@@ -22,7 +22,7 @@ function llmSpan(trace: Trace): Span {
 }
 
 describe("Collector model-call + provider signals", () => {
-  test("modelCallMs is annotated; the span still covers the whole step", async () => {
+  test("modelCallMs is annotated; the span ends at the model-call end (tool time excluded)", async () => {
     const { collector, traces } = makeCollector();
     const callId = "call-1";
     collector.onStart!({ callId, provider: "openai", modelId: "gpt-x" } as never);
@@ -30,6 +30,7 @@ describe("Collector model-call + provider signals", () => {
     collector.onLanguageModelCallStart!({ callId } as never);
     await Bun.sleep(15);
     collector.onLanguageModelCallEnd!({ callId } as never);
+    const modelCallEnd = Date.now();
     // Simulate client-side tool time before the step closes.
     await Bun.sleep(15);
     collector.onStepFinish!({
@@ -38,15 +39,77 @@ describe("Collector model-call + provider signals", () => {
       usage: { inputTokens: 5, outputTokens: 7 },
       finishReason: "stop",
     } as never);
+    const stepFinishAt = Date.now();
     collector.onFinish!({ callId, text: "done" } as never);
 
     expect(traces.length).toBe(1);
     const span = llmSpan(traces[0]!);
     expect(span.modelCallMs).toBeGreaterThan(0);
-    // The model-call window is shorter than the whole step (which includes tools).
+    // The llm span covers generation only: it closes at the measured model-call
+    // end, not at onStepFinish — the ~15ms of tool time after the model call
+    // stays out of the span.
+    expect(span.endTime).toBeGreaterThanOrEqual(modelCallEnd - 2);
+    expect(span.endTime).toBeLessThan(stepFinishAt - 5);
     const stepMs = span.endTime - span.startTime;
-    expect(span.modelCallMs!).toBeLessThanOrEqual(stepMs);
-    expect(stepMs).toBeGreaterThanOrEqual(span.modelCallMs!);
+    expect(span.modelCallMs!).toBeLessThanOrEqual(stepMs + 2);
+  });
+
+  test("tool spans parent under the step that requested them; llm span ends at the first tool start", async () => {
+    const { collector, traces } = makeCollector();
+    const callId = "call-tools";
+    collector.onStart!({ callId, provider: "openai", modelId: "gpt-x" } as never);
+    collector.onStepStart!({ callId, stepNumber: 0 } as never);
+    await Bun.sleep(10);
+    // Two tools run in parallel within step 0 (no model-call lifecycle here, so
+    // the llm span's end falls back to the first tool's start).
+    collector.onToolExecutionStart!({
+      callId,
+      toolCall: { toolCallId: "t1", toolName: "search" },
+    } as never);
+    collector.onToolExecutionStart!({
+      callId,
+      toolCall: { toolCallId: "t2", toolName: "search" },
+    } as never);
+    await Bun.sleep(10);
+    collector.onToolExecutionEnd!({
+      callId,
+      toolCall: { toolCallId: "t1", toolName: "search" },
+      toolOutput: { type: "tool-result", output: "a" },
+    } as never);
+    collector.onToolExecutionEnd!({
+      callId,
+      toolCall: { toolCallId: "t2", toolName: "search" },
+      toolOutput: { type: "tool-result", output: "b" },
+    } as never);
+    collector.onStepFinish!({
+      callId,
+      stepNumber: 0,
+      usage: { inputTokens: 5, outputTokens: 7 },
+      finishReason: "tool-calls",
+    } as never);
+    collector.onStepStart!({ callId, stepNumber: 1 } as never);
+    collector.onStepFinish!({
+      callId,
+      stepNumber: 1,
+      usage: { inputTokens: 5, outputTokens: 3 },
+      finishReason: "stop",
+    } as never);
+    collector.onFinish!({ callId, text: "done" } as never);
+
+    const trace = traces[0]!;
+    const toolSpans = trace.spans.filter((s) => s.spanType === "tool");
+    expect(toolSpans).toHaveLength(2);
+    for (const t of toolSpans) {
+      expect(t.parentSpanId).toBe(`${callId}:step:0`);
+    }
+    const step0 = trace.spans.find((s) => s.spanId === `${callId}:step:0`)!;
+    // Generation-only: step 0 closes when its first tool starts, not when the
+    // tools finish.
+    const firstToolStart = Math.min(...toolSpans.map((t) => t.startTime));
+    expect(step0.endTime).toBe(firstToolStart);
+    expect(step0.endTime - step0.startTime).toBeGreaterThan(0);
+    // The tools' execution time is fully outside the llm span.
+    expect(Math.max(...toolSpans.map((t) => t.endTime))).toBeGreaterThan(step0.endTime);
   });
 
   test("system fingerprint, safety, sources, and rate-limit flow onto the span", () => {
