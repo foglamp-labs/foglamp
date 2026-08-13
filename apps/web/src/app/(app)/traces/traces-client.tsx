@@ -848,7 +848,7 @@ export function TracesClient() {
 
 // Skeleton column spec for the loading body rows (see TableRowsSkeleton).
 const SKELETON_COLS = [
-	{ icon: true, w: "w-40" },
+	{ w: "w-40", sub: "w-56" },
 	{ align: "right", w: "w-10" },
 	{ align: "right", w: "w-12" },
 	{ align: "right", w: "w-14" },

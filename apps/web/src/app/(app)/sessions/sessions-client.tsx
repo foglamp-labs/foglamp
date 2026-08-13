@@ -450,7 +450,7 @@ export function SessionsClient() {
 
 // Skeleton column spec for the loading body rows (see TableRowsSkeleton).
 const SKELETON_COLS = [
-	{ w: "w-48" },
+	{ w: "w-48", sub: "w-40" },
 	{ align: "right", w: "w-8" },
 	{ align: "right", w: "w-12" },
 	{ align: "right", w: "w-16" },

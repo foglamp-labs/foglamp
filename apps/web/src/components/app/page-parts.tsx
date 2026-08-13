@@ -657,6 +657,11 @@ export type SkeletonCol = {
 	w?: string;
 	align?: "left" | "right";
 	icon?: boolean;
+	/** Width class for a second, smaller meta line under the main blob —
+	 * for two-line details cells (traces/sessions). The two lines reproduce
+	 * the real cell's line boxes (h-5 name + gap-1 + mt-0.5 + h-4 meta), so
+	 * the skeleton row height matches the data rows without hardcoding it. */
+	sub?: string;
 };
 
 /**
@@ -683,18 +688,32 @@ export function TableRowsSkeleton({
 				<TableRow key={i}>
 					{cols.map((c, j) => (
 						<TableCell key={j} align={c.align} className={rowHeight}>
-							{c.w && (
-								<div
-									className={cn(
-										"flex items-center gap-2",
-										c.align === "right" && "justify-end",
-									)}
-								>
-									{c.icon && (
-										<Skeleton className="size-4 shrink-0 rounded-md" />
-									)}
-									<Skeleton className={cn("h-4", c.w)} />
+							{c.sub ? (
+								<div className="flex flex-col gap-1">
+									<div className="flex h-5 items-center gap-2">
+										{c.icon && (
+											<Skeleton className="size-4 shrink-0 rounded-md" />
+										)}
+										<Skeleton className={cn("h-4", c.w)} />
+									</div>
+									<div className="mt-0.5 flex h-4 items-center">
+										<Skeleton className={cn("h-3", c.sub)} />
+									</div>
 								</div>
+							) : (
+								c.w && (
+									<div
+										className={cn(
+											"flex items-center gap-2",
+											c.align === "right" && "justify-end",
+										)}
+									>
+										{c.icon && (
+											<Skeleton className="size-4 shrink-0 rounded-md" />
+										)}
+										<Skeleton className={cn("h-4", c.w)} />
+									</div>
+								)
 							)}
 						</TableCell>
 					))}
