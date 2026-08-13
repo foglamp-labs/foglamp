@@ -257,7 +257,12 @@ export function SettingsClient() {
 					) : (
 						// Fixed layout: column widths come from the header's w-* classes,
 						// so the skeleton→data swap can't re-measure and shift columns.
-						<Table className={cn("table-fixed", entrance && "page-fade-in")}>
+						<Table
+							className={cn(
+								"table-fixed min-w-[44rem]",
+								entrance && "page-fade-in",
+							)}
+						>
 							<TableHeader>
 								<TableRow>
 									<TableHead>Name</TableHead>
