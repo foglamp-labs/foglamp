@@ -3,6 +3,40 @@ title: Changelog
 description: "What's new in Foglamp."
 ---
 
+<Update label="August 13, 2026">
+
+## Updates
+
+**Accurate trace structure — SDK 0.9.0.** The waterfall now reflects what
+actually happened in a run. Three changes, all in the SDK collectors:
+
+- **Tool spans nest under their step.** A tool execution is now recorded as a
+  child of the LLM step that requested it (matched by tool-call id), on both
+  the v7 collector and the v4–v6 `foglamp/wrap` adapter. Indentation in the
+  [trace waterfall](/dashboard/traces) is now real structure, not decoration.
+- **LLM steps measure generation only.** A step span ends when the model
+  finishes generating — at the measured model-call end on v7, or where its
+  first tool starts otherwise. Tool time lives entirely in the step's tool
+  child spans, so step duration means "time spent in the model" consistently
+  across streaming, non-streaming, and both SDK majors.
+- **Fixed 0ms / inflated step durations.** Non-streaming multi-step calls
+  (`generateText` via wrap) that fired tools **in parallel** could collapse a
+  step to 0ms and absorb its time into the next one. Per-step tool
+  attribution replaces the old one-window-per-step reconstruction, so every
+  step now carries its real duration.
+
+Upgrade the `foglamp` package to **0.9.0** to get the corrected shape — traces
+from older SDK versions keep flowing and render as before (flat tool rows).
+No ingest changes or migrations required; self-hosters can deploy in any
+order.
+
+**Waterfall cleanup.** The span-type filter chips introduced on August 7 are
+retired — with tools now nested under their steps, hiding a type mid-tree
+created more confusion than focus. Subtree collapse and the repeated-siblings
+fold (`×N`) remain the way to tame long traces.
+
+</Update>
+
 <Update label="August 7, 2026">
 
 ## Updates
