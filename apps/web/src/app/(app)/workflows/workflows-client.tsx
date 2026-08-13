@@ -227,7 +227,7 @@ export function WorkflowsClient() {
 						<TooltipProvider delay={150}>
 							{/* Fixed layout: column widths come from the header's w-* classes,
                     so the skeleton→data swap can't re-measure and shift columns. */}
-							<Table className="table-fixed min-w-[64rem]">
+							<Table className="table-fixed min-w-5xl">
 								<TableHeader>
 									<TableRow>
 										<SortableHead sortKey="name" sort={sort} onSort={toggle}>

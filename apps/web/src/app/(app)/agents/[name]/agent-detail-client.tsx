@@ -403,7 +403,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 										xDataKey="bucket"
 										selectedDataKey={volumeSelected}
 										onSelectionChange={setVolumeSelected}
-										className="h-[220px] w-full"
+										className="h-55 w-full"
 										chartProps={{
 											// left: 2 (vs Recharts' default 5) tucks the auto-width
 											// y-axis labels closer to the card content edge.
@@ -460,7 +460,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 										stackType="stacked"
 										selectedDataKey={latencySelected}
 										onSelectionChange={setLatencySelected}
-										className="h-[220px] w-full"
+										className="h-55 w-full"
 										chartProps={{
 											// left: 2 (vs Recharts' default 5) tucks the auto-width
 											// y-axis labels closer to the card content edge.

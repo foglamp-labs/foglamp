@@ -4,42 +4,42 @@ import { formatCount } from "@/lib/format";
 import { Button, buttonVariants } from "@foglamp/ui/components/button";
 import { Input } from "@foglamp/ui/components/input";
 import {
-	InputGroup,
-	InputGroupAddon,
-	InputGroupButton,
-	InputGroupInput,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
 } from "@foglamp/ui/components/input-group";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@foglamp/ui/components/select";
 import { TableHead } from "@foglamp/ui/components/table";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
-	IconArrowDown,
-	IconArrowUp,
-	IconArrowsSort,
-	IconChevronLeft,
-	IconChevronRight,
-	IconSearch,
-	IconX,
+  IconArrowDown,
+  IconArrowUp,
+  IconArrowsSort,
+  IconChevronLeft,
+  IconChevronRight,
+  IconSearch,
+  IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-	type ComponentType,
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useId,
-	useMemo,
-	useRef,
-	useState,
+  type ComponentType,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 
 // ---------------------------------------------------------------------------
@@ -58,77 +58,77 @@ import {
  * each other (the router's searchParams only update after navigation).
  */
 export function useUrlFilters<K extends string>(
-	defaults: Record<K, string>,
+  defaults: Record<K, string>
 ): [Record<K, string>, (updates: Partial<Record<K, string>>) => void] {
-	const router = useRouter();
-	const pathname = usePathname();
-	const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-	const values = {} as Record<K, string>;
-	for (const key of Object.keys(defaults) as K[]) {
-		values[key] = searchParams.get(key) ?? defaults[key];
-	}
+  const values = {} as Record<K, string>;
+  for (const key of Object.keys(defaults) as K[]) {
+    values[key] = searchParams.get(key) ?? defaults[key];
+  }
 
-	// Same-tick accumulator, keyed to the searchParams snapshot it started from.
-	const pendingRef = useRef<{ base: string; params: URLSearchParams } | null>(
-		null,
-	);
-	const defaultsRef = useRef(defaults);
-	defaultsRef.current = defaults;
+  // Same-tick accumulator, keyed to the searchParams snapshot it started from.
+  const pendingRef = useRef<{ base: string; params: URLSearchParams } | null>(
+    null
+  );
+  const defaultsRef = useRef(defaults);
+  defaultsRef.current = defaults;
 
-	const patch = useCallback(
-		(updates: Partial<Record<K, string>>) => {
-			const base = searchParams.toString();
-			const params =
-				pendingRef.current?.base === base
-					? pendingRef.current.params
-					: new URLSearchParams(base);
+  const patch = useCallback(
+    (updates: Partial<Record<K, string>>) => {
+      const base = searchParams.toString();
+      const params =
+        pendingRef.current?.base === base
+          ? pendingRef.current.params
+          : new URLSearchParams(base);
 
-			const changed = Object.entries(updates).some(
-				([k, v]) => (params.get(k) ?? defaultsRef.current[k as K]) !== v,
-			);
-			if (!changed) return;
+      const changed = Object.entries(updates).some(
+        ([k, v]) => (params.get(k) ?? defaultsRef.current[k as K]) !== v
+      );
+      if (!changed) return;
 
-			for (const [k, v] of Object.entries(updates) as [K, string][]) {
-				if (v === defaultsRef.current[k]) params.delete(k);
-				else params.set(k, v);
-			}
-			if (!("page" in updates)) params.delete("page");
+      for (const [k, v] of Object.entries(updates) as [K, string][]) {
+        if (v === defaultsRef.current[k]) params.delete(k);
+        else params.set(k, v);
+      }
+      if (!("page" in updates)) params.delete("page");
 
-			pendingRef.current = { base, params };
-			const qs = params.toString();
-			// The query string varies at runtime, which typed routes can't model.
-			router.replace((qs ? `${pathname}?${qs}` : pathname) as Route, {
-				scroll: false,
-			});
-		},
-		[router, pathname, searchParams],
-	);
+      pendingRef.current = { base, params };
+      const qs = params.toString();
+      // The query string varies at runtime, which typed routes can't model.
+      router.replace((qs ? `${pathname}?${qs}` : pathname) as Route, {
+        scroll: false,
+      });
+    },
+    [router, pathname, searchParams]
+  );
 
-	return [values, patch];
+  return [values, patch];
 }
 
 /** Parse a `key:dir` sort param ("cost:desc") back into a SortState; unknown
  * keys/dirs yield null (the table's natural order). */
 export function parseSortParam<K extends string>(
-	value: string,
-	validKeys: readonly K[],
+  value: string,
+  validKeys: readonly K[]
 ): SortState<K> | null {
-	const [key, dir] = value.split(":");
-	if (!validKeys.includes(key as K)) return null;
-	if (dir !== "asc" && dir !== "desc") return null;
-	return { key: key as K, dir };
+  const [key, dir] = value.split(":");
+  if (!validKeys.includes(key as K)) return null;
+  if (dir !== "asc" && dir !== "desc") return null;
+  return { key: key as K, dir };
 }
 
 /** The next sort param in the tri-state cycle (desc → asc → off), serialized
  * for the URL. Mirrors useTableSort's toggle. */
 export function cycleSortParam<K extends string>(
-	sort: SortState<K> | null,
-	key: K,
+  sort: SortState<K> | null,
+  key: K
 ): string {
-	if (!sort || sort.key !== key) return `${key}:desc`;
-	if (sort.dir === "desc") return `${key}:asc`;
-	return "";
+  if (!sort || sort.key !== key) return `${key}:desc`;
+  if (sort.dir === "desc") return `${key}:asc`;
+  return "";
 }
 
 // ---------------------------------------------------------------------------
@@ -145,16 +145,16 @@ export type SortState<K extends string> = { key: K; dir: SortDir };
  * Returned `toggle` is wired to <SortableHead>.
  */
 export function useTableSort<K extends string>(
-	initial: SortState<K> | null = null,
+  initial: SortState<K> | null = null
 ) {
-	const [sort, setSort] = useState<SortState<K> | null>(initial);
-	const toggle = (key: K) =>
-		setSort((s) => {
-			if (!s || s.key !== key) return { key, dir: "desc" };
-			if (s.dir === "desc") return { key, dir: "asc" };
-			return null; // was ascending → clear sorting
-		});
-	return { sort, toggle, setSort };
+  const [sort, setSort] = useState<SortState<K> | null>(initial);
+  const toggle = (key: K) =>
+    setSort((s) => {
+      if (!s || s.key !== key) return { key, dir: "desc" };
+      if (s.dir === "desc") return { key, dir: "asc" };
+      return null; // was ascending → clear sorting
+    });
+  return { sort, toggle, setSort };
 }
 
 /** Stable client-side sort: nulls always sort last, numbers numerically, and
@@ -162,96 +162,96 @@ export function useTableSort<K extends string>(
  * original order. Use for full-list tables (the server sorts the paginated
  * ones). */
 export function sortRows<T, K extends string>(
-	rows: readonly T[],
-	sort: SortState<K> | null,
-	accessors: Record<K, (row: T) => string | number | null | undefined>,
+  rows: readonly T[],
+  sort: SortState<K> | null,
+  accessors: Record<K, (row: T) => string | number | null | undefined>
 ): T[] {
-	if (!sort) return [...rows];
-	const get = accessors[sort.key];
-	const sign = sort.dir === "asc" ? 1 : -1;
-	return [...rows].sort((a, b) => {
-		const av = get(a);
-		const bv = get(b);
-		if (av == null && bv == null) return 0;
-		if (av == null) return 1;
-		if (bv == null) return -1;
-		if (typeof av === "number" && typeof bv === "number")
-			return (av - bv) * sign;
-		return String(av).localeCompare(String(bv)) * sign;
-	});
+  if (!sort) return [...rows];
+  const get = accessors[sort.key];
+  const sign = sort.dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const av = get(a);
+    const bv = get(b);
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (typeof av === "number" && typeof bv === "number")
+      return (av - bv) * sign;
+    return String(av).localeCompare(String(bv)) * sign;
+  });
 }
 
 /** A header cell that cycles its column's sort on click (desc → asc → off),
  * with a direction arrow that brightens while the column is active. */
 export function SortableHead<K extends string>({
-	sortKey,
-	sort,
-	onSort,
-	align = "left",
-	className,
-	children,
+  sortKey,
+  sort,
+  onSort,
+  align = "left",
+  className,
+  children,
 }: {
-	sortKey: K;
-	sort: SortState<K> | null;
-	onSort: (key: K) => void;
-	align?: "left" | "right" | "center";
-	className?: string;
-	children: React.ReactNode;
+  sortKey: K;
+  sort: SortState<K> | null;
+  onSort: (key: K) => void;
+  align?: "left" | "right" | "center";
+  className?: string;
+  children: React.ReactNode;
 }) {
-	const active = sort?.key === sortKey;
-	const Arrow = active
-		? sort.dir === "asc"
-			? IconArrowUp
-			: IconArrowDown
-		: IconArrowsSort;
-	// The whole header cell is the click/hover target (not just the label), so
-	// sorting is easy to hit anywhere in the column header. Keyboard-operable via
-	// tabIndex + Enter/Space.
-	return (
-		<TableHead
-			align={align}
-			aria-sort={
-				active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"
-			}
-			tabIndex={0}
-			onClick={() => onSort(sortKey)}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					onSort(sortKey);
-				}
-			}}
-			className={cn(
-				"group cursor-pointer select-none outline-none focus-visible:ring-[1.5px] focus-visible:ring-inset focus-visible:ring-ring/50",
-				className,
-			)}
-		>
-			{/* The arrow sits after the label but takes no layout space on
+  const active = sort?.key === sortKey;
+  const Arrow = active
+    ? sort.dir === "asc"
+      ? IconArrowUp
+      : IconArrowDown
+    : IconArrowsSort;
+  // The whole header cell is the click/hover target (not just the label), so
+  // sorting is easy to hit anywhere in the column header. Keyboard-operable via
+  // tabIndex + Enter/Space.
+  return (
+    <TableHead
+      align={align}
+      aria-sort={
+        active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"
+      }
+      tabIndex={0}
+      onClick={() => onSort(sortKey)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSort(sortKey);
+        }
+      }}
+      className={cn(
+        "group cursor-pointer select-none outline-none focus-visible:ring-[1.5px] focus-visible:ring-inset focus-visible:ring-ring/50",
+        className
+      )}
+    >
+      {/* The arrow sits after the label but takes no layout space on
 			    right-aligned columns (-mr-5 = its size-3.5 + gap-1.5 footprint,
 			    hanging into the cell's right padding), so the label's right edge
 			    lines up exactly with the numbers below. It only appears on hover
 			    or when the column is actively sorted, keeping the resting header
 			    a clean flush-right label. */}
-			<span
-				className={cn(
-					"inline-flex flex-row-reverse items-center gap-1.5 text-foreground",
-					align === "right" && "-mr-5",
-				)}
-			>
-				<Arrow
-					className={cn(
-						"size-3.5 shrink-0 transition-[color,opacity]",
-						active
-							? "text-foreground"
-							: "text-muted-foreground opacity-0 group-hover:opacity-100",
-						"group-hover:text-primary",
-					)}
-					stroke={active ? 2 : 1.5}
-				/>
-				<span>{children}</span>
-			</span>
-		</TableHead>
-	);
+      <span
+        className={cn(
+          "inline-flex flex-row-reverse items-center gap-1.5 text-foreground",
+          align === "right" && "-mr-5"
+        )}
+      >
+        <Arrow
+          className={cn(
+            "size-3.5 shrink-0 transition-[color,opacity]",
+            active
+              ? "text-foreground"
+              : "text-muted-foreground opacity-0 group-hover:opacity-100",
+            "group-hover:text-primary"
+          )}
+          stroke={active ? 2 : 1.5}
+        />
+        <span>{children}</span>
+      </span>
+    </TableHead>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -263,22 +263,22 @@ export function SortableHead<K extends string>({
 // (no need to click to close one and click again to open the next). `null` means
 // nothing is open.
 const FilterGroupContext = createContext<{
-	openId: string | null;
-	setOpenId: React.Dispatch<React.SetStateAction<string | null>>;
+  openId: string | null;
+  setOpenId: React.Dispatch<React.SetStateAction<string | null>>;
 } | null>(null);
 
 /** A horizontal bar of filter controls, sitting above a table. Wraps on narrow
  * widths. Also coordinates its FilterSelects' open state (see FilterGroupContext). */
 export function Toolbar({ children }: { children: React.ReactNode }) {
-	const [openId, setOpenId] = useState<string | null>(null);
-	const group = useMemo(() => ({ openId, setOpenId }), [openId]);
-	return (
-		<FilterGroupContext.Provider value={group}>
-			<div className="flex flex-wrap items-center gap-2 px-5.5 pr-7">
-				{children}
-			</div>
-		</FilterGroupContext.Provider>
-	);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const group = useMemo(() => ({ openId, setOpenId }), [openId]);
+  return (
+    <FilterGroupContext.Provider value={group}>
+      <div className="flex flex-wrap items-center gap-2 pl-7 pr-8">
+        {children}
+      </div>
+    </FilterGroupContext.Provider>
+  );
 }
 
 /** Membership in a Toolbar's shared open-coordination group for dropdowns that
@@ -286,99 +286,99 @@ export function Toolbar({ children }: { children: React.ReactNode }) {
  * into the popup and `onTriggerMouseEnter` onto its trigger, and it joins the
  * hover-to-switch behavior between sibling filters. */
 export function useFilterGroupItem() {
-	const group = useContext(FilterGroupContext);
-	const id = useId();
-	return {
-		open: group ? group.openId === id : undefined,
-		onOpenChange: (isOpen: boolean) =>
-			group?.setOpenId((curr) => (isOpen ? id : curr === id ? null : curr)),
-		onTriggerMouseEnter: () => {
-			// If a sibling filter is already open, switch to this one on hover.
-			if (group && group.openId !== null && group.openId !== id) {
-				group.setOpenId(id);
-			}
-		},
-	};
+  const group = useContext(FilterGroupContext);
+  const id = useId();
+  return {
+    open: group ? group.openId === id : undefined,
+    onOpenChange: (isOpen: boolean) =>
+      group?.setOpenId((curr) => (isOpen ? id : curr === id ? null : curr)),
+    onTriggerMouseEnter: () => {
+      // If a sibling filter is already open, switch to this one on hover.
+      if (group && group.openId !== null && group.openId !== id) {
+        group.setOpenId(id);
+      }
+    },
+  };
 }
 
 /** A compact search field with a leading icon and a clear button. */
 export function SearchInput({
-	value,
-	onChange,
-	placeholder = "Search…",
-	className,
+  value,
+  onChange,
+  placeholder = "Search…",
+  className,
 }: {
-	value: string;
-	onChange: (value: string) => void;
-	placeholder?: string;
-	className?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
 }) {
-	return (
-		// corner-round! drops the group's default squircle corner-shape, which
-		// otherwise flattens the fully-rounded pill ends. The shadow/bg/border
-		// overrides swap the group's default surface for the outline-Button one so
-		// it matches the sibling filters (which render that variant).
-		<InputGroup
-			className={cn(
-				"h-8 w-56 rounded-full squircle:rounded-full corner-round! bg-background shadow-(--custom-outline-shadow) dark:shadow-(--custom-outline-shadow) dark:border-0 dark:bg-card hover:bg-muted/50 dark:hover:bg-muted",
-				className,
-			)}
-		>
-			<InputGroupAddon>
-				<IconSearch className="size-3.5 dark:text-[#5B5B5B] text-[#B8B8B8]" />
-			</InputGroupAddon>
-			<InputGroupInput
-				value={value}
-				onChange={(e) => onChange(e.target.value)}
-				placeholder={placeholder}
-				className="h-8"
-			/>
-			{value && (
-				<InputGroupAddon align="inline-end">
-					<InputGroupButton
-						size="icon-xs"
-						aria-label="Clear search"
-						onClick={() => onChange("")}
-						className="rounded-full text-muted-foreground/60 hover:text-foreground"
-					>
-						<IconX className="size-3.5" />
-					</InputGroupButton>
-				</InputGroupAddon>
-			)}
-		</InputGroup>
-	);
+  return (
+    // corner-round! drops the group's default squircle corner-shape, which
+    // otherwise flattens the fully-rounded pill ends. The shadow/bg/border
+    // overrides swap the group's default surface for the outline-Button one so
+    // it matches the sibling filters (which render that variant).
+    <InputGroup
+      className={cn(
+        "h-8 w-56 rounded-full squircle:rounded-full corner-round! bg-background shadow-(--custom-outline-shadow) dark:shadow-(--custom-outline-shadow) dark:border-0 dark:bg-card hover:bg-muted/50 dark:hover:bg-muted",
+        className
+      )}
+    >
+      <InputGroupAddon>
+        <IconSearch className="size-3.5 dark:text-[#5B5B5B] text-[#B8B8B8]" />
+      </InputGroupAddon>
+      <InputGroupInput
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-8"
+      />
+      {value && (
+        <InputGroupAddon align="inline-end">
+          <InputGroupButton
+            size="icon-xs"
+            aria-label="Clear search"
+            onClick={() => onChange("")}
+            className="rounded-full text-muted-foreground/60 hover:text-foreground"
+          >
+            <IconX className="size-3.5" />
+          </InputGroupButton>
+        </InputGroupAddon>
+      )}
+    </InputGroup>
+  );
 }
 
 /** A boolean filter toggle (e.g. "Errors only"): the outline Button variant at
  * rest, the destructive one while active. */
 export function ToggleChip({
-	active,
-	onClick,
-	children,
+  active,
+  onClick,
+  children,
 }: {
-	active: boolean;
-	onClick: () => void;
-	children: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
 }) {
-	return (
-		<Button
-			variant={active ? "destructive" : "outline"}
-			aria-pressed={active}
-			onClick={onClick}
-			className={cn(
-				// transition-[color,box-shadow] (not the base transition-all) matches
-				// the SearchInput surface: background hover flips instantly,
-				// text/shadow still ease. State colors come from the variants, except
-				// the inactive label/icon which dims to muted (outline would pin the
-				// icon to neutral, hence the svg override).
-				"font-normal transition-[color,box-shadow] active:scale-100",
-				!active &&
-					"text-muted-foreground/50 hover:text-muted-foreground/50 [&_svg:not([class*='text-'])]:text-muted-foreground/50 dark:[&_svg:not([class*='text-'])]:text-muted-foreground/50",
-			)}
-		>
-			{children}
-		</Button>
-	);
+  return (
+    <Button
+      variant={active ? "destructive" : "outline"}
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        // transition-[color,box-shadow] (not the base transition-all) matches
+        // the SearchInput surface: background hover flips instantly,
+        // text/shadow still ease. State colors come from the variants, except
+        // the inactive label/icon which dims to muted (outline would pin the
+        // icon to neutral, hence the svg override).
+        "font-normal transition-[color,box-shadow] active:scale-100",
+        !active &&
+          "text-muted-foreground/50 hover:text-muted-foreground/50 [&_svg:not([class*='text-'])]:text-muted-foreground/50 dark:[&_svg:not([class*='text-'])]:text-muted-foreground/50"
+      )}
+    >
+      {children}
+    </Button>
+  );
 }
 
 // Dropdowns longer than this get an inline search input at the top.
@@ -388,212 +388,212 @@ const FILTER_SEARCH_THRESHOLD = 8;
  * match the other toolbar controls. Long option lists (or `allowFreeText`) get
  * an inline typeahead that narrows the list as you type. */
 export function FilterSelect<T extends string>({
-	value,
-	onChange,
-	allLabel,
-	options,
-	icon: IconComp,
-	className,
-	allowFreeText = false,
+  value,
+  onChange,
+  allLabel,
+  options,
+  icon: IconComp,
+  className,
+  allowFreeText = false,
 }: {
-	value: T | "";
-	onChange: (value: T | "") => void;
-	/** Label for the reset option and the empty-state placeholder, e.g. "Any status". */
-	allLabel: string;
-	options: {
-		value: T;
-		label: string;
-		icon?: ComponentType<{ className?: string }>;
-	}[];
-	/** Leading icon for the trigger; shown for the "all" state and as the
-	 * fallback for options that don't define their own. */
-	icon?: ComponentType<{ className?: string }>;
-	className?: string;
-	/** Accept a typed value (Enter) even when it matches no listed option — for
-	 * capped option lists where the full value set is larger than what's shown. */
-	allowFreeText?: boolean;
+  value: T | "";
+  onChange: (value: T | "") => void;
+  /** Label for the reset option and the empty-state placeholder, e.g. "Any status". */
+  allLabel: string;
+  options: {
+    value: T;
+    label: string;
+    icon?: ComponentType<{ className?: string }>;
+  }[];
+  /** Leading icon for the trigger; shown for the "all" state and as the
+   * fallback for options that don't define their own. */
+  icon?: ComponentType<{ className?: string }>;
+  className?: string;
+  /** Accept a typed value (Enter) even when it matches no listed option — for
+   * capped option lists where the full value set is larger than what's shown. */
+  allowFreeText?: boolean;
 }) {
-	// A free-text value isn't among the listed options — surface it as a
-	// synthetic first option so the trigger and list can render its label.
-	const allOptions =
-		value && !options.some((o) => o.value === value)
-			? [{ value: value as T, label: value as string }, ...options]
-			: options;
+  // A free-text value isn't among the listed options — surface it as a
+  // synthetic first option so the trigger and list can render its label.
+  const allOptions =
+    value && !options.some((o) => o.value === value)
+      ? [{ value: value as T, label: value as string }, ...options]
+      : options;
 
-	// The trigger leads with the selected option's icon, falling back to the
-	// filter's own icon (the "all"/placeholder state).
-	const TriggerIcon =
-		allOptions.find((o) => o.value === value)?.icon ?? IconComp;
+  // The trigger leads with the selected option's icon, falling back to the
+  // filter's own icon (the "all"/placeholder state).
+  const TriggerIcon =
+    allOptions.find((o) => o.value === value)?.icon ?? IconComp;
 
-	// Coordinate open state with sibling filters (see FilterGroupContext). Falls
-	// back to Base UI's own uncontrolled state when used outside a Toolbar.
-	const group = useContext(FilterGroupContext);
-	const id = useId();
+  // Coordinate open state with sibling filters (see FilterGroupContext). Falls
+  // back to Base UI's own uncontrolled state when used outside a Toolbar.
+  const group = useContext(FilterGroupContext);
+  const id = useId();
 
-	// Inline typeahead over the option labels; cleared whenever the dropdown
-	// closes so it reopens unfiltered.
-	const [query, setQuery] = useState("");
-	const searchable = allowFreeText || options.length > FILTER_SEARCH_THRESHOLD;
-	const q = query.trim().toLowerCase();
-	const visibleOptions = q
-		? allOptions.filter((o) => o.label.toLowerCase().includes(q))
-		: allOptions;
+  // Inline typeahead over the option labels; cleared whenever the dropdown
+  // closes so it reopens unfiltered.
+  const [query, setQuery] = useState("");
+  const searchable = allowFreeText || options.length > FILTER_SEARCH_THRESHOLD;
+  const q = query.trim().toLowerCase();
+  const visibleOptions = q
+    ? allOptions.filter((o) => o.label.toLowerCase().includes(q))
+    : allOptions;
 
-	return (
-		<Select<T | "", false>
-			value={value}
-			onValueChange={(v) => onChange(v ?? "")}
-			// Non-modal so sibling triggers stay hoverable while this one is open.
-			modal={false}
-			open={group ? group.openId === id : undefined}
-			onOpenChange={(isOpen) => {
-				if (!isOpen) setQuery("");
-				group?.setOpenId((curr) => (isOpen ? id : curr === id ? null : curr));
-			}}
-		>
-			<SelectTrigger
-				size="sm"
-				className={cn(
-					// The outline Button surface, so the trigger matches ToggleChip (a
-					// real Button can't be nested here — Base UI's render would merge two
-					// conflicting class stacks). On top of it: the trigger's own layout
-					// (value/chevron spread vs Button's centering, squircle off), no dark
-					// border/shadow-none from the trigger base (Button outline has
-					// neither), instant background hover like the SearchInput, and no
-					// press scale.
-					buttonVariants({ variant: "outline" }),
-					"min-w-36 justify-between font-normal corner-round! transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)",
-					className,
-				)}
-				onMouseEnter={() => {
-					// If another filter is already open, switch to this one on hover.
-					if (group && group.openId !== null && group.openId !== id) {
-						group.setOpenId(id);
-					}
-				}}
-			>
-				{TriggerIcon && (
-					<TriggerIcon className="size-3.5 shrink-0 dark:text-[#5B5B5B] text-[#B8B8B8]" />
-				)}
-				<SelectValue placeholder={allLabel} />
-			</SelectTrigger>
-			{/* w-auto: size to the longest option (instead of the trigger's width)
+  return (
+    <Select<T | "", false>
+      value={value}
+      onValueChange={(v) => onChange(v ?? "")}
+      // Non-modal so sibling triggers stay hoverable while this one is open.
+      modal={false}
+      open={group ? group.openId === id : undefined}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) setQuery("");
+        group?.setOpenId((curr) => (isOpen ? id : curr === id ? null : curr));
+      }}
+    >
+      <SelectTrigger
+        size="sm"
+        className={cn(
+          // The outline Button surface, so the trigger matches ToggleChip (a
+          // real Button can't be nested here — Base UI's render would merge two
+          // conflicting class stacks). On top of it: the trigger's own layout
+          // (value/chevron spread vs Button's centering, squircle off), no dark
+          // border/shadow-none from the trigger base (Button outline has
+          // neither), instant background hover like the SearchInput, and no
+          // press scale.
+          buttonVariants({ variant: "outline" }),
+          "min-w-36 justify-between font-normal corner-round! transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)",
+          className
+        )}
+        onMouseEnter={() => {
+          // If another filter is already open, switch to this one on hover.
+          if (group && group.openId !== null && group.openId !== id) {
+            group.setOpenId(id);
+          }
+        }}
+      >
+        {TriggerIcon && (
+          <TriggerIcon className="size-3.5 shrink-0 dark:text-[#5B5B5B] text-[#B8B8B8]" />
+        )}
+        <SelectValue placeholder={allLabel} />
+      </SelectTrigger>
+      {/* w-auto: size to the longest option (instead of the trigger's width)
           so long names aren't clipped; the truncate span caps the extremes. */}
-			<SelectContent
-				className="w-auto min-w-44 max-w-80"
-				align="start"
-				sideOffset={8}
-			>
-				{searchable && (
-					<div className="sticky -top-1 z-10 -mx-1 -mt-1 mb-1 border-b border-border/40 bg-popover p-1">
-						<div className="relative">
-							<IconSearch className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />
-							<Input
-								value={query}
-								onChange={(e) => setQuery(e.target.value)}
-								placeholder="Search…"
-								autoFocus
-								className="h-7 rounded-md border-none bg-transparent pl-7 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
-								onKeyDown={(e) => {
-									// Free-text apply: Enter with no matching option filters by
-									// the typed value (capped lists hide the long tail).
-									if (
-										e.key === "Enter" &&
-										allowFreeText &&
-										query.trim() &&
-										visibleOptions.length === 0
-									) {
-										e.preventDefault();
-										onChange(query.trim() as T);
-										group?.setOpenId(null);
-										return;
-									}
-									// Keep list navigation with the select; everything else
-									// (typing, Backspace, Home/End…) belongs to the input —
-									// otherwise Base UI's own typeahead hijacks the keystrokes.
-									if (
-										e.key !== "ArrowDown" &&
-										e.key !== "ArrowUp" &&
-										e.key !== "Enter" &&
-										e.key !== "Escape"
-									) {
-										e.stopPropagation();
-									}
-								}}
-							/>
-						</div>
-					</div>
-				)}
-				{/* Explicit `label` keeps the value→label map (and SelectValue) text
+      <SelectContent
+        className="w-auto min-w-44 max-w-80"
+        align="start"
+        sideOffset={8}
+      >
+        {searchable && (
+          <div className="sticky -top-1 z-10 -mx-1 -mt-1 mb-1 border-b border-border/40 bg-popover p-1">
+            <div className="relative">
+              <IconSearch className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search…"
+                autoFocus
+                className="h-7 rounded-md border-none bg-transparent pl-7 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
+                onKeyDown={(e) => {
+                  // Free-text apply: Enter with no matching option filters by
+                  // the typed value (capped lists hide the long tail).
+                  if (
+                    e.key === "Enter" &&
+                    allowFreeText &&
+                    query.trim() &&
+                    visibleOptions.length === 0
+                  ) {
+                    e.preventDefault();
+                    onChange(query.trim() as T);
+                    group?.setOpenId(null);
+                    return;
+                  }
+                  // Keep list navigation with the select; everything else
+                  // (typing, Backspace, Home/End…) belongs to the input —
+                  // otherwise Base UI's own typeahead hijacks the keystrokes.
+                  if (
+                    e.key !== "ArrowDown" &&
+                    e.key !== "ArrowUp" &&
+                    e.key !== "Enter" &&
+                    e.key !== "Escape"
+                  ) {
+                    e.stopPropagation();
+                  }
+                }}
+              />
+            </div>
+          </div>
+        )}
+        {/* Explicit `label` keeps the value→label map (and SelectValue) text
             only, so the icon in the children doesn't render twice in the
             trigger. */}
-				<SelectItem value="" label={allLabel}>
-					{IconComp && (
-						<IconComp className="size-4 shrink-0 text-neutral-500 mt-0.5" />
-					)}
-					{allLabel}
-				</SelectItem>
-				{searchable && q && visibleOptions.length === 0 && (
-					<div className="px-2 py-1.5 text-sm text-muted-foreground">
-						{allowFreeText ? (
-							<span>
-								Press <span className="text-foreground">Enter</span> to use “
-								{query.trim()}”
-							</span>
-						) : (
-							"No matches"
-						)}
-					</div>
-				)}
-				{visibleOptions.map((o) => {
-					const OptIcon = o.icon;
-					return (
-						<SelectItem key={o.value} value={o.value} label={o.label}>
-							{OptIcon && (
-								<OptIcon className="size-4 shrink-0 text-neutral-500 mt-0.5" />
-							)}
-							<span className="block max-w-64 truncate" title={o.label}>
-								{o.label}
-							</span>
-						</SelectItem>
-					);
-				})}
-			</SelectContent>
-		</Select>
-	);
+        <SelectItem value="" label={allLabel}>
+          {IconComp && (
+            <IconComp className="size-4 shrink-0 text-neutral-500 mt-0.5" />
+          )}
+          {allLabel}
+        </SelectItem>
+        {searchable && q && visibleOptions.length === 0 && (
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+            {allowFreeText ? (
+              <span>
+                Press <span className="text-foreground">Enter</span> to use “
+                {query.trim()}”
+              </span>
+            ) : (
+              "No matches"
+            )}
+          </div>
+        )}
+        {visibleOptions.map((o) => {
+          const OptIcon = o.icon;
+          return (
+            <SelectItem key={o.value} value={o.value} label={o.label}>
+              {OptIcon && (
+                <OptIcon className="size-4 shrink-0 text-neutral-500 mt-0.5" />
+              )}
+              <span className="block max-w-64 truncate" title={o.label}>
+                {o.label}
+              </span>
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
+  );
 }
 
 /** A ghost button that clears all active filters. Render at the end of a
  * Toolbar; visible only when `show` is true (a filter is active), fading +
  * blurring + scaling in and out via AnimatePresence. */
 export function ClearFiltersButton({
-	show,
-	onClick,
+  show,
+  onClick,
 }: {
-	show: boolean;
-	onClick: () => void;
+  show: boolean;
+  onClick: () => void;
 }) {
-	return (
-		<AnimatePresence>
-			{show && (
-				<motion.div
-					initial={{ opacity: 0, scale: 0.98, x: -4 }}
-					animate={{ opacity: 1, scale: 1, x: 0 }}
-					transition={{ duration: 0.13, ease: "easeOut" }}
-					className="inline-flex"
-				>
-					<Button
-						variant="outline"
-						onClick={onClick}
-						className="text-muted-foreground gap-1"
-					>
-						<IconX />
-						Clear
-					</Button>
-				</motion.div>
-			)}
-		</AnimatePresence>
-	);
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98, x: -4 }}
+          animate={{ opacity: 1, scale: 1, x: 0 }}
+          transition={{ duration: 0.13, ease: "easeOut" }}
+          className="inline-flex"
+        >
+          <Button
+            variant="outline"
+            onClick={onClick}
+            className="text-muted-foreground gap-1"
+          >
+            <IconX />
+            Clear
+          </Button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
 /** Minimal pagination footer: "1,240 traces · 1–25" in muted text plus two
@@ -601,88 +601,88 @@ export function ClearFiltersButton({
  * when `onPageSizeChange` is provided. No page numbers — paginated lists here
  * are browsed sequentially or narrowed via filters, never jumped into. */
 export function PaginationFooter({
-	page,
-	pageSize,
-	total,
-	shown,
-	noun,
-	onPageChange,
-	onPageSizeChange,
-	pageSizes = [25, 50, 100],
-	isFetching = false,
+  page,
+  pageSize,
+  total,
+  shown,
+  noun,
+  onPageChange,
+  onPageSizeChange,
+  pageSizes = [25, 50, 100],
+  isFetching = false,
 }: {
-	/** 0-based page index. */
-	page: number;
-	pageSize: number;
-	/** Total row count across all pages (0 while it loads). */
-	total: number;
-	/** Row count on the current page. */
-	shown: number;
-	/** Singular/plural label, e.g. ["trace", "traces"]. */
-	noun: [string, string];
-	onPageChange: (page: number) => void;
-	/** Enables the rows-per-page picker on the range text. */
-	onPageSizeChange?: (size: number) => void;
-	pageSizes?: number[];
-	isFetching?: boolean;
+  /** 0-based page index. */
+  page: number;
+  pageSize: number;
+  /** Total row count across all pages (0 while it loads). */
+  total: number;
+  /** Row count on the current page. */
+  shown: number;
+  /** Singular/plural label, e.g. ["trace", "traces"]. */
+  noun: [string, string];
+  onPageChange: (page: number) => void;
+  /** Enables the rows-per-page picker on the range text. */
+  onPageSizeChange?: (size: number) => void;
+  pageSizes?: number[];
+  isFetching?: boolean;
 }) {
-	const totalPages = Math.max(page + 1, Math.ceil(total / pageSize) || 1);
-	const range =
-		shown === 0 ? "0" : `${page * pageSize + 1}–${page * pageSize + shown}`;
-	return (
-		<div className="flex items-center justify-end gap-1 border-t border-border/50 px-8 pt-4 dark:border-border/40">
-			<span className="text-xs text-muted-foreground/50 tabular-nums">
-				{formatCount(total)} {total === 1 ? noun[0] : noun[1]}
-			</span>
-			<span className="text-xs text-muted-foreground/50 mx-2">·</span>
-			{onPageSizeChange ? (
-				<Select<string, false>
-					value={String(pageSize)}
-					onValueChange={(v) => v && onPageSizeChange(Number(v))}
-				>
-					<SelectTrigger
-						title="Rows per page"
-						// Strip the trigger surface down to bare text so it reads as part
-						// of the count line, only revealing itself as a control on hover.
-						className="h-auto data-[size=default]:h-auto gap-0.5 rounded-md squircle:rounded-md border-0 bg-transparent p-0 text-xs text-muted-foreground/50 tabular-nums shadow-none transition-[color,box-shadow] hover:text-foreground dark:border-0 dark:bg-transparent dark:shadow-none dark:hover:bg-transparent"
-					>
-						{range}
-					</SelectTrigger>
-					<SelectContent className="w-auto min-w-28" align="end" sideOffset={6}>
-						{pageSizes.map((s) => (
-							<SelectItem key={s} value={String(s)}>
-								{s} per page
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			) : (
-				<span className="text-xs text-muted-foreground/50 tabular-nums">
-					{range}
-				</span>
-			)}
-			<div className="ml-1.5 flex items-center gap-1">
-				<Button
-					variant={page === 0 || isFetching ? "ghost" : "outline"}
-					size="icon-sm"
-					aria-label="Previous page"
-					disabled={page === 0 || isFetching}
-					onClick={() => onPageChange(page - 1)}
-				>
-					<IconChevronLeft />
-				</Button>
-				<Button
-					variant={page + 1 >= totalPages || isFetching ? "ghost" : "outline"}
-					size="icon-sm"
-					aria-label="Next page"
-					disabled={page + 1 >= totalPages || isFetching}
-					onClick={() => onPageChange(page + 1)}
-				>
-					<IconChevronRight />
-				</Button>
-			</div>
-		</div>
-	);
+  const totalPages = Math.max(page + 1, Math.ceil(total / pageSize) || 1);
+  const range =
+    shown === 0 ? "0" : `${page * pageSize + 1}–${page * pageSize + shown}`;
+  return (
+    <div className="flex items-center justify-end gap-1 border-t border-border/50 px-8 pt-4 dark:border-border/40">
+      <span className="text-xs text-muted-foreground/50 tabular-nums">
+        {formatCount(total)} {total === 1 ? noun[0] : noun[1]}
+      </span>
+      <span className="text-xs text-muted-foreground/50 mx-2">·</span>
+      {onPageSizeChange ? (
+        <Select<string, false>
+          value={String(pageSize)}
+          onValueChange={(v) => v && onPageSizeChange(Number(v))}
+        >
+          <SelectTrigger
+            title="Rows per page"
+            // Strip the trigger surface down to bare text so it reads as part
+            // of the count line, only revealing itself as a control on hover.
+            className="h-auto data-[size=default]:h-auto gap-0.5 rounded-md squircle:rounded-md border-0 bg-transparent p-0 text-xs text-muted-foreground/50 tabular-nums shadow-none transition-[color,box-shadow] hover:text-foreground dark:border-0 dark:bg-transparent dark:shadow-none dark:hover:bg-transparent"
+          >
+            {range}
+          </SelectTrigger>
+          <SelectContent className="w-auto min-w-28" align="end" sideOffset={6}>
+            {pageSizes.map((s) => (
+              <SelectItem key={s} value={String(s)}>
+                {s} per page
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <span className="text-xs text-muted-foreground/50 tabular-nums">
+          {range}
+        </span>
+      )}
+      <div className="ml-1.5 flex items-center gap-1">
+        <Button
+          variant={page === 0 || isFetching ? "ghost" : "outline"}
+          size="icon-sm"
+          aria-label="Previous page"
+          disabled={page === 0 || isFetching}
+          onClick={() => onPageChange(page - 1)}
+        >
+          <IconChevronLeft />
+        </Button>
+        <Button
+          variant={page + 1 >= totalPages || isFetching ? "ghost" : "outline"}
+          size="icon-sm"
+          aria-label="Next page"
+          disabled={page + 1 >= totalPages || isFetching}
+          onClick={() => onPageChange(page + 1)}
+        >
+          <IconChevronRight />
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 // General-purpose hooks (useDelayedLoading / useDebouncedValue / useTextFilter)

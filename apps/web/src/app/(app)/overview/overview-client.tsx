@@ -211,7 +211,7 @@ function StatCardsSkeleton({
             {/* Icon + label row, mirroring the real StatCard header. */}
             <div className="flex items-center justify-between gap-1.5">
               <div className="flex items-center gap-1.5">
-                <Skeleton className="size-[13px] rounded-full squircle:rounded-full" />
+                <Skeleton className="size-3.25 rounded-full squircle:rounded-full" />
                 <Skeleton className="h-3 w-14" />
               </div>
               <Skeleton className="h-3 w-9" />
@@ -242,7 +242,7 @@ function ChartCardSkeleton({ className }: { className?: string }) {
         <Skeleton className="h-4 w-24" />
       </CardHeader>
       <CardContent className="mt-3">
-        <Skeleton className="h-[260px] w-full" />
+        <Skeleton className="h-65 w-full" />
       </CardContent>
     </Card>
   );
@@ -331,7 +331,7 @@ function BreakdownRow({
     <>
       {/* Left: name + secondary metrics. */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-[6px]">
+        <div className="flex items-center gap-1.5">
           {renderIcon("size-4 shrink-0")}
           <span className="truncate text-sm font-medium">{title}</span>
         </div>
@@ -1123,7 +1123,7 @@ export function OverviewClient() {
                   stackType="stacked"
                   selectedDataKey={costSelected}
                   onSelectionChange={setCostSelected}
-                  className="h-[260px] w-full"
+                  className="h-65 w-full"
                   chartProps={{
                     // left: 2 (vs Recharts' default 5) tucks the auto-width
                     // y-axis labels closer to the card content edge.
@@ -1192,7 +1192,7 @@ export function OverviewClient() {
                   xDataKey="bucket"
                   selectedDataKey={volumeSelected}
                   onSelectionChange={setVolumeSelected}
-                  className="h-[260px] w-full"
+                  className="h-65 w-full"
                   chartProps={{
                     // left: 2 (vs Recharts' default 5) tucks the auto-width
                     // y-axis labels closer to the card content edge.
@@ -1257,7 +1257,7 @@ export function OverviewClient() {
                   stackType="stacked"
                   selectedDataKey={latencySelected}
                   onSelectionChange={setLatencySelected}
-                  className="h-[260px] w-full"
+                  className="h-65 w-full"
                   chartProps={{
                     // left: 2 (vs Recharts' default 5) tucks the auto-width
                     // y-axis labels closer to the card content edge.
