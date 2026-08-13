@@ -1965,6 +1965,133 @@ export function listTracesByWorkflowRun(
 	);
 }
 
+export type TraceNeighbor = { traceId: string; startTime: string };
+
+/**
+ * The traces immediately before and after this one within its session — the
+ * "previous / next turn" control on the trace page.
+ *
+ * Note there is no index for session-ordered traversal: `trace_summary` is keyed
+ * `(project_id, trace_id)` and `spans` by `(project_id, trace_id, start_time,
+ * span_id)`, so neither yields a sorted range scan by session. This is a
+ * scan-and-sort over the project's traces, matching what `getSessionTurns`
+ * already costs. It's fine for a detail page; if session navigation ever becomes
+ * central, the fix is a `(project_id, session_id, trace_start)` rollup rather
+ * than tuning this query.
+ */
+export async function getSessionTraceNeighbors(
+	client: ClickHouseClient,
+	params: { projectId: string; sessionId: string; traceId: string },
+): Promise<{ prev: TraceNeighbor | null; next: TraceNeighbor | null }> {
+	// The anchor is looked up rather than passed in, so the caller can't hand us a
+	// start time that doesn't belong to the trace. It's a point read on the
+	// primary key (project_id, trace_id).
+	const anchor = `(SELECT min(trace_start) FROM trace_summary
+       WHERE project_id = {projectId:String} AND trace_id = {traceId:String})`;
+	// `session_id` and `trace_start` are aggregates over trace_summary's parts, so
+	// they can only be filtered in HAVING — hence GROUP BY then HAVING, not WHERE.
+	const query = (comparison: string, direction: string) =>
+		`SELECT trace_id, min(trace_summary.trace_start) AS trace_start
+     FROM trace_summary
+     WHERE project_id = {projectId:String}
+     GROUP BY trace_id
+     HAVING any(session_id) = {sessionId:String}
+       AND trace_id != {traceId:String}
+       AND trace_start ${comparison} ${anchor}
+     ORDER BY trace_start ${direction}
+     LIMIT 1`;
+	type Row = { trace_id: string; trace_start: string };
+	const toNeighbor = (r: Row[]): TraceNeighbor | null =>
+		r[0] ? { traceId: r[0].trace_id, startTime: r[0].trace_start } : null;
+	const [prev, next] = await Promise.all([
+		rows<Row>(client, query("<=", "DESC"), params),
+		rows<Row>(client, query(">=", "ASC"), params),
+	]);
+	return { prev: toNeighbor(prev), next: toNeighbor(next) };
+}
+
+export type TraceAggregateRow = {
+	agent_name: string;
+	duration_ms: string;
+	total_cost: string;
+	total_tokens: string;
+};
+
+/** One trace's own rollup — a point read on the primary key. Feeds the
+ * comparison below, which needs the values it is ranking. */
+export function getTraceAggregate(
+	client: ClickHouseClient,
+	params: { projectId: string; traceId: string },
+): Promise<TraceAggregateRow[]> {
+	return rows<TraceAggregateRow>(
+		client,
+		`SELECT
+       any(agent_name) AS agent_name,
+       dateDiff('millisecond', min(trace_summary.trace_start), max(trace_summary.trace_end)) AS duration_ms,
+       sum(total_cost) AS total_cost,
+       sum(total_tokens) AS total_tokens
+     FROM trace_summary
+     WHERE project_id = {projectId:String} AND trace_id = {traceId:String}
+     GROUP BY trace_id`,
+		params,
+	);
+}
+
+export type TraceComparisonRow = {
+	trace_count: string;
+	duration_rank: string;
+	token_rank: string;
+	/** Cost is ranked only against priced traces — unpriced traces record a cost
+	 * of 0, and counting them would push every priced trace's rank upward. */
+	priced_count: string;
+	cost_rank: string;
+};
+
+/**
+ * Where this trace's duration / cost / tokens sit within its agent's recent
+ * traces, as a count of traces at or below each value. Ranking the trace's own
+ * value (rather than reading fixed p50/p95 anchors) is what lets the UI say
+ * "p91" exactly instead of "above median".
+ *
+ * Same cost profile as `traceListSummary`: an aggregate over the project's
+ * traces filtered down in HAVING, since `agent_name` and `trace_start` are
+ * aggregates over trace_summary's parts.
+ */
+export function traceComparison(
+	client: ClickHouseClient,
+	params: {
+		projectId: string;
+		agentName: string;
+		from: string;
+		durationMs: number;
+		cost: string;
+		tokens: number;
+	},
+): Promise<TraceComparisonRow[]> {
+	return rows<TraceComparisonRow>(
+		client,
+		`SELECT
+       count() AS trace_count,
+       countIf(t.duration_ms <= {durationMs:Int64}) AS duration_rank,
+       countIf(t.total_tokens <= {tokens:UInt64}) AS token_rank,
+       countIf(t.total_cost > 0) AS priced_count,
+       countIf(t.total_cost > 0 AND t.total_cost <= {cost:Decimal(38, 10)}) AS cost_rank
+     FROM (
+       SELECT
+         any(agent_name) AS agent_name,
+         min(trace_summary.trace_start) AS trace_start,
+         dateDiff('millisecond', min(trace_summary.trace_start), max(trace_summary.trace_end)) AS duration_ms,
+         sum(total_cost) AS total_cost,
+         sum(total_tokens) AS total_tokens
+       FROM trace_summary
+       WHERE project_id = {projectId:String}
+       GROUP BY trace_id
+       HAVING agent_name = {agentName:String} AND trace_start >= {from:DateTime64(3)}
+     ) AS t`,
+		params,
+	);
+}
+
 export type ProjectSummaryRow = {
 	span_count: string;
 	llm_span_count: string;

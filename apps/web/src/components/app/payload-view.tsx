@@ -1,87 +1,23 @@
 "use client";
 
 import { cn } from "@foglamp/ui/lib/utils";
-import { IconChevronRight, IconTool } from "@tabler/icons-react";
-import { useState } from "react";
+import {
+	IconAlertTriangle,
+	IconChevronRight,
+	IconPaperclip,
+	IconTool,
+} from "@tabler/icons-react";
+import { useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
 
 import { useShikiHtml } from "./code-block";
 import { markdownComponents } from "./markdown";
+import { type Message, type Part, toMessages } from "./payload-messages";
 
 // Renders a span/trace input or output payload readably instead of as raw JSON.
-// These payloads are AI-SDK shapes: an array of `{role, content}` messages, a
-// bare array of content parts, or a plain (markdown) string. We normalize all
-// three to messages → parts, render text as markdown, and tuck tool calls /
-// results behind a disclosure. Anything we don't recognize falls back to JSON.
-
-type Part =
-	| { kind: "text"; text: string }
-	| { kind: "tool-call"; name: string; data: unknown }
-	| { kind: "tool-result"; name: string; data: unknown }
-	| { kind: "json"; data: unknown };
-
-type Message = { role: string | null; parts: Part[] };
-
-function partFrom(p: unknown): Part {
-	if (typeof p === "string") return { kind: "text", text: p };
-	if (p && typeof p === "object") {
-		const o = p as Record<string, unknown>;
-		if (
-			(o.type === "text" || o.type === "reasoning") &&
-			typeof o.text === "string"
-		) {
-			return { kind: "text", text: o.text };
-		}
-		if (o.type === "tool-call") {
-			return {
-				kind: "tool-call",
-				name: String(o.toolName ?? o.name ?? "tool"),
-				data: o.input ?? o.args ?? {},
-			};
-		}
-		if (o.type === "tool-result") {
-			return {
-				kind: "tool-result",
-				name: String(o.toolName ?? o.name ?? "tool"),
-				data: o.output ?? o.result ?? {},
-			};
-		}
-	}
-	return { kind: "json", data: p };
-}
-
-function partsFrom(content: unknown): Part[] {
-	if (typeof content === "string") return [{ kind: "text", text: content }];
-	if (Array.isArray(content)) return content.map(partFrom);
-	if (content == null) return [];
-	return [partFrom(content)];
-}
-
-/** Normalize a payload string to a list of messages, or null when it isn't JSON
- * (e.g. a plain markdown answer — rendered as a single roleless block). */
-function toMessages(value: string): Message[] | null {
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(value);
-	} catch {
-		return null;
-	}
-	const items = Array.isArray(parsed) ? parsed : [parsed];
-	const hasRoles = items.some(
-		(m) => m && typeof m === "object" && "role" in (m as object),
-	);
-	if (hasRoles) {
-		return items.map((m) => {
-			const o = (m ?? {}) as Record<string, unknown>;
-			return {
-				role: typeof o.role === "string" ? o.role : null,
-				parts: partsFrom(o.content),
-			};
-		});
-	}
-	// A bare array of parts (typical for assistant output) → one roleless block.
-	return [{ role: null, parts: items.map(partFrom) }];
-}
+// The normalization lives in ./payload-messages (and is tested there); this file
+// is only the rendering: text as markdown, tool traffic behind a disclosure,
+// anything unrecognized as a JSON block.
 
 function stringify(data: unknown): string {
 	try {
@@ -143,18 +79,30 @@ function ToolPart({
 	name,
 	data,
 }: {
-	kind: "tool-call" | "tool-result";
+	kind: "tool-call" | "tool-result" | "tool-error";
 	name: string;
 	data: unknown;
 }) {
-	const [open, setOpen] = useState(false);
-	const label = kind === "tool-call" ? "calls" : "returns";
+	// A failed call opens by default: the error is the reason you're reading this.
+	const failed = kind === "tool-error";
+	const [open, setOpen] = useState(failed);
+	const label = kind === "tool-call" ? "calls" : failed ? "failed" : "returns";
 	return (
-		<div className="rounded-lg border border-border/60 bg-background/50">
+		<div
+			className={cn(
+				"rounded-lg border bg-background/50",
+				failed ? "border-rose-500/40 bg-rose-500/5" : "border-border/60",
+			)}
+		>
 			<button
 				type="button"
 				onClick={() => setOpen((o) => !o)}
-				className="flex w-full cursor-pointer items-center gap-1.5 px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
+				className={cn(
+					"flex w-full cursor-pointer items-center gap-1.5 px-2 py-1.5 text-left text-xs transition-colors",
+					failed
+						? "text-rose-600 dark:text-rose-400"
+						: "text-muted-foreground hover:text-foreground",
+				)}
 			>
 				<IconChevronRight
 					className={cn(
@@ -162,11 +110,52 @@ function ToolPart({
 						open && "rotate-90",
 					)}
 				/>
-				<IconTool className="size-3.5 shrink-0" />
-				<span className="text-muted-foreground/70">{label}</span>
-				<span className="truncate font-medium text-foreground">{name}</span>
+				{failed ? (
+					<IconAlertTriangle className="size-3.5 shrink-0" />
+				) : (
+					<IconTool className="size-3.5 shrink-0" />
+				)}
+				<span className={cn(!failed && "text-muted-foreground/70")}>
+					{label}
+				</span>
+				<span
+					className={cn(
+						"truncate font-medium",
+						failed ? "text-rose-600 dark:text-rose-400" : "text-foreground",
+					)}
+				>
+					{name}
+				</span>
 			</button>
-			{open && <JsonBlock data={data} className="border-t border-border/60" />}
+			{open && (
+				<JsonBlock
+					data={data}
+					className={cn(
+						"border-t",
+						failed ? "border-rose-500/30" : "border-border/60",
+					)}
+				/>
+			)}
+		</div>
+	);
+}
+
+/** Attachments arrive as base64 blobs. Rendering the bytes is never useful and
+ * inlining megabytes of them wrecks the panel, so only the descriptors show. */
+function FilePart({
+	mediaType,
+	filename,
+}: {
+	mediaType: string | null;
+	filename: string | null;
+}) {
+	return (
+		<div className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 px-2 py-1.5 text-xs text-muted-foreground">
+			<IconPaperclip className="size-3.5 shrink-0" />
+			<span className="truncate font-medium text-foreground">
+				{filename ?? "attachment"}
+			</span>
+			{mediaType && <span className="shrink-0">{mediaType}</span>}
 		</div>
 	);
 }
@@ -175,26 +164,97 @@ function PartView({ part }: { part: Part }) {
 	switch (part.kind) {
 		case "text":
 			return part.text.trim() ? <Prose>{part.text}</Prose> : null;
+		case "reasoning":
+			// Thinking, set apart from the answer — otherwise a model's scratch work
+			// reads as the thing it actually said.
+			return part.text.trim() ? (
+				<div className="border-l-2 border-border pl-3 text-muted-foreground italic">
+					<Prose>{part.text}</Prose>
+				</div>
+			) : null;
 		case "tool-call":
 		case "tool-result":
+		case "tool-error":
 			return <ToolPart kind={part.kind} name={part.name} data={part.data} />;
+		case "file":
+			return <FilePart mediaType={part.mediaType} filename={part.filename} />;
 		default:
 			return <JsonBlock data={part.data} className="rounded-lg bg-muted" />;
 	}
 }
 
+// Past this, a message is clamped behind a "Show more". Sized so a normal
+// exchange never clamps but a 40k-token system prompt can't blow out the
+// 420px-wide trace inspector.
+const CLAMP_HEIGHT = 240;
+
 function MessageBlock({ message }: { message: Message }) {
-	return (
+	// System prompts are long, static, and almost never what you opened the panel
+	// for — start them folded.
+	const [expanded, setExpanded] = useState(message.role !== "system");
+	const body = (
 		<div className="flex flex-col gap-1.5">
-			{message.role && (
-				<span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
-					{message.role}
-				</span>
-			)}
 			{message.parts.map((part, i) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: parts are positional and static
 				<PartView key={i} part={part} />
 			))}
+		</div>
+	);
+	return (
+		<div className="flex flex-col gap-1.5">
+			{message.role && (
+				<button
+					type="button"
+					onClick={() => setExpanded((e) => !e)}
+					className="flex cursor-pointer items-center gap-1 self-start text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70 transition-colors hover:text-foreground"
+				>
+					<IconChevronRight
+						className={cn(
+							"size-3 shrink-0 transition-transform",
+							expanded && "rotate-90",
+						)}
+					/>
+					{message.role}
+				</button>
+			)}
+			{expanded && <ClampedBody>{body}</ClampedBody>}
+		</div>
+	);
+}
+
+/** Caps its content's height behind a "Show more". Without this a single 40k-token
+ * system prompt renders in full and buries every message after it. */
+function ClampedBody({ children }: { children: React.ReactNode }) {
+	const [full, setFull] = useState(false);
+	const [clamped, setClamped] = useState(false);
+	const [inner, setInner] = useState<HTMLDivElement | null>(null);
+	useEffect(() => {
+		if (!inner) return;
+		// Markdown and syntax highlighting both resolve asynchronously, so the
+		// content's height isn't final on mount — watch it instead of measuring once.
+		const check = () => setClamped(inner.scrollHeight > CLAMP_HEIGHT + 8);
+		check();
+		const observer = new ResizeObserver(check);
+		observer.observe(inner);
+		return () => observer.disconnect();
+	}, [inner]);
+	return (
+		<div className="flex flex-col gap-1">
+			<div
+				className="overflow-hidden"
+				style={full ? undefined : { maxHeight: CLAMP_HEIGHT }}
+			>
+				<div ref={setInner}>{children}</div>
+			</div>
+			{clamped && (
+				<button
+					type="button"
+					onClick={() => setFull((f) => !f)}
+					className="cursor-pointer self-start text-xs text-muted-foreground transition-colors hover:text-foreground"
+				>
+					{full ? "Show less" : "Show more"}
+				</button>
+			)}
 		</div>
 	);
 }
@@ -208,10 +268,13 @@ export function PayloadView({
 }) {
 	const messages = toMessages(value);
 	if (!messages) {
-		// Not JSON — a plain (markdown) answer.
+		// Not JSON — a plain (markdown) answer, or a payload truncated at the
+		// storage cap. Either way the raw string is the honest thing to show.
 		return (
 			<div className={className}>
-				<Prose>{value}</Prose>
+				<ClampedBody>
+					<Prose>{value}</Prose>
+				</ClampedBody>
 			</div>
 		);
 	}

@@ -9,6 +9,12 @@ import {
 	CardTitle,
 } from "@foglamp/ui/components/card";
 import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@foglamp/ui/components/tabs";
+import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
@@ -20,6 +26,10 @@ import {
 	IconAlertTriangleFilled,
 	IconArrowUpRight,
 	IconBoltFilled,
+	IconChevronDown,
+	IconChevronLeft,
+	IconChevronRight,
+	IconChevronUp,
 	IconCirclesFilled,
 	IconClockFilled,
 	IconCoinFilled,
@@ -61,6 +71,7 @@ import {
 	StatCard,
 	TableSkeleton,
 } from "@/components/app/page-parts";
+import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
 import { SpanTypeBadge } from "@/components/app/span-type";
 import { TraceTimeline, WHOLE_TRACE_ID } from "@/components/app/trace-timeline";
@@ -130,6 +141,32 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 		...trpc.evals.presets.queryOptions(),
 		enabled: (scores.data ?? []).length > 0,
 	});
+	// Neighbouring traces in this trace's session — the previous/next turn
+	// control. Kept out of `traces.get` so the page never blocks on it, and only
+	// fetched at all once we know the trace belongs to a session.
+	const sessionId = detail.data?.sessionId ?? null;
+	const neighbors = useQuery({
+		...trpc.traces.sessionNeighbors.queryOptions({
+			projectId: projectId!,
+			traceId,
+			sessionId: sessionId!,
+		}),
+		enabled: !!projectId && !!sessionId,
+	});
+	// Where this trace ranks against its agent's last week — the "p91 · this
+	// agent" hints. Deliberately a separate query: it's the slowest thing on the
+	// page (a scan over the project's traces) and the header must not wait for
+	// it. The number moves slowly and nothing caches it server-side, so hold it
+	// for a few minutes.
+	const comparison = useQuery({
+		...trpc.traces.comparison.queryOptions({
+			projectId: projectId!,
+			traceId,
+		}),
+		enabled: !!projectId,
+		staleTime: 5 * 60_000,
+	});
+	const rank = comparison.data ?? null;
 	const presetName = useMemo(
 		() => new Map((presets.data ?? []).map((p) => [p.id, p.name] as const)),
 		[presets.data],
@@ -143,6 +180,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 	const spans = detail.data?.spans ?? [];
 	const ordered = useMemo(() => orderSpans(spans), [spans]);
 	const window = useMemo(() => computeWindow(spans), [spans]);
+	const subtreeStats = useMemo(() => computeSubtreeStats(spans), [spans]);
 
 	const active = spans.find((s) => s.spanId === selected) ?? null;
 	const erroredSpans = spans.filter((s) => s.status === "error");
@@ -183,6 +221,44 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 		}
 		return worst;
 	}, [spans]);
+	// The three trace-level problems, collapsed into one severity-ordered list so
+	// they occupy a single strip instead of three stacked banners. The first entry
+	// sets the strip's tone and is the one whose detail text shows inline.
+	const issues = useMemo(() => {
+		const list: Issue[] = [];
+		if (erroredSpans.length > 0) {
+			list.push({
+				tone: "rose",
+				icon: IconAlertTriangle,
+				label: `${erroredSpans.length} ${erroredSpans.length === 1 ? "span" : "spans"} errored`,
+				detail: erroredSpans[0].errorMessage,
+				copyLabel: "Copy error",
+				spanId: erroredSpans[0].spanId,
+			});
+		}
+		if (abortedSpans.length > 0) {
+			list.push({
+				tone: "amber",
+				icon: IconPlayerStopFilled,
+				label:
+					abortedSpans.length === 1
+						? "Run aborted"
+						: `${abortedSpans.length} spans aborted`,
+				detail: abortedSpans[0].errorMessage,
+				spanId: abortedSpans[0].spanId,
+			});
+		}
+		if (lowHeadroom) {
+			list.push({
+				tone: "orange",
+				icon: IconGaugeFilled,
+				label: "Rate limit nearly exhausted",
+				detail: `${lowHeadroom.pct}% of ${lowHeadroom.kind} remaining after ${lowHeadroom.span.name}`,
+				spanId: lowHeadroom.span.spanId,
+			});
+		}
+		return list;
+	}, [erroredSpans, abortedSpans, lowHeadroom]);
 	// Eval scores for the selected span — shown in its inspector (the timeline
 	// row only carries compact pass/fail indicators).
 	const activeScores = useMemo(
@@ -257,6 +333,21 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 		[pathname, router, searchParams],
 	);
 
+	// Position of the selected span in the flattened waterfall order — drives both
+	// the keyboard shortcuts and the inspector's prev/next buttons.
+	const selectedIndex = ordered.findIndex((o) => o.span.spanId === selected);
+	const stepSelection = useCallback(
+		(delta: number) => {
+			if (ordered.length === 0) return;
+			const i = ordered.findIndex((o) => o.span.spanId === selected);
+			// Nothing selected yet: either direction lands on the first span.
+			const ni =
+				i < 0 ? 0 : Math.min(Math.max(i + delta, 0), ordered.length - 1);
+			select(ordered[ni].span.spanId);
+		},
+		[ordered, selected, select],
+	);
+
 	// Keyboard navigation: ↑/↓ or j/k move through the ordered spans. Ignored
 	// while typing in a field so it never hijacks copy/scroll inside payloads.
 	useEffect(() => {
@@ -268,17 +359,12 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 			const prev = e.key === "ArrowUp" || e.key === "k";
 			if (!next && !prev) return;
 			e.preventDefault();
-			const i = ordered.findIndex((o) => o.span.spanId === selected);
-			const ni =
-				i < 0
-					? 0
-					: Math.min(Math.max(i + (next ? 1 : -1), 0), ordered.length - 1);
-			select(ordered[ni].span.spanId);
+			stepSelection(next ? 1 : -1);
 		};
 		// `window` is shadowed by the timeline memo above — use globalThis.
 		globalThis.addEventListener("keydown", onKey);
 		return () => globalThis.removeEventListener("keydown", onKey);
-	}, [ordered, selected, select]);
+	}, [ordered.length, stepSelection]);
 
 	const back = navItem("/traces");
 	const ctx = detail.data;
@@ -302,6 +388,14 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 					title={traceId}
 					back={back}
 					titleTrailing={<CopyButton value={traceId} title="Copy trace ID" />}
+					actions={
+						sessionId && (
+							<TurnNav
+								prev={neighbors.data?.prev ?? null}
+								next={neighbors.data?.next ?? null}
+							/>
+						)
+					}
 				/>
 			</div>
 
@@ -422,6 +516,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 							label="Tokens"
 							value={stats.tokens}
 							formatValue={formatTokens}
+							hint={rankHint(rank?.tokenPercentile)}
 						/>
 						<StatCard
 							icon={IconAlertTriangleFilled}
@@ -445,6 +540,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 							label="Duration"
 							value={window.span}
 							formatValue={formatDuration}
+							hint={rankHint(rank?.durationPercentile)}
 						/>
 						<StatCard
 							icon={IconCoinFilled}
@@ -453,6 +549,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 							label="Cost"
 							value={stats.cost ?? "—"}
 							formatValue={(n) => formatCost(n, 4)}
+							hint={rankHint(rank?.costPercentile)}
 						/>
 					</section>
 
@@ -462,85 +559,15 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 						className={cn(entrance && !skeletonShown && "page-fade-in", "px-8")}
 					/>
 
-					{erroredSpans.length > 0 && (
-						// The banner is itself a button (it selects the errored span), so the
-						// copy control rides alongside as an absolutely-positioned sibling
-						// rather than a nested button (which would be invalid markup).
-						<div
+					{issues.length > 0 && (
+						<IssuesStrip
+							issues={issues}
+							onSelect={select}
 							className={cn(
-								"relative px-8",
+								"px-8",
 								entrance && !skeletonShown && "page-fade-in",
 							)}
-						>
-							<button
-								type="button"
-								onClick={() => select(erroredSpans[0].spanId)}
-								className="flex flex-col w-full items-center gap-2 rounded-lg cursor-pointer bg-rose-500/10 dark:hover:bg-rose-500/20 shadow-(--custom-shadow-rose) px-3 py-2.5 pr-10 text-left text-sm text-rose-600 transition-colors hover:bg-rose-500/20 dark:bg-rose-500/15 dark:text-rose-400"
-							>
-								<div className="flex w-full items-center gap-2">
-									<IconAlertTriangle className="size-4 shrink-0" />
-									<span className="font-medium">
-										{erroredSpans.length}{" "}
-										{erroredSpans.length === 1 ? "span" : "spans"} errored
-									</span>
-								</div>
-								{erroredSpans[0].errorMessage && (
-									<span className="w-full truncate text-left text-rose-600/80 dark:text-rose-400/80">
-										{erroredSpans[0].errorMessage}
-									</span>
-								)}
-							</button>
-							{erroredSpans[0].errorMessage && (
-								<CopyButton
-									value={erroredSpans[0].errorMessage}
-									title="Copy error"
-									className="absolute right-2 top-2.5 text-rose-600/70 hover:text-rose-600 dark:text-rose-400/70 dark:hover:text-rose-400"
-								/>
-							)}
-						</div>
-					)}
-
-					{abortedSpans.length > 0 && (
-						<button
-							type="button"
-							onClick={() => select(abortedSpans[0].spanId)}
-							className={cn(
-								"flex flex-col w-full items-center gap-2 rounded-lg cursor-pointer bg-amber-500/10 dark:hover:bg-amber-500/20 shadow-(--custom-shadow-amber) px-3 py-2.5 text-left text-sm text-amber-700 transition-colors hover:bg-amber-500/20 dark:bg-amber-500/15 dark:text-amber-400",
-								entrance && !skeletonShown && "page-fade-in",
-							)}
-						>
-							<div className="flex w-full items-center gap-2">
-								<IconPlayerStopFilled className="size-4 shrink-0" />
-								<span className="font-medium">
-									{abortedSpans.length === 1
-										? "Run aborted"
-										: `${abortedSpans.length} spans aborted`}
-								</span>
-							</div>
-							{abortedSpans[0].errorMessage && (
-								<span className="w-full truncate text-left text-amber-700/80 dark:text-amber-400/80">
-									{abortedSpans[0].errorMessage}
-								</span>
-							)}
-						</button>
-					)}
-
-					{lowHeadroom && (
-						<button
-							type="button"
-							onClick={() => select(lowHeadroom.span.spanId)}
-							className={cn(
-								"flex w-full items-center gap-2 rounded-lg cursor-pointer bg-orange-500/10 shadow-(--custom-shadow-orange) px-3 py-2.5 text-left text-sm text-orange-700 transition-colors hover:bg-orange-500/20 dark:bg-orange-500/15 dark:text-orange-400 dark:hover:bg-orange-500/20",
-								entrance && !skeletonShown && "page-fade-in",
-							)}
-						>
-							<IconGaugeFilled className="size-4 shrink-0" />
-							<span className="font-medium">Rate limit nearly exhausted</span>
-							<span className="min-w-0 truncate text-orange-700/80 dark:text-orange-400/80">
-								{lowHeadroom.pct}% of {lowHeadroom.kind} remaining after{" "}
-								{lowHeadroom.span.name}
-							</span>
-						</button>
+						/>
 					)}
 
 					<div
@@ -566,6 +593,10 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 							evalMeta={evalMeta}
 							presetName={presetName}
 							onClose={() => select(null)}
+							spanIndex={selectedIndex}
+							spanCount={ordered.length}
+							onStep={stepSelection}
+							subtreeStats={subtreeStats}
 						/>
 					</div>
 				</>
@@ -704,6 +735,329 @@ function ContextChip({
 	);
 }
 
+/** "p91 · this agent" — where this trace's value falls among the same agent's
+ * traces over the last week. The hint is purely additive: while the query is in
+ * flight, fails, or declines to answer (no agent, too few traces, unpriced),
+ * it renders nothing and the card looks exactly as it always has. */
+function rankHint(percentile?: number | null) {
+	if (percentile == null) return null;
+	return (
+		<span title={`Higher than ${percentile}% of this agent's traces this week`}>
+			p{percentile} · this agent
+		</span>
+	);
+}
+
+/** Move between the traces of one session. Session traces are conversation
+ * turns — the sessions page frames them that way, so this does too. Rendered
+ * disabled (not hidden) at the ends of the session, so the control doesn't
+ * appear and disappear as you walk a conversation. */
+function TurnNav({
+	prev,
+	next,
+}: {
+	prev: { traceId: string } | null;
+	next: { traceId: string } | null;
+}) {
+	const link = (t: { traceId: string } | null) =>
+		t ? `/traces/${encodeURIComponent(t.traceId)}` : null;
+	return (
+		<div className="flex items-center gap-1">
+			<TurnNavButton
+				href={link(prev)}
+				label="Previous turn"
+				icon={IconChevronLeft}
+			/>
+			<TurnNavButton
+				href={link(next)}
+				label="Next turn"
+				icon={IconChevronRight}
+			/>
+		</div>
+	);
+}
+
+function TurnNavButton({
+	href,
+	label,
+	icon: Icon,
+}: {
+	href: string | null;
+	label: string;
+	icon: React.ComponentType<{ className?: string }>;
+}) {
+	if (!href) {
+		return (
+			<Button
+				type="button"
+				size="icon-xs"
+				variant="ghost"
+				disabled
+				aria-label={label}
+				title={label}
+			>
+				<Icon className="size-4" />
+			</Button>
+		);
+	}
+	return (
+		<Button
+			size="icon-xs"
+			variant="ghost"
+			aria-label={label}
+			title={label}
+			// biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
+			render={<Link href={href as any} />}
+		>
+			<Icon className="size-4" />
+		</Button>
+	);
+}
+
+type Issue = {
+	tone: "rose" | "amber" | "orange";
+	icon: React.ComponentType<{ className?: string }>;
+	/** Chip text — short enough to sit alongside the other issues. */
+	label: string;
+	/** Longer context, shown inline only for the leading (most severe) issue. */
+	detail: string | null;
+	/** When set, the detail gets a copy control. */
+	copyLabel?: string;
+	/** The span the chip selects. */
+	spanId: string;
+};
+
+// Tailwind can't build class names at runtime, so each tone spells its classes
+// out in full.
+const ISSUE_TONES: Record<
+	Issue["tone"],
+	{ strip: string; chip: string; detail: string; copy: string }
+> = {
+	rose: {
+		strip:
+			"bg-rose-500/10 shadow-(--custom-shadow-rose) dark:bg-rose-500/15 text-rose-600 dark:text-rose-400",
+		chip: "text-rose-600 hover:bg-rose-500/20 dark:text-rose-400 dark:hover:bg-rose-500/25",
+		detail: "text-rose-600/80 dark:text-rose-400/80",
+		copy: "text-rose-600/70 hover:text-rose-600 dark:text-rose-400/70 dark:hover:text-rose-400",
+	},
+	amber: {
+		strip:
+			"bg-amber-500/10 shadow-(--custom-shadow-amber) dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
+		chip: "text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 dark:hover:bg-amber-500/25",
+		detail: "text-amber-700/80 dark:text-amber-400/80",
+		copy: "text-amber-700/70 hover:text-amber-700 dark:text-amber-400/70 dark:hover:text-amber-400",
+	},
+	orange: {
+		strip:
+			"bg-orange-500/10 shadow-(--custom-shadow-orange) dark:bg-orange-500/15 text-orange-700 dark:text-orange-400",
+		chip: "text-orange-700 hover:bg-orange-500/20 dark:text-orange-400 dark:hover:bg-orange-500/25",
+		detail: "text-orange-700/80 dark:text-orange-400/80",
+		copy: "text-orange-700/70 hover:text-orange-700 dark:text-orange-400/70 dark:hover:text-orange-400",
+	},
+};
+
+/** Every trace-level problem in one severity-ordered strip: one chip each, and
+ * the leading issue's detail text inline underneath — so the common
+ * single-error trace reads the same as the dedicated banner it replaces. */
+function IssuesStrip({
+	issues,
+	onSelect,
+	className,
+}: {
+	issues: Issue[];
+	onSelect: (spanId: string) => void;
+	className?: string;
+}) {
+	const lead = issues[0];
+	if (!lead) return null;
+	const tone = ISSUE_TONES[lead.tone];
+	return (
+		<div className={className}>
+			<div
+				className={cn(
+					"flex flex-col gap-1.5 rounded-lg px-2 py-2 text-sm",
+					tone.strip,
+				)}
+			>
+				<div className="flex flex-wrap items-center gap-1">
+					{issues.map((issue) => {
+						const t = ISSUE_TONES[issue.tone];
+						return (
+							<button
+								key={issue.tone}
+								type="button"
+								onClick={() => onSelect(issue.spanId)}
+								className={cn(
+									"flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left font-medium transition-colors",
+									t.chip,
+								)}
+							>
+								<issue.icon className="size-4 shrink-0" />
+								<span>{issue.label}</span>
+							</button>
+						);
+					})}
+				</div>
+				{lead.detail && (
+					// The copy control is a sibling of the detail text, not nested inside
+					// a chip button — nested buttons are invalid markup.
+					<div className="flex items-start justify-between gap-2 px-2 pb-0.5">
+						<span className={cn("min-w-0 truncate", tone.detail)}>
+							{lead.detail}
+						</span>
+						{lead.copyLabel && (
+							<CopyButton
+								value={lead.detail}
+								title={lead.copyLabel}
+								className={cn("-mt-0.5 shrink-0", tone.copy)}
+							/>
+						)}
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+/** Rolled-up totals for everything beneath a span — what an `agent` span is
+ * actually worth knowing, since its own counters are empty. */
+type SubtreeStats = { spans: number; cost: number | null; tokens: number };
+
+/**
+ * Subtree totals for every span, keyed by span id. Cost stays `null` when no
+ * descendant carried one, so an unpriced subtree renders no cost field rather
+ * than a misleading $0.
+ */
+function computeSubtreeStats(spans: Span[]): Map<string, SubtreeStats> {
+	const children = new Map<string, Span[]>();
+	for (const s of spans) {
+		if (!s.parentSpanId) continue;
+		const bucket = children.get(s.parentSpanId);
+		if (bucket) bucket.push(s);
+		else children.set(s.parentSpanId, [s]);
+	}
+	const memo = new Map<string, SubtreeStats>();
+	const walk = (span: Span): SubtreeStats => {
+		const hit = memo.get(span.spanId);
+		if (hit) return hit;
+		const out: SubtreeStats = { spans: 0, cost: null, tokens: 0 };
+		// Seed before recursing so a malformed parent cycle bottoms out at zero
+		// instead of hanging the render.
+		memo.set(span.spanId, out);
+		for (const child of children.get(span.spanId) ?? []) {
+			const sub = walk(child);
+			out.spans += 1 + sub.spans;
+			out.tokens += child.inputTokens + child.outputTokens + sub.tokens;
+			if (child.totalCost != null || sub.cost != null) {
+				out.cost = (out.cost ?? 0) + (child.totalCost ?? 0) + (sub.cost ?? 0);
+			}
+		}
+		return out;
+	};
+	for (const s of spans) walk(s);
+	return memo;
+}
+
+/**
+ * The fields worth showing for a span, by type. Absent values are omitted
+ * outright rather than rendered as a dash — an empty slot says "not applicable
+ * here", which a dash cannot. The two places a dash survives are deliberate:
+ * the header stat strip (the grid needs a card-shaped thing) and cost on an
+ * `llm` span, where a null means "we failed to price this", not "no cost".
+ */
+function spanFields(
+	span: Span,
+	subtree: SubtreeStats | undefined,
+): { label: string; value: React.ReactNode }[] {
+	const fields: { label: string; value: React.ReactNode }[] = [];
+	const add = (label: string, value: React.ReactNode) => {
+		if (value != null) fields.push({ label, value });
+	};
+	const model = span.modelId ? (
+		<span className="flex min-w-0 items-center gap-1.5">
+			<ModelLogo
+				provider={span.provider}
+				modelId={span.modelId}
+				className="size-3 shrink-0"
+			/>
+			<span className="truncate" title={span.modelId}>
+				{formatModelName(span.modelId)}
+			</span>
+		</span>
+	) : null;
+
+	add("Started", formatDateTime(span.startTime));
+	add("Duration", formatSpanDuration(span.durationMs));
+
+	switch (span.spanType) {
+		case "llm": {
+			if (span.ttftMs !== null) {
+				add(
+					"TTFT",
+					span.reasoningDurationMs != null && span.reasoningDurationMs > 0 ? (
+						// Reasoning models: show how much of the wait was thinking.
+						<span>
+							{formatDuration(span.ttftMs)}{" "}
+							<span className="text-muted-foreground">
+								({formatDuration(span.reasoningDurationMs)} thinking)
+							</span>
+						</span>
+					) : (
+						formatDuration(span.ttftMs)
+					),
+				);
+			}
+			add("Model", model);
+			add("Provider", span.provider);
+			add(
+				"Tokens",
+				`${formatTokens(span.inputTokens)} in · ${formatTokens(span.outputTokens)} out`,
+			);
+			add("Cost", formatCost(span.totalCost));
+			add("Pricing", span.pricingSource);
+			if (span.modelCallMs != null) {
+				add(
+					"Model call",
+					<span>
+						{formatDuration(span.modelCallMs)}{" "}
+						<span className="text-muted-foreground">
+							({formatDuration(Math.max(0, span.durationMs - span.modelCallMs))}{" "}
+							tools)
+						</span>
+					</span>,
+				);
+			}
+			break;
+		}
+		case "embedding": {
+			add("Model", model);
+			add("Provider", span.provider);
+			if (span.inputTokens > 0)
+				add("Input tokens", formatTokens(span.inputTokens));
+			if (span.totalCost != null) add("Cost", formatCost(span.totalCost));
+			break;
+		}
+		case "agent": {
+			if (subtree && subtree.spans > 0) {
+				add("Child spans", formatCount(subtree.spans));
+				if (subtree.tokens > 0) add("Tokens", formatTokens(subtree.tokens));
+				if (subtree.cost != null) add("Cost", formatCost(subtree.cost));
+			}
+			if (span.status !== "ok") add("Status", span.status);
+			break;
+		}
+		// `tool` and `other` carry none of the model fields — guessing at them is
+		// how you end up with a grid of dashes.
+		default: {
+			add("Status", span.status);
+			if (span.totalCost != null && span.totalCost !== 0)
+				add("Cost", formatCost(span.totalCost));
+			break;
+		}
+	}
+	return fields;
+}
+
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
 	return (
 		<div className="flex min-w-0 flex-col gap-[3px]">
@@ -777,6 +1131,10 @@ function DetailPanel({
 	evalMeta,
 	presetName,
 	onClose,
+	spanIndex,
+	spanCount,
+	onStep,
+	subtreeStats,
 }: {
 	span: Span | null;
 	scores: TraceScore[];
@@ -784,6 +1142,13 @@ function DetailPanel({
 	evalMeta: Map<string, EvalMeta>;
 	presetName: Map<string, string>;
 	onClose: () => void;
+	/** Position of the selected span in waterfall order; -1 when none. */
+	spanIndex: number;
+	spanCount: number;
+	onStep: (delta: number) => void;
+	/** Subtree rollups for the whole trace, looked up by the shown span's id so
+	 * it stays in sync with the frozen panel content during the close animation. */
+	subtreeStats: Map<string, SubtreeStats>;
 }) {
 	const open = span !== null || trace !== null;
 	// Freeze the rendered target while open so a close (which nulls everything)
@@ -829,6 +1194,10 @@ function DetailPanel({
 						evalMeta={evalMeta}
 						presetName={presetName}
 						onClose={onClose}
+						spanIndex={spanIndex}
+						spanCount={spanCount}
+						onStep={onStep}
+						subtree={subtreeStats.get(shown.span.spanId)}
 					/>
 				)}
 				{shown?.kind === "trace" && (
@@ -936,12 +1305,20 @@ function SpanDetail({
 	evalMeta,
 	presetName,
 	onClose,
+	spanIndex,
+	spanCount,
+	onStep,
+	subtree,
 }: {
 	span: Span;
 	scores: TraceScore[];
 	evalMeta: Map<string, EvalMeta>;
 	presetName: Map<string, string>;
 	onClose: () => void;
+	spanIndex: number;
+	spanCount: number;
+	onStep: (delta: number) => void;
+	subtree: SubtreeStats | undefined;
 }) {
 	const metaEntries = Object.entries(span.metadata ?? {});
 	// Per-dimension cost components that actually carry a value (skip null/0), so
@@ -984,326 +1361,386 @@ function SpanDetail({
 		rl?.tokensRemaining != null && rl?.tokensLimit != null;
 	const hasRequestHeadroom =
 		rl?.requestsRemaining != null && rl?.requestsLimit != null;
+	const fields = useMemo(() => spanFields(span, subtree), [span, subtree]);
 	const hasSignals =
 		!!span.systemFingerprint ||
 		!!span.safetyMetadata ||
 		sources.length > 0 ||
 		hasTokenHeadroom ||
 		hasRequestHeadroom;
+	// Overview is curated and per-type, so it can omit fields; Raw is the
+	// always-complete escape hatch. Reset to Overview when the panel swaps to a
+	// different span — otherwise every subsequent selection lands on Raw.
+	const [tab, setTab] = useState("overview");
+	useEffect(() => {
+		setTab("overview");
+	}, [span.spanId]);
 	return (
 		<Card className="max-h-[calc(100svh-16rem)] gap-0 py-0 ">
-			<CardHeader className="flex shrink-0 items-center gap-2 border-b border-border/40 [.border-b]:pb-5 p-5 px-5">
-				<CardTitle className="flex min-w-0 flex-1 items-center gap-2">
-					<span className="truncate">{span.name}</span>
-					<SpanTypeBadge type={span.spanType} className="shrink-0" />
-				</CardTitle>
-				<Button
-					type="button"
-					size="icon-xs"
-					variant="ghost"
-					onClick={onClose}
-					aria-label="Close"
-					className="-mr-1 shrink-0"
-				>
-					<IconX className="size-4" />
-				</Button>
+			<CardHeader className="flex shrink-0 flex-col items-stretch gap-3 border-b border-border/40 [.border-b]:pb-5 p-5 px-5">
+				<div className="flex items-center gap-2">
+					<CardTitle className="flex min-w-0 flex-1 items-center gap-2">
+						<span className="truncate">{span.name}</span>
+						<SpanTypeBadge type={span.spanType} className="shrink-0" />
+					</CardTitle>
+					<Button
+						type="button"
+						size="icon-xs"
+						variant="ghost"
+						onClick={onClose}
+						aria-label="Close"
+						className="-mr-1 shrink-0"
+					>
+						<IconX className="size-4" />
+					</Button>
+				</div>
+				<div className="flex items-center gap-1">
+					{/* The ↑/↓ shortcuts have always worked; these buttons are what make
+					    them discoverable, so both name the key in their tooltip. */}
+					<Button
+						type="button"
+						size="icon-xs"
+						variant="ghost"
+						onClick={() => onStep(-1)}
+						disabled={spanIndex <= 0}
+						aria-label="Previous span"
+						title="Previous span (↑)"
+					>
+						<IconChevronUp className="size-4" />
+					</Button>
+					<Button
+						type="button"
+						size="icon-xs"
+						variant="ghost"
+						onClick={() => onStep(1)}
+						disabled={spanIndex < 0 || spanIndex >= spanCount - 1}
+						aria-label="Next span"
+						title="Next span (↓)"
+					>
+						<IconChevronDown className="size-4" />
+					</Button>
+					{spanIndex >= 0 && (
+						<span className="text-xs text-muted-foreground tabular-nums">
+							{spanIndex + 1} / {spanCount}
+						</span>
+					)}
+					<CopyButton
+						value={JSON.stringify(span, null, 2)}
+						title="Copy span as JSON"
+						className="ml-auto"
+					/>
+				</div>
 			</CardHeader>
 			<CardContent className="flex min-h-0 flex-1 flex-col p-0">
-				<ScrollFade
-					containerClassName="flex min-h-0 flex-1 flex-col"
-					className="flex min-h-0 flex-1 flex-col gap-4 py-5"
+				<Tabs
+					value={tab}
+					onValueChange={(v) => setTab(String(v))}
+					className="flex min-h-0 flex-1 flex-col gap-0"
 				>
-					{span.errorMessage && (
-						<div className="flex items-start justify-between gap-2 bg-destructive/20 text-sm text-destructive px-3 py-2.5 mb-5 mx-5 corner-squircle shadow-(--custom-shadow-rose) rounded-lg">
-							<span className="min-w-0 wrap-break-word">
-								{span.errorMessage}
-							</span>
-							<CopyButton
-								value={span.errorMessage}
-								title="Copy error"
-								className="-mr-1 -mt-0.5 text-muted-foreground hover:text-foreground"
-							/>
-						</div>
-					)}
-					<div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
-						<Field label="Started" value={formatDateTime(span.startTime)} />
-						<Field label="Cost" value={formatCost(span.totalCost)} />
-						<Field
-							label="Duration"
-							value={formatSpanDuration(span.durationMs)}
-						/>
-						<Field
-							label="TTFT"
-							value={
-								span.ttftMs === null ? (
-									"—"
-								) : span.reasoningDurationMs != null &&
-									span.reasoningDurationMs > 0 ? (
-									// Reasoning models: show how much of the wait was thinking.
-									<span>
-										{formatDuration(span.ttftMs)}{" "}
-										<span className="text-muted-foreground">
-											({formatDuration(span.reasoningDurationMs)} thinking)
-										</span>
+					{/* Outside the ScrollFade below, so the strip stays reachable from
+					    the bottom of a long payload. */}
+					<TabsList
+						variant="line"
+						className="shrink-0 gap-3 border-b border-border/40 px-5"
+					>
+						<TabsTrigger value="overview">Overview</TabsTrigger>
+						<TabsTrigger value="raw">Raw</TabsTrigger>
+					</TabsList>
+					<TabsContent
+						value="overview"
+						className="flex min-h-0 flex-1 flex-col"
+					>
+						<ScrollFade
+							containerClassName="flex min-h-0 flex-1 flex-col"
+							className="flex min-h-0 flex-1 flex-col gap-4 py-5"
+						>
+							{span.errorMessage && (
+								<div className="flex items-start justify-between gap-2 bg-destructive/20 text-sm text-destructive px-3 py-2.5 mb-5 mx-5 corner-squircle shadow-(--custom-shadow-rose) rounded-lg">
+									<span className="min-w-0 wrap-break-word">
+										{span.errorMessage}
 									</span>
-								) : (
-									formatDuration(span.ttftMs)
-								)
-							}
-						/>
-						<Field
-							label="Model"
-							value={
-								span.modelId ? (
-									<span className="flex min-w-0 items-center gap-1.5">
-										<ModelLogo
-											provider={span.provider}
-											modelId={span.modelId}
-											className="size-3 shrink-0"
-										/>
-										<span className="truncate" title={span.modelId}>
-											{formatModelName(span.modelId)}
-										</span>
-									</span>
-								) : (
-									"—"
-								)
-							}
-						/>
-						<Field label="Provider" value={span.provider ?? "—"} />
-						<Field
-							label="Tokens"
-							value={`${formatTokens(span.inputTokens)} in · ${formatTokens(
-								span.outputTokens,
-							)} out`}
-						/>
-
-						<Field label="Pricing" value={span.pricingSource ?? "—"} />
-						{span.modelCallMs != null && (
-							<Field
-								label="Model call"
-								value={
-									<span>
-										{formatDuration(span.modelCallMs)}{" "}
-										<span className="text-muted-foreground">
-											(
-											{formatDuration(
-												Math.max(0, span.durationMs - span.modelCallMs),
-											)}{" "}
-											tools)
-										</span>
-									</span>
-								}
-							/>
-						)}
-					</div>
-
-					{scores.length > 0 && (
-						<div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
-							<span className="text-xs font-medium text-muted-foreground px-2">
-								Evals
-							</span>
-							<div className="flex flex-col">
-								{scores.map((s) => (
-									<ScoreRow
-										key={s.scoreId}
-										score={s}
-										meta={evalMeta.get(s.evalId)}
-										presetName={presetName}
+									<CopyButton
+										value={span.errorMessage}
+										title="Copy error"
+										className="-mr-1 -mt-0.5 text-muted-foreground hover:text-foreground"
 									/>
-								))}
-							</div>
-						</div>
-					)}
-
-					{hasBreakdown && (
-						<div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
-							<span className="text-xs font-medium text-muted-foreground px-1">
-								Cost breakdown
-							</span>
-							{costParts.length > 0 && (
-								<div className="grid grid-cols-2 gap-4 px-1">
-									{costParts.map((p) => (
-										<Field
-											key={p.label}
-											label={p.label}
-											value={formatCost(p.value)}
-										/>
-									))}
-									<Field label="Total" value={formatCost(span.totalCost)} />
 								</div>
 							)}
-							{/* The usage-count side of the breakdown — cached/reasoning
-                  tokens, retries — so the costs above have their volumes. */}
-							{usageExtras.length > 0 && (
-								<>
-									<span className="text-xs font-medium text-muted-foreground px-1">
-										Usage
+							<div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
+								{fields.map((f) => (
+									<Field key={f.label} label={f.label} value={f.value} />
+								))}
+							</div>
+
+							{scores.length > 0 && (
+								<div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
+									<span className="text-xs font-medium text-muted-foreground px-2">
+										Evals
 									</span>
-									<div className="grid grid-cols-2 gap-4 px-1">
-										{usageExtras.map((p) => (
-											<Field
-												key={p.label}
-												label={p.label}
-												value={
-													p.unit === " tok"
-														? `${formatTokens(p.value)} tok`
-														: formatCount(p.value)
-												}
+									<div className="flex flex-col">
+										{scores.map((s) => (
+											<ScoreRow
+												key={s.scoreId}
+												score={s}
+												meta={evalMeta.get(s.evalId)}
+												presetName={presetName}
 											/>
 										))}
 									</div>
-								</>
+								</div>
 							)}
-						</div>
-					)}
 
-					{hasSignals && (
-						<div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
-							<span className="text-xs font-medium text-muted-foreground px-1">
-								Provider signals
-							</span>
-							<div className="grid grid-cols-2 gap-4 px-1">
-								{hasTokenHeadroom && (
-									<Field
-										label="Token headroom"
-										value={
-											<span>
-												{formatTokens(rl!.tokensRemaining!)} /{" "}
-												{formatTokens(rl!.tokensLimit!)}
-												{pctRemaining(rl!.tokensRemaining, rl!.tokensLimit) !=
-													null && (
-													<span className="text-muted-foreground">
-														{" "}
-														(
-														{pctRemaining(rl!.tokensRemaining, rl!.tokensLimit)}
-														% left)
-													</span>
-												)}
+							{hasBreakdown && (
+								<div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
+									<span className="text-xs font-medium text-muted-foreground px-1">
+										Cost breakdown
+									</span>
+									{costParts.length > 0 && (
+										<div className="grid grid-cols-2 gap-4 px-1">
+											{costParts.map((p) => (
+												<Field
+													key={p.label}
+													label={p.label}
+													value={formatCost(p.value)}
+												/>
+											))}
+											<Field label="Total" value={formatCost(span.totalCost)} />
+										</div>
+									)}
+									{/* The usage-count side of the breakdown — cached/reasoning
+                  tokens, retries — so the costs above have their volumes. */}
+									{usageExtras.length > 0 && (
+										<>
+											<span className="text-xs font-medium text-muted-foreground px-1">
+												Usage
 											</span>
-										}
-									/>
-								)}
-								{hasRequestHeadroom && (
-									<Field
-										label="Request headroom"
-										value={
-											<span>
-												{formatCount(rl!.requestsRemaining!)} /{" "}
-												{formatCount(rl!.requestsLimit!)}
-												{pctRemaining(
-													rl!.requestsRemaining,
-													rl!.requestsLimit,
-												) != null && (
-													<span className="text-muted-foreground">
-														{" "}
-														(
+											<div className="grid grid-cols-2 gap-4 px-1">
+												{usageExtras.map((p) => (
+													<Field
+														key={p.label}
+														label={p.label}
+														value={
+															p.unit === " tok"
+																? `${formatTokens(p.value)} tok`
+																: formatCount(p.value)
+														}
+													/>
+												))}
+											</div>
+										</>
+									)}
+								</div>
+							)}
+
+							{hasSignals && (
+								<div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
+									<span className="text-xs font-medium text-muted-foreground px-1">
+										Provider signals
+									</span>
+									<div className="grid grid-cols-2 gap-4 px-1">
+										{hasTokenHeadroom && (
+											<Field
+												label="Token headroom"
+												value={
+													<span>
+														{formatTokens(rl!.tokensRemaining!)} /{" "}
+														{formatTokens(rl!.tokensLimit!)}
+														{pctRemaining(
+															rl!.tokensRemaining,
+															rl!.tokensLimit,
+														) != null && (
+															<span className="text-muted-foreground">
+																{" "}
+																(
+																{pctRemaining(
+																	rl!.tokensRemaining,
+																	rl!.tokensLimit,
+																)}
+																% left)
+															</span>
+														)}
+													</span>
+												}
+											/>
+										)}
+										{hasRequestHeadroom && (
+											<Field
+												label="Request headroom"
+												value={
+													<span>
+														{formatCount(rl!.requestsRemaining!)} /{" "}
+														{formatCount(rl!.requestsLimit!)}
 														{pctRemaining(
 															rl!.requestsRemaining,
 															rl!.requestsLimit,
+														) != null && (
+															<span className="text-muted-foreground">
+																{" "}
+																(
+																{pctRemaining(
+																	rl!.requestsRemaining,
+																	rl!.requestsLimit,
+																)}
+																% left)
+															</span>
 														)}
-														% left)
+													</span>
+												}
+											/>
+										)}
+										{rl?.tokensResetMs != null && (
+											<Field
+												label="Tokens reset"
+												value={`in ${formatDuration(rl.tokensResetMs)}`}
+											/>
+										)}
+										{span.systemFingerprint && (
+											<Field
+												label="Fingerprint"
+												value={
+													<span
+														className="block truncate font-mono text-xs"
+														title={span.systemFingerprint}
+													>
+														{span.systemFingerprint}
+													</span>
+												}
+											/>
+										)}
+										{span.safetyMetadata && (
+											<Field label="Safety ratings" value="reported" />
+										)}
+									</div>
+									{sources.length > 0 && (
+										<div className="flex flex-col gap-1 px-1">
+											<span className="text-xs text-muted-foreground">
+												Sources ({sources.length})
+											</span>
+											<div className="flex flex-col gap-0.5">
+												{sources.slice(0, 8).map((s, i) =>
+													s.url ? (
+														<a
+															key={`${s.url}-${i}`}
+															href={s.url}
+															target="_blank"
+															rel="noreferrer"
+															className="truncate text-sm text-sky-400 hover:underline"
+															title={s.url}
+														>
+															{s.title ?? s.url}
+														</a>
+													) : (
+														<span
+															key={`src-${i}`}
+															className="truncate text-sm"
+															title={s.title}
+														>
+															{s.title ?? "source"}
+														</span>
+													),
+												)}
+												{sources.length > 8 && (
+													<span className="text-xs text-muted-foreground">
+														+{sources.length - 8} more
 													</span>
 												)}
-											</span>
-										}
-									/>
-								)}
-								{rl?.tokensResetMs != null && (
-									<Field
-										label="Tokens reset"
-										value={`in ${formatDuration(rl.tokensResetMs)}`}
-									/>
-								)}
-								{span.systemFingerprint && (
-									<Field
-										label="Fingerprint"
-										value={
-											<span
-												className="block truncate font-mono text-xs"
-												title={span.systemFingerprint}
-											>
-												{span.systemFingerprint}
-											</span>
-										}
-									/>
-								)}
-								{span.safetyMetadata && (
-									<Field label="Safety ratings" value="reported" />
-								)}
-							</div>
-							{sources.length > 0 && (
-								<div className="flex flex-col gap-1 px-1">
+											</div>
+										</div>
+									)}
+								</div>
+							)}
+
+							{metaEntries.length > 0 && (
+								<div className="flex flex-col gap-2 border-b border-border/40 px-5 py-5">
 									<span className="text-xs text-muted-foreground">
-										Sources ({sources.length})
+										Metadata
 									</span>
-									<div className="flex flex-col gap-0.5">
-										{sources.slice(0, 8).map((s, i) =>
-											s.url ? (
-												<a
-													key={`${s.url}-${i}`}
-													href={s.url}
-													target="_blank"
-													rel="noreferrer"
-													className="truncate text-sm text-sky-400 hover:underline"
-													title={s.url}
-												>
-													{s.title ?? s.url}
-												</a>
-											) : (
-												<span
-													key={`src-${i}`}
-													className="truncate text-sm"
-													title={s.title}
-												>
-													{s.title ?? "source"}
-												</span>
-											),
-										)}
-										{sources.length > 8 && (
-											<span className="text-xs text-muted-foreground">
-												+{sources.length - 8} more
-											</span>
-										)}
+									<div className="flex flex-wrap gap-1.5">
+										{metaEntries.map(([k, v]) => (
+											<Badge key={k} variant="secondary">
+												{k}: {v}
+											</Badge>
+										))}
 									</div>
 								</div>
 							)}
-						</div>
-					)}
 
-					{metaEntries.length > 0 && (
-						<div className="flex flex-col gap-2 border-b border-border/40 px-5 py-5">
-							<span className="text-xs text-muted-foreground">Metadata</span>
-							<div className="flex flex-wrap gap-1.5">
-								{metaEntries.map(([k, v]) => (
-									<Badge key={k} variant="secondary">
-										{k}: {v}
-									</Badge>
-								))}
-							</div>
-						</div>
-					)}
+							{span.toolCatalog && (
+								<ToolsAvailable
+									catalog={span.toolCatalog}
+									className="border-b border-border/40 px-5 py-5"
+								/>
+							)}
 
-					{span.toolCatalog && (
-						<ToolsAvailable
-							catalog={span.toolCatalog}
-							className="border-b border-border/40 px-5 py-5"
-						/>
-					)}
-
-					{span.input && (
-						<Payload
-							label="Input"
-							value={span.input}
-							className="border-b border-border/40 px-5 py-5"
-						/>
-					)}
-					{span.output && (
-						<Payload label="Output" value={span.output} className="px-5 py-5" />
-					)}
-				</ScrollFade>
+							{/* Readable transcript here; the Raw tab keeps the verbatim JSON. */}
+							{span.input && (
+								<Transcript
+									label={span.spanType === "tool" ? "Arguments" : "Input"}
+									value={span.input}
+									className="border-b border-border/40 px-5 py-5"
+								/>
+							)}
+							{span.output && (
+								<Transcript
+									label={span.spanType === "tool" ? "Result" : "Output"}
+									value={span.output}
+									className="px-5 py-5"
+								/>
+							)}
+						</ScrollFade>
+					</TabsContent>
+					<TabsContent value="raw" className="flex min-h-0 flex-1 flex-col">
+						<ScrollFade
+							containerClassName="flex min-h-0 flex-1 flex-col"
+							className="flex min-h-0 flex-1 flex-col gap-4 py-5"
+						>
+							<SpanRaw span={span} />
+						</ScrollFade>
+					</TabsContent>
+				</Tabs>
 			</CardContent>
 		</Card>
+	);
+}
+
+/** The complete span, unfiltered and uncurated — the escape hatch for anything
+ * the per-type Overview layout omits, and the only view guaranteed to render
+ * something for span types we don't have a layout for. Payloads are split out
+ * of the field blob so they stay readable (and copyable) on their own; they're
+ * shown in full, never truncated. */
+function SpanRaw({ span }: { span: Span }) {
+	const fields = useMemo(() => {
+		const { input, output, ...rest } = span;
+		// Absent fields are noise here — the point of Raw is to show what was
+		// captured, and a wall of nulls buries it.
+		const present = Object.fromEntries(
+			Object.entries(rest).filter(([, v]) => {
+				if (v == null || v === "") return false;
+				if (Array.isArray(v)) return v.length > 0;
+				if (typeof v === "object") return Object.keys(v).length > 0;
+				return true;
+			}),
+		);
+		return JSON.stringify(present);
+	}, [span]);
+	return (
+		<>
+			<Payload
+				label="Span"
+				value={fields}
+				className="border-b border-border/40 px-5 py-5"
+			/>
+			{span.input && (
+				<Payload
+					label="Input"
+					value={span.input}
+					className="border-b border-border/40 px-5 py-5"
+				/>
+			)}
+			{span.output && (
+				<Payload label="Output" value={span.output} className="px-5 py-5" />
+			)}
+		</>
 	);
 }
 
@@ -1377,6 +1814,29 @@ function ToolsAvailable({
 					),
 				)}
 			</div>
+		</div>
+	);
+}
+
+/** A payload rendered as a conversation rather than JSON — same label + copy
+ * header as {@link Payload}, which still backs the Raw tab and the tool catalog.
+ * Copy yields the original string, not the rendered view. */
+function Transcript({
+	label,
+	value,
+	className,
+}: {
+	label: string;
+	value: string;
+	className?: string;
+}) {
+	return (
+		<div className={cn("flex flex-col gap-2", className)}>
+			<div className="flex items-center justify-between">
+				<span className="text-xs text-muted-foreground">{label}</span>
+				<CopyButton value={value} title={`Copy ${label.toLowerCase()}`} />
+			</div>
+			<PayloadView value={value} />
 		</div>
 	);
 }

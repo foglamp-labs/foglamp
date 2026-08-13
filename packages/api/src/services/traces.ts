@@ -1,11 +1,14 @@
 import {
   getCustomerDisplays,
+  getSessionTraceNeighbors,
+  getTraceAggregate,
   getTraceSpans,
   listTraces,
   queryMetadataKeys,
   queryMetadataValues,
   queryTraceMetadataValues,
   type SortDir,
+  traceComparison,
   traceListSummary,
   type TraceSortField,
 } from "@foglamp/clickhouse";
@@ -292,5 +295,86 @@ export async function getTraceDetail(
         }
       : null,
     spans,
+  };
+}
+
+/**
+ * The traces on either side of this one within its session — "previous /
+ * next turn" on the trace detail page. Traces outside a session never reach
+ * here; the caller gates on `sessionId`.
+ */
+export async function getSessionNeighbors(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: { projectId: string; traceId: string; sessionId: string },
+) {
+  await requireProjectAccess(db, userId, input.projectId);
+  return getSessionTraceNeighbors(ch, input);
+}
+
+/** Traces older than this don't say anything useful about how the agent behaves
+ * today — models, prompts and tool sets all move faster than that. */
+const COMPARISON_WINDOW_DAYS = 7;
+/** Below this, a percentile is noise wearing a precise-looking number — which is
+ * worst in exactly the new-project case where someone is forming a first
+ * impression. */
+const COMPARISON_MIN_TRACES = 20;
+
+/**
+ * Where this trace sits among its agent's recent traces, as percentiles — the
+ * "p91 · this agent" hint on the header stat cards.
+ *
+ * Returns null rather than a number whenever the comparison would be
+ * misleading: no agent name (we will not rank a trace against unrelated
+ * traces), or too small a population. Per-metric percentiles are null
+ * independently, so an unpriced trace still gets its duration rank.
+ */
+export async function getTraceComparison(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: { projectId: string; traceId: string },
+) {
+  await requireProjectAccess(db, userId, input.projectId);
+  const empty = {
+    agentName: null,
+    traceCount: 0,
+    durationPercentile: null,
+    costPercentile: null,
+    tokenPercentile: null,
+  };
+  const self = (await getTraceAggregate(ch, input))[0];
+  const agentName = self?.agent_name || null;
+  if (!self || !agentName) return empty;
+  const from = new Date(Date.now() - COMPARISON_WINDOW_DAYS * 86_400_000);
+  const row = (
+    await traceComparison(ch, {
+      projectId: input.projectId,
+      agentName,
+      from: toClickHouseDateTime(from),
+      durationMs: num(self.duration_ms),
+      cost: self.total_cost,
+      tokens: num(self.total_tokens),
+    })
+  )[0];
+  const traceCount = num(row?.trace_count);
+  if (traceCount < COMPARISON_MIN_TRACES) return { ...empty, agentName };
+  // Percent of the population at or below this trace's value. Rounded to a whole
+  // percentile — the extra digits would imply a precision this doesn't have.
+  const pct = (rank: number, total: number) =>
+    total > 0 ? Math.round((rank / total) * 100) : null;
+  const pricedCount = num(row?.priced_count);
+  return {
+    agentName,
+    traceCount,
+    durationPercentile: pct(num(row?.duration_rank), traceCount),
+    // Unpriced traces sit outside the cost population entirely, so a trace with
+    // no cost gets no cost rank rather than a misleading "p1".
+    costPercentile:
+      Number(self.total_cost) > 0
+        ? pct(num(row?.cost_rank), pricedCount)
+        : null,
+    tokenPercentile: pct(num(row?.token_rank), traceCount),
   };
 }

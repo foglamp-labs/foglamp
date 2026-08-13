@@ -5,6 +5,8 @@ import { resolveRange } from "../lib/util";
 import {
   getMetadataKeys,
   getMetadataValues,
+  getSessionNeighbors,
+  getTraceComparison,
   getTraceDetail,
   getTraceList,
 } from "../services/traces";
@@ -44,6 +46,29 @@ export const tracesRouter = router({
     .input(z.object({ projectId: z.string(), traceId: z.string() }))
     .query(({ ctx, input }) =>
       getTraceDetail(ctx.db, ctx.ch, ctx.session.user.id, input),
+    ),
+
+  // Where this trace ranks among its agent's recent traces — the percentile
+  // hints on the header stat cards. Separate from `get` so the page never
+  // blocks on it.
+  comparison: protectedProcedure
+    .input(z.object({ projectId: z.string(), traceId: z.string() }))
+    .query(({ ctx, input }) =>
+      getTraceComparison(ctx.db, ctx.ch, ctx.session.user.id, input),
+    ),
+
+  // The traces on either side of this one within its session — the detail
+  // page's previous/next turn control.
+  sessionNeighbors: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        traceId: z.string(),
+        sessionId: z.string().min(1),
+      }),
+    )
+    .query(({ ctx, input }) =>
+      getSessionNeighbors(ctx.db, ctx.ch, ctx.session.user.id, input),
     ),
 
   // Distinct metadata keys in a window — the metadata filter's key picker.
