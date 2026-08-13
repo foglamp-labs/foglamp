@@ -24,7 +24,6 @@ import {
   IconAffiliate,
   IconAlertTriangle,
   IconAlertTriangleFilled,
-  IconArrowUpRight,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
@@ -46,6 +45,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { useShikiHtml } from "@/components/app/code-block";
+import { ContextChip } from "@/components/app/context-chip";
 import { CopyButton } from "@/components/app/copy-button";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import {
@@ -710,36 +710,6 @@ function TimeComposition({
         ))}
       </div>
     </div>
-  );
-}
-
-function ContextChip({
-  href,
-  icon: Icon,
-  iconClassName,
-  label,
-}: {
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  iconClassName: string;
-  label: string;
-}) {
-  return (
-    <Button
-      variant="outline"
-      // The FilterSelect trigger surface from the traces list, minus the
-      // dropdown-only bits: outline Button, no press scale, instant background
-      // hover, and the dark border swapped for the outline shadow.
-      className="max-w-xs justify-start font-normal transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)"
-      render={
-        // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
-        <Link href={href as any} />
-      }
-    >
-      <Icon className={cn("size-3.5 shrink-0", iconClassName)} />
-      <span className="truncate">{label}</span>
-      <IconArrowUpRight className="size-3.5 shrink-0 -ml-0.5 mt-px text-muted-foreground" />
-    </Button>
   );
 }
 

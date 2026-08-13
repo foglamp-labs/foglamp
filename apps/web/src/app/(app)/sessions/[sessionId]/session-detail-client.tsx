@@ -23,6 +23,7 @@ import { Streamdown } from "streamdown";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CopyButton } from "@/components/app/copy-button";
+import { ContextChip } from "@/components/app/context-chip";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { HEAT_SHADES } from "@/components/app/heat-cell";
 import {
@@ -143,6 +144,50 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
 				/>
 			</div>
 
+			{/* Context chips: the customer this session served and the agent that
+			    ran it — same linked-entity pills as the trace detail page. */}
+			{(data?.customer || data?.agentName) && (
+				<div
+					className={cn(
+						"mt-1 flex flex-wrap items-center gap-2 text-xs px-8",
+						entrance && !skeletonShown && "page-fade-in",
+					)}
+				>
+					{data.customer && (
+						<ContextChip
+							href={`/traces?customer=${encodeURIComponent(
+								data.customer.customerId,
+							)}`}
+							icon={(p) => (
+								<CustomerAvatar
+									customerId={data.customer!.customerId}
+									customerName={data.customer!.customerName}
+									imageUrl={data.customer!.customerImageUrl}
+									filled
+									className={p.className}
+								/>
+							)}
+							iconClassName=""
+							label={data.customer.customerName ?? data.customer.customerId}
+						/>
+					)}
+					{data.agentName && (
+						<ContextChip
+							href={`/agents/${encodeURIComponent(data.agentName)}`}
+							icon={(p) => (
+								<AgentIcon
+									name={data.agentName}
+									filled
+									className={p.className}
+								/>
+							)}
+							iconClassName=""
+							label={data.agentName}
+						/>
+					)}
+				</div>
+			)}
+
 			{detail.isLoading ? (
 				showSkeleton ? (
 					<div className={cn(entrance && "page-fade-in", "px-8")}>
@@ -225,42 +270,6 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
 										{formatCount(stats?.errorCount ?? 0)}
 										{(stats?.errorCount ?? 0) === 1 ? "error" : "errors"}
 									</Badge>
-								)}
-								{data?.agentName && (
-									<Link
-										// biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
-										href={
-											`/agents/${encodeURIComponent(data.agentName)}` as any
-										}
-										className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
-									>
-										<AgentIcon name={data.agentName} className="size-3.5" />
-										<span className="truncate font-medium">
-											{data.agentName}
-										</span>
-									</Link>
-								)}
-								{data?.customer && (
-									<Link
-										// biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
-										href={
-											`/traces?customer=${encodeURIComponent(
-												data.customer.customerId,
-											)}` as any
-										}
-										title="View this customer's traces"
-										className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
-									>
-										<CustomerAvatar
-											customerId={data.customer.customerId}
-											customerName={data.customer.customerName}
-											imageUrl={data.customer.customerImageUrl}
-											className="size-3.5"
-										/>
-										<span className="truncate font-medium">
-											{data.customer.customerName ?? data.customer.customerId}
-										</span>
-									</Link>
 								)}
 								<span className="px-2 pt-2 pb-1.5 text-xs font-medium text-muted-foreground">
 									{turns.length} {turns.length === 1 ? "turn" : "turns"}
