@@ -226,13 +226,26 @@ export function SortableHead<K extends string>({
 				className,
 			)}
 		>
+			{/* The arrow sits after the label but takes no layout space on
+			    right-aligned columns (-mr-5 = its size-3.5 + gap-1.5 footprint,
+			    hanging into the cell's right padding), so the label's right edge
+			    lines up exactly with the numbers below. It only appears on hover
+			    or when the column is actively sorted, keeping the resting header
+			    a clean flush-right label. */}
 			<span
 				className={cn(
 					"inline-flex flex-row-reverse items-center gap-1.5 text-foreground",
+					align === "right" && "-mr-5",
 				)}
 			>
 				<Arrow
-					className={`size-3.5 shrink-0 ${active ? "text-foreground" : "text-muted-foreground"} transition-colors group-hover:text-primary`}
+					className={cn(
+						"size-3.5 shrink-0 transition-[color,opacity]",
+						active
+							? "text-foreground"
+							: "text-muted-foreground opacity-0 group-hover:opacity-100",
+						"group-hover:text-primary",
+					)}
 					stroke={active ? 2 : 1.5}
 				/>
 				<span>{children}</span>

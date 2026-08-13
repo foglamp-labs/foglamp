@@ -1130,7 +1130,7 @@ export function EvalsClient() {
 													bold
 													mutedWhenZero
 												>
-													{r.cost > 0 ? formatCost(r.cost) : "—"}
+													{r.cost > 0 ? formatCost(r.cost, 4) : "—"}
 												</HeatCell>
 												<TableCell
 													onClick={(e) => e.stopPropagation()}

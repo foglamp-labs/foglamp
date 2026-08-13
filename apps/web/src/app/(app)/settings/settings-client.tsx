@@ -50,12 +50,8 @@ import { toast } from "sonner";
 
 import { AnimatedApiKey } from "@/components/app/animated-api-key";
 import { CopyIcon } from "@/components/app/copy-icon";
-import {
-	useDelayedLoading,
-	useEntranceOnce,
-	useSkeletonShown,
-} from "@/components/app/hooks";
-import { EmptyState, TableSkeleton } from "@/components/app/page-parts";
+import { useDelayedLoading, useEntranceOnce } from "@/components/app/hooks";
+import { EmptyState, TableRowsSkeleton } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { useCopied } from "@/components/app/use-copied";
 import { trpc } from "@/utils/trpc";
@@ -86,9 +82,8 @@ export function SettingsClient() {
 		enabled: !!projectId,
 	});
 	// Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+	// Only the table body waits on data — the column headers paint immediately.
 	const showSkeleton = useDelayedLoading(keys.isLoading);
-	// Latches whether the table's slot ever showed a skeleton (see useSkeletonShown).
-	const skeletonShown = useSkeletonShown(showSkeleton);
 
 	const createKey = useMutation(
 		trpc.projects.keys.create.mutationOptions({
@@ -246,19 +241,13 @@ export function SettingsClient() {
 				<p className="text-sm text-muted-foreground">Select a project first.</p>
 			) : (
 				<>
-					{keys.isLoading ? (
-						showSkeleton ? (
-							<div className={cn(entrance && "page-fade-in", "px-8")}>
-								<TableSkeleton />
-							</div>
-						) : null
-					) : keyRows.length === 0 ? (
+					{!keys.isLoading && keyRows.length === 0 ? (
 						<div className="px-8">
 							<EmptyState
 								icon={IconKeyFilled}
 								title="No API keys"
 								description="Create a key to authenticate SDK requests."
-								className={cn(entrance && !skeletonShown && "page-fade-in")}
+								className={cn(entrance && "page-fade-in")}
 							>
 								<Button className="mt-2" onClick={() => setKeyDialogOpen(true)}>
 									<IconPlusFilled /> Create key
@@ -266,66 +255,77 @@ export function SettingsClient() {
 							</EmptyState>
 						</div>
 					) : (
-						<Table className={cn(entrance && !skeletonShown && "page-fade-in")}>
+						// Fixed layout: column widths come from the header's w-* classes,
+						// so the skeleton→data swap can't re-measure and shift columns.
+						<Table className={cn("table-fixed", entrance && "page-fade-in")}>
 							<TableHeader>
 								<TableRow>
-									<TableHead className="w-72">Name</TableHead>
+									<TableHead>Name</TableHead>
 									<TableHead className="w-44">Status</TableHead>
 									<TableHead className="w-44">Last used</TableHead>
 									<TableHead className="w-44">Created</TableHead>
-									<TableHead className="w-16" />
+									<TableHead className="w-28" />
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{keyRows.map((k) => (
-									<TableRow key={k.id}>
-										<TableCell className="font-medium flex flex-col gap-0.75 py-2.5">
-											{k.name}{" "}
-											<span className="font-mono text-[11px] text-muted-foreground/50">
-												{k.keyPrefix}
-											</span>
-										</TableCell>
-										<TableCell>
-											{k.revokedAt ? (
-												<Badge variant="rose">
-													<IconXFilled className="mb-px size-3.25" />
-													revoked
-												</Badge>
-											) : (
-												<Badge variant="emerald">
-													<IconCheckFilled className="mb-px size-3.25" />
-													active
-												</Badge>
-											)}
-										</TableCell>
-										<TableCell className="text-muted-foreground">
-											{k.lastUsedAt
-												? formatDistanceToNow(new Date(k.lastUsedAt), {
-														addSuffix: true,
-													})
-												: "Never"}
-										</TableCell>
-										<TableCell className="text-muted-foreground">
-											{formatDistanceToNow(new Date(k.createdAt), {
-												addSuffix: true,
-											})}
-										</TableCell>
-										<TableCell align="center" className="py-0">
-											{!k.revokedAt && (
-												<Button
-													variant="ghost-destructive"
-													className="size-7"
-													onClick={() => {
-														lastRevokeName.current = k.name;
-														setRevokeTarget({ id: k.id, name: k.name });
-													}}
-												>
-													<IconTrashFilled />
-												</Button>
-											)}
-										</TableCell>
-									</TableRow>
-								))}
+								{keys.isLoading ? (
+									showSkeleton ? (
+										<TableRowsSkeleton
+											cols={KEY_SKELETON_COLS}
+											rowHeight="h-15"
+										/>
+									) : null
+								) : (
+									keyRows.map((k) => (
+										<TableRow key={k.id}>
+											<TableCell className="font-medium flex flex-col gap-0.75 py-2.5">
+												{k.name}{" "}
+												<span className="font-mono text-[11px] text-muted-foreground/50">
+													{k.keyPrefix}
+												</span>
+											</TableCell>
+											<TableCell>
+												{k.revokedAt ? (
+													<Badge variant="rose">
+														<IconXFilled className="mb-px size-3.25" />
+														revoked
+													</Badge>
+												) : (
+													<Badge variant="emerald">
+														<IconCheckFilled className="mb-px size-3.25" />
+														active
+													</Badge>
+												)}
+											</TableCell>
+											<TableCell className="text-muted-foreground">
+												{k.lastUsedAt
+													? formatDistanceToNow(new Date(k.lastUsedAt), {
+															addSuffix: true,
+														})
+													: "Never"}
+											</TableCell>
+											<TableCell className="text-muted-foreground">
+												{formatDistanceToNow(new Date(k.createdAt), {
+													addSuffix: true,
+												})}
+											</TableCell>
+											<TableCell align="right" className="py-0">
+												{!k.revokedAt && (
+													<Button
+														variant="ghost-destructive"
+														className="size-7"
+														onClick={() => {
+															lastRevokeName.current = k.name;
+															setRevokeTarget({ id: k.id, name: k.name });
+														}}
+													>
+														<IconTrashFilled />
+													</Button>
+												)}
+											</TableCell>
+										</TableRow>
+									))
+								)}
 							</TableBody>
 						</Table>
 					)}
@@ -361,3 +361,12 @@ export function SettingsClient() {
 		</>
 	);
 }
+
+// Skeleton column spec for the loading body rows (see TableRowsSkeleton).
+const KEY_SKELETON_COLS = [
+	{ w: "w-32" },
+	{ w: "w-16" },
+	{ w: "w-20" },
+	{ w: "w-20" },
+	{},
+] as const;

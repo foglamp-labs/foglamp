@@ -669,16 +669,20 @@ export type SkeletonCol = {
 export function TableRowsSkeleton({
 	rows = 3,
 	cols,
+	rowHeight = "h-12",
 }: {
 	rows?: number;
 	cols: readonly SkeletonCol[];
+	/** Height class matching the real rows, when they're taller than the
+	 * standard h-12 (e.g. two-line cells). */
+	rowHeight?: string;
 }) {
 	return (
 		<>
 			{Array.from({ length: rows }).map((_, i) => (
 				<TableRow key={i}>
 					{cols.map((c, j) => (
-						<TableCell key={j} align={c.align} className="h-12">
+						<TableCell key={j} align={c.align} className={rowHeight}>
 							{c.w && (
 								<div
 									className={cn(
