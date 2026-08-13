@@ -1,5 +1,6 @@
 import {
   getCustomerDisplays,
+  getSessionToolCalls,
   getSessionTurns,
   listSessions,
   listTraces,
@@ -112,7 +113,7 @@ export async function getSessionDetail(
   // per-turn metrics come from `metrics`. If the two limits diverge, turns past
   // the smaller cap get zeroed metrics that still feed the summed session stats,
   // silently understating total cost/tokens.
-  const [content, metrics] = await Promise.all([
+  const [content, metrics, toolCalls] = await Promise.all([
     getSessionTurns(ch, {
       projectId: input.projectId,
       sessionId: input.sessionId,
@@ -123,9 +124,21 @@ export async function getSessionDetail(
       sessionId: input.sessionId,
       limit: SESSION_TURN_CAP,
     }),
+    getSessionToolCalls(ch, {
+      projectId: input.projectId,
+      sessionId: input.sessionId,
+    }),
   ]);
 
   const byTrace = new Map<string, TraceListRow>(metrics.map((m) => [m.trace_id, m]));
+
+  // Tool chips per turn: rows arrive one per (trace, tool) in first-call order.
+  const toolsByTrace = new Map<string, { name: string; count: number; errorCount: number }[]>();
+  for (const t of toolCalls) {
+    const list = toolsByTrace.get(t.trace_id) ?? [];
+    list.push({ name: t.name, count: num(t.call_count), errorCount: num(t.error_count) });
+    toolsByTrace.set(t.trace_id, list);
+  }
 
   // Customer is stable across a session's traces; pick the first non-empty id
   // and resolve its display name/avatar so the detail header can show it.
@@ -159,6 +172,7 @@ export async function getSessionDetail(
       totalTokens: m ? num(m.total_tokens) : 0,
       spanCount: m ? num(m.span_count) : 0,
       errorCount: m ? num(m.error_count) : 0,
+      toolCalls: toolsByTrace.get(c.trace_id) ?? [],
     };
   });
 

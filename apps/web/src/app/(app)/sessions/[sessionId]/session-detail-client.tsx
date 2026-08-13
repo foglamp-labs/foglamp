@@ -13,6 +13,7 @@ import {
 	IconMessageOff,
 	IconPlayerStopFilled,
 	IconSitemapFilled,
+	IconTool,
 	IconUserFilled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
@@ -64,6 +65,7 @@ type Turn = {
 	totalTokens: number;
 	errorCount: number;
 	durationMs: number;
+	toolCalls: { name: string; count: number; errorCount: number }[];
 };
 
 /** 20/40/60/80th-percentile thresholds of the positive values (sorted-nearest). */
@@ -386,6 +388,28 @@ function TurnBlock({
 			</div>
 
 			{turn.userMessage && <Bubble role="user" text={turn.userMessage} />}
+			{turn.toolCalls.length > 0 && (
+				<div className="flex flex-wrap items-center gap-1.5 pl-9">
+					{turn.toolCalls.map((tc) => (
+						<Link
+							key={tc.name}
+							href={`/traces/${encodeURIComponent(turn.traceId)}`}
+							title={`View ${tc.name} in the trace`}
+							className={cn(
+								"inline-flex items-center gap-1 rounded-full border bg-card/40 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground",
+								tc.errorCount > 0 &&
+									"border-rose-500/40 text-rose-600 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-400",
+							)}
+						>
+							<IconTool className="size-3 shrink-0" />
+							<span className="truncate max-w-40 font-mono">{tc.name}</span>
+							{tc.count > 1 && (
+								<span className="tabular-nums">×{tc.count}</span>
+							)}
+						</Link>
+					))}
+				</div>
+			)}
 			{turn.assistantOutput ? (
 				<Bubble role="assistant" text={turn.assistantOutput} />
 			) : (

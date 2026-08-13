@@ -763,6 +763,40 @@ export function getSessionTurns(
 	);
 }
 
+export type SessionToolCallRow = {
+	trace_id: string;
+	name: string;
+	call_count: number;
+	error_count: number;
+	total_duration_ms: number;
+};
+
+/**
+ * Tool usage per turn: one row per (trace, tool name) across a session's tool
+ * spans, in first-call order. Feeds the compact tool-call chips on the session
+ * detail page.
+ */
+export function getSessionToolCalls(
+	client: ClickHouseClient,
+	params: { projectId: string; sessionId: string },
+): Promise<SessionToolCallRow[]> {
+	return rows<SessionToolCallRow>(
+		client,
+		`SELECT
+       trace_id, name,
+       count() AS call_count,
+       countIf(status = 'error') AS error_count,
+       sum(duration_ms) AS total_duration_ms
+     FROM spans FINAL
+     WHERE project_id = {projectId:String}
+       AND session_id = {sessionId:String}
+       AND span_type = 'tool'
+     GROUP BY trace_id, name
+     ORDER BY min(start_time) ASC`,
+		{ projectId: params.projectId, sessionId: params.sessionId },
+	);
+}
+
 export type SpanDetailRow = {
 	span_id: string;
 	parent_span_id: string;
