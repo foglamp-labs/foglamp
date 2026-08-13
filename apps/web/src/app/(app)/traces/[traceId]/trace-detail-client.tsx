@@ -25,7 +25,6 @@ import {
 	IconAlertTriangle,
 	IconAlertTriangleFilled,
 	IconArrowUpRight,
-	IconBoltFilled,
 	IconChevronDown,
 	IconChevronLeft,
 	IconChevronRight,
@@ -39,14 +38,11 @@ import {
 	IconPlayerStopFilled,
 	IconRoute,
 	IconSitemapFilled,
-	IconSparklesFilled,
-	IconX,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { useShikiHtml } from "@/components/app/code-block";
@@ -114,8 +110,9 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 	const searchParams = useSearchParams();
 	const pathname = usePathname();
 	const router = useRouter();
-	const [selected, setSelected] = useState<string | null>(() =>
-		searchParams.get("span"),
+	// The inspector is always open: no selection means the whole trace.
+	const [selected, setSelected] = useState<string>(
+		() => searchParams.get("span") ?? WHOLE_TRACE_ID,
 	);
 
 	const detail = useQuery({
@@ -294,7 +291,9 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 		() => (scores.data ?? []).filter((s) => s.targetType !== "span"),
 		[scores.data],
 	);
-	const isTraceSelected = selected === WHOLE_TRACE_ID;
+	// A stale ?span= id (aged out, wrong trace) also lands on the whole trace, so
+	// the always-open inspector never renders empty.
+	const isTraceSelected = selected === WHOLE_TRACE_ID || !active;
 	// The trace's own facts, assembled only when its row is selected.
 	const traceSummary = useMemo<TraceSummary | null>(() => {
 		if (spans.length === 0) return null;
@@ -316,12 +315,14 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 	}, [spans, window.span, stats, erroredSpans.length, traceScores]);
 
 	// Select a span and reflect it in the URL (?span=) so the selection is
-	// shareable; other params are preserved.
+	// shareable; other params are preserved. Deselecting (null) falls back to the
+	// whole trace — the inspector never closes.
 	const select = useCallback(
 		(spanId: string | null) => {
-			setSelected(spanId);
+			const id = spanId ?? WHOLE_TRACE_ID;
+			setSelected(id);
 			const params = new URLSearchParams(searchParams.toString());
-			if (spanId) params.set("span", spanId);
+			if (id !== WHOLE_TRACE_ID) params.set("span", id);
 			else params.delete("span");
 			const qs = params.toString();
 			router.replace(
@@ -340,10 +341,18 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 		(delta: number) => {
 			if (ordered.length === 0) return;
 			const i = ordered.findIndex((o) => o.span.spanId === selected);
-			// Nothing selected yet: either direction lands on the first span.
-			const ni =
-				i < 0 ? 0 : Math.min(Math.max(i + delta, 0), ordered.length - 1);
-			select(ordered[ni].span.spanId);
+			// The whole-trace row sits above the spans: ↓ from it enters the list,
+			// ↑ from the first span returns to it.
+			if (i < 0) {
+				if (delta > 0) select(ordered[0].span.spanId);
+				return;
+			}
+			const ni = i + delta;
+			if (ni < 0) {
+				select(WHOLE_TRACE_ID);
+				return;
+			}
+			select(ordered[Math.min(ni, ordered.length - 1)].span.spanId);
 		},
 		[ordered, selected, select],
 	);
@@ -489,26 +498,10 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 				<>
 					<section
 						className={cn(
-							"grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 px-8",
+							"grid grid-cols-2 gap-4 lg:grid-cols-4 px-8",
 							entrance && !skeletonShown && "page-fade-in",
 						)}
 					>
-						<StatCard
-							icon={IconBoltFilled}
-							iconClassName="text-orange-500 dark:text-orange-500"
-							size="sm"
-							label="Spans"
-							value={spans.length}
-							formatValue={formatCount}
-						/>
-						<StatCard
-							icon={IconSparklesFilled}
-							iconClassName="text-emerald-500 dark:text-emerald-500"
-							size="sm"
-							label="LLM calls"
-							value={stats.llm}
-							formatValue={formatCount}
-						/>
 						<StatCard
 							icon={IconCirclesFilled}
 							iconClassName="text-blue-500 dark:text-blue-500"
@@ -553,12 +546,6 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 						/>
 					</section>
 
-					<TimeComposition
-						spans={spans}
-						totalMs={window.span}
-						className={cn(entrance && !skeletonShown && "page-fade-in", "px-8")}
-					/>
-
 					{issues.length > 0 && (
 						<IssuesStrip
 							issues={issues}
@@ -590,9 +577,9 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 							span={isTraceSelected ? null : active}
 							scores={activeScores}
 							trace={isTraceSelected ? traceSummary : null}
+							spans={spans}
 							evalMeta={evalMeta}
 							presetName={presetName}
-							onClose={() => select(null)}
 							spanIndex={selectedIndex}
 							spanCount={ordered.length}
 							onStep={stepSelection}
@@ -1100,37 +1087,36 @@ function pctRemaining(
 	return Math.round((remaining / limit) * 100);
 }
 
-// Width of the span inspector when open. The timeline (a flex sibling, flex-1)
+// Default width of the span inspector. The timeline (a flex sibling, flex-1)
 // gives up exactly this much room, so the panel reads as carved out of the same
 // canvas — same technique as the Foggy chat.
 const PANEL_WIDTH = 420;
 
-// The slide-in matches Foggy's panel exactly so the two read as one motion
-// language across the app.
-const PANEL_EASE = [0.32, 0.72, 0, 1] as const;
+// Resize limits: thin enough to give the waterfall room, wide enough that the
+// two-column field grid and payloads stay readable.
+const PANEL_MIN_WIDTH = 340;
+const PANEL_MAX_WIDTH = 720;
 
-// Horizontal breathing room inside the aside's clip box so the card's shadow
-// (a 1px ring + ~4px blur, fully *outside* the card in light mode) isn't cut
-// off by overflow-x-clip. The aside grows by this much per side and pulls
-// itself back with an equal negative margin, so the card's resting position
-// and the layout's effective width are unchanged.
-const PANEL_GUTTER = 8;
+// The chosen width survives navigation — resizing is a workspace preference,
+// not a per-trace one.
+const PANEL_WIDTH_KEY = "foglamp:trace-panel-width";
+
+const clampPanelWidth = (w: number) =>
+	Math.min(PANEL_MAX_WIDTH, Math.max(PANEL_MIN_WIDTH, w));
 
 /**
- * The right-hand inspector — opens for either a single span or the whole trace.
- * Selecting one animates the panel's width open (squeezing the timeline beside
- * it); deselecting animates it shut. While it's already open, switching targets
- * just swaps the content — the width target is unchanged, so no reopen animation
- * runs. The last target is kept mounted through the close so its content doesn't
- * vanish before the panel finishes collapsing.
+ * The right-hand inspector — always open, showing either a single span or the
+ * whole trace (the default). Switching targets swaps the content in place. The
+ * left edge is a drag handle: the panel resizes between fixed limits and the
+ * timeline (flex-1 beside it) absorbs the difference.
  */
 function DetailPanel({
 	span,
 	scores,
 	trace,
+	spans,
 	evalMeta,
 	presetName,
-	onClose,
 	spanIndex,
 	spanCount,
 	onStep,
@@ -1139,96 +1125,121 @@ function DetailPanel({
 	span: Span | null;
 	scores: TraceScore[];
 	trace: TraceSummary | null;
+	/** All spans of the trace — the whole-trace view derives its time
+	 * distribution and root payloads from them. */
+	spans: Span[];
 	evalMeta: Map<string, EvalMeta>;
 	presetName: Map<string, string>;
-	onClose: () => void;
 	/** Position of the selected span in waterfall order; -1 when none. */
 	spanIndex: number;
 	spanCount: number;
 	onStep: (delta: number) => void;
-	/** Subtree rollups for the whole trace, looked up by the shown span's id so
-	 * it stays in sync with the frozen panel content during the close animation. */
 	subtreeStats: Map<string, SubtreeStats>;
 }) {
-	const open = span !== null || trace !== null;
-	// Freeze the rendered target while open so a close (which nulls everything)
-	// collapses the panel over the last content rather than blanking it first.
-	type Shown =
-		| { kind: "span"; span: Span; scores: TraceScore[] }
-		| { kind: "trace"; trace: TraceSummary };
-	const [shown, setShown] = useState<Shown | null>(
-		trace
-			? { kind: "trace", trace }
-			: span
-				? { kind: "span", span, scores }
-				: null,
-	);
+	const [width, setWidth] = useState(PANEL_WIDTH);
+	// Mirror for the pointer-up persist, so the handler doesn't need to re-bind
+	// on every pixel of drag.
+	const widthRef = useRef(width);
+	widthRef.current = width;
+	// Stored width is applied after mount (not in the initializer) so server and
+	// client render the same initial markup.
 	useEffect(() => {
-		if (trace) setShown({ kind: "trace", trace });
-		else if (span) setShown({ kind: "span", span, scores });
-	}, [span, scores, trace]);
+		const stored = Number(localStorage.getItem(PANEL_WIDTH_KEY));
+		if (Number.isFinite(stored) && stored > 0) setWidth(clampPanelWidth(stored));
+	}, []);
+	const drag = useRef<{ pointerId: number; startX: number; startWidth: number } | null>(
+		null,
+	);
 
 	return (
-		<motion.aside
-			initial={false}
-			animate={{
-				width: open ? PANEL_WIDTH + PANEL_GUTTER * 2 : 0,
-				marginInline: open ? -PANEL_GUTTER : 0,
-			}}
-			transition={{ duration: 0.25, ease: PANEL_EASE }}
-			// Clip only the horizontal axis (all the width collapse needs); the
-			// vertical stays visible so the card's shadow isn't cut off top/bottom.
-			// `overflow-x: clip` keeps `overflow-y: visible` (unlike `hidden`).
-			className="sticky top-0 shrink-0 self-start overflow-x-clip"
-			aria-hidden={!open}
+		<aside
+			className="sticky top-0 shrink-0 self-start"
+			style={{ width }}
 		>
-			{/* Fixed-width inner so content doesn't reflow while the panel animates.
-          The PANEL_GUTTER inset keeps the card's left/right shadow inside the
-          aside's clip box (see PANEL_GUTTER). Vertical stays flush since
-          overflow-y is visible. */}
-			<div style={{ width: PANEL_WIDTH, marginInline: PANEL_GUTTER }}>
-				{shown?.kind === "span" && (
-					<SpanDetail
-						span={shown.span}
-						scores={shown.scores}
-						evalMeta={evalMeta}
-						presetName={presetName}
-						onClose={onClose}
-						spanIndex={spanIndex}
-						spanCount={spanCount}
-						onStep={onStep}
-						subtree={subtreeStats.get(shown.span.spanId)}
-					/>
-				)}
-				{shown?.kind === "trace" && (
-					<TraceDetail
-						trace={shown.trace}
-						evalMeta={evalMeta}
-						presetName={presetName}
-						onClose={onClose}
-					/>
-				)}
+			{/* Resize handle on the panel's left edge. Pointer capture keeps the
+			    drag alive when the cursor outruns the 12px hit area. */}
+			{/* biome-ignore lint/a11y/useFocusableInteractive: pointer-only affordance; the width is cosmetic */}
+			<div
+				role="separator"
+				aria-orientation="vertical"
+				aria-label="Resize panel"
+				onPointerDown={(e) => {
+					e.preventDefault();
+					drag.current = {
+						pointerId: e.pointerId,
+						startX: e.clientX,
+						startWidth: widthRef.current,
+					};
+					e.currentTarget.setPointerCapture(e.pointerId);
+				}}
+				onPointerMove={(e) => {
+					const d = drag.current;
+					if (!d || d.pointerId !== e.pointerId) return;
+					// The panel sits on the right, so dragging left widens it.
+					setWidth(clampPanelWidth(d.startWidth + (d.startX - e.clientX)));
+				}}
+				onPointerUp={(e) => {
+					if (drag.current?.pointerId !== e.pointerId) return;
+					drag.current = null;
+					localStorage.setItem(PANEL_WIDTH_KEY, String(widthRef.current));
+				}}
+				className="group absolute inset-y-0 -left-3 z-10 w-3 cursor-col-resize touch-none"
+			>
+				<div className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-border opacity-0 transition-opacity group-hover:opacity-100" />
 			</div>
-		</motion.aside>
+			{trace ? (
+				<TraceDetail
+					trace={trace}
+					spans={spans}
+					evalMeta={evalMeta}
+					presetName={presetName}
+				/>
+			) : span ? (
+				<SpanDetail
+					span={span}
+					scores={scores}
+					evalMeta={evalMeta}
+					presetName={presetName}
+					spanIndex={spanIndex}
+					spanCount={spanCount}
+					onStep={onStep}
+					subtree={subtreeStats.get(span.spanId)}
+				/>
+			) : null}
+		</aside>
 	);
 }
 
 /**
- * The whole-trace inspector — the trace's own rollup (timing, cost, span counts,
- * errors) plus its trace-level eval scores. Mirrors {@link SpanDetail}'s Card
- * chrome so the two read as one inspector that simply swaps contents.
+ * The whole-trace inspector — the default (and un-closable) target of the
+ * always-open panel, built to be where debugging starts: the trace's rollup,
+ * its time distribution, and the root span's tools/input/output so the
+ * conversation is readable without hunting down the waterfall. Mirrors
+ * {@link SpanDetail}'s Card chrome so the two read as one inspector that
+ * simply swaps contents.
  */
 function TraceDetail({
 	trace,
+	spans,
 	evalMeta,
 	presetName,
-	onClose,
 }: {
 	trace: TraceSummary;
+	spans: Span[];
 	evalMeta: Map<string, EvalMeta>;
 	presetName: Map<string, string>;
-	onClose: () => void;
 }) {
+	// The trace's root span carries the conversation-level payloads: the messages
+	// in, the final output, and the tool catalog the model was offered. Prefer
+	// the earliest top-level `agent` span (the SDK's container), else the
+	// earliest top-level span of any type.
+	const root = useMemo(() => {
+		const ids = new Set(spans.map((s) => s.spanId));
+		const tops = spans
+			.filter((s) => !s.parentSpanId || !ids.has(s.parentSpanId))
+			.sort((a, b) => toMs(a.startTime) - toMs(b.startTime));
+		return tops.find((s) => s.spanType === "agent") ?? tops[0] ?? null;
+	}, [spans]);
 	return (
 		<Card className="max-h-[calc(100svh-16rem)] gap-0 py-0 ">
 			<CardHeader className="flex shrink-0 items-center gap-2 border-b border-border/40 [.border-b]:pb-5 p-5 px-5">
@@ -1238,16 +1249,6 @@ function TraceDetail({
 					</span>
 					<span className="truncate">Whole trace</span>
 				</CardTitle>
-				<Button
-					type="button"
-					size="icon-xs"
-					variant="ghost"
-					onClick={onClose}
-					aria-label="Close"
-					className="-mr-1 shrink-0"
-				>
-					<IconX className="size-4" />
-				</Button>
 			</CardHeader>
 			<CardContent className="flex min-h-0 flex-1 flex-col p-0">
 				<ScrollFade
@@ -1276,8 +1277,17 @@ function TraceDetail({
 						/>
 					</div>
 
+					{trace.durationMs > 0 && (
+						<div className="flex flex-col gap-2 border-b border-border/40 py-5 px-5">
+							<span className="text-xs font-medium text-muted-foreground">
+								Time distribution
+							</span>
+							<TimeComposition spans={spans} totalMs={trace.durationMs} />
+						</div>
+					)}
+
 					{trace.scores.length > 0 && (
-						<div className="flex flex-col gap-1 py-5 px-3">
+						<div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
 							<span className="text-xs font-medium text-muted-foreground px-2">
 								Evals
 							</span>
@@ -1293,6 +1303,24 @@ function TraceDetail({
 							</div>
 						</div>
 					)}
+
+					{root?.toolCatalog && (
+						<ToolsAvailable
+							catalog={root.toolCatalog}
+							className="border-b border-border/40 px-5 py-5"
+						/>
+					)}
+
+					{root?.input && (
+						<Transcript
+							label="Input"
+							value={root.input}
+							className="border-b border-border/40 px-5 py-5"
+						/>
+					)}
+					{root?.output && (
+						<Transcript label="Output" value={root.output} className="px-5 py-5" />
+					)}
 				</ScrollFade>
 			</CardContent>
 		</Card>
@@ -1304,7 +1332,6 @@ function SpanDetail({
 	scores,
 	evalMeta,
 	presetName,
-	onClose,
 	spanIndex,
 	spanCount,
 	onStep,
@@ -1314,7 +1341,6 @@ function SpanDetail({
 	scores: TraceScore[];
 	evalMeta: Map<string, EvalMeta>;
 	presetName: Map<string, string>;
-	onClose: () => void;
 	spanIndex: number;
 	spanCount: number;
 	onStep: (delta: number) => void;
@@ -1383,16 +1409,6 @@ function SpanDetail({
 						<span className="truncate">{span.name}</span>
 						<SpanTypeBadge type={span.spanType} className="shrink-0" />
 					</CardTitle>
-					<Button
-						type="button"
-						size="icon-xs"
-						variant="ghost"
-						onClick={onClose}
-						aria-label="Close"
-						className="-mr-1 shrink-0"
-					>
-						<IconX className="size-4" />
-					</Button>
 				</div>
 				<div className="flex items-center gap-1">
 					{/* The ↑/↓ shortcuts have always worked; these buttons are what make
@@ -1402,9 +1418,9 @@ function SpanDetail({
 						size="icon-xs"
 						variant="ghost"
 						onClick={() => onStep(-1)}
-						disabled={spanIndex <= 0}
+						disabled={spanIndex < 0}
 						aria-label="Previous span"
-						title="Previous span (↑)"
+						title="Previous span (↑, back to whole trace from the first)"
 					>
 						<IconChevronUp className="size-4" />
 					</Button>
