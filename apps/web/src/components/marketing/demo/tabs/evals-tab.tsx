@@ -48,7 +48,7 @@ export function EvalsTab() {
 						<Card
 							key={e.id}
 							size="sm"
-							className="cursor-pointer transition-colors hover:bg-accent/40"
+							className="cursor-pointer transition-colors hover:bg-accent/80 dark:hover:bg-accent/40"
 							onClick={() => openDetail({ type: "eval", id: e.id })}
 						>
 							<CardHeader>

@@ -651,7 +651,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 													<TableRow
 														interactive
 														className={cn(
-															t.traceId === activeTraceId && "bg-accent/30",
+															t.traceId === activeTraceId && "bg-accent/60 dark:bg-accent/30",
 															// Left accent bar on errored traces — scannable at a glance.
 															t.errorCount > 0 &&
 																"shadow-[inset_1px_0_0_0_var(--color-rose-500)]",

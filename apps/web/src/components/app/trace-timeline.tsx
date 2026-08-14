@@ -437,8 +437,8 @@ export function TraceTimeline({
                   className={cn(
                     "grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center rounded-md py-1 text-left text-sm",
                     span.spanId === selected
-                      ? "bg-accent/70"
-                      : "hover:bg-accent/50"
+                      ? "bg-accent dark:bg-accent/70"
+                      : "hover:bg-accent/80 dark:hover:bg-accent/50"
                   )}
                 >
                   <div
@@ -719,7 +719,7 @@ function GroupedRow({
       type="button"
       onClick={onToggle}
       title={expanded ? "Fold repeated calls" : "Show each call"}
-      className="grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center rounded-md py-1 text-left text-sm hover:bg-accent/50"
+      className="grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center rounded-md py-1 text-left text-sm hover:bg-accent/80 dark:hover:bg-accent/50"
     >
       <div
         className="flex min-w-0 items-start gap-2 pr-3"

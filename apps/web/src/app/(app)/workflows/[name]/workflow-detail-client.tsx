@@ -584,7 +584,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                         key={r.workflowRunId}
                         interactive
                         className={cn(
-                          r.workflowRunId === activeRunId && "bg-accent/30",
+                          r.workflowRunId === activeRunId && "bg-accent/60 dark:bg-accent/30",
                           // Left accent bar on errored runs — scannable at a glance.
                           r.errorCount > 0 &&
                             "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"

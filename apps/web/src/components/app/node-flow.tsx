@@ -110,7 +110,7 @@ export function NodeFlow({
 									onClick={() => onNodeClick(node.id)}
 									className={cn(
 										inner,
-										"rounded-lg py-1 hover:bg-accent/50 cursor-pointer",
+										"rounded-lg py-1 hover:bg-accent/80 dark:hover:bg-accent/50 cursor-pointer",
 									)}
 								>
 									{column}

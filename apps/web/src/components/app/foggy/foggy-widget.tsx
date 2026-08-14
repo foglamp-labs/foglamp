@@ -498,7 +498,7 @@ export function FoggyWidget({
 											<DropdownMenuItem
 												key={t.id}
 												onClick={() => void openThread(t.id)}
-												className={cn(t.id === threadId && "bg-accent/50")}
+												className={cn(t.id === threadId && "bg-accent/80 dark:bg-accent/50")}
 											>
 												<span className="truncate">{t.title}</span>
 											</DropdownMenuItem>
