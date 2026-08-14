@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
   Card,
@@ -1355,6 +1354,16 @@ function DetailPanel({
     }
     return best?.input ?? null;
   }, [span, spans]);
+  // How often each tool in the catalog was actually called in this trace —
+  // lets the catalog sort/mark used tools instead of listing a static roster.
+  const toolCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of spans) {
+      if (s.spanType !== "tool") continue;
+      counts.set(s.name, (counts.get(s.name) ?? 0) + 1);
+    }
+    return counts;
+  }, [spans]);
   const [width, setWidth] = useState(PANEL_WIDTH);
   // Mirror for the pointer-up persist, so the handler doesn't need to re-bind
   // on every pixel of drag.
@@ -1440,6 +1449,7 @@ function DetailPanel({
           onStep={onStep}
           rank={rank}
           tall={tall}
+          toolCounts={toolCounts}
         />
       ) : span ? (
         <SpanDetail
@@ -1453,6 +1463,7 @@ function DetailPanel({
           subtree={subtreeStats.get(span.spanId)}
           previousInput={previousInput}
           tall={tall}
+          toolCounts={toolCounts}
         />
       ) : null}
     </aside>
@@ -1475,6 +1486,7 @@ function TraceDetail({
   onStep,
   rank,
   tall,
+  toolCounts,
 }: {
   trace: TraceSummary;
   spans: Span[];
@@ -1483,6 +1495,7 @@ function TraceDetail({
   onStep: (delta: number) => void;
   rank: TraceRank | null;
   tall: boolean;
+  toolCounts: Map<string, number>;
 }) {
   // Same Overview/Raw split as SpanDetail — the whole-trace view is curated,
   // Raw is the verbatim summary + root payloads.
@@ -1638,6 +1651,7 @@ function TraceDetail({
               {root?.toolCatalog && (
                 <ToolsAvailable
                   catalog={root.toolCatalog}
+                  counts={toolCounts}
                   className="border-b border-border/40 px-5 py-5"
                 />
               )}
@@ -1701,6 +1715,7 @@ function SpanDetail({
   subtree,
   previousInput,
   tall,
+  toolCounts,
 }: {
   span: Span;
   scores: TraceScore[];
@@ -1714,6 +1729,7 @@ function SpanDetail({
    * prefix out of this span's Input transcript. Null for the first call. */
   previousInput: string | null;
   tall: boolean;
+  toolCounts: Map<string, number>;
 }) {
   const metaEntries = Object.entries(span.metadata ?? {});
   // Per-dimension cost components that actually carry a value (skip null/0), so
@@ -2057,13 +2073,13 @@ function SpanDetail({
                       value lands flush against the sheet's right edge; the
                       copy button copies plain `key: value` lines instead, so
                       pasted output isn't full of clipped dots. */}
-                  <div className="flex flex-col gap-1 font-mono text-xs pr-1">
+                  <div className="flex flex-col gap-1 font-mono text-[11px] pr-1">
                     {metaEntries.map(([k, v]) => (
                       <div key={k} className="flex items-baseline">
                         <span className="shrink-0 text-muted-foreground">
                           {k}
                         </span>
-                        <span className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-muted-foreground/20">
+                        <span className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-muted-foreground/20 mx-1">
                           {".".repeat(300)}
                         </span>
                         <span className="min-w-0 truncate" title={v}>
@@ -2078,6 +2094,7 @@ function SpanDetail({
               {span.toolCatalog && (
                 <ToolsAvailable
                   catalog={span.toolCatalog}
+                  counts={toolCounts}
                   className="border-b border-border/40 px-5 py-5"
                 />
               )}
@@ -2160,9 +2177,12 @@ function SpanRaw({ span }: { span: Span }) {
  * Falls back to the raw JSON payload if the catalog isn't the expected shape. */
 function ToolsAvailable({
   catalog,
+  counts,
   className,
 }: {
   catalog: string;
+  /** Calls per tool name in this trace — used tools sort first and show ×N. */
+  counts: Map<string, number>;
   className?: string;
 }) {
   const tools = useMemo(() => {
@@ -2170,35 +2190,58 @@ function ToolsAvailable({
       const parsed = JSON.parse(catalog);
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
         return null;
-      return Object.entries(parsed as Record<string, unknown>).map(
+      const list = Object.entries(parsed as Record<string, unknown>).map(
         ([name, def]) => {
           const d =
             def && typeof def === "object"
               ? (def as Record<string, unknown>)
               : {};
+          // Argument names from the tool's JSON schema. The AI SDK serializes
+          // either a bare schema ({type:"object", properties}) or a wrapped
+          // zod one ({jsonSchema: {properties}}); anything else → no args.
+          const schema = (d.parameters ?? d.inputSchema) as
+            | Record<string, unknown>
+            | undefined;
+          const props =
+            schema && typeof schema === "object"
+              ? ((schema.properties ??
+                  (schema.jsonSchema as Record<string, unknown> | undefined)
+                    ?.properties) as Record<string, unknown> | undefined)
+              : undefined;
           return {
             name,
             description:
               typeof d.description === "string" ? d.description : null,
+            args:
+              props && typeof props === "object" ? Object.keys(props) : [],
+            calls: counts.get(name) ?? 0,
           };
         }
+      );
+      // Tools the trace actually called first (most-called on top), the rest
+      // of the roster alphabetical below.
+      return list.sort(
+        (a, b) => b.calls - a.calls || a.name.localeCompare(b.name)
       );
     } catch {
       return null;
     }
-  }, [catalog]);
+  }, [catalog, counts]);
 
   // Collapsed by default: the catalog is static per app and often the longest
   // block in the sheet — the count is the useful part at a glance.
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (!tools)
     return (
       <Payload label="Tools available" value={catalog} className={className} />
     );
 
+  const usedCount = tools.filter((t) => t.calls > 0).length;
+
   return (
-    <div className={cn("flex flex-col", open && "gap-2", className)}>
+    <div className={cn("flex flex-col", open && "gap-3", className)}>
       <div className="flex items-center justify-between">
         {/* CopyButton stays a sibling, not a child — nested buttons are
             invalid HTML (same workaround as the issues strip). */}
@@ -2212,33 +2255,84 @@ function ToolsAvailable({
             className={cn("size-3.5 transition-transform", open && "rotate-90")}
           />
           Tools available ({tools.length})
+          {usedCount > 0 && ` · ${usedCount} used`}
         </button>
         <CopyButton value={catalog} title="Copy tool catalog" />
       </div>
       {open && (
-        <div className="flex flex-wrap gap-1.5">
-          {tools.map((t) =>
-            t.description ? (
-              <TooltipProvider key={t.name} delay={150}>
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Badge variant="secondary" className="cursor-default">
-                        {t.name}
-                      </Badge>
-                    }
+        <div className="flex flex-col gap-1">
+          {tools.map((t) => {
+            const isExpanded = expanded.has(t.name);
+            const expandable = !!t.description || t.args.length > 0;
+            return (
+              <div key={t.name} className="flex flex-col">
+                <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  disabled={!expandable}
+                  onClick={() =>
+                    setExpanded((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(t.name)) next.delete(t.name);
+                      else next.add(t.name);
+                      return next;
+                    })
+                  }
+                  className={cn(
+                    "flex w-full items-baseline gap-2 rounded py-0.5 text-left",
+                    expandable && "group/tool cursor-pointer"
+                  )}
+                >
+                  <IconChevronRight
+                    className={cn(
+                      "size-3 shrink-0 self-center text-muted-foreground/50 transition-transform",
+                      isExpanded && "rotate-90",
+                      !expandable && "invisible"
+                    )}
                   />
-                  <TooltipContent className="max-w-xs">
-                    {t.description}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <Badge key={t.name} variant="secondary">
-                {t.name}
-              </Badge>
-            )
-          )}
+                  <span
+                    className={cn(
+                      "shrink-0 font-mono text-xs",
+                      t.calls === 0 && "text-muted-foreground"
+                    )}
+                  >
+                    {t.name}
+                  </span>
+                  {t.calls > 0 && (
+                    <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                      ×{t.calls}
+                    </span>
+                  )}
+                  {t.description && !isExpanded && (
+                    <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground/70">
+                      {t.description}
+                    </span>
+                  )}
+                </button>
+                {isExpanded && (
+                  <div className="flex flex-col gap-1.5 pt-0.5 pb-1 pl-5">
+                    {t.description && (
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {t.description}
+                      </p>
+                    )}
+                    {t.args.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1">
+                        {t.args.map((a) => (
+                          <span
+                            key={a}
+                            className="rounded border border-border/60 px-1 py-px font-mono text-[10px] text-muted-foreground"
+                          >
+                            {a}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
