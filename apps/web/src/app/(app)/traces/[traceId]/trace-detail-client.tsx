@@ -1138,15 +1138,36 @@ function spanFields(
       break;
     }
     // `tool` and `other` carry none of the model fields — guessing at them is
-    // how you end up with a grid of dashes.
+    // how you end up with a grid of dashes. No Status field either: the sheet
+    // header shows the status icon next to the name (see SpanStatusIcon).
     default: {
-      add("Status", status);
       if (span.totalCost != null && span.totalCost !== 0)
         add("Cost", formatCost(span.totalCost));
       break;
     }
   }
   return fields;
+}
+
+/** The span's status as a bare icon — green check (ok), rose triangle (error),
+ * amber triangle (aborted) — for the sheet header, where a labeled field would
+ * be noise. The capitalized status is the tooltip. */
+function SpanStatusIcon({ status }: { status: string }) {
+  const label = status.charAt(0).toUpperCase() + status.slice(1);
+  return (
+    <span title={label} className="flex shrink-0 items-center">
+      {status === "ok" ? (
+        <IconCircleCheckFilled className="size-3.5 text-emerald-500" />
+      ) : (
+        <IconAlertTriangleFilled
+          className={cn(
+            "size-3.5",
+            status === "aborted" ? "text-amber-500" : "text-rose-500"
+          )}
+        />
+      )}
+    </span>
+  );
 }
 
 /** Thin bar under the TTFT number splitting the llm span's wall into the
@@ -1764,6 +1785,9 @@ function SpanDetail({
               makes a type badge redundant. */}
           <SpanIconChip span={span} />
           <span className="truncate">{span.name}</span>
+          {(span.spanType === "tool" || span.spanType === "other") && (
+            <SpanStatusIcon status={span.status} />
+          )}
         </CardTitle>
         <div className="flex shrink-0 items-center gap-1">
           {/* Overview is curated; Raw is the always-complete escape hatch.
