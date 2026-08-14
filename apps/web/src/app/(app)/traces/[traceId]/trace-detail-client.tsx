@@ -98,7 +98,6 @@ type TraceSummary = {
   cost: number | null;
   tokens: number;
   spanCount: number;
-  llmCount: number;
   errorCount: number;
   scores: TraceScore[];
 };
@@ -272,16 +271,14 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
     let cost = 0;
     let priced = false;
     let tokens = 0;
-    let llm = 0;
     for (const s of spans) {
       if (s.totalCost != null) {
         cost += s.totalCost;
         priced = true;
       }
       tokens += s.totalTokens;
-      if (s.spanType === "llm") llm += 1;
     }
-    return { cost: priced ? cost : null, tokens, llm };
+    return { cost: priced ? cost : null, tokens };
   }, [spans]);
 
   // Whole-trace eval scores (everything not targeting an individual span) — for
@@ -307,7 +304,6 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
       cost: stats.cost,
       tokens: stats.tokens,
       spanCount: spans.length,
-      llmCount: stats.llm,
       errorCount: erroredSpans.length,
       scores: traceScores,
     };
@@ -1005,7 +1001,6 @@ function spanFields(
         `${formatTokens(span.inputTokens)} in · ${formatTokens(span.outputTokens)} out`
       );
       add("Cost", formatCost(span.totalCost));
-      add("Pricing", span.pricingSource);
       if (span.modelCallMs != null) {
         add(
           "Model call",
@@ -1030,7 +1025,6 @@ function spanFields(
     }
     case "agent": {
       if (subtree && subtree.spans > 0) {
-        add("Child spans", formatCount(subtree.spans));
         if (subtree.tokens > 0) add("Tokens", formatTokens(subtree.tokens));
         if (subtree.cost != null) add("Cost", formatCost(subtree.cost));
       }
@@ -1270,8 +1264,8 @@ function TraceDetail({
     return tops.find((s) => s.spanType === "agent") ?? tops[0] ?? null;
   }, [spans]);
   return (
-    <Card className="max-h-[calc(100svh-16rem)] gap-0 py-0 ">
-      <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5">
+    <Card className="max-h-[calc(100svh-20rem)] gap-0 py-0 ">
+      <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle bg-primary/15 text-primary">
             <IconAffiliate className="size-3" />
@@ -1293,7 +1287,6 @@ function TraceDetail({
             <Field label="Cost" value={formatCost(trace.cost)} />
             <Field label="Tokens" value={formatTokens(trace.tokens)} />
             <Field label="Spans" value={formatCount(trace.spanCount)} />
-            <Field label="LLM calls" value={formatCount(trace.llmCount)} />
             <Field
               label="Errors"
               value={
@@ -1436,7 +1429,7 @@ function SpanDetail({
   }, [span.spanId]);
   return (
     <Card className="max-h-[calc(100svh-16rem)] gap-0 py-0 ">
-      <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5">
+      <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
           {/* Same identity chip as the span's waterfall row — which also
               makes a type badge redundant. */}
