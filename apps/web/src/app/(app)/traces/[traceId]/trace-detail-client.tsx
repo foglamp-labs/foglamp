@@ -8,12 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@foglamp/ui/components/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@foglamp/ui/components/tabs";
+import { Tabs, TabsContent } from "@foglamp/ui/components/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -1449,29 +1444,43 @@ function SpanDetail({
           <span className="truncate">{span.name}</span>
         </CardTitle>
         <div className="flex shrink-0 items-center gap-1">
+          {/* Overview is curated; Raw is the always-complete escape hatch.
+              One toggle instead of a tab strip — the label names where it
+              takes you, not where you are. */}
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            className="text-muted-foreground/60 hover:text-foreground"
+            onClick={() => setTab(tab === "raw" ? "overview" : "raw")}
+          >
+            {tab === "raw" ? "Overview" : "Raw"}
+          </Button>
           {/* The ↑/↓ shortcuts have always worked; these buttons are what make
 					    them discoverable, so both name the key in their tooltip. */}
           <Button
             type="button"
             size="icon-xs"
             variant="ghost"
+            className="text-muted-foreground/60 hover:text-foreground"
             onClick={() => onStep(-1)}
             disabled={spanIndex < 0}
             aria-label="Previous span"
             title="Previous span (↑, back to whole trace from the first)"
           >
-            <IconChevronUp className="size-4" />
+            <IconChevronUp className="size-4 text-current" />
           </Button>
           <Button
             type="button"
             size="icon-xs"
             variant="ghost"
+            className="text-muted-foreground/60 hover:text-foreground"
             onClick={() => onStep(1)}
             disabled={spanIndex < 0 || spanIndex >= spanCount - 1}
             aria-label="Next span"
             title="Next span (↓)"
           >
-            <IconChevronDown className="size-4" />
+            <IconChevronDown className="size-4 text-current" />
           </Button>
           <CopyButton
             value={JSON.stringify(span, null, 2)}
@@ -1485,15 +1494,7 @@ function SpanDetail({
           onValueChange={(v) => setTab(String(v))}
           className="flex min-h-0 flex-1 flex-col gap-0"
         >
-          {/* Outside the ScrollFade below, so the strip stays reachable from
-					    the bottom of a long payload. */}
-          <TabsList
-            variant="line"
-            className="shrink-0 gap-3 border-b border-border/40 px-5"
-          >
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="raw">Raw</TabsTrigger>
-          </TabsList>
+          {/* No TabsList — the header's Raw/Overview toggle drives `tab`. */}
           <TabsContent
             value="overview"
             className="flex min-h-0 flex-1 flex-col"
