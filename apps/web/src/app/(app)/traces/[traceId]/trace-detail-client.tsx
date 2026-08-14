@@ -18,11 +18,13 @@ import {
 import {
   IconAffiliate,
   IconAlertTriangle,
+  IconAlertTriangleFilled,
   IconArrowUpRight,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconChevronUp,
+  IconCircleCheckFilled,
   IconGaugeFilled,
   IconListTree,
   IconMessage2Filled,
@@ -1043,6 +1045,23 @@ function spanFields(
   const add = (label: string, value: React.ReactNode) => {
     if (value != null) fields.push({ label, value });
   };
+  const status =
+    span.status === "ok" ? (
+      <span className="flex items-center gap-1">
+        <IconCircleCheckFilled className="size-3.5 shrink-0 text-emerald-500" />
+        OK
+      </span>
+    ) : (
+      <span className="flex items-center gap-1">
+        <IconAlertTriangleFilled
+          className={cn(
+            "size-3.5 shrink-0",
+            span.status === "aborted" ? "text-amber-500" : "text-rose-500"
+          )}
+        />
+        {span.status.charAt(0).toUpperCase() + span.status.slice(1)}
+      </span>
+    );
   const model = span.modelId ? (
     <span className="flex min-w-0 items-center gap-1.5">
       <ModelLogo
@@ -1115,13 +1134,13 @@ function spanFields(
         if (subtree.tokens > 0) add("Tokens", formatTokens(subtree.tokens));
         if (subtree.cost != null) add("Cost", formatCost(subtree.cost));
       }
-      if (span.status !== "ok") add("Status", span.status);
+      if (span.status !== "ok") add("Status", status);
       break;
     }
     // `tool` and `other` carry none of the model fields — guessing at them is
     // how you end up with a grid of dashes.
     default: {
-      add("Status", span.status);
+      add("Status", status);
       if (span.totalCost != null && span.totalCost !== 0)
         add("Cost", formatCost(span.totalCost));
       break;
