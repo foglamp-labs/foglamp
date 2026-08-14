@@ -1215,24 +1215,27 @@ function TokenSplitBar({
   const pct = (n: number) => `${(n / total) * 100}%`;
   return (
     <span className="flex h-1 w-full gap-px overflow-hidden rounded-full">
+      {/* Same input/cached/output palette as the cost-breakdown chart
+          (cost-breakdown-card.tsx CATEGORIES), so token and cost splits
+          read as the same dimensions. */}
       {cachedPart > 0 && (
         <span
           title={`Cached input: ${formatTokens(cachedPart)}`}
-          className="h-full bg-sky-500/35"
+          className="h-full bg-[#FDBA74]"
           style={{ width: pct(cachedPart) }}
         />
       )}
       {fresh > 0 && (
         <span
           title={`Input: ${formatTokens(fresh)}`}
-          className="h-full bg-sky-500"
+          className="h-full bg-[#F97316]"
           style={{ width: pct(fresh) }}
         />
       )}
       {output > 0 && (
         <span
           title={`Output: ${formatTokens(output)}`}
-          className="h-full bg-emerald-500"
+          className="h-full bg-[#0090FD]"
           style={{ width: pct(output) }}
         />
       )}
@@ -1718,17 +1721,23 @@ function SpanDetail({
   const metaEntries = Object.entries(span.metadata ?? {});
   // Per-dimension cost components that actually carry a value (skip null/0), so
   // the breakdown shows only what applies to this span — e.g. cache costs only
-  // appear when caching was used. These sum to span.totalCost.
+  // appear when caching was used. These sum to span.totalCost. Labels, colors,
+  // and stack order match the agent page's Cost breakdown chart
+  // (cost-breakdown-card.tsx CATEGORIES) so cost reads the same everywhere;
+  // the dimensions that chart lumps into "Other" get slate shades here.
   const costParts = [
-    { label: "Prompt", value: span.promptCost },
-    { label: "Completion", value: span.completionCost },
-    { label: "Cache read", value: span.cacheReadCost },
-    { label: "Cache write", value: span.cacheWriteCost },
-    { label: "Reasoning", value: span.reasoningCost },
-    { label: "Image", value: span.imageCost },
-    { label: "Web search", value: span.webSearchCost },
-    { label: "Request", value: span.requestCost },
-  ].filter((p) => p.value != null && p.value !== 0);
+    { label: "Input", value: span.promptCost, color: "#F97316" },
+    { label: "Cached input", value: span.cacheReadCost, color: "#FDBA74" },
+    { label: "Cache write", value: span.cacheWriteCost, color: "#C2410C" },
+    { label: "Output", value: span.completionCost, color: "#0090FD" },
+    { label: "Reasoning", value: span.reasoningCost, color: "#93C5FD" },
+    { label: "Image", value: span.imageCost, color: "#64748b" },
+    { label: "Web search", value: span.webSearchCost, color: "#94a3b8" },
+    { label: "Request", value: span.requestCost, color: "#475569" },
+  ].filter((p): p is (typeof p & { value: number }) =>
+    p.value != null && p.value > 0
+  );
+  const costTotal = costParts.reduce((acc, p) => acc + p.value, 0);
   // Usage counters beyond the headline in/out tokens; shown only when present.
   // `tok`-unit rows format as tokens (compact), the rest as plain counts.
   const usageExtras = [
@@ -1890,16 +1899,37 @@ function SpanDetail({
                   <span className="text-xs text-muted-foreground px-1">
                     Cost breakdown
                   </span>
-                  {costParts.length > 0 && (
-                    <div className="grid grid-cols-2 gap-4 px-1">
-                      {costParts.map((p) => (
-                        <Field
-                          key={p.label}
-                          label={p.label}
-                          value={formatCost(p.value)}
-                        />
-                      ))}
-                      <Field label="Total" value={formatCost(span.totalCost)} />
+                  {/* Same strip-plus-legend shape as Time distribution; the
+                      span's total already lives in the Cost field above. */}
+                  {costParts.length > 0 && costTotal > 0 && (
+                    <div className="flex flex-col gap-1.5 px-1">
+                      <div className="flex h-2 w-full gap-px">
+                        {costParts.map((p) => (
+                          <div
+                            key={p.label}
+                            title={`${p.label}: ${formatCost(p.value)}`}
+                            className="h-full rounded-xs"
+                            style={{
+                              width: `${(p.value / costTotal) * 100}%`,
+                              backgroundColor: p.color,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-muted-foreground tabular-nums">
+                        {costParts.map((p) => (
+                          <span
+                            key={p.label}
+                            className="inline-flex items-center gap-1.5"
+                          >
+                            <span
+                              className="size-2 rounded-xs"
+                              style={{ backgroundColor: p.color }}
+                            />
+                            {p.label} {formatCost(p.value)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {/* The usage-count side of the breakdown — cached/reasoning
