@@ -2038,18 +2038,23 @@ function SpanDetail({
                       title="Copy metadata"
                     />
                   </div>
-                  {/* Real text, TOC-style: monospace lines padded with "."
-                      so the values right-align. Every character (dots
-                      included) is selectable, and a copy pastes as the
-                      aligned block you see. */}
-                  <div className="flex flex-col gap-1 overflow-x-auto font-mono text-xs whitespace-pre">
+                  {/* TOC-style monospace lines. The dot leader is real "."
+                      text (selectable), overflowing its flex slot so every
+                      value lands flush against the sheet's right edge; the
+                      copy button copies the fixed-width metaLines version
+                      instead, so pasted output isn't full of clipped dots. */}
+                  <div className="flex flex-col gap-1 font-mono text-xs">
                     {metaLines.map((l) => (
-                      <div key={l.key}>
-                        <span className="text-muted-foreground">{l.key}</span>
-                        <span className="text-muted-foreground/50">
-                          {l.dots}
+                      <div key={l.key} className="flex items-baseline">
+                        <span className="shrink-0 text-muted-foreground">
+                          {l.key}
                         </span>
-                        {l.value}
+                        <span className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-muted-foreground/50">
+                          {".".repeat(300)}
+                        </span>
+                        <span className="min-w-0 truncate" title={l.value}>
+                          {l.value}
+                        </span>
                       </div>
                     ))}
                   </div>
