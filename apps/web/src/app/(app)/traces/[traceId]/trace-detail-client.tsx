@@ -715,9 +715,7 @@ function CostComposition({
   if (parts.length < 2 || total <= 0) return null;
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <span className="text-xs text-muted-foreground">
-        Cost distribution
-      </span>
+      <span className="text-xs text-muted-foreground">Cost distribution</span>
       <div className="flex flex-col gap-1.5">
         <div className="flex h-2 w-full gap-px">
           {parts.map((p) => (
@@ -1431,7 +1429,7 @@ function TraceDetail({
     return tops.find((s) => s.spanType === "agent") ?? tops[0] ?? null;
   }, [spans]);
   return (
-    <Card className="max-h-[calc(100svh-20rem)] gap-0 py-0 ">
+    <Card className="max-h-[calc(100svh-14rem)] gap-0 py-0 ">
       <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
           <span className="flex size-4.5 shrink-0 items-center shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)] dark:shadow-(--custom-shadow) justify-center rounded-md corner-squircle bg-primary/15 text-primary">
@@ -1543,7 +1541,7 @@ function TraceDetail({
 
               {trace.scores.length > 0 && (
                 <div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
-                  <span className="text-xs font-medium text-muted-foreground px-2">
+                  <span className="text-xs text-muted-foreground px-2">
                     Evals
                   </span>
                   <div className="flex flex-col">
@@ -1693,7 +1691,7 @@ function SpanDetail({
     setTab("overview");
   }, [span.spanId]);
   return (
-    <Card className="max-h-[calc(100svh-20rem)] gap-0 py-0 ">
+    <Card className="max-h-[calc(100svh-14rem)] gap-0 py-0 ">
       <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
           {/* Same identity chip as the span's waterfall row — which also
@@ -1781,7 +1779,7 @@ function SpanDetail({
 
               {scores.length > 0 && (
                 <div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
-                  <span className="text-xs font-medium text-muted-foreground px-2">
+                  <span className="text-xs text-muted-foreground px-2">
                     Evals
                   </span>
                   <div className="flex flex-col">
@@ -1799,7 +1797,7 @@ function SpanDetail({
 
               {hasBreakdown && (
                 <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
-                  <span className="text-xs font-medium text-muted-foreground px-1">
+                  <span className="text-xs text-muted-foreground px-1">
                     Cost breakdown
                   </span>
                   {costParts.length > 0 && (
@@ -1818,7 +1816,7 @@ function SpanDetail({
                   tokens, retries — so the costs above have their volumes. */}
                   {usageExtras.length > 0 && (
                     <>
-                      <span className="text-xs font-medium text-muted-foreground px-1">
+                      <span className="text-xs text-muted-foreground px-1">
                         Usage
                       </span>
                       <div className="grid grid-cols-2 gap-4 px-1">
@@ -1841,49 +1839,49 @@ function SpanDetail({
 
               {hasSignals && (
                 <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
-                  <span className="text-xs font-medium text-muted-foreground px-1">
+                  <span className="text-xs text-muted-foreground px-1">
                     Provider signals
                   </span>
                   {(lowTokenHeadroom || lowRequestHeadroom) && (
-                  <div className="grid grid-cols-2 gap-4 px-1">
-                    {lowTokenHeadroom && (
-                      <Field
-                        label="Token headroom"
-                        value={
-                          <span>
-                            {formatTokens(rl!.tokensRemaining!)} /{" "}
-                            {formatTokens(rl!.tokensLimit!)}
-                            <span className="text-muted-foreground">
-                              {" "}
-                              ({tokenPct}% left)
+                    <div className="grid grid-cols-2 gap-4 px-1">
+                      {lowTokenHeadroom && (
+                        <Field
+                          label="Token headroom"
+                          value={
+                            <span>
+                              {formatTokens(rl!.tokensRemaining!)} /{" "}
+                              {formatTokens(rl!.tokensLimit!)}
+                              <span className="text-muted-foreground">
+                                {" "}
+                                ({tokenPct}% left)
+                              </span>
                             </span>
-                          </span>
-                        }
-                      />
-                    )}
-                    {lowRequestHeadroom && (
-                      <Field
-                        label="Request headroom"
-                        value={
-                          <span>
-                            {formatCount(rl!.requestsRemaining!)} /{" "}
-                            {formatCount(rl!.requestsLimit!)}
-                            <span className="text-muted-foreground">
-                              {" "}
-                              ({requestPct}% left)
+                          }
+                        />
+                      )}
+                      {lowRequestHeadroom && (
+                        <Field
+                          label="Request headroom"
+                          value={
+                            <span>
+                              {formatCount(rl!.requestsRemaining!)} /{" "}
+                              {formatCount(rl!.requestsLimit!)}
+                              <span className="text-muted-foreground">
+                                {" "}
+                                ({requestPct}% left)
+                              </span>
                             </span>
-                          </span>
-                        }
-                      />
-                    )}
-                    {/* Reset time only matters while headroom is the problem. */}
-                    {lowTokenHeadroom && rl?.tokensResetMs != null && (
-                      <Field
-                        label="Tokens reset"
-                        value={`in ${formatDuration(rl.tokensResetMs)}`}
-                      />
-                    )}
-                  </div>
+                          }
+                        />
+                      )}
+                      {/* Reset time only matters while headroom is the problem. */}
+                      {lowTokenHeadroom && rl?.tokensResetMs != null && (
+                        <Field
+                          label="Tokens reset"
+                          value={`in ${formatDuration(rl.tokensResetMs)}`}
+                        />
+                      )}
+                    </div>
                   )}
                   {sources.length > 0 && (
                     <div className="flex flex-col gap-1 px-1">
@@ -2073,40 +2071,37 @@ function ToolsAvailable({
           className="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           <IconChevronRight
-            className={cn(
-              "size-3.5 transition-transform",
-              open && "rotate-90"
-            )}
+            className={cn("size-3.5 transition-transform", open && "rotate-90")}
           />
           Tools available ({tools.length})
         </button>
         <CopyButton value={catalog} title="Copy tool catalog" />
       </div>
       {open && (
-      <div className="flex flex-wrap gap-1.5">
-        {tools.map((t) =>
-          t.description ? (
-            <TooltipProvider key={t.name} delay={150}>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Badge variant="secondary" className="cursor-default">
-                      {t.name}
-                    </Badge>
-                  }
-                />
-                <TooltipContent className="max-w-xs">
-                  {t.description}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
-            <Badge key={t.name} variant="secondary">
-              {t.name}
-            </Badge>
-          )
-        )}
-      </div>
+        <div className="flex flex-wrap gap-1.5">
+          {tools.map((t) =>
+            t.description ? (
+              <TooltipProvider key={t.name} delay={150}>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Badge variant="secondary" className="cursor-default">
+                        {t.name}
+                      </Badge>
+                    }
+                  />
+                  <TooltipContent className="max-w-xs">
+                    {t.description}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <Badge key={t.name} variant="secondary">
+                {t.name}
+              </Badge>
+            )
+          )}
+        </div>
       )}
     </div>
   );
