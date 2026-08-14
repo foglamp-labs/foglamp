@@ -6,11 +6,11 @@ import {
 	IconAlertTriangle,
 	IconChevronDown,
 	IconChevronRight,
+	IconGhostFilled,
 	IconPaperclip,
-	IconSettings,
-	IconSparkles,
+	IconSettingsFilled,
 	IconTool,
-	IconUser,
+	IconUserFilled,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
@@ -198,10 +198,12 @@ function PartView({ part }: { part: Part }) {
 // 420px-wide trace inspector.
 const CLAMP_HEIGHT = 240;
 
-const ROLE_ICONS: Record<string, typeof IconUser> = {
-	user: IconUser,
-	assistant: IconSparkles,
-	system: IconSettings,
+// Assistant gets the same ghost as the Agents nav entry — one identity for
+// "the model" everywhere. Tool stays outline: Tabler ships no filled wrench.
+const ROLE_ICONS: Record<string, typeof IconUserFilled> = {
+	user: IconUserFilled,
+	assistant: IconGhostFilled,
+	system: IconSettingsFilled,
 	tool: IconTool,
 };
 
