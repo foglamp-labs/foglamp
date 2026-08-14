@@ -2214,8 +2214,7 @@ function ToolsAvailable({
             name,
             description:
               typeof d.description === "string" ? d.description : null,
-            args:
-              props && typeof props === "object" ? Object.keys(props) : [],
+            args: props && typeof props === "object" ? Object.keys(props) : [],
             calls: counts.get(name) ?? 0,
           };
         }
@@ -2288,7 +2287,7 @@ function ToolsAvailable({
                 >
                   <IconChevronRight
                     className={cn(
-                      "size-3 shrink-0 self-center text-muted-foreground/50 transition-transform",
+                      "size-3 shrink-0 self-center text-muted-foreground/50 transition-[transform,color] group-hover/tool:text-foreground",
                       isExpanded && "rotate-90",
                       !expandable && "invisible"
                     )}
@@ -2302,7 +2301,7 @@ function ToolsAvailable({
                     {t.name}
                   </span>
                   {t.calls > 0 && (
-                    <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                    <span className="shrink-0 text-[11px] tabular-nums">
                       ×{t.calls}
                     </span>
                   )}
