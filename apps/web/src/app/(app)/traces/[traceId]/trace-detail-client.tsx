@@ -2091,7 +2091,9 @@ function SpanDetail({
                 </div>
               )}
 
-              {span.toolCatalog && (
+              {/* The catalog is trace-level context — repeating it on every LLM
+                  and tool span drowns the span's own payloads. */}
+              {span.spanType === "agent" && span.toolCatalog && (
                 <ToolsAvailable
                   catalog={span.toolCatalog}
                   counts={toolCounts}

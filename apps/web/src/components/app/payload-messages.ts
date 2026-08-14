@@ -109,6 +109,14 @@ export function toMessages(value: string): Message[] | null {
 			};
 		});
 	}
+	// An array of plain data objects (no `type` discriminator anywhere — e.g. a
+	// tool returning a list of records) is one payload, not a part list:
+	// per-item partFrom would render every element as its own JSON block.
+	if (
+		items.every((i) => i && typeof i === "object" && !("type" in (i as object)))
+	) {
+		return [{ role: null, parts: [{ kind: "json", data: parsed }] }];
+	}
 	// A bare array of parts (typical for assistant output) → one roleless block.
 	return [{ role: null, parts: items.map(partFrom) }];
 }

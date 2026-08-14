@@ -82,6 +82,31 @@ describe("toMessages — recognized shapes", () => {
 			{ role: "assistant", parts: [] },
 		]);
 	});
+
+	test("an array of plain data records renders as one JSON block, not one per item", () => {
+		const records = [
+			{ agentName: "a", spanCount: 1 },
+			{ agentName: "b", spanCount: 2 },
+		];
+		expect(toMessages(JSON.stringify(records))).toEqual([
+			{ role: null, parts: [{ kind: "json", data: records }] },
+		]);
+	});
+
+	test("a mixed array with any typed part still maps per item", () => {
+		const messages = toMessages(
+			JSON.stringify([{ type: "text", text: "hi" }, { weird: true }]),
+		);
+		expect(messages).toEqual([
+			{
+				role: null,
+				parts: [
+					{ kind: "text", text: "hi" },
+					{ kind: "json", data: { weird: true } },
+				],
+			},
+		]);
+	});
 });
 
 describe("toMessages — inputs that must not be parsed", () => {
