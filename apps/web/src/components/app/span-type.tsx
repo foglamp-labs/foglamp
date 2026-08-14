@@ -55,17 +55,24 @@ export function spanTypeBar(type: string): string {
 
 // Icon-chip palette per span type — a tinted fill + matching foreground, for the
 // compact icon-only chip used where a full text badge would be too wide (e.g.
-// the waterfall's label gutter).
+// the waterfall's label gutter). Light mode gets an accent-tinted inset ring +
+// drop shadow (same recipe as nav.ts) — --custom-shadow washes out on light.
 export const SPAN_TYPE_CHIP: Record<string, string> = {
-  llm: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-  tool: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  agent: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  embedding: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-  other: "bg-slate-500/15 text-slate-600 dark:text-slate-400",
+  llm: "bg-violet-500/15 text-violet-600 dark:text-violet-400 shadow-[inset_0_0_0_1px_rgba(139,92,246,0.14),0_2px_6px_-2px_rgba(139,92,246,0.25)] dark:shadow-(--custom-shadow)",
+  tool: "bg-blue-500/15 text-blue-600 dark:text-blue-400 shadow-[inset_0_0_0_1px_rgba(59,130,246,0.14),0_2px_6px_-2px_rgba(59,130,246,0.25)] dark:shadow-(--custom-shadow)",
+  agent:
+    "bg-amber-500/15 text-amber-600 dark:text-amber-400 shadow-[inset_0_0_0_1px_rgba(245,158,11,0.14),0_2px_6px_-2px_rgba(245,158,11,0.25)] dark:shadow-(--custom-shadow)",
+  embedding:
+    "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.14),0_2px_6px_-2px_rgba(16,185,129,0.25)] dark:shadow-(--custom-shadow)",
+  other:
+    "bg-slate-500/15 text-slate-600 dark:text-slate-400 shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)] dark:shadow-(--custom-shadow)",
 };
 
 export function spanTypeChip(type: string): string {
-  return SPAN_TYPE_CHIP[type] ?? "bg-primary/15 text-primary";
+  return (
+    SPAN_TYPE_CHIP[type] ??
+    "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)] dark:shadow-(--custom-shadow)"
+  );
 }
 
 /** A compact, icon-only span-type chip — the type's color + icon in a small
@@ -83,7 +90,7 @@ export function SpanTypeChip({
     <span
       title={type}
       className={cn(
-        "flex size-5 shrink-0 items-center shadow-(--custom-shadow) justify-center rounded-md corner-squircle",
+        "flex size-4.5 shrink-0 items-center justify-center rounded-md corner-squircle",
         spanTypeChip(type),
         className
       )}

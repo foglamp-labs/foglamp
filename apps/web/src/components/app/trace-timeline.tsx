@@ -13,7 +13,7 @@ import {
   IconChevronRight,
   IconPlayerStopFilled,
 } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
 import { useTtftVariant } from "@/components/app/dev-toolbar";
@@ -67,6 +67,13 @@ type GroupRow = {
 
 type Row = SpanRow | GroupRow;
 
+/** Light-mode chip shadow in the chip's own accent (same recipe as nav.ts):
+ * a faint inset ring + tinted drop — --custom-shadow reads in dark mode but
+ * washes out on light backgrounds. */
+function chipShadow(color: string): string {
+  return `inset 0 0 0 1px ${color}24, 0 2px 6px -2px ${color}40`;
+}
+
 /** The identity chip for one span — the agent's per-name color+icon, the
  * model's brand logo, or the generic span-type chip — shared by the waterfall
  * rows and the span inspector header so a span looks the same in both. */
@@ -76,11 +83,17 @@ export function SpanIconChip({
   span: Pick<TraceSpan, "name" | "spanType" | "provider" | "modelId">;
 }) {
   if (span.spanType === "agent") {
+    const color = agentColor(span.name);
     return (
       <span
         title={span.spanType}
-        className="flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle"
-        style={{ backgroundColor: `${agentColor(span.name)}26` }}
+        className="flex size-4.5 shrink-0 items-center justify-center rounded-md corner-squircle shadow-(--chip-shadow) dark:shadow-(--custom-shadow)"
+        style={
+          {
+            backgroundColor: `${color}26`,
+            "--chip-shadow": chipShadow(color),
+          } as CSSProperties
+        }
       >
         <AgentIcon name={span.name} className="size-3" />
       </span>
@@ -92,10 +105,19 @@ export function SpanIconChip({
       <span
         title={span.modelId ?? span.spanType}
         className={cn(
-          "flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle",
-          !modelColor && "bg-muted"
+          "flex size-4.5 shrink-0 items-center justify-center rounded-md corner-squircle dark:shadow-(--custom-shadow)",
+          modelColor
+            ? "shadow-(--chip-shadow)"
+            : "bg-muted shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)]"
         )}
-        style={modelColor ? { backgroundColor: `${modelColor}26` } : undefined}
+        style={
+          modelColor
+            ? ({
+                backgroundColor: `${modelColor}26`,
+                "--chip-shadow": chipShadow(modelColor),
+              } as CSSProperties)
+            : undefined
+        }
       >
         <ModelLogo
           provider={span.provider}
@@ -328,8 +350,8 @@ export function TraceTimeline({
                   : "hover:bg-accent/80 dark:hover:bg-accent/50"
               )}
             >
-              <div className="flex min-w-0 items-start gap-2 pr-3 pl-1.5">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle bg-primary/15 text-primary">
+              <div className="flex min-w-0 items-center gap-2 pr-3 pl-1.5">
+                <span className="flex size-4.5 shrink-0 items-center shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)] dark:shadow-(--custom-shadow) justify-center rounded-md corner-squircle bg-primary/15 text-primary">
                   <IconAffiliate className="size-3" />
                 </span>
                 <div className="flex min-w-0 flex-col gap-1">
@@ -476,7 +498,7 @@ export function TraceTimeline({
                   )}
                 >
                   <div
-                    className="flex min-w-0 items-start gap-2 pr-3"
+                    className="flex min-w-0 items-center gap-2 pr-3"
                     style={{ paddingLeft: (depth + 1) * 12 + 4 }}
                   >
                     {/* Collapse chevron — a styled span (not a nested button,
@@ -502,7 +524,7 @@ export function TraceTimeline({
                       }}
                       title={isCollapsed ? "Expand" : "Collapse"}
                       className={cn(
-                        "mt-0.75 flex size-3.5 shrink-0 items-center justify-center",
+                        "mt-0.5 flex size-3.5 shrink-0 items-center justify-center bg-lime-500",
                         hasChildren
                           ? "cursor-pointer text-muted-foreground/50 hover:text-foreground"
                           : "pointer-events-none opacity-0"
@@ -727,10 +749,10 @@ function GroupedRow({
       className="grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm hover:bg-accent/80 dark:hover:bg-accent/50"
     >
       <div
-        className="flex min-w-0 items-start gap-2 pr-3"
+        className="flex min-w-0 items-center gap-2 pr-3"
         style={{ paddingLeft: (depth + 1) * 14 + 4 }}
       >
-        <span className="mt-0.75 flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/50">
+        <span className="mt-0.5 flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/50 bg-lime-500">
           <IconChevronRight
             className={cn(
               "size-3 transition-transform",

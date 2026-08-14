@@ -1001,18 +1001,8 @@ function spanFields(
         `${formatTokens(span.inputTokens)} in · ${formatTokens(span.outputTokens)} out`
       );
       add("Cost", formatCost(span.totalCost));
-      if (span.modelCallMs != null) {
-        add(
-          "Model call",
-          <span>
-            {formatDuration(span.modelCallMs)}{" "}
-            <span className="text-muted-foreground">
-              ({formatDuration(Math.max(0, span.durationMs - span.modelCallMs))}{" "}
-              tools)
-            </span>
-          </span>
-        );
-      }
+      // No "Model call" field — the llm span now closes at the model-call end,
+      // so modelCallMs ≈ durationMs and tool time lives in tool child spans.
       break;
     }
     case "embedding": {
@@ -1267,7 +1257,7 @@ function TraceDetail({
     <Card className="max-h-[calc(100svh-20rem)] gap-0 py-0 ">
       <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle bg-primary/15 text-primary">
+          <span className="flex size-4.5 shrink-0 items-center shadow-(--custom-shadow) justify-center rounded-md corner-squircle bg-primary/15 text-primary">
             <IconAffiliate className="size-3" />
           </span>
           <span className="truncate">Whole trace</span>
