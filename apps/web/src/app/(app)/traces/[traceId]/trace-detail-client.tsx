@@ -1042,10 +1042,11 @@ function spanFields(
   /** The span's descendant spans — agent containers aggregate these into the
    * same token/model breakdowns an llm span shows for itself. */
   descendants: Span[]
-): { label: string; value: React.ReactNode }[] {
-  const fields: { label: string; value: React.ReactNode }[] = [];
-  const add = (label: string, value: React.ReactNode) => {
-    if (value != null) fields.push({ label, value });
+): { label: string; value: React.ReactNode; wide?: boolean }[] {
+  const fields: { label: string; value: React.ReactNode; wide?: boolean }[] =
+    [];
+  const add = (label: string, value: React.ReactNode, wide?: boolean) => {
+    if (value != null) fields.push({ label, value, wide });
   };
   const status =
     span.status === "ok" ? (
@@ -1151,7 +1152,10 @@ function spanFields(
               cached={usage.cached}
               output={usage.output}
             />
-          </span>
+          </span>,
+          // Full-width: the split bar needs the room, and a wide bar is the
+          // point of it.
+          true
         );
       if (span.status !== "ok") add("Status", status);
       break;
@@ -1401,9 +1405,17 @@ function ModelList({
   );
 }
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function Field({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="flex min-w-0 flex-col gap-1">
+    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-[13px] tabular-nums">{value}</span>
     </div>
@@ -1763,6 +1775,12 @@ function TraceDetail({
                     rank?.durationPercentile
                   )}
                 />
+                {usage.models.length > 0 && (
+                  <Field
+                    label={usage.models.length === 1 ? "Model" : "Models"}
+                    value={<ModelList models={usage.models} />}
+                  />
+                )}
                 <Field
                   label="Cost"
                   value={rankedValue(
@@ -1772,6 +1790,7 @@ function TraceDetail({
                 />
                 <Field
                   label="Tokens"
+                  className="col-span-2"
                   value={
                     <span className="flex flex-col gap-2">
                       {rankedValue(
@@ -1790,12 +1809,6 @@ function TraceDetail({
                     </span>
                   }
                 />
-                {usage.models.length > 0 && (
-                  <Field
-                    label={usage.models.length === 1 ? "Model" : "Models"}
-                    value={<ModelList models={usage.models} />}
-                  />
-                )}
                 {/* No Spans/Errors counters — the waterfall shows the spans and the
                 issues strip already surfaces errors. */}
               </div>
@@ -2096,7 +2109,12 @@ function SpanDetail({
               )}
               <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
                 {fields.map((f) => (
-                  <Field key={f.label} label={f.label} value={f.value} />
+                  <Field
+                    key={f.label}
+                    label={f.label}
+                    value={f.value}
+                    className={f.wide ? "col-span-2" : undefined}
+                  />
                 ))}
               </div>
 
