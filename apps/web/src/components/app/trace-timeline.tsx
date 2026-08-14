@@ -553,23 +553,21 @@ export function TraceTimeline({
                             className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs"
                             style={{ left: `${offset}%`, width: `${width}%` }}
                           >
-                            {/* Base track. Up to TTFT the fill is hatched
-                                (stripe-masked, so the row background shows
-                                through) — the wait for the first token — and
-                                solid from there on. */}
+                            {/* Base track. Up to TTFT the bar is a hollow
+                                dashed outline — the wait for the first token
+                                — and the solid fill starts from there. */}
                             {ttftPct != null && ttftPct > 0 ? (
                               <>
                                 <div
                                   className={cn(
-                                    "absolute inset-y-0 left-0 rounded-l-xs",
-                                    barClass
+                                    "absolute inset-y-0 left-0 rounded-l-xs border border-r-0 border-dashed",
+                                    isError
+                                      ? "border-rose-500"
+                                      : isAborted
+                                        ? "border-amber-500"
+                                        : "border-violet-500"
                                   )}
-                                  style={{
-                                    ...barStyle,
-                                    width: `${ttftPct}%`,
-                                    maskImage: TTFT_HATCH_MASK,
-                                    WebkitMaskImage: TTFT_HATCH_MASK,
-                                  }}
+                                  style={{ width: `${ttftPct}%` }}
                                 />
                                 <div
                                   className={cn(
@@ -775,11 +773,6 @@ function GroupedRow({
 // Vertical gridline fractions across the track — quarter marks, doubling as the
 // ruler's tick positions so the gridlines and time labels all align.
 const GRID_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
-
-// Diagonal-stripe mask for the pre-first-token stretch of an LLM bar: the
-// bar's own color shows in the stripes, the row background in the gaps.
-const TTFT_HATCH_MASK =
-  "repeating-linear-gradient(45deg, black 0 2.5px, transparent 2.5px 5px)";
 
 /**
  * A thin time ruler that sits above the bars and spans the track column.
