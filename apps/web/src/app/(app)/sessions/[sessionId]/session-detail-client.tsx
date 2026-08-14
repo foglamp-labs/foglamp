@@ -3,18 +3,18 @@
 import { Badge } from "@foglamp/ui/components/badge";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
-	IconAlertTriangle,
-	IconArrowUpRight,
-	IconBoltFilled,
-	IconCirclesFilled,
-	IconClockFilled,
-	IconCoinFilled,
-	IconGhostFilled,
-	IconMessageOff,
-	IconPlayerStopFilled,
-	IconSitemapFilled,
-	IconTool,
-	IconUserFilled,
+  IconAlertTriangle,
+  IconArrowUpRight,
+  IconBoltFilled,
+  IconCirclesFilled,
+  IconClockFilled,
+  IconCoinFilled,
+  IconGhostFilled,
+  IconMessageOff,
+  IconPlayerStopFilled,
+  IconSitemapFilled,
+  IconTool,
+  IconUserFilled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -27,465 +27,465 @@ import { ContextChip } from "@/components/app/context-chip";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { HEAT_SHADES } from "@/components/app/heat-cell";
 import {
-	useDelayedLoading,
-	useEntranceOnce,
-	useSkeletonShown,
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
 } from "@/components/app/hooks";
 import { markdownComponents } from "@/components/app/markdown";
 import { navItem } from "@/components/app/nav";
 import {
-	EmptyState,
-	NoProject,
-	PageHeader,
-	StatCard,
-	TableSkeleton,
+  EmptyState,
+  NoProject,
+  PageHeader,
+  StatCard,
+  TableSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { RelativeTime } from "@/components/app/relative-time";
 import {
-	formatCost,
-	formatCount,
-	formatDateTime,
-	formatDuration,
-	formatSpanDuration,
-	formatTokens,
+  formatCost,
+  formatCount,
+  formatDateTime,
+  formatDuration,
+  formatSpanDuration,
+  formatTokens,
 } from "@/lib/format";
 import { toMs } from "@/lib/trace-timeline";
 import { trpc } from "@/utils/trpc";
 
 type Turn = {
-	traceId: string;
-	agentName: string | null;
-	workflowName: string | null;
-	startTime: string;
-	status: string;
-	userMessage: string | null;
-	assistantOutput: string | null;
-	rawInput: string | null;
-	totalCost: number | null;
-	totalTokens: number;
-	errorCount: number;
-	durationMs: number;
-	toolCalls: { name: string; count: number; errorCount: number }[];
+  traceId: string;
+  agentName: string | null;
+  workflowName: string | null;
+  startTime: string;
+  status: string;
+  userMessage: string | null;
+  assistantOutput: string | null;
+  rawInput: string | null;
+  totalCost: number | null;
+  totalTokens: number;
+  errorCount: number;
+  durationMs: number;
+  toolCalls: { name: string; count: number; errorCount: number }[];
 };
 
 /** 20/40/60/80th-percentile thresholds of the positive values (sorted-nearest). */
 function quintiles(values: number[]): number[] {
-	const xs = values.filter((v) => v > 0).sort((a, b) => a - b);
-	if (xs.length === 0) return [];
-	return [0.2, 0.4, 0.6, 0.8].map((q) => {
-		const idx = Math.min(xs.length - 1, Math.floor(q * xs.length));
-		return xs[idx];
-	});
+  const xs = values.filter((v) => v > 0).sort((a, b) => a - b);
+  if (xs.length === 0) return [];
+  return [0.2, 0.4, 0.6, 0.8].map((q) => {
+    const idx = Math.min(xs.length - 1, Math.floor(q * xs.length));
+    return xs[idx];
+  });
 }
 
 /** Traffic-light shade for `cost` against the session's quintile `thresholds`. */
 function costShade(cost: number | null, thresholds: number[]) {
-	if (!cost || cost <= 0 || thresholds.length === 0) return undefined;
-	let i = 0;
-	for (const t of thresholds) if (cost > t) i += 1;
-	return HEAT_SHADES[Math.min(i, HEAT_SHADES.length - 1)];
+  if (!cost || cost <= 0 || thresholds.length === 0) return undefined;
+  let i = 0;
+  for (const t of thresholds) if (cost > t) i += 1;
+  return HEAT_SHADES[Math.min(i, HEAT_SHADES.length - 1)];
 }
 
 export function SessionDetailClient({ sessionId }: { sessionId: string }) {
-	const entrance = useEntranceOnce();
-	const { projectId } = useProject();
-	const turnRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const entrance = useEntranceOnce();
+  const { projectId } = useProject();
+  const turnRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-	const detail = useQuery({
-		...trpc.sessions.get.queryOptions({ projectId: projectId!, sessionId }),
-		enabled: !!projectId,
-	});
-	// Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
-	const showSkeleton = useDelayedLoading(detail.isLoading);
-	// Latch for the entrance fade: whatever paints first below the header
-	// (skeleton or the loaded content) gets the fade, and the swap between them
-	// stays instant (see useSkeletonShown).
-	const skeletonShown = useSkeletonShown(showSkeleton);
+  const detail = useQuery({
+    ...trpc.sessions.get.queryOptions({ projectId: projectId!, sessionId }),
+    enabled: !!projectId,
+  });
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showSkeleton = useDelayedLoading(detail.isLoading);
+  // Latch for the entrance fade: whatever paints first below the header
+  // (skeleton or the loaded content) gets the fade, and the swap between them
+  // stays instant (see useSkeletonShown).
+  const skeletonShown = useSkeletonShown(showSkeleton);
 
-	const back = navItem("/sessions");
+  const back = navItem("/sessions");
 
-	if (!projectId) {
-		return (
-			<>
-				<PageHeader title={sessionId} back={back} />
-				<NoProject />
-			</>
-		);
-	}
+  if (!projectId) {
+    return (
+      <>
+        <PageHeader title={sessionId} back={back} />
+        <NoProject />
+      </>
+    );
+  }
 
-	const data = detail.data;
-	const stats = data?.stats ?? null;
-	const turns = (data?.turns ?? []) as Turn[];
-	const costThresholds = quintiles(turns.map((t) => t.totalCost ?? 0));
+  const data = detail.data;
+  const stats = data?.stats ?? null;
+  const turns = (data?.turns ?? []) as Turn[];
+  const costThresholds = quintiles(turns.map((t) => t.totalCost ?? 0));
 
-	// Session wall-clock duration (first turn start → last turn end). toMs, not
-	// new Date(): these are ClickHouse space-separated UTC strings, which
-	// new Date() rejects on Safari/Firefox and parses as local time on V8.
-	const durationMs =
-		stats?.firstSeen && stats?.lastSeen
-			? toMs(stats.lastSeen) - toMs(stats.firstSeen)
-			: null;
+  // Session wall-clock duration (first turn start → last turn end). toMs, not
+  // new Date(): these are ClickHouse space-separated UTC strings, which
+  // new Date() rejects on Safari/Firefox and parses as local time on V8.
+  const durationMs =
+    stats?.firstSeen && stats?.lastSeen
+      ? toMs(stats.lastSeen) - toMs(stats.firstSeen)
+      : null;
 
-	const scrollToTurn = (i: number) =>
-		turnRefs.current[i]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToTurn = (i: number) =>
+    turnRefs.current[i]?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-	return (
-		<>
-			{/* Wrapped here (not inside loading.tsx's RouteHeader fallback) so that
+  return (
+    <>
+      {/* Wrapped here (not inside loading.tsx's RouteHeader fallback) so that
           fallback's copy stays unanimated — only the page's own header fades. */}
-			<div className={cn(entrance && "page-fade-in")}>
-				<PageHeader
-					title={sessionId}
-					back={back}
-					titleTrailing={
-						<CopyButton value={sessionId} title="Copy session ID" />
-					}
-				/>
-			</div>
+      <div className={cn(entrance && "page-fade-in")}>
+        <PageHeader
+          title={sessionId}
+          back={back}
+          titleTrailing={
+            <CopyButton value={sessionId} title="Copy session ID" />
+          }
+        />
+      </div>
 
-			{/* Context chips: the customer this session served and the agent that
+      {/* Context chips: the customer this session served and the agent that
 			    ran it — same linked-entity pills as the trace detail page. */}
-			{(data?.customer || data?.agentName) && (
-				<div
-					className={cn(
-						"mt-1 flex flex-wrap items-center gap-2 text-xs px-8",
-						entrance && !skeletonShown && "page-fade-in",
-					)}
-				>
-					{data.customer && (
-						<ContextChip
-							href={`/traces?customer=${encodeURIComponent(
-								data.customer.customerId,
-							)}`}
-							icon={(p) => (
-								<CustomerAvatar
-									customerId={data.customer!.customerId}
-									customerName={data.customer!.customerName}
-									imageUrl={data.customer!.customerImageUrl}
-									filled
-									className={p.className}
-								/>
-							)}
-							iconClassName=""
-							label={data.customer.customerName ?? data.customer.customerId}
-						/>
-					)}
-					{data.agentName && (
-						<ContextChip
-							href={`/agents/${encodeURIComponent(data.agentName)}`}
-							icon={(p) => (
-								<AgentIcon
-									name={data.agentName}
-									filled
-									className={p.className}
-								/>
-							)}
-							iconClassName=""
-							label={data.agentName}
-						/>
-					)}
-				</div>
-			)}
+      {(data?.customer || data?.agentName) && (
+        <div
+          className={cn(
+            "mt-1 flex flex-wrap items-center gap-2 text-xs px-8",
+            entrance && !skeletonShown && "page-fade-in"
+          )}
+        >
+          {data.customer && (
+            <ContextChip
+              href={`/traces?customer=${encodeURIComponent(
+                data.customer.customerId
+              )}`}
+              icon={(p) => (
+                <CustomerAvatar
+                  customerId={data.customer!.customerId}
+                  customerName={data.customer!.customerName}
+                  imageUrl={data.customer!.customerImageUrl}
+                  filled
+                  className={p.className}
+                />
+              )}
+              iconClassName=""
+              label={data.customer.customerName ?? data.customer.customerId}
+            />
+          )}
+          {data.agentName && (
+            <ContextChip
+              href={`/agents/${encodeURIComponent(data.agentName)}`}
+              icon={(p) => (
+                <AgentIcon
+                  name={data.agentName}
+                  filled
+                  className={p.className}
+                />
+              )}
+              iconClassName=""
+              label={data.agentName}
+            />
+          )}
+        </div>
+      )}
 
-			{detail.isLoading ? (
-				showSkeleton ? (
-					<div className={cn(entrance && "page-fade-in", "px-8")}>
-						<TableSkeleton />
-					</div>
-				) : null
-			) : turns.length === 0 ? (
-				<div
-					className={cn(entrance && !skeletonShown && "page-fade-in", "px-8")}
-				>
-					<EmptyState
-						icon={IconMessageOff}
-						title="No turns in this session"
-						description="It may have aged out of retention."
-					/>
-				</div>
-			) : (
-				// Mirrors the shell's `flex flex-col gap-6` — this wrapper replaced a
-				// fragment, so it has to reproduce the spacing its children used to
-				// get as direct flex children of the shell.
-				<div
-					className={cn(
-						"flex flex-col gap-6",
-						entrance && !skeletonShown && "page-fade-in",
-					)}
-				>
-					<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 px-8">
-						<StatCard
-							icon={IconBoltFilled}
-							iconClassName="text-orange-500 dark:text-orange-500"
-							size="sm"
-							label="Turns"
-							value={stats?.turnCount ?? 0}
-							formatValue={formatCount}
-						/>
-						<StatCard
-							icon={IconCirclesFilled}
-							iconClassName="text-blue-500 dark:text-blue-500"
-							size="sm"
-							label="Tokens"
-							value={stats?.totalTokens ?? 0}
-							formatValue={formatTokens}
-						/>
-						<StatCard
-							icon={IconClockFilled}
-							iconClassName="text-sky-500 dark:text-sky-500"
-							size="sm"
-							label="Duration"
-							value={
-								<span className="flex items-baseline gap-1.5">
-									{durationMs == null ? "—" : formatSpanDuration(durationMs)}
-									{stats?.firstSeen && (
-										<span className="text-xs font-normal text-muted-foreground">
-											started <RelativeTime value={stats.firstSeen} />
-										</span>
-									)}
-								</span>
-							}
-						/>
-						<StatCard
-							icon={IconCoinFilled}
-							iconClassName="text-yellow-400 dark:text-yellow-500"
-							size="sm"
-							label="Cost"
-							value={stats?.totalCost ?? "—"}
-							formatValue={(n) => formatCost(n, 4)}
-						/>
-					</div>
+      {detail.isLoading ? (
+        showSkeleton ? (
+          <div className={cn(entrance && "page-fade-in", "px-8")}>
+            <TableSkeleton />
+          </div>
+        ) : null
+      ) : turns.length === 0 ? (
+        <div
+          className={cn(entrance && !skeletonShown && "page-fade-in", "px-8")}
+        >
+          <EmptyState
+            icon={IconMessageOff}
+            title="No turns in this session"
+            description="It may have aged out of retention."
+          />
+        </div>
+      ) : (
+        // Mirrors the shell's `flex flex-col gap-6` — this wrapper replaced a
+        // fragment, so it has to reproduce the spacing its children used to
+        // get as direct flex children of the shell.
+        <div
+          className={cn(
+            "flex flex-col gap-6 mt-1",
+            entrance && !skeletonShown && "page-fade-in"
+          )}
+        >
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 px-8">
+            <StatCard
+              icon={IconBoltFilled}
+              iconClassName="text-orange-500 dark:text-orange-500"
+              size="sm"
+              label="Turns"
+              value={stats?.turnCount ?? 0}
+              formatValue={formatCount}
+            />
+            <StatCard
+              icon={IconCirclesFilled}
+              iconClassName="text-blue-500 dark:text-blue-500"
+              size="sm"
+              label="Tokens"
+              value={stats?.totalTokens ?? 0}
+              formatValue={formatTokens}
+            />
+            <StatCard
+              icon={IconClockFilled}
+              iconClassName="text-sky-500 dark:text-sky-500"
+              size="sm"
+              label="Duration"
+              value={
+                <span className="flex items-baseline gap-1.5">
+                  {durationMs == null ? "—" : formatSpanDuration(durationMs)}
+                  {stats?.firstSeen && (
+                    <span className="text-xs font-normal text-muted-foreground">
+                      started <RelativeTime value={stats.firstSeen} />
+                    </span>
+                  )}
+                </span>
+              }
+            />
+            <StatCard
+              icon={IconCoinFilled}
+              iconClassName="text-yellow-400 dark:text-yellow-500"
+              size="sm"
+              label="Cost"
+              value={stats?.totalCost ?? "—"}
+              formatValue={(n) => formatCost(n, 4)}
+            />
+          </div>
 
-					<div className="grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)] mt-4 px-8">
-						{/* Turn navigation rail — jump within long conversations. */}
-						<nav className="hidden lg:block">
-							<div className="sticky top-4 flex flex-col gap-0.5">
-								{(stats?.errorCount ?? 0) > 0 && (
-									<Badge
-										variant="rose"
-										className="mb-2 self-start font-sans ml-1"
-									>
-										<IconAlertTriangle />
-										{formatCount(stats?.errorCount ?? 0)}
-										{(stats?.errorCount ?? 0) === 1 ? "error" : "errors"}
-									</Badge>
-								)}
-								<span className="px-2 pt-2 pb-1.5 text-xs font-medium text-muted-foreground">
-									{turns.length} {turns.length === 1 ? "turn" : "turns"}
-								</span>
-								{turns.map((t, i) => (
-									<button
-										key={t.traceId}
-										type="button"
-										onClick={() => scrollToTurn(i)}
-										className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
-									>
-										<span className="font-medium tabular-nums">
-											Turn {i + 1}
-										</span>
-										{t.status === "error" && (
-											<span className="size-1.5 shrink-0 rounded-full bg-rose-500" />
-										)}
-										{t.status === "aborted" && (
-											<span className="size-1.5 shrink-0 rounded-full bg-amber-500" />
-										)}
-										<span
-											className={cn(
-												"ml-auto tabular-nums",
-												costShade(t.totalCost, costThresholds) ??
-													"text-muted-foreground",
-											)}
-										>
-											{formatCost(t.totalCost)}
-										</span>
-									</button>
-								))}
-							</div>
-						</nav>
+          <div className="grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)] mt-4 px-8">
+            {/* Turn navigation rail — jump within long conversations. */}
+            <nav className="hidden lg:block">
+              <div className="sticky top-4 flex flex-col gap-0.5">
+                {(stats?.errorCount ?? 0) > 0 && (
+                  <Badge
+                    variant="rose"
+                    className="mb-2 self-start font-sans ml-1"
+                  >
+                    <IconAlertTriangle />
+                    {formatCount(stats?.errorCount ?? 0)}
+                    {(stats?.errorCount ?? 0) === 1 ? "error" : "errors"}
+                  </Badge>
+                )}
+                <span className="px-2 pt-2 pb-1.5 text-xs font-medium text-muted-foreground">
+                  {turns.length} {turns.length === 1 ? "turn" : "turns"}
+                </span>
+                {turns.map((t, i) => (
+                  <button
+                    key={t.traceId}
+                    type="button"
+                    onClick={() => scrollToTurn(i)}
+                    className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
+                  >
+                    <span className="font-medium tabular-nums">
+                      Turn {i + 1}
+                    </span>
+                    {t.status === "error" && (
+                      <span className="size-1.5 shrink-0 rounded-full bg-rose-500" />
+                    )}
+                    {t.status === "aborted" && (
+                      <span className="size-1.5 shrink-0 rounded-full bg-amber-500" />
+                    )}
+                    <span
+                      className={cn(
+                        "ml-auto tabular-nums",
+                        costShade(t.totalCost, costThresholds) ??
+                          "text-muted-foreground"
+                      )}
+                    >
+                      {formatCost(t.totalCost)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </nav>
 
-						<div className="flex flex-col gap-8">
-							{turns.map((t, i) => (
-								<div
-									key={t.traceId}
-									ref={(el) => {
-										turnRefs.current[i] = el;
-									}}
-									className="scroll-mt-4"
-								>
-									<TurnBlock
-										turn={t}
-										index={i}
-										costThresholds={costThresholds}
-									/>
-								</div>
-							))}
-						</div>
-					</div>
-				</div>
-			)}
-		</>
-	);
+            <div className="flex flex-col gap-8">
+              {turns.map((t, i) => (
+                <div
+                  key={t.traceId}
+                  ref={(el) => {
+                    turnRefs.current[i] = el;
+                  }}
+                  className="scroll-mt-4"
+                >
+                  <TurnBlock
+                    turn={t}
+                    index={i}
+                    costThresholds={costThresholds}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 function TurnBlock({
-	turn,
-	index,
-	costThresholds,
+  turn,
+  index,
+  costThresholds,
 }: {
-	turn: Turn;
-	index: number;
-	costThresholds: number[];
+  turn: Turn;
+  index: number;
+  costThresholds: number[];
 }) {
-	const isError = turn.status === "error";
-	const isAborted = turn.status === "aborted";
-	return (
-		<div
-			className={cn(
-				"flex flex-col gap-4 border-l-2 pl-4",
-				isError
-					? "border-rose-500"
-					: isAborted
-						? "border-amber-500"
-						: "border-transparent",
-			)}
-		>
-			{/* Turn header: index, time, status, and a link to the full trace. */}
-			<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-				<span className="font-medium text-foreground tabular-nums">
-					Turn {index + 1}
-				</span>
-				<span>·</span>
-				<span>{formatDateTime(turn.startTime)}</span>
-				<span>·</span>
-				<span className={cn(costShade(turn.totalCost, costThresholds))}>
-					{formatCost(turn.totalCost)}
-				</span>
-				<span>·</span>
-				<span>{formatTokens(turn.totalTokens)} tokens</span>
-				<span>·</span>
-				<span>{formatSpanDuration(turn.durationMs)}</span>
-				{turn.workflowName && (
-					<Link
-						// biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
-						href={`/workflows/${encodeURIComponent(turn.workflowName)}` as any}
-						className="ml-1 inline-flex items-center gap-1 rounded-full border bg-card/40 px-2 py-0.5 transition-colors hover:text-foreground"
-					>
-						<IconSitemapFilled className="size-3 shrink-0 text-emerald-500" />
-						<span className="truncate max-w-40">{turn.workflowName}</span>
-					</Link>
-				)}
-				{isError && (
-					<Badge variant="rose">
-						<IconAlertTriangle />
-						Error
-					</Badge>
-				)}
-				{isAborted && (
-					<Badge variant="amber">
-						<IconPlayerStopFilled />
-						Aborted
-					</Badge>
-				)}
-				<Link
-					href={`/traces/${encodeURIComponent(turn.traceId)}`}
-					className="ml-2 inline-flex items-center gap-0.5 hover:text-foreground transition-colors"
-				>
-					Trace
-					<IconArrowUpRight className="size-3.5" />
-				</Link>
-			</div>
+  const isError = turn.status === "error";
+  const isAborted = turn.status === "aborted";
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-4 border-l-2 pl-4",
+        isError
+          ? "border-rose-500"
+          : isAborted
+            ? "border-amber-500"
+            : "border-transparent"
+      )}
+    >
+      {/* Turn header: index, time, status, and a link to the full trace. */}
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground tabular-nums">
+          Turn {index + 1}
+        </span>
+        <span>·</span>
+        <span>{formatDateTime(turn.startTime)}</span>
+        <span>·</span>
+        <span className={cn(costShade(turn.totalCost, costThresholds))}>
+          {formatCost(turn.totalCost)}
+        </span>
+        <span>·</span>
+        <span>{formatTokens(turn.totalTokens)} tokens</span>
+        <span>·</span>
+        <span>{formatSpanDuration(turn.durationMs)}</span>
+        {turn.workflowName && (
+          <Link
+            // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
+            href={`/workflows/${encodeURIComponent(turn.workflowName)}` as any}
+            className="ml-1 inline-flex items-center gap-1 rounded-full border bg-card/40 px-2 py-0.5 transition-colors hover:text-foreground"
+          >
+            <IconSitemapFilled className="size-3 shrink-0 text-emerald-500" />
+            <span className="truncate max-w-40">{turn.workflowName}</span>
+          </Link>
+        )}
+        {isError && (
+          <Badge variant="rose">
+            <IconAlertTriangle />
+            Error
+          </Badge>
+        )}
+        {isAborted && (
+          <Badge variant="amber">
+            <IconPlayerStopFilled />
+            Aborted
+          </Badge>
+        )}
+        <Link
+          href={`/traces/${encodeURIComponent(turn.traceId)}`}
+          className="ml-2 inline-flex items-center gap-0.5 hover:text-foreground transition-colors"
+        >
+          Trace
+          <IconArrowUpRight className="size-3.5" />
+        </Link>
+      </div>
 
-			{turn.userMessage && <Bubble role="user" text={turn.userMessage} />}
-			{turn.toolCalls.length > 0 && (
-				<div className="flex flex-wrap items-center gap-1.5 pl-9">
-					{turn.toolCalls.map((tc) => (
-						<Link
-							key={tc.name}
-							href={`/traces/${encodeURIComponent(turn.traceId)}`}
-							title={`View ${tc.name} in the trace`}
-							className={cn(
-								"inline-flex items-center gap-1 rounded-full border bg-card/40 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground",
-								tc.errorCount > 0 &&
-									"border-rose-500/40 text-rose-600 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-400",
-							)}
-						>
-							<IconTool className="size-3 shrink-0" />
-							<span className="truncate max-w-40 font-mono">{tc.name}</span>
-							{tc.count > 1 && (
-								<span className="tabular-nums">×{tc.count}</span>
-							)}
-						</Link>
-					))}
-				</div>
-			)}
-			{turn.assistantOutput ? (
-				<Bubble role="assistant" text={turn.assistantOutput} />
-			) : (
-				<p className="pl-9 text-sm text-muted-foreground italic">
-					No output captured.
-				</p>
-			)}
-		</div>
-	);
+      {turn.userMessage && <Bubble role="user" text={turn.userMessage} />}
+      {turn.toolCalls.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 pl-9">
+          {turn.toolCalls.map((tc) => (
+            <Link
+              key={tc.name}
+              href={`/traces/${encodeURIComponent(turn.traceId)}`}
+              title={`View ${tc.name} in the trace`}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border bg-card/40 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground",
+                tc.errorCount > 0 &&
+                  "border-rose-500/40 text-rose-600 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-400"
+              )}
+            >
+              <IconTool className="size-3 shrink-0" />
+              <span className="truncate max-w-40 font-mono">{tc.name}</span>
+              {tc.count > 1 && (
+                <span className="tabular-nums">×{tc.count}</span>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
+      {turn.assistantOutput ? (
+        <Bubble role="assistant" text={turn.assistantOutput} />
+      ) : (
+        <p className="pl-9 text-sm text-muted-foreground italic">
+          No output captured.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function Bubble({
-	role,
-	text,
-	raw,
+  role,
+  text,
+  raw,
 }: {
-	role: "user" | "assistant";
-	text: string;
-	raw?: string | null;
+  role: "user" | "assistant";
+  text: string;
+  raw?: string | null;
 }) {
-	const isUser = role === "user";
-	const Icon = isUser ? IconUserFilled : IconGhostFilled;
-	// Show the raw input disclosure only when it carries more than the extracted message.
-	const showRaw = isUser && raw && raw.trim() !== text.trim();
-	return (
-		<div className="group/bubble flex gap-3">
-			<div
-				className={`${isUser && "mt-1.5"} flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-(--custom-shadow)`}
-			>
-				<Icon className="size-3.5" />
-			</div>
-			<div
-				className={
-					isUser
-						? "min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl bg-card dark:bg-muted-foreground/20 shadow-(--custom-shadow) px-3 py-2.5"
-						: "min-w-0 flex-1 px-1 py-0"
-				}
-			>
-				{isUser ? (
-					<p className="whitespace-pre-wrap wrap-break-word text-sm">{text}</p>
-				) : (
-					<div className="flex items-start justify-between gap-2">
-						{/* Assistant output is markdown — render it (same prose spacing as Foggy). */}
-						<div className="min-w-0 flex-1 text-sm leading-relaxed [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:last:mb-0 [&>*:first-child>*:first-child]:mt-0 [&>*:first-child>*:first-child>*:first-child]:mt-0">
-							<Streamdown
-								components={markdownComponents}
-								controls={{ table: false }}
-							>
-								{text}
-							</Streamdown>
-						</div>
-						<div className="shrink-0 opacity-0 transition-opacity group-hover/bubble:opacity-100">
-							<CopyButton value={text} title="Copy output" />
-						</div>
-					</div>
-				)}
-				{showRaw && (
-					<details className="mt-2 text-xs text-muted-foreground">
-						<summary className="cursor-pointer select-none">
-							View full input
-						</summary>
-						<pre className="mt-1 overflow-auto whitespace-pre-wrap wrap-break-word rounded bg-background/60 p-2">
-							{raw}
-						</pre>
-					</details>
-				)}
-			</div>
-		</div>
-	);
+  const isUser = role === "user";
+  const Icon = isUser ? IconUserFilled : IconGhostFilled;
+  // Show the raw input disclosure only when it carries more than the extracted message.
+  const showRaw = isUser && raw && raw.trim() !== text.trim();
+  return (
+    <div className="group/bubble flex gap-3">
+      <div
+        className={`${isUser && "mt-1.5"} flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-(--custom-shadow)`}
+      >
+        <Icon className="size-3.5" />
+      </div>
+      <div
+        className={
+          isUser
+            ? "min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl bg-card dark:bg-muted-foreground/20 shadow-(--custom-shadow) px-3 py-2.5"
+            : "min-w-0 flex-1 px-1 py-0"
+        }
+      >
+        {isUser ? (
+          <p className="whitespace-pre-wrap wrap-break-word text-sm">{text}</p>
+        ) : (
+          <div className="flex items-start justify-between gap-2">
+            {/* Assistant output is markdown — render it (same prose spacing as Foggy). */}
+            <div className="min-w-0 flex-1 text-sm leading-relaxed [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:last:mb-0 [&>*:first-child>*:first-child]:mt-0 [&>*:first-child>*:first-child>*:first-child]:mt-0">
+              <Streamdown
+                components={markdownComponents}
+                controls={{ table: false }}
+              >
+                {text}
+              </Streamdown>
+            </div>
+            <div className="shrink-0 opacity-0 transition-opacity group-hover/bubble:opacity-100">
+              <CopyButton value={text} title="Copy output" />
+            </div>
+          </div>
+        )}
+        {showRaw && (
+          <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="cursor-pointer select-none">
+              View full input
+            </summary>
+            <pre className="mt-1 overflow-auto whitespace-pre-wrap wrap-break-word rounded bg-background/60 p-2">
+              {raw}
+            </pre>
+          </details>
+        )}
+      </div>
+    </div>
+  );
 }

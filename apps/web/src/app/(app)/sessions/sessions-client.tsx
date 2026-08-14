@@ -344,8 +344,11 @@ export function SessionsClient() {
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
+                              {/* Content-first title: the session's opening
+                                  user message, falling back to the raw id —
+                                  same treatment as the traces list. */}
                               <span className="truncate font-medium text-[13px]">
-                                {s.sessionId}
+                                {s.userMessage ?? s.sessionId}
                               </span>
                               {/* Compact error count — colored text, no pill. */}
                               {s.errorCount > 0 && (

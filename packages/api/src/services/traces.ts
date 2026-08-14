@@ -14,7 +14,7 @@ import {
   type TraceSortField,
 } from "@foglamp/clickhouse";
 
-import { extractUserMessage } from "../lib/user-message";
+import { userMessageSnippet } from "../lib/user-message";
 import { decimalOrNull, finite, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
@@ -22,13 +22,6 @@ import { requireProjectAccess } from "./access";
 // Max chars of the extracted user message used as a trace's display title
 // (list rows and the detail header) — one line of context, not a transcript.
 const USER_MESSAGE_SNIPPET_CAP = 300;
-
-// Titles render on a single line; collapse the snippet's internal whitespace
-// so newlines in the prompt don't break truncation.
-function oneLine(s: string | null): string | null {
-  if (!s) return null;
-  return s.replace(/\s+/g, " ").trim() || null;
-}
 
 export async function getTraceList(
   db: Db,
@@ -107,7 +100,7 @@ export async function getTraceList(
   const snippetByTrace = new Map(
     rootInputs.map((r) => [
       r.trace_id,
-      oneLine(extractUserMessage(r.input, USER_MESSAGE_SNIPPET_CAP)),
+      userMessageSnippet(r.input, USER_MESSAGE_SNIPPET_CAP),
     ]),
   );
   return {
@@ -312,9 +305,7 @@ export async function getTraceDetail(
   return {
     traceId: input.traceId,
     traceName: firstNonEmpty((r) => r.trace_name),
-    userMessage: oneLine(
-      extractUserMessage(rootAgent?.input, USER_MESSAGE_SNIPPET_CAP),
-    ),
+    userMessage: userMessageSnippet(rootAgent?.input, USER_MESSAGE_SNIPPET_CAP),
     agentName: firstNonEmpty((r) => r.agent_name),
     workflowName: firstNonEmpty((r) => r.workflow_name),
     workflowRunId: firstNonEmpty((r) => r.workflow_run_id),

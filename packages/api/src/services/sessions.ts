@@ -1,5 +1,6 @@
 import {
   getCustomerDisplays,
+  getSessionFirstInputs,
   getSessionToolCalls,
   getSessionTurns,
   listSessions,
@@ -10,7 +11,7 @@ import {
   type TraceListRow,
 } from "@foglamp/clickhouse";
 
-import { extractUserMessage } from "../lib/user-message";
+import { extractUserMessage, userMessageSnippet } from "../lib/user-message";
 import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
@@ -22,6 +23,10 @@ const USER_MESSAGE_CAP = 2_000;
 // Max turns rendered for one session. Applied to BOTH the content and metrics
 // fetches so their rows line up and the summed stats stay accurate.
 const SESSION_TURN_CAP = 500;
+// Max chars of the opening user message shown as a session's list-row title —
+// one line of context, matching the traces list. Keep in sync with the traces
+// service's USER_MESSAGE_SNIPPET_CAP.
+const USER_MESSAGE_SNIPPET_CAP = 300;
 
 export async function getSessionList(
   db: Db,
@@ -64,12 +69,25 @@ export async function getSessionList(
     sessionListSummary(ch, filters),
   ]);
   const sum = summaryRows[0];
-  // Decorate the page's sessions with customer display fields (name/avatar): the
-  // rows carry only customer_id, so resolve the distinct ids against the
-  // customers dimension in one lookup and map them back.
+  // Decorate the page's sessions with customer display fields (name/avatar) —
+  // the rows carry only customer_id, so resolve the distinct ids against the
+  // customers dimension — and with each session's opening user message (mined
+  // from its first turn's root-span input, the list-row title snippet).
   const customerIds = [...new Set(sessions.map((s) => s.customer_id).filter(Boolean))];
-  const dims = await getCustomerDisplays(ch, { projectId: input.projectId, customerIds });
+  const [dims, firstInputs] = await Promise.all([
+    getCustomerDisplays(ch, { projectId: input.projectId, customerIds }),
+    getSessionFirstInputs(ch, {
+      projectId: input.projectId,
+      sessionIds: sessions.map((s) => s.session_id),
+    }),
+  ]);
   const customerById = new Map(dims.map((d) => [d.customer_id, d]));
+  const snippetBySession = new Map(
+    firstInputs.map((r) => [
+      r.session_id,
+      userMessageSnippet(r.input, USER_MESSAGE_SNIPPET_CAP),
+    ]),
+  );
   return {
     // 20/40/60/80th percentile cost thresholds; finite values only.
     costQuantiles: (sum?.cost_q ?? []).map(Number).filter(Number.isFinite),
@@ -81,6 +99,7 @@ export async function getSessionList(
     },
     sessions: sessions.map((s) => ({
       sessionId: s.session_id,
+      userMessage: snippetBySession.get(s.session_id) ?? null,
       agentName: s.agent_name || null,
       customerId: s.customer_id || null,
       customerName: customerById.get(s.customer_id)?.customer_name || null,

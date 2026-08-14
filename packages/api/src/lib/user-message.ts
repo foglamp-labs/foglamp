@@ -25,6 +25,16 @@ export function extractUserMessage(input: string | undefined, capLength: number)
   return cap(input);
 }
 
+/**
+ * `extractUserMessage` flattened to a single line — list rows and header
+ * titles render on one line, so newlines in the prompt would break truncation.
+ */
+export function userMessageSnippet(input: string | undefined, capLength: number): string | null {
+  const s = extractUserMessage(input, capLength);
+  if (!s) return null;
+  return s.replace(/\s+/g, " ").trim() || null;
+}
+
 // AI SDK message content is either a string or an array of parts ({type,text,…}).
 function stringifyContent(content: unknown): string {
   if (typeof content === "string") return content;

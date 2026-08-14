@@ -763,6 +763,35 @@ export function getSessionTurns(
 	);
 }
 
+export type SessionFirstInputRow = {
+	session_id: string;
+	input: string;
+};
+
+/**
+ * The opening turn's root `agent` span input for each requested session — the
+ * sessions list mines it for a user-message snippet, same as the traces list
+ * does per trace. `LIMIT 1 BY session_id`: earliest agent span in the session
+ * wins.
+ */
+export function getSessionFirstInputs(
+	client: ClickHouseClient,
+	params: { projectId: string; sessionIds: string[] },
+): Promise<SessionFirstInputRow[]> {
+	if (params.sessionIds.length === 0) return Promise.resolve([]);
+	return rows<SessionFirstInputRow>(
+		client,
+		`SELECT session_id, input
+     FROM spans FINAL
+     WHERE project_id = {projectId:String}
+       AND session_id IN {ids:Array(String)}
+       AND span_type = 'agent'
+     ORDER BY start_time ASC, span_id ASC
+     LIMIT 1 BY session_id`,
+		{ projectId: params.projectId, ids: params.sessionIds },
+	);
+}
+
 export type TraceRootInputRow = {
 	trace_id: string;
 	input: string;
