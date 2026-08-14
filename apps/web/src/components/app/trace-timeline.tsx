@@ -359,8 +359,14 @@ export function TraceTimeline({
               const modelColor = isLlm
                 ? modelBrandColor(span.provider, span.modelId)
                 : null;
-              const ttftRel =
-                span.ttftMs != null ? offsetMs + span.ttftMs : null;
+              // Waiting-for-first-token stretch: the bar up to TTFT renders
+              // hatched, the solid fill starts where tokens start flowing.
+              const ttftPct =
+                span.spanType === "llm" &&
+                span.ttftMs != null &&
+                span.durationMs > 0
+                  ? Math.min((span.ttftMs / span.durationMs) * 100, 100)
+                  : null;
               // Thinking phase: violet overlay across the reasoning window,
               // bar-relative. Only when the SDK reported a real duration —
               // old spans / non-reasoning models render nothing new.
@@ -547,22 +553,58 @@ export function TraceTimeline({
                             className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs"
                             style={{ left: `${offset}%`, width: `${width}%` }}
                           >
-                            {/* Base track. */}
-                            <div
-                              className={cn(
-                                "h-full w-full rounded-xs",
-                                barClass
-                              )}
-                              style={barStyle}
-                            />
-                            {/* Model-call phase — sky tint over the pure
-	                              provider call; the tail is tool execution. */}
-                            {modelCallMs != null && modelCallWidthPct > 0 && (
+                            {/* Base track. Up to TTFT the fill is hatched
+                                (stripe-masked, so the row background shows
+                                through) — the wait for the first token — and
+                                solid from there on. */}
+                            {ttftPct != null && ttftPct > 0 ? (
+                              <>
+                                <div
+                                  className={cn(
+                                    "absolute inset-y-0 left-0 rounded-l-xs",
+                                    barClass
+                                  )}
+                                  style={{
+                                    ...barStyle,
+                                    width: `${ttftPct}%`,
+                                    maskImage: TTFT_HATCH_MASK,
+                                    WebkitMaskImage: TTFT_HATCH_MASK,
+                                  }}
+                                />
+                                <div
+                                  className={cn(
+                                    "absolute inset-y-0 right-0 rounded-r-xs",
+                                    barClass
+                                  )}
+                                  style={{
+                                    ...barStyle,
+                                    width: `${100 - ttftPct}%`,
+                                  }}
+                                />
+                              </>
+                            ) : (
                               <div
-                                className="absolute inset-y-0 left-0 rounded-xs bg-sky-400/30"
-                                style={{ width: `${modelCallWidthPct}%` }}
+                                className={cn(
+                                  "h-full w-full rounded-xs",
+                                  barClass
+                                )}
+                                style={barStyle}
                               />
                             )}
+                            {/* Model-call phase — sky tint over the pure
+	                              provider call; the tail is tool execution.
+	                              Starts at TTFT so the hatched wait stays
+	                              legible underneath. */}
+                            {modelCallMs != null &&
+                              modelCallWidthPct > (ttftPct ?? 0) && (
+                                <div
+                                  className="absolute inset-y-0 rounded-xs bg-sky-400/30"
+                                  style={{
+                                    left: `${ttftPct ?? 0}%`,
+                                    width: `${modelCallWidthPct - (ttftPct ?? 0)}%`,
+                                  }}
+                                />
+                              )}
                             {/* Thinking phase — violet stretch over the
 	                              reasoning window within the step. */}
                             {thinkingMs != null && thinkingWidthPct > 0 && (
@@ -594,6 +636,11 @@ export function TraceTimeline({
                             Thinking: {formatDuration(thinkingMs)}
                           </span>
                         )}
+                        {ttftPct != null && span.ttftMs != null && (
+                          <span className="text-muted-foreground">
+                            First token: {formatDuration(span.ttftMs)}
+                          </span>
+                        )}
                         {(span.totalCost != null || span.totalTokens > 0) && (
                           <span className="text-muted-foreground">
                             {span.totalCost != null &&
@@ -607,13 +654,6 @@ export function TraceTimeline({
                         )}
                       </TooltipContent>
                     </Tooltip>
-                    {ttftRel != null && span.spanType === "llm" && (
-                      <div
-                        className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-amber-500"
-                        style={{ left: `${(ttftRel / total) * 100}%` }}
-                        title="First token"
-                      />
-                    )}
                   </div>
                   <div className="flex flex-col items-end pr-1 text-right">
                     <span className="text-[11px] font-medium text-foreground/80 tabular-nums">
@@ -735,6 +775,11 @@ function GroupedRow({
 // Vertical gridline fractions across the track — quarter marks, doubling as the
 // ruler's tick positions so the gridlines and time labels all align.
 const GRID_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
+
+// Diagonal-stripe mask for the pre-first-token stretch of an LLM bar: the
+// bar's own color shows in the stripes, the row background in the gaps.
+const TTFT_HATCH_MASK =
+  "repeating-linear-gradient(45deg, black 0 2.5px, transparent 2.5px 5px)";
 
 /**
  * A thin time ruler that sits above the bars and spans the track column.
