@@ -18,15 +18,11 @@ import {
 import {
   IconAffiliate,
   IconAlertTriangle,
-  IconAlertTriangleFilled,
   IconArrowUpRight,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
   IconChevronUp,
-  IconCirclesFilled,
-  IconClockFilled,
-  IconCoinFilled,
   IconGaugeFilled,
   IconListTree,
   IconMessage2Filled,
@@ -60,7 +56,6 @@ import {
   NoProject,
   PageHeader,
   ScrollFade,
-  StatCard,
   TableSkeleton,
 } from "@/components/app/page-parts";
 import { PayloadView } from "@/components/app/payload-view";
@@ -422,7 +417,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
         ctx?.customer) && (
         <div
           className={cn(
-            "mt-1 flex flex-wrap items-center gap-2 text-xs px-8",
+            "mt-1 flex flex-wrap items-center gap-2 text-xs px-7",
             entrance && !skeletonShown && "page-fade-in"
           )}
         >
@@ -501,56 +496,9 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
         </div>
       ) : (
         <>
-          <section
-            className={cn(
-              "grid grid-cols-2 gap-4 lg:grid-cols-4 px-8 mt-1",
-              entrance && !skeletonShown && "page-fade-in"
-            )}
-          >
-            <StatCard
-              icon={IconCirclesFilled}
-              iconClassName="text-blue-500 dark:text-blue-500"
-              size="sm"
-              label="Tokens"
-              value={stats.tokens}
-              formatValue={formatTokens}
-              hint={rankHint(rank?.tokenPercentile)}
-            />
-            <StatCard
-              icon={IconAlertTriangleFilled}
-              iconClassName="text-red-500 dark:text-red-600"
-              size="sm"
-              label="Errors"
-              value={
-                <span
-                  className={cn(
-                    erroredSpans.length > 0 && "text-red-500 dark:text-red-600"
-                  )}
-                >
-                  {formatCount(erroredSpans.length)}
-                </span>
-              }
-            />
-            <StatCard
-              icon={IconClockFilled}
-              iconClassName="text-sky-300 dark:text-sky-700"
-              size="sm"
-              label="Duration"
-              value={window.span}
-              formatValue={formatDuration}
-              hint={rankHint(rank?.durationPercentile)}
-            />
-            <StatCard
-              icon={IconCoinFilled}
-              iconClassName="text-yellow-300 dark:text-yellow-600"
-              size="sm"
-              label="Cost"
-              value={stats.cost ?? "—"}
-              formatValue={(n) => formatCost(n, 4)}
-              hint={rankHint(rank?.costPercentile)}
-            />
-          </section>
-
+          {/* No stat-card strip — the always-open whole-trace inspector shows
+              the same Duration/Cost/Tokens (with the p-rank hints) right next
+              to the waterfall, and errors live in the issues strip. */}
           {issues.length > 0 && (
             <IssuesStrip
               issues={issues}
@@ -589,6 +537,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
               spanCount={ordered.length}
               onStep={stepSelection}
               subtreeStats={subtreeStats}
+              rank={rank}
             />
           </div>
         </>
@@ -799,15 +748,29 @@ function CostComposition({
   );
 }
 
-/** "p91 · this agent" — where this trace's value falls among the same agent's
- * traces over the last week. The hint is purely additive: while the query is in
- * flight, fails, or declines to answer (no agent, too few traces, unpriced),
- * it renders nothing and the card looks exactly as it always has. */
-function rankHint(percentile?: number | null) {
-  if (percentile == null) return null;
+/** Where this trace ranks against its agent's last week — nulls when the query
+ * declines to answer (no agent, too few traces, unpriced). */
+type TraceRank = {
+  durationPercentile: number | null;
+  costPercentile: number | null;
+  tokenPercentile: number | null;
+};
+
+/** A Field value with a "p91 · this agent" hint beside it — where this trace's
+ * value falls among the same agent's traces over the last week. The hint is
+ * purely additive: while the query is in flight, fails, or declines to answer
+ * (no agent, too few traces, unpriced), the bare value renders alone. */
+function rankedValue(value: React.ReactNode, percentile?: number | null) {
+  if (percentile == null) return value;
   return (
-    <span title={`Higher than ${percentile}% of this agent's traces this week`}>
-      p{percentile} · this agent
+    <span className="flex flex-wrap items-baseline gap-x-1.5">
+      {value}
+      <span
+        className="text-[11px] text-muted-foreground"
+        title={`Higher than ${percentile}% of this agent's traces this week`}
+      >
+        p{percentile} · this agent
+      </span>
     </span>
   );
 }
@@ -1293,6 +1256,7 @@ function DetailPanel({
   spanCount,
   onStep,
   subtreeStats,
+  rank,
 }: {
   span: Span | null;
   scores: TraceScore[];
@@ -1307,6 +1271,7 @@ function DetailPanel({
   spanCount: number;
   onStep: (delta: number) => void;
   subtreeStats: Map<string, SubtreeStats>;
+  rank: TraceRank | null;
 }) {
   const [width, setWidth] = useState(PANEL_WIDTH);
   // Mirror for the pointer-up persist, so the handler doesn't need to re-bind
@@ -1391,6 +1356,7 @@ function DetailPanel({
           evalMeta={evalMeta}
           presetName={presetName}
           onStep={onStep}
+          rank={rank}
         />
       ) : span ? (
         <SpanDetail
@@ -1422,12 +1388,14 @@ function TraceDetail({
   evalMeta,
   presetName,
   onStep,
+  rank,
 }: {
   trace: TraceSummary;
   spans: Span[];
   evalMeta: Map<string, EvalMeta>;
   presetName: Map<string, string>;
   onStep: (delta: number) => void;
+  rank: TraceRank | null;
 }) {
   // Same Overview/Raw split as SpanDetail — the whole-trace view is curated,
   // Raw is the verbatim summary + root payloads.
@@ -1516,10 +1484,25 @@ function TraceDetail({
                 />
                 <Field
                   label="Duration"
-                  value={formatSpanDuration(trace.durationMs)}
+                  value={rankedValue(
+                    formatSpanDuration(trace.durationMs),
+                    rank?.durationPercentile
+                  )}
                 />
-                <Field label="Cost" value={formatCost(trace.cost)} />
-                <Field label="Tokens" value={formatTokens(trace.tokens)} />
+                <Field
+                  label="Cost"
+                  value={rankedValue(
+                    formatCost(trace.cost),
+                    rank?.costPercentile
+                  )}
+                />
+                <Field
+                  label="Tokens"
+                  value={rankedValue(
+                    formatTokens(trace.tokens),
+                    rank?.tokenPercentile
+                  )}
+                />
                 {/* No Spans/Errors counters — the waterfall shows the spans and the
                 issues strip already surfaces errors. */}
               </div>
@@ -1665,21 +1648,20 @@ function SpanDetail({
     usageExtras.length > 0 ||
     !!span.pricedModelId ||
     !!span.pricedAt;
-  // Secondary provider signals: grounding sources, model-build drift, safety,
-  // and normalized rate-limit headroom. Each renders only when captured.
+  // Secondary provider signals: grounding sources and rate-limit headroom.
+  // Headroom shows only when it's actually low — "98% left" on every span is
+  // reassurance noise, and the issues strip already points here when it dips.
+  // Fingerprint/safety metadata live in Raw only.
   const sources = parseSources(span.sources);
   const rl = span.rateLimit;
-  const hasTokenHeadroom =
-    rl?.tokensRemaining != null && rl?.tokensLimit != null;
-  const hasRequestHeadroom =
-    rl?.requestsRemaining != null && rl?.requestsLimit != null;
+  const tokenPct = pctRemaining(rl?.tokensRemaining, rl?.tokensLimit);
+  const requestPct = pctRemaining(rl?.requestsRemaining, rl?.requestsLimit);
+  const lowTokenHeadroom = tokenPct != null && tokenPct < LOW_HEADROOM_PCT;
+  const lowRequestHeadroom =
+    requestPct != null && requestPct < LOW_HEADROOM_PCT;
   const fields = useMemo(() => spanFields(span, subtree), [span, subtree]);
   const hasSignals =
-    !!span.systemFingerprint ||
-    !!span.safetyMetadata ||
-    sources.length > 0 ||
-    hasTokenHeadroom ||
-    hasRequestHeadroom;
+    sources.length > 0 || lowTokenHeadroom || lowRequestHeadroom;
   // Overview is curated and per-type, so it can omit fields; Raw is the
   // always-complete escape hatch. Reset to Overview when the panel swaps to a
   // different span — otherwise every subsequent selection lands on Raw.
@@ -1839,80 +1821,47 @@ function SpanDetail({
                   <span className="text-xs font-medium text-muted-foreground px-1">
                     Provider signals
                   </span>
+                  {(lowTokenHeadroom || lowRequestHeadroom) && (
                   <div className="grid grid-cols-2 gap-4 px-1">
-                    {hasTokenHeadroom && (
+                    {lowTokenHeadroom && (
                       <Field
                         label="Token headroom"
                         value={
                           <span>
                             {formatTokens(rl!.tokensRemaining!)} /{" "}
                             {formatTokens(rl!.tokensLimit!)}
-                            {pctRemaining(
-                              rl!.tokensRemaining,
-                              rl!.tokensLimit
-                            ) != null && (
-                              <span className="text-muted-foreground">
-                                {" "}
-                                (
-                                {pctRemaining(
-                                  rl!.tokensRemaining,
-                                  rl!.tokensLimit
-                                )}
-                                % left)
-                              </span>
-                            )}
+                            <span className="text-muted-foreground">
+                              {" "}
+                              ({tokenPct}% left)
+                            </span>
                           </span>
                         }
                       />
                     )}
-                    {hasRequestHeadroom && (
+                    {lowRequestHeadroom && (
                       <Field
                         label="Request headroom"
                         value={
                           <span>
                             {formatCount(rl!.requestsRemaining!)} /{" "}
                             {formatCount(rl!.requestsLimit!)}
-                            {pctRemaining(
-                              rl!.requestsRemaining,
-                              rl!.requestsLimit
-                            ) != null && (
-                              <span className="text-muted-foreground">
-                                {" "}
-                                (
-                                {pctRemaining(
-                                  rl!.requestsRemaining,
-                                  rl!.requestsLimit
-                                )}
-                                % left)
-                              </span>
-                            )}
+                            <span className="text-muted-foreground">
+                              {" "}
+                              ({requestPct}% left)
+                            </span>
                           </span>
                         }
                       />
                     )}
-                    {rl?.tokensResetMs != null && (
+                    {/* Reset time only matters while headroom is the problem. */}
+                    {lowTokenHeadroom && rl?.tokensResetMs != null && (
                       <Field
                         label="Tokens reset"
                         value={`in ${formatDuration(rl.tokensResetMs)}`}
                       />
                     )}
-                    {span.systemFingerprint && (
-                      <Field
-                        label="Fingerprint"
-                        value={
-                          <span
-                            className="block truncate font-mono text-xs"
-                            title={span.systemFingerprint}
-                          >
-                            {span.systemFingerprint}
-                          </span>
-                        }
-                      />
-                    )}
-                    {span.safetyMetadata && (
-                      <Field label="Safety ratings" value="reported" />
-                    )}
                   </div>
+                  )}
                   {sources.length > 0 && (
                     <div className="flex flex-col gap-1 px-1">
                       <span className="text-xs text-muted-foreground">
@@ -2079,19 +2028,37 @@ function ToolsAvailable({
     }
   }, [catalog]);
 
+  // Collapsed by default: the catalog is static per app and often the longest
+  // block in the sheet — the count is the useful part at a glance.
+  const [open, setOpen] = useState(false);
+
   if (!tools)
     return (
       <Payload label="Tools available" value={catalog} className={className} />
     );
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex flex-col", open && "gap-2", className)}>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">
+        {/* CopyButton stays a sibling, not a child — nested buttons are
+            invalid HTML (same workaround as the issues strip). */}
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+          className="flex cursor-pointer items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <IconChevronRight
+            className={cn(
+              "size-3.5 transition-transform",
+              open && "rotate-90"
+            )}
+          />
           Tools available ({tools.length})
-        </span>
+        </button>
         <CopyButton value={catalog} title="Copy tool catalog" />
       </div>
+      {open && (
       <div className="flex flex-wrap gap-1.5">
         {tools.map((t) =>
           t.description ? (
@@ -2116,6 +2083,7 @@ function ToolsAvailable({
           )
         )}
       </div>
+      )}
     </div>
   );
 }
