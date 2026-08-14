@@ -1080,6 +1080,23 @@ function spanFields(
 
   switch (span.spanType) {
     case "llm": {
+      add("Model", model);
+      // No Provider field — the model logo/name already carries it.
+      add("Cost", formatCost(span.totalCost));
+      add(
+        "Tokens",
+        <span className="flex flex-col gap-1">
+          <span>
+            {formatTokens(span.inputTokens)} in ·{" "}
+            {formatTokens(span.outputTokens)} out
+          </span>
+          <TokenSplitBar
+            input={span.inputTokens}
+            cached={span.cachedInputTokens ?? 0}
+            output={span.outputTokens}
+          />
+        </span>
+      );
       if (span.ttftMs !== null) {
         add(
           "TTFT",
@@ -1100,23 +1117,6 @@ function spanFields(
           </span>
         );
       }
-      add("Model", model);
-      // No Provider field — the model logo/name already carries it.
-      add(
-        "Tokens",
-        <span className="flex flex-col gap-1">
-          <span>
-            {formatTokens(span.inputTokens)} in ·{" "}
-            {formatTokens(span.outputTokens)} out
-          </span>
-          <TokenSplitBar
-            input={span.inputTokens}
-            cached={span.cachedInputTokens ?? 0}
-            output={span.outputTokens}
-          />
-        </span>
-      );
-      add("Cost", formatCost(span.totalCost));
       // No "Model call" field — the llm span now closes at the model-call end,
       // so modelCallMs ≈ durationMs and tool time lives in tool child spans.
       break;
