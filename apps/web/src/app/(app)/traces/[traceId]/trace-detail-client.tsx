@@ -780,7 +780,7 @@ function TurnNavSegment({
   const cls = cn(
     "flex h-full items-center text-muted-foreground outline-none transition-colors focus-visible:ring-[1.5px] focus-visible:ring-ring/50",
     href ? "hover:bg-muted hover:text-foreground" : "opacity-50",
-    className,
+    className
   );
   return (
     <TooltipProvider delay={150}>

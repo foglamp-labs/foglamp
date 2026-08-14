@@ -324,7 +324,7 @@ export function TraceTimeline({
                 onSelect(selected === WHOLE_TRACE_ID ? null : WHOLE_TRACE_ID)
               }
               className={cn(
-                "grid w-full cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center rounded-r-sm rounded-l-md py-0.5 text-left text-sm",
+                "grid w-full cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-r-sm rounded-l-md py-0.5 text-left text-sm",
                 selected === WHOLE_TRACE_ID
                   ? "bg-accent dark:bg-accent/70"
                   : "hover:bg-accent/80 dark:hover:bg-accent/50"
@@ -472,7 +472,7 @@ export function TraceTimeline({
                     onSelect(span.spanId === selected ? null : span.spanId)
                   }
                   className={cn(
-                    "grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center rounded-md py-1 text-left text-sm",
+                    "grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm",
                     span.spanId === selected
                       ? "bg-accent dark:bg-accent/70"
                       : "hover:bg-accent/80 dark:hover:bg-accent/50"
@@ -727,7 +727,7 @@ function GroupedRow({
       type="button"
       onClick={onToggle}
       title={expanded ? "Fold repeated calls" : "Show each call"}
-      className="grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center rounded-md py-1 text-left text-sm hover:bg-accent/80 dark:hover:bg-accent/50"
+      className="grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm hover:bg-accent/80 dark:hover:bg-accent/50"
     >
       <div
         className="flex min-w-0 items-start gap-2 pr-3"
