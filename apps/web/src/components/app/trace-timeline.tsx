@@ -16,6 +16,7 @@ import {
 import { useMemo, useState } from "react";
 
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
+import { useTtftVariant } from "@/components/app/dev-toolbar";
 import {
   type EvalMeta,
   SpanScoreDots,
@@ -155,6 +156,8 @@ export function TraceTimeline({
 
   // Per-row collapse — view-local state; collapsing a row hides its subtree.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  // Dev-only A/B of the pre-first-token bar rendering; fixed in production.
+  const ttftVariant = useTtftVariant();
   // Runs of identical siblings fold by default; this holds the ones the reader
   // has since opened back up.
   const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(
@@ -553,21 +556,22 @@ export function TraceTimeline({
                             className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs"
                             style={{ left: `${offset}%`, width: `${width}%` }}
                           >
-                            {/* Base track. Up to TTFT the bar is a hollow
-                                dashed outline — the wait for the first token
-                                — and the solid fill starts from there. */}
+                            {/* Base track. Up to TTFT the bar renders as the
+                                "waiting" treatment (dev-toolbar selectable) —
+                                and the solid fill starts from there. */}
                             {ttftPct != null && ttftPct > 0 ? (
                               <>
-                                <div
-                                  className={cn(
-                                    "absolute inset-y-0 left-0 rounded-l-xs border border-r-0 border-dashed",
+                                <TtftWait
+                                  variant={ttftVariant}
+                                  widthPct={ttftPct}
+                                  barClass={barClass}
+                                  borderClass={
                                     isError
                                       ? "border-rose-500"
                                       : isAborted
                                         ? "border-amber-500"
                                         : "border-violet-500"
-                                  )}
-                                  style={{ width: `${ttftPct}%` }}
+                                  }
                                 />
                                 <div
                                   className={cn(
@@ -773,6 +777,90 @@ function GroupedRow({
 // Vertical gridline fractions across the track — quarter marks, doubling as the
 // ruler's tick positions so the gridlines and time labels all align.
 const GRID_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
+
+// Diagonal-stripe mask for the "stripes" TTFT variant: the bar's own color
+// shows in the stripes, the row background in the gaps.
+const TTFT_HATCH_MASK =
+  "repeating-linear-gradient(45deg, black 0 2.5px, transparent 2.5px 5px)";
+
+/**
+ * The pre-first-token stretch of an LLM bar, rendered per the dev-toolbar's
+ * TTFT variant (production always gets the default). `barClass` is the solid
+ * fill's bg-*, `borderClass` its matching border-* hue.
+ */
+function TtftWait({
+  variant,
+  widthPct,
+  barClass,
+  borderClass,
+}: {
+  variant: ReturnType<typeof useTtftVariant>;
+  widthPct: number;
+  barClass: string | undefined;
+  borderClass: string;
+}) {
+  const width = { width: `${widthPct}%` };
+  switch (variant) {
+    case "stripes":
+      return (
+        <div
+          className={cn("absolute inset-y-0 left-0 rounded-l-xs", barClass)}
+          style={{
+            ...width,
+            maskImage: TTFT_HATCH_MASK,
+            WebkitMaskImage: TTFT_HATCH_MASK,
+          }}
+        />
+      );
+    case "faded":
+      return (
+        <div
+          className={cn(
+            "absolute inset-y-0 left-0 rounded-l-xs opacity-30",
+            barClass
+          )}
+          style={width}
+        />
+      );
+    case "thin":
+      return (
+        <div
+          className={cn(
+            "absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-l-xs",
+            barClass
+          )}
+          style={width}
+        />
+      );
+    case "gap":
+      return (
+        <div
+          className="absolute inset-y-0 left-0 rounded-l-xs bg-muted-foreground/20"
+          style={width}
+        />
+      );
+    case "dots":
+      return (
+        <div
+          className={cn(
+            "absolute top-1/2 left-0 -translate-y-1/2 border-t-2 border-dotted",
+            borderClass
+          )}
+          style={width}
+        />
+      );
+    default:
+      return (
+        <div
+          className={cn(
+            "absolute inset-y-0 left-0 rounded-l-xs border border-r-0 border-dashed",
+            borderClass
+          )}
+          style={width}
+        />
+      );
+  }
+}
 
 /**
  * A thin time ruler that sits above the bars and spans the track column.

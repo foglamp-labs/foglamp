@@ -53,6 +53,52 @@ export function useNavIconVariant(): NavIconVariant {
 	return DEV ? variant : "chip";
 }
 
+/** How an LLM bar renders its pre-first-token stretch in the waterfall. */
+export type TtftVariant =
+	| "dashed"
+	| "stripes"
+	| "faded"
+	| "thin"
+	| "gap"
+	| "dots";
+
+export const TTFT_VARIANTS: { value: TtftVariant; label: string }[] = [
+	{ value: "dashed", label: "Dashed" },
+	{ value: "stripes", label: "Stripes" },
+	{ value: "faded", label: "Faded" },
+	{ value: "thin", label: "Thin" },
+	{ value: "gap", label: "Gap" },
+	{ value: "dots", label: "Dots" },
+];
+
+const TTFT_KEY = "foglamp:dev:ttft-variant";
+const TTFT_DEFAULT: TtftVariant = "dashed";
+
+function readTtftVariant(): TtftVariant {
+	if (typeof window === "undefined") return TTFT_DEFAULT;
+	const v = window.localStorage.getItem(TTFT_KEY);
+	return TTFT_VARIANTS.some((o) => o.value === v)
+		? (v as TtftVariant)
+		: TTFT_DEFAULT;
+}
+
+function setTtftVariant(variant: TtftVariant) {
+	// The default is absence, so a stale key never leaks into a fresh state.
+	if (variant === TTFT_DEFAULT) window.localStorage.removeItem(TTFT_KEY);
+	else window.localStorage.setItem(TTFT_KEY, variant);
+	for (const listener of listeners) listener();
+}
+
+/** The active TTFT-wait rendering. Always the default outside development. */
+export function useTtftVariant(): TtftVariant {
+	const variant = useSyncExternalStore(
+		subscribe,
+		readTtftVariant,
+		() => TTFT_DEFAULT,
+	);
+	return DEV ? variant : TTFT_DEFAULT;
+}
+
 // ---------------------------------------------------------------------------
 // Toolbar
 // ---------------------------------------------------------------------------
@@ -70,6 +116,7 @@ function DevToolbarInner() {
 	// Session-only: reappears on reload, so there's no way to lose the toolbar.
 	const [hidden, setHidden] = useState(false);
 	const variant = useNavIconVariant();
+	const ttft = useTtftVariant();
 
 	if (hidden) return null;
 
@@ -119,6 +166,29 @@ function DevToolbarInner() {
 										"cursor-pointer rounded-full px-2.5 py-1 text-xs",
 										variant === o.value
 											? "bg-background text-foreground shadow-sm"
+											: "text-muted-foreground hover:text-foreground",
+									)}
+								>
+									{o.label}
+								</button>
+							))}
+						</div>
+					</div>
+
+					{/* Pre-first-token bar rendering on the trace waterfall. */}
+					<div className="mt-3 flex flex-col gap-1.5">
+						<span className="text-sm">TTFT wait</span>
+						<div className="flex flex-wrap gap-1">
+							{TTFT_VARIANTS.map((o) => (
+								<button
+									key={o.value}
+									type="button"
+									aria-pressed={ttft === o.value}
+									onClick={() => setTtftVariant(o.value)}
+									className={cn(
+										"cursor-pointer rounded-full px-2.5 py-1 text-xs",
+										ttft === o.value
+											? "bg-muted text-foreground shadow-sm"
 											: "text-muted-foreground hover:text-foreground",
 									)}
 								>
