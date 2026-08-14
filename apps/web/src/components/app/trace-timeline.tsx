@@ -553,13 +553,14 @@ export function TraceTimeline({
                   ? { backgroundColor: accent }
                   : undefined;
               const hasBadges = isError || isAborted || !!rowScores;
+              // Re-clicking a selected span keeps it selected — no toggle-off
+              // bounce back to the whole trace.
               return (
                 <button
                   key={span.spanId}
                   type="button"
-                  onClick={() =>
-                    onSelect(span.spanId === selected ? null : span.spanId)
-                  }
+                  onClick={() => onSelect(span.spanId)}
+
                   className={cn(
                     "grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm",
                     span.spanId === selected
