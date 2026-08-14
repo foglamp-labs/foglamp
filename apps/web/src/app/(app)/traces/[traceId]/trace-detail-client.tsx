@@ -2073,7 +2073,7 @@ function SpanDetail({
                       value lands flush against the sheet's right edge; the
                       copy button copies plain `key: value` lines instead, so
                       pasted output isn't full of clipped dots. */}
-                  <div className="flex flex-col gap-1 font-mono text-[11px] pr-1">
+                  <div className="flex flex-col gap-1 font-mono text-[11px] pr-2">
                     {metaEntries.map(([k, v]) => (
                       <div key={k} className="flex items-baseline">
                         <span className="shrink-0 text-muted-foreground">
@@ -2262,7 +2262,7 @@ function ToolsAvailable({
         <CopyButton value={catalog} title="Copy tool catalog" />
       </div>
       {open && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 pr-2">
           {tools.map((t) => {
             const isExpanded = expanded.has(t.name);
             const expandable = !!t.description || t.args.length > 0;

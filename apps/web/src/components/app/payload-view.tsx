@@ -73,7 +73,7 @@ function JsonBlock({
 // same here as in sessions / Foggy.
 function Prose({ children }: { children: string }) {
 	return (
-		<div className="text-sm leading-relaxed text-balance wrap-anywhere [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_pre]:whitespace-pre-wrap [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:last:mb-0 [&>*:first-child]:mt-0">
+		<div className="text-sm leading-relaxed text-balance wrap-anywhere [&_h1]:mt-3 [&_h1]:mb-1.5 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1.5 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mt-2.5 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_h4]:mt-2.5 [&_h4]:mb-1 [&_h4]:text-sm [&_h4]:font-medium [&_h5]:text-sm [&_h5]:font-medium [&_h6]:text-sm [&_h6]:font-medium [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_pre]:whitespace-pre-wrap [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:last:mb-0 [&>*:first-child]:mt-0">
 			<Streamdown components={markdownComponents} controls={{ table: false }}>
 				{children}
 			</Streamdown>
