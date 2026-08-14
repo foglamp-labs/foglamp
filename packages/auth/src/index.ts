@@ -236,9 +236,12 @@ export function createAuth() {
               const local = user.name || user.email.split("@")[0] || "workspace";
               // Full uuid hex suffix → globally unique slug (no collision window).
               const slug = `${slugify(local)}-${orgId.replace(/-/g, "")}`;
+              // Personalized name: orgs surface as end-customers in our own
+              // dogfooding telemetry, and a fleet of "My Workspace"s is
+              // indistinguishable there (and in the org switcher).
               await db
                 .insert(organization)
-                .values({ id: orgId, name: "My Workspace", slug });
+                .values({ id: orgId, name: `${local}'s Workspace`, slug });
               await db.insert(member).values({
                 id: uuidv7(),
                 organizationId: orgId,

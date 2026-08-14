@@ -85,6 +85,13 @@
       "when": 1784746217820,
       "tag": "0011_rapid_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786716626943,
+      "tag": "0012_personalize_default_org_names",
+      "breakpoints": true
     }
   ]
 }
