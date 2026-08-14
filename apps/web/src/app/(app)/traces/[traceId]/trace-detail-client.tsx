@@ -1509,83 +1509,86 @@ function TraceDetail({
               containerClassName="flex min-h-0 flex-1 flex-col"
               className="flex min-h-0 flex-1 flex-col gap-4 py-5"
             >
-          <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
-            <Field label="Started" value={formatDateTime(trace.startTime)} />
-            <Field
-              label="Duration"
-              value={formatSpanDuration(trace.durationMs)}
-            />
-            <Field label="Cost" value={formatCost(trace.cost)} />
-            <Field label="Tokens" value={formatTokens(trace.tokens)} />
-            {/* No Spans/Errors counters — the waterfall shows the spans and the
+              <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
+                <Field
+                  label="Started"
+                  value={formatDateTime(trace.startTime)}
+                />
+                <Field
+                  label="Duration"
+                  value={formatSpanDuration(trace.durationMs)}
+                />
+                <Field label="Cost" value={formatCost(trace.cost)} />
+                <Field label="Tokens" value={formatTokens(trace.tokens)} />
+                {/* No Spans/Errors counters — the waterfall shows the spans and the
                 issues strip already surfaces errors. */}
-          </div>
-
-          {trace.durationMs > 0 && (
-            <div className="flex flex-col gap-2 border-b border-border/40 py-5 px-5">
-              <span className="text-xs font-medium text-muted-foreground">
-                Time distribution
-              </span>
-              <TimeComposition spans={spans} totalMs={trace.durationMs} />
-            </div>
-          )}
-
-          {/* Renders only when the spend splits across 2+ models. */}
-          <CostComposition
-            spans={spans}
-            className="border-b border-border/40 py-5 px-5"
-          />
-
-          {trace.scores.length > 0 && (
-            <div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
-              <span className="text-xs font-medium text-muted-foreground px-2">
-                Evals
-              </span>
-              <div className="flex flex-col">
-                {trace.scores.map((s) => (
-                  <ScoreRow
-                    key={s.scoreId}
-                    score={s}
-                    meta={evalMeta.get(s.evalId)}
-                    presetName={presetName}
-                  />
-                ))}
               </div>
-            </div>
-          )}
 
-          {root?.toolCatalog && (
-            <ToolsAvailable
-              catalog={root.toolCatalog}
-              className="border-b border-border/40 px-5 py-5"
-            />
-          )}
+              {trace.durationMs > 0 && (
+                <div className="flex flex-col gap-2 border-b border-border/40 py-5 px-5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Time distribution
+                  </span>
+                  <TimeComposition spans={spans} totalMs={trace.durationMs} />
+                </div>
+              )}
 
-          {root?.input && (
-            <Transcript
-              label="Input"
-              value={root.input}
-              className="border-b border-border/40 px-5 py-5"
-            />
-          )}
-          {root?.output && (
-            <Transcript
-              label="Output"
-              value={root.output}
-              className="px-5 py-5"
-            />
-          )}
+              {/* Renders only when the spend splits across 2+ models. */}
+              <CostComposition
+                spans={spans}
+                className="border-b border-border/40 py-5 px-5"
+              />
+
+              {trace.scores.length > 0 && (
+                <div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
+                  <span className="text-xs font-medium text-muted-foreground px-2">
+                    Evals
+                  </span>
+                  <div className="flex flex-col">
+                    {trace.scores.map((s) => (
+                      <ScoreRow
+                        key={s.scoreId}
+                        score={s}
+                        meta={evalMeta.get(s.evalId)}
+                        presetName={presetName}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {root?.toolCatalog && (
+                <ToolsAvailable
+                  catalog={root.toolCatalog}
+                  className="border-b border-border/40 px-5 py-5"
+                />
+              )}
+
+              {root?.input && (
+                <Transcript
+                  label="Input"
+                  value={root.input}
+                  className="border-b border-border/40 px-5 py-5"
+                />
+              )}
+              {root?.output && (
+                <Transcript
+                  label="Output"
+                  value={root.output}
+                  className="px-5 py-5"
+                />
+              )}
             </ScrollFade>
           </TabsContent>
           <TabsContent value="raw" className="flex min-h-0 flex-1 flex-col">
             <ScrollFade
               containerClassName="flex min-h-0 flex-1 flex-col"
-              className="flex min-h-0 flex-1 flex-col gap-4 py-5"
+              className="flex min-h-0 flex-1 flex-col gap-4 py-5 pt-0"
             >
               <Payload
                 label="Trace"
                 value={JSON.stringify(trace)}
-                className="border-b border-border/40 px-5 py-5"
+                className="border-b border-border/40 px-5 py-5 pt-4"
               />
               {root?.input && (
                 <Payload
@@ -2166,24 +2169,31 @@ function Payload({
   const html = useShikiHtml(formatted, isJson ? "json" : "typescript");
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <CopyButton value={formatted} title={`Copy ${label.toLowerCase()}`} />
-      </div>
-      {html ? (
-        // Shiki sets the pre's background via an inline style; `bg-muted!`
-        // overrides it (an !important class beats a non-important inline style)
-        // so the block matches the panel's other muted surfaces.
-        <div
-          className="max-h-80 overflow-auto rounded-md text-xs [&_pre]:m-0 [&_pre]:bg-muted! [&_pre]:p-3 [&_pre]:whitespace-pre-wrap [&_pre]:wrap-break-word"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted Shiki output
-          dangerouslySetInnerHTML={{ __html: html }}
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {/* The copy button floats inside the block's top-right corner — pinned
+          to this wrapper, not the scroll content, so it stays put while the
+          payload scrolls under it. bg-muted keeps it legible over code. */}
+      <div className="relative">
+        <CopyButton
+          value={formatted}
+          title={`Copy ${label.toLowerCase()}`}
+          className="absolute top-1.5 right-1.5 z-10 bg-muted"
         />
-      ) : (
-        <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap wrap-break-word">
-          {formatted}
-        </pre>
-      )}
+        {html ? (
+          // Shiki sets the pre's background via an inline style; `bg-muted!`
+          // overrides it (an !important class beats a non-important inline style)
+          // so the block matches the panel's other muted surfaces.
+          <div
+            className="max-h-80 overflow-auto rounded-md text-xs [&_pre]:m-0 [&_pre]:bg-muted! [&_pre]:p-3 [&_pre]:whitespace-pre-wrap [&_pre]:wrap-break-word"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted Shiki output
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        ) : (
+          <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap wrap-break-word">
+            {formatted}
+          </pre>
+        )}
+      </div>
     </div>
   );
 }
