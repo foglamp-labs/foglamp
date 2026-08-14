@@ -815,28 +815,28 @@ function SessionChip({
   const link = (t: { traceId: string } | null) =>
     t ? `/traces/${encodeURIComponent(t.traceId)}` : null;
   return (
-    <span className="flex h-8 max-w-xs items-center rounded-full bg-background text-sm shadow-(--custom-outline-shadow) dark:bg-card">
+    <span className="flex h-8 max-w-sm items-center rounded-full bg-background text-sm shadow-(--custom-outline-shadow) dark:bg-card">
       <Link
         // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
         href={`/sessions/${encodeURIComponent(sessionId)}` as any}
-        className="flex h-full min-w-0 items-center gap-[5.5px] rounded-l-full pl-2.5 pr-2 outline-none transition-colors hover:bg-muted focus-visible:ring-[1.5px] focus-visible:ring-ring/50"
+        className="flex h-full min-w-0 items-center gap-[5.5px] rounded-full pl-2.5 pr-2 outline-none transition-colors hover:bg-muted focus-visible:ring-[1.5px] focus-visible:ring-ring/50"
       >
         <IconMessage2Filled className="size-3.5 shrink-0 text-sky-500" />
         <span className="truncate">{sessionId}</span>
         <IconArrowUpRight className="-ml-0.5 mt-px size-3.5 shrink-0 text-muted-foreground" />
       </Link>
-      <span className="h-4 w-px shrink-0 bg-border" />
+      <span className="h-4 w-px shrink-0 bg-border mx-1" />
       <TurnNavSegment
         href={link(prev)}
         label="Previous turn"
         icon={IconChevronLeft}
-        className="pl-2 pr-1"
+        className="rounded-full p-2"
       />
       <TurnNavSegment
         href={link(next)}
         label="Next turn"
         icon={IconChevronRight}
-        className="rounded-r-full pl-1 pr-2"
+        className="rounded-full p-2"
       />
     </span>
   );
@@ -1313,7 +1313,7 @@ function DetailPanel({
   subtreeStats: Map<string, SubtreeStats>;
   rank: TraceRank | null;
   /** True when the waterfall outgrows the viewport — the page scrolls anyway,
-   * so the sheet may take more height (-8rem instead of -14rem). */
+   * so the sheet may take more height (-6rem instead of -14rem). */
   tall: boolean;
 }) {
   // Input of the LLM call that started closest before the selected one — the
@@ -1365,7 +1365,7 @@ function DetailPanel({
 
   return (
     <aside
-      className="group/panel sticky top-0 shrink-0 self-start"
+      className="group/panel sticky top-4 shrink-0 self-start"
       style={{ width }}
     >
       {/* Resize handle on the panel's left edge. Pointer capture keeps the
@@ -1479,14 +1479,12 @@ function TraceDetail({
   }, [spans]);
   // Short traces size the sheet so the page never scrolls (-14rem accounts for
   // the chrome above + below it); once the waterfall outgrows the viewport the
-  // page scrolls anyway, so the sheet takes the extra room (-8rem).
+  // page scrolls anyway, so the sheet takes the extra room (-6rem).
   return (
     <Card
       className={cn(
-        tall
-          ? "max-h-[calc(100svh-8rem)]"
-          : "max-h-[calc(100svh-14rem)]",
-        "gap-0 py-0",
+        tall ? "max-h-[calc(100svh-6rem)]" : "max-h-[calc(100svh-14rem)]",
+        "gap-0 py-0"
       )}
     >
       <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
@@ -1756,10 +1754,8 @@ function SpanDetail({
   return (
     <Card
       className={cn(
-        tall
-          ? "max-h-[calc(100svh-8rem)]"
-          : "max-h-[calc(100svh-14rem)]",
-        "gap-0 py-0",
+        tall ? "max-h-[calc(100svh-6rem)]" : "max-h-[calc(100svh-14rem)]",
+        "gap-0 py-0"
       )}
     >
       <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
