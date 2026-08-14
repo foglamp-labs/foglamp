@@ -715,7 +715,7 @@ function CostComposition({
   if (parts.length < 2 || total <= 0) return null;
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <span className="text-xs font-medium text-muted-foreground">
+      <span className="text-xs text-muted-foreground">
         Cost distribution
       </span>
       <div className="flex flex-col gap-1.5">
@@ -1528,7 +1528,7 @@ function TraceDetail({
 
               {trace.durationMs > 0 && (
                 <div className="flex flex-col gap-2 border-b border-border/40 py-5 px-5">
-                  <span className="text-xs font-medium text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     Time distribution
                   </span>
                   <TimeComposition spans={spans} totalMs={trace.durationMs} />
