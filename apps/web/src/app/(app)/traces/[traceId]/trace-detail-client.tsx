@@ -1085,7 +1085,7 @@ function spanFields(
       add("Cost", formatCost(span.totalCost));
       add(
         "Tokens",
-        <span className="flex flex-col gap-1.5">
+        <span className="flex flex-col gap-2">
           <span>
             {formatTokens(span.inputTokens)} in ·{" "}
             {formatTokens(span.outputTokens)} out
@@ -1100,7 +1100,7 @@ function spanFields(
       if (span.ttftMs !== null) {
         add(
           "TTFT",
-          <span className="flex flex-col gap-1.5">
+          <span className="flex flex-col gap-2">
             {span.reasoningDurationMs != null &&
             span.reasoningDurationMs > 0 ? (
               // Reasoning models: show how much of the wait was thinking.
