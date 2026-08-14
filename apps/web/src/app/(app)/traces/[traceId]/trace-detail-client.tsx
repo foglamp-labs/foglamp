@@ -1085,7 +1085,7 @@ function spanFields(
       add("Cost", formatCost(span.totalCost));
       add(
         "Tokens",
-        <span className="flex flex-col gap-1">
+        <span className="flex flex-col gap-1.5">
           <span>
             {formatTokens(span.inputTokens)} in ·{" "}
             {formatTokens(span.outputTokens)} out
@@ -1100,7 +1100,7 @@ function spanFields(
       if (span.ttftMs !== null) {
         add(
           "TTFT",
-          <span className="flex flex-col gap-1">
+          <span className="flex flex-col gap-1.5">
             {span.reasoningDurationMs != null &&
             span.reasoningDurationMs > 0 ? (
               // Reasoning models: show how much of the wait was thinking.
@@ -1716,19 +1716,6 @@ function SpanDetail({
   tall: boolean;
 }) {
   const metaEntries = Object.entries(span.metadata ?? {});
-  // Metadata renders as monospace TOC lines (`key....value`); precomputing the
-  // dot runs here lets the copy button copy the exact block on screen.
-  const metaLines = useMemo(() => {
-    if (metaEntries.length === 0) return [];
-    const width =
-      Math.max(...metaEntries.map(([k, v]) => k.length + v.length)) + 4;
-    return metaEntries.map(([k, v]) => ({
-      key: k,
-      dots: ".".repeat(Math.max(2, width - k.length - v.length)),
-      value: v,
-    }));
-    // biome-ignore lint/correctness/useExhaustiveDependencies: metaEntries is derived from span.metadata
-  }, [span.metadata]);
   // Per-dimension cost components that actually carry a value (skip null/0), so
   // the breakdown shows only what applies to this span — e.g. cache costs only
   // appear when caching was used. These sum to span.totalCost.
@@ -2025,15 +2012,15 @@ function SpanDetail({
                 </div>
               )}
 
-              {metaLines.length > 0 && (
+              {metaEntries.length > 0 && (
                 <div className="flex flex-col gap-2 border-b border-border/40 px-5 py-5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
                       Metadata
                     </span>
                     <CopyButton
-                      value={metaLines
-                        .map((l) => l.key + l.dots + l.value)
+                      value={metaEntries
+                        .map(([k, v]) => `${k}: ${v}`)
                         .join("\n")}
                       title="Copy metadata"
                     />
@@ -2041,19 +2028,19 @@ function SpanDetail({
                   {/* TOC-style monospace lines. The dot leader is real "."
                       text (selectable), overflowing its flex slot so every
                       value lands flush against the sheet's right edge; the
-                      copy button copies the fixed-width metaLines version
-                      instead, so pasted output isn't full of clipped dots. */}
-                  <div className="flex flex-col gap-1 font-mono text-xs">
-                    {metaLines.map((l) => (
-                      <div key={l.key} className="flex items-baseline">
+                      copy button copies plain `key: value` lines instead, so
+                      pasted output isn't full of clipped dots. */}
+                  <div className="flex flex-col gap-1 font-mono text-xs pr-1">
+                    {metaEntries.map(([k, v]) => (
+                      <div key={k} className="flex items-baseline">
                         <span className="shrink-0 text-muted-foreground">
-                          {l.key}
+                          {k}
                         </span>
-                        <span className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-muted-foreground/50">
+                        <span className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-muted-foreground/20">
                           {".".repeat(300)}
                         </span>
-                        <span className="min-w-0 truncate" title={l.value}>
-                          {l.value}
+                        <span className="min-w-0 truncate" title={v}>
+                          {v}
                         </span>
                       </div>
                     ))}
