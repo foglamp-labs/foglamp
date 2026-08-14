@@ -7,7 +7,10 @@ import {
 	IconChevronDown,
 	IconChevronRight,
 	IconPaperclip,
+	IconSettings,
+	IconSparkles,
 	IconTool,
+	IconUser,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
@@ -195,10 +198,18 @@ function PartView({ part }: { part: Part }) {
 // 420px-wide trace inspector.
 const CLAMP_HEIGHT = 240;
 
+const ROLE_ICONS: Record<string, typeof IconUser> = {
+	user: IconUser,
+	assistant: IconSparkles,
+	system: IconSettings,
+	tool: IconTool,
+};
+
 function MessageBlock({ message }: { message: Message }) {
 	// System prompts are long, static, and almost never what you opened the panel
 	// for — start them folded.
 	const [expanded, setExpanded] = useState(message.role !== "system");
+	const RoleIcon = message.role ? ROLE_ICONS[message.role] : undefined;
 	const body = (
 		<div className="flex flex-col gap-1.5">
 			{message.parts.map((part, i) => (
@@ -213,7 +224,7 @@ function MessageBlock({ message }: { message: Message }) {
 				<button
 					type="button"
 					onClick={() => setExpanded((e) => !e)}
-					className="flex cursor-pointer items-center gap-1 self-start text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70 transition-colors hover:text-foreground"
+					className="flex cursor-pointer items-center gap-1 self-start text-xs font-medium text-muted-foreground/70 transition-colors hover:text-foreground"
 				>
 					<IconChevronRight
 						className={cn(
@@ -221,7 +232,8 @@ function MessageBlock({ message }: { message: Message }) {
 							expanded && "rotate-90",
 						)}
 					/>
-					{message.role}
+					{RoleIcon && <RoleIcon className="size-3 shrink-0" />}
+					{message.role.charAt(0).toUpperCase() + message.role.slice(1)}
 				</button>
 			)}
 			{expanded && <ClampedBody>{body}</ClampedBody>}
