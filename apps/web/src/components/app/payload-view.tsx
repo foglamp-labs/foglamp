@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@foglamp/ui/components/button";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
 	IconAlertTriangle,
@@ -252,13 +253,15 @@ function ClampedBody({ children }: { children: React.ReactNode }) {
 				<div ref={setInner}>{children}</div>
 			</div>
 			{clamped && (
-				<button
+				<Button
 					type="button"
+					variant="ghost"
+					size="sm"
+					className="w-full text-muted-foreground hover:text-foreground"
 					onClick={() => setFull((f) => !f)}
-					className="cursor-pointer self-start text-xs text-muted-foreground transition-colors hover:text-foreground"
 				>
 					{full ? "Show less" : "Show more"}
-				</button>
+				</Button>
 			)}
 		</div>
 	);
