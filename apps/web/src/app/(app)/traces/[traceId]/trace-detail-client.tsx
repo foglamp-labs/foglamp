@@ -777,20 +777,31 @@ type TraceRank = {
   tokenPercentile: number | null;
 };
 
-/** A Field value with a "p91 · this agent" hint beside it — where this trace's
- * value falls among the same agent's traces over the last week. The hint is
- * purely additive: while the query is in flight, fails, or declines to answer
- * (no agent, too few traces, unpriced), the bare value renders alone. */
+/** A Field value with a percentile chip beside it — where this trace's value
+ * falls among the same agent's traces over the last week. Outliers only: a
+ * typical value (p25–p75) renders bare, high ones get an amber (p75+) or rose
+ * (p95+) chip, unusually low ones emerald. The tooltip carries the plain
+ * words. Purely additive: while the query is in flight, fails, or declines to
+ * answer (no agent, too few traces, unpriced), the bare value renders alone. */
 function rankedValue(value: React.ReactNode, percentile?: number | null) {
-  if (percentile == null) return value;
+  if (percentile == null || (percentile > 25 && percentile < 75)) return value;
+  const tone =
+    percentile >= 95
+      ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+      : percentile >= 75
+        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
   return (
     <span className="flex flex-wrap items-baseline gap-x-1.5">
       {value}
       <span
-        className="text-[11px] text-muted-foreground"
+        className={cn(
+          "rounded px-1 py-px text-[10px] font-medium tabular-nums",
+          tone
+        )}
         title={`Higher than ${percentile}% of this agent's traces this week`}
       >
-        p{percentile} · this agent
+        p{percentile}
       </span>
     </span>
   );
