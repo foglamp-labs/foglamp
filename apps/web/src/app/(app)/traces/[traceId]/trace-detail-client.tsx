@@ -412,14 +412,6 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
               <CopyButton value={traceId} title="Copy trace ID" />
             </span>
           }
-          actions={
-            sessionId && (
-              <TurnNav
-                prev={neighbors.data?.prev ?? null}
-                next={neighbors.data?.next ?? null}
-              />
-            )
-          }
         />
       </div>
 
@@ -452,12 +444,19 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
             />
           )}
           {ctx.sessionId && (
-            <ContextChip
-              href={`/sessions/${encodeURIComponent(ctx.sessionId)}`}
-              icon={IconMessage2Filled}
-              iconClassName="text-sky-500"
-              label={ctx.sessionId}
-            />
+            <>
+              <ContextChip
+                href={`/sessions/${encodeURIComponent(ctx.sessionId)}`}
+                icon={IconMessage2Filled}
+                iconClassName="text-sky-500"
+                label={ctx.sessionId}
+              />
+              {/* Walk the session's turns from right where its chip sits. */}
+              <TurnNav
+                prev={neighbors.data?.prev ?? null}
+                next={neighbors.data?.next ?? null}
+              />
+            </>
           )}
           {ctx.workflowName && (
             <ContextChip
@@ -764,31 +763,41 @@ function TurnNavButton({
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }) {
-  if (!href) {
-    return (
-      <Button
-        type="button"
-        size="icon-xs"
-        variant="ghost"
-        disabled
-        aria-label={label}
-        title={label}
-      >
-        <Icon className="size-4" />
-      </Button>
-    );
-  }
   return (
-    <Button
-      size="icon-xs"
-      variant="ghost"
-      aria-label={label}
-      title={label}
-      // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
-      render={<Link href={href as any} />}
-    >
-      <Icon className="size-4" />
-    </Button>
+    <TooltipProvider delay={150}>
+      <Tooltip>
+        {href ? (
+          <TooltipTrigger
+            render={
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                aria-label={label}
+                // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
+                render={<Link href={href as any} />}
+              >
+                <Icon className="size-4" />
+              </Button>
+            }
+          />
+        ) : (
+          // A disabled button swallows pointer events, so the tooltip anchors
+          // to a wrapping span instead.
+          <TooltipTrigger render={<span className="inline-flex" />}>
+            <Button
+              type="button"
+              size="icon-xs"
+              variant="ghost"
+              disabled
+              aria-label={label}
+            >
+              <Icon className="size-4" />
+            </Button>
+          </TooltipTrigger>
+        )}
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
