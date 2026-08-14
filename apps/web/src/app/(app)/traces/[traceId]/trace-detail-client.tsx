@@ -1049,7 +1049,7 @@ function spanFields(
     span.status === "ok" ? (
       <span className="flex items-center gap-1">
         <IconCircleCheckFilled className="size-3.5 shrink-0 text-emerald-500" />
-        OK
+        Ok
       </span>
     ) : (
       <span className="flex items-center gap-1">

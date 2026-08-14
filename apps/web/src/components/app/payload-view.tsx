@@ -4,6 +4,7 @@ import { Button } from "@foglamp/ui/components/button";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
 	IconAlertTriangle,
+	IconChevronDown,
 	IconChevronRight,
 	IconPaperclip,
 	IconTool,
@@ -255,11 +256,12 @@ function ClampedBody({ children }: { children: React.ReactNode }) {
 			{clamped && (
 				<Button
 					type="button"
-					variant="ghost"
+					variant="outline"
 					size="sm"
-					className="w-full text-muted-foreground hover:text-foreground"
+					className="mt-1 w-full text-muted-foreground hover:text-foreground"
 					onClick={() => setFull((f) => !f)}
 				>
+					<IconChevronDown className={cn("size-3.5", full && "rotate-180")} />
 					{full ? "Show less" : "Show more"}
 				</Button>
 			)}
