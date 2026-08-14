@@ -71,7 +71,11 @@ import {
 import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
 import { SpanTypeBadge } from "@/components/app/span-type";
-import { TraceTimeline, WHOLE_TRACE_ID } from "@/components/app/trace-timeline";
+import {
+  SpanIconChip,
+  TraceTimeline,
+  WHOLE_TRACE_ID,
+} from "@/components/app/trace-timeline";
 import { ModelLogo, formatModelName } from "@/components/model-logo";
 import {
   formatCost,
@@ -1273,7 +1277,7 @@ function TraceDetail({
   }, [spans]);
   return (
     <Card className="max-h-[calc(100svh-16rem)] gap-0 py-0 ">
-      <CardHeader className="flex shrink-0 items-center gap-2 border-b border-border/40 [.border-b]:pb-5 p-5 px-5">
+      <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
           <span className="flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle bg-primary/15 text-primary">
             <IconAffiliate className="size-3" />
@@ -1438,9 +1442,11 @@ function SpanDetail({
   }, [span.spanId]);
   return (
     <Card className="max-h-[calc(100svh-16rem)] gap-0 py-0 ">
-      <CardHeader className="flex shrink-0 flex-col items-stretch gap-3 border-b border-border/40 [.border-b]:pb-5 p-5 px-5">
+      <CardHeader className="flex shrink-0 flex-col items-stretch gap-3 p-5 px-5">
         <div className="flex items-center gap-2">
           <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
+            {/* Same identity chip as the span's waterfall row. */}
+            <SpanIconChip span={span} />
             <span className="truncate">{span.name}</span>
             <SpanTypeBadge type={span.spanType} className="shrink-0" />
           </CardTitle>

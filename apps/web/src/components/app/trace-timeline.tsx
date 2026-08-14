@@ -67,6 +67,49 @@ type GroupRow = {
 
 type Row = SpanRow | GroupRow;
 
+/** The identity chip for one span — the agent's per-name color+icon, the
+ * model's brand logo, or the generic span-type chip — shared by the waterfall
+ * rows and the span inspector header so a span looks the same in both. */
+export function SpanIconChip({
+  span,
+}: {
+  span: Pick<TraceSpan, "name" | "spanType" | "provider" | "modelId">;
+}) {
+  if (span.spanType === "agent") {
+    return (
+      <span
+        title={span.spanType}
+        className="flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle"
+        style={{ backgroundColor: `${agentColor(span.name)}26` }}
+      >
+        <AgentIcon name={span.name} className="size-3" />
+      </span>
+    );
+  }
+  if (span.spanType === "llm" && span.modelId) {
+    const modelColor = modelBrandColor(span.provider, span.modelId);
+    return (
+      <span
+        title={span.modelId ?? span.spanType}
+        className={cn(
+          "flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle",
+          !modelColor && "bg-muted"
+        )}
+        style={
+          modelColor ? { backgroundColor: `${modelColor}26` } : undefined
+        }
+      >
+        <ModelLogo
+          provider={span.provider}
+          modelId={span.modelId}
+          className="size-3"
+        />
+      </span>
+    );
+  }
+  return <SpanTypeChip type={span.spanType} />;
+}
+
 /** Below this, folding costs more than it saves — three rows of the same thing
  * is where a loop starts reading as noise. */
 const GROUP_MIN_RUN = 3;
@@ -356,12 +399,6 @@ export function TraceTimeline({
               // Agent spans take their reproducible per-name color, matching the
               // agent icon elsewhere, instead of the flat type palette.
               const accent = isAgent ? agentColor(span.name) : null;
-              // LLM spans show the model's brand logo (instead of the generic
-              // sparkles chip), tinted with the vendor's brand color.
-              const isLlm = span.spanType === "llm" && !!span.modelId;
-              const modelColor = isLlm
-                ? modelBrandColor(span.provider, span.modelId)
-                : null;
               // Waiting-for-first-token stretch: the bar up to TTFT renders
               // hatched, the solid fill starts where tokens start flowing.
               const ttftPct =
@@ -481,36 +518,7 @@ export function TraceTimeline({
                         )}
                       />
                     </span>
-                    {isAgent ? (
-                      <span
-                        title={span.spanType}
-                        className="flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle"
-                        style={{ backgroundColor: `${accent}26` }}
-                      >
-                        <AgentIcon name={span.name} className="size-3" />
-                      </span>
-                    ) : isLlm ? (
-                      <span
-                        title={span.modelId ?? span.spanType}
-                        className={cn(
-                          "flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle",
-                          !modelColor && "bg-muted"
-                        )}
-                        style={
-                          modelColor
-                            ? { backgroundColor: `${modelColor}26` }
-                            : undefined
-                        }
-                      >
-                        <ModelLogo
-                          provider={span.provider}
-                          modelId={span.modelId}
-                          className="size-3"
-                        />
-                      </span>
-                    ) : (
-                      <SpanTypeChip type={span.spanType} />
-                    )}
+                    <SpanIconChip span={span} />
                     <div className="flex min-w-0 flex-col gap-1">
                       {/* Single line — long tool names truncate (full name on
                           hover) instead of wrapping and stretching the row. */}
