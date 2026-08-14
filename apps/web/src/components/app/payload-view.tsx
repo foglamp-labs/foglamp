@@ -261,7 +261,11 @@ function ClampedBody({ children }: { children: React.ReactNode }) {
 					className="mt-3 w-full text-muted-foreground hover:text-foreground"
 					onClick={() => setFull((f) => !f)}
 				>
-					<IconChevronDown className={cn("size-3.5", full && "rotate-180")} />
+					{/* text-current opts out of the Button variant's default icon
+					    tint, which would otherwise disagree with the label color. */}
+					<IconChevronDown
+						className={cn("size-3.5 text-current", full && "rotate-180")}
+					/>
 					{full ? "Show less" : "Show more"}
 				</Button>
 			)}
