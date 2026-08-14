@@ -1218,14 +1218,14 @@ function TokenSplitBar({
       {cachedPart > 0 && (
         <span
           title={`Cached input: ${formatTokens(cachedPart)}`}
-          className="h-full bg-sky-500/35"
+          className="h-full bg-fuchsia-500/35"
           style={{ width: pct(cachedPart) }}
         />
       )}
       {fresh > 0 && (
         <span
           title={`Input: ${formatTokens(fresh)}`}
-          className="h-full bg-sky-500"
+          className="h-full bg-fuchsia-500"
           style={{ width: pct(fresh) }}
         />
       )}
@@ -1242,9 +1242,9 @@ function TokenSplitBar({
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.75">
+    <div className="flex min-w-0 flex-col gap-1">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm tabular-nums">{value}</span>
+      <span className="text-[13px] tabular-nums">{value}</span>
     </div>
   );
 }
@@ -1731,8 +1731,8 @@ function SpanDetail({
     { label: "Image", value: span.imageCost, color: "#64748b" },
     { label: "Web search", value: span.webSearchCost, color: "#94a3b8" },
     { label: "Request", value: span.requestCost, color: "#475569" },
-  ].filter((p): p is (typeof p & { value: number }) =>
-    p.value != null && p.value > 0
+  ].filter(
+    (p): p is typeof p & { value: number } => p.value != null && p.value > 0
   );
   const costTotal = costParts.reduce((acc, p) => acc + p.value, 0);
   // Usage counters beyond the headline in/out tokens; shown only when present.
