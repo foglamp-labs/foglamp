@@ -524,7 +524,7 @@ export function TraceTimeline({
                       }}
                       title={isCollapsed ? "Expand" : "Collapse"}
                       className={cn(
-                        "mt-0.5 flex size-3.5 shrink-0 items-center justify-center bg-lime-500",
+                        "flex size-3.5 shrink-0 items-center justify-center",
                         hasChildren
                           ? "cursor-pointer text-muted-foreground/50 hover:text-foreground"
                           : "pointer-events-none opacity-0"
@@ -752,7 +752,7 @@ function GroupedRow({
         className="flex min-w-0 items-center gap-2 pr-3"
         style={{ paddingLeft: (depth + 1) * 14 + 4 }}
       >
-        <span className="mt-0.5 flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/50 bg-lime-500">
+        <span className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/50">
           <IconChevronRight
             className={cn(
               "size-3 transition-transform",
