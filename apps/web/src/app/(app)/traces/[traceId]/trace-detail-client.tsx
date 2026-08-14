@@ -1800,12 +1800,14 @@ function TraceDetail({
                 issues strip already surfaces errors. */}
               </div>
 
-              {trace.durationMs > 0 && (
+              {/* The per-category sibling of the per-model strip below — the
+                  same breakdown an llm span shows, summed across the trace. */}
+              {usage.costParts.length > 1 && (
                 <div className="flex flex-col gap-2 border-b border-border/40 py-5 px-5">
                   <span className="text-xs text-muted-foreground">
-                    Time distribution
+                    Cost breakdown
                   </span>
-                  <TimeComposition spans={spans} totalMs={trace.durationMs} />
+                  <CostStrip parts={usage.costParts} />
                 </div>
               )}
 
@@ -1815,14 +1817,12 @@ function TraceDetail({
                 className="border-b border-border/40 py-5 px-5"
               />
 
-              {/* The per-category sibling of the per-model strip above — the
-                  same breakdown an llm span shows, summed across the trace. */}
-              {usage.costParts.length > 1 && (
+              {trace.durationMs > 0 && (
                 <div className="flex flex-col gap-2 border-b border-border/40 py-5 px-5">
                   <span className="text-xs text-muted-foreground">
-                    Cost breakdown
+                    Time distribution
                   </span>
-                  <CostStrip parts={usage.costParts} />
+                  <TimeComposition spans={spans} totalMs={trace.durationMs} />
                 </div>
               )}
 

@@ -149,7 +149,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
       {(data?.customer || data?.agentName) && (
         <div
           className={cn(
-            "mt-1 flex flex-wrap items-center gap-2 text-xs px-8",
+            "mt-1 flex flex-wrap items-center gap-2 text-xs px-7",
             entrance && !skeletonShown && "page-fade-in"
           )}
         >
