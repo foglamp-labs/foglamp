@@ -995,7 +995,7 @@ function spanFields(
         );
       }
       add("Model", model);
-      add("Provider", span.provider);
+      // No Provider field — the model logo/name already carries it.
       add(
         "Tokens",
         `${formatTokens(span.inputTokens)} in · ${formatTokens(span.outputTokens)} out`
@@ -1257,7 +1257,7 @@ function TraceDetail({
     <Card className="max-h-[calc(100svh-20rem)] gap-0 py-0 ">
       <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="flex size-4.5 shrink-0 items-center shadow-(--custom-shadow) justify-center rounded-md corner-squircle bg-primary/15 text-primary">
+          <span className="flex size-4.5 shrink-0 items-center shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)] dark:shadow-(--custom-shadow) justify-center rounded-md corner-squircle bg-primary/15 text-primary">
             <IconAffiliate className="size-3" />
           </span>
           <span className="truncate">Whole trace</span>
@@ -1276,17 +1276,8 @@ function TraceDetail({
             />
             <Field label="Cost" value={formatCost(trace.cost)} />
             <Field label="Tokens" value={formatTokens(trace.tokens)} />
-            <Field label="Spans" value={formatCount(trace.spanCount)} />
-            <Field
-              label="Errors"
-              value={
-                <span
-                  className={cn(trace.errorCount > 0 && "text-destructive")}
-                >
-                  {formatCount(trace.errorCount)}
-                </span>
-              }
-            />
+            {/* No Spans/Errors counters — the waterfall shows the spans and the
+                issues strip already surfaces errors. */}
           </div>
 
           {trace.durationMs > 0 && (
