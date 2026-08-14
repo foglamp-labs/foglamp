@@ -569,7 +569,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 
           <div
             className={cn(
-              "flex items-start gap-6 px-8",
+              "flex items-start gap-6 px-8 mt-2",
               entrance && !skeletonShown && "page-fade-in"
             )}
           >

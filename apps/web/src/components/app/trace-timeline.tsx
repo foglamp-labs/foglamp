@@ -95,9 +95,7 @@ export function SpanIconChip({
           "flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle",
           !modelColor && "bg-muted"
         )}
-        style={
-          modelColor ? { backgroundColor: `${modelColor}26` } : undefined
-        }
+        style={modelColor ? { backgroundColor: `${modelColor}26` } : undefined}
       >
         <ModelLogo
           provider={span.provider}
@@ -357,8 +355,7 @@ export function TraceTimeline({
                 </span>
                 {(traceTotals.cost != null || traceTotals.tokens > 0) && (
                   <span className="whitespace-nowrap text-[10px] text-muted-foreground tabular-nums">
-                    {traceTotals.cost != null &&
-                      formatCost(traceTotals.cost, 4)}
+                    {traceTotals.cost != null && formatCost(traceTotals.cost)}
                     {traceTotals.cost != null &&
                       traceTotals.tokens > 0 &&
                       " · "}

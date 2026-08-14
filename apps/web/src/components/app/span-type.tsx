@@ -88,7 +88,9 @@ export function SpanTypeChip({
         className
       )}
     >
-      <Icon className="size-3" />
+      {/* Tabler ships no IconToolFilled; filling the outline's closed path
+          gets the solid look the other chip icons have. */}
+      <Icon className={cn("size-3", type === "tool" && "fill-current")} />
     </span>
   );
 }
