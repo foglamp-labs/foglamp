@@ -1716,6 +1716,19 @@ function SpanDetail({
   tall: boolean;
 }) {
   const metaEntries = Object.entries(span.metadata ?? {});
+  // Metadata renders as monospace TOC lines (`key....value`); precomputing the
+  // dot runs here lets the copy button copy the exact block on screen.
+  const metaLines = useMemo(() => {
+    if (metaEntries.length === 0) return [];
+    const width =
+      Math.max(...metaEntries.map(([k, v]) => k.length + v.length)) + 4;
+    return metaEntries.map(([k, v]) => ({
+      key: k,
+      dots: ".".repeat(Math.max(2, width - k.length - v.length)),
+      value: v,
+    }));
+    // biome-ignore lint/correctness/useExhaustiveDependencies: metaEntries is derived from span.metadata
+  }, [span.metadata]);
   // Per-dimension cost components that actually carry a value (skip null/0), so
   // the breakdown shows only what applies to this span — e.g. cache costs only
   // appear when caching was used. These sum to span.totalCost.
@@ -2012,33 +2025,33 @@ function SpanDetail({
                 </div>
               )}
 
-              {metaEntries.length > 0 && (
+              {metaLines.length > 0 && (
                 <div className="flex flex-col gap-2 border-b border-border/40 px-5 py-5">
-                  <span className="text-xs text-muted-foreground">
-                    Metadata
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Metadata
+                    </span>
+                    <CopyButton
+                      value={metaLines
+                        .map((l) => l.key + l.dots + l.value)
+                        .join("\n")}
+                      title="Copy metadata"
+                    />
+                  </div>
                   {/* Real text, TOC-style: monospace lines padded with "."
                       so the values right-align. Every character (dots
                       included) is selectable, and a copy pastes as the
                       aligned block you see. */}
                   <div className="flex flex-col gap-1 overflow-x-auto font-mono text-xs whitespace-pre">
-                    {(() => {
-                      const width =
-                        Math.max(
-                          ...metaEntries.map(([k, v]) => k.length + v.length)
-                        ) + 4;
-                      return metaEntries.map(([k, v]) => (
-                        <div key={k}>
-                          <span className="text-muted-foreground">{k}</span>
-                          <span className="text-muted-foreground/50">
-                            {".".repeat(
-                              Math.max(2, width - k.length - v.length)
-                            )}
-                          </span>
-                          {v}
-                        </div>
-                      ));
-                    })()}
+                    {metaLines.map((l) => (
+                      <div key={l.key}>
+                        <span className="text-muted-foreground">{l.key}</span>
+                        <span className="text-muted-foreground/50">
+                          {l.dots}
+                        </span>
+                        {l.value}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
