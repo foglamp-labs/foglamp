@@ -171,6 +171,27 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
   // never painted first (see useSkeletonShown).
   const skeletonShown = useSkeletonShown(showSkeleton);
 
+  // Whether the waterfall column alone outgrows the viewport. Short traces
+  // keep the sheet capped so the page never scrolls just because of the
+  // inspector; tall traces scroll anyway, so the sheet may use more height.
+  const [timelineEl, setTimelineEl] = useState<HTMLDivElement | null>(null);
+  const [tallTrace, setTallTrace] = useState(false);
+  useEffect(() => {
+    if (!timelineEl) return;
+    // `globalThis`, not `window` — a local `window` (the timeline's time
+    // window) shadows the global below.
+    const check = () =>
+      setTallTrace(timelineEl.offsetHeight > globalThis.innerHeight - 14 * 16);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(timelineEl);
+    globalThis.addEventListener("resize", check);
+    return () => {
+      observer.disconnect();
+      globalThis.removeEventListener("resize", check);
+    };
+  }, [timelineEl]);
+
   const spans = detail.data?.spans ?? [];
   const ordered = useMemo(() => orderSpans(spans), [spans]);
   const window = useMemo(() => computeWindow(spans), [spans]);
@@ -516,7 +537,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
               entrance && !skeletonShown && "page-fade-in"
             )}
           >
-            <div className="min-w-0 flex-1">
+            <div ref={setTimelineEl} className="min-w-0 flex-1">
               <TraceTimeline
                 spans={spans}
                 selected={selected}
@@ -538,6 +559,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
               onStep={stepSelection}
               subtreeStats={subtreeStats}
               rank={rank}
+              tall={tallTrace}
             />
           </div>
         </>
@@ -1255,6 +1277,7 @@ function DetailPanel({
   onStep,
   subtreeStats,
   rank,
+  tall,
 }: {
   span: Span | null;
   scores: TraceScore[];
@@ -1270,6 +1293,9 @@ function DetailPanel({
   onStep: (delta: number) => void;
   subtreeStats: Map<string, SubtreeStats>;
   rank: TraceRank | null;
+  /** True when the waterfall outgrows the viewport — the page scrolls anyway,
+   * so the sheet may take more height (-8rem instead of -14rem). */
+  tall: boolean;
 }) {
   // Input of the LLM call that started closest before the selected one — the
   // baseline the Input transcript diffs against. Any llm span in the trace
@@ -1373,6 +1399,7 @@ function DetailPanel({
           presetName={presetName}
           onStep={onStep}
           rank={rank}
+          tall={tall}
         />
       ) : span ? (
         <SpanDetail
@@ -1385,6 +1412,7 @@ function DetailPanel({
           onStep={onStep}
           subtree={subtreeStats.get(span.spanId)}
           previousInput={previousInput}
+          tall={tall}
         />
       ) : null}
     </aside>
@@ -1406,6 +1434,7 @@ function TraceDetail({
   presetName,
   onStep,
   rank,
+  tall,
 }: {
   trace: TraceSummary;
   spans: Span[];
@@ -1413,6 +1442,7 @@ function TraceDetail({
   presetName: Map<string, string>;
   onStep: (delta: number) => void;
   rank: TraceRank | null;
+  tall: boolean;
 }) {
   // Same Overview/Raw split as SpanDetail — the whole-trace view is curated,
   // Raw is the verbatim summary + root payloads.
@@ -1428,8 +1458,18 @@ function TraceDetail({
       .sort((a, b) => toMs(a.startTime) - toMs(b.startTime));
     return tops.find((s) => s.spanType === "agent") ?? tops[0] ?? null;
   }, [spans]);
+  // Short traces size the sheet so the page never scrolls (-14rem accounts for
+  // the chrome above + below it); once the waterfall outgrows the viewport the
+  // page scrolls anyway, so the sheet takes the extra room (-8rem).
   return (
-    <Card className="max-h-[calc(100svh-14rem)] gap-0 py-0 ">
+    <Card
+      className={cn(
+        tall
+          ? "max-h-[calc(100svh-8rem)]"
+          : "max-h-[calc(100svh-14rem)]",
+        "gap-0 py-0",
+      )}
+    >
       <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
           <span className="flex size-4.5 shrink-0 items-center shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)] dark:shadow-(--custom-shadow) justify-center rounded-md corner-squircle bg-primary/15 text-primary">
@@ -1622,6 +1662,7 @@ function SpanDetail({
   onStep,
   subtree,
   previousInput,
+  tall,
 }: {
   span: Span;
   scores: TraceScore[];
@@ -1634,6 +1675,7 @@ function SpanDetail({
   /** Input of the trace's previous LLM call — folds the unchanged message
    * prefix out of this span's Input transcript. Null for the first call. */
   previousInput: string | null;
+  tall: boolean;
 }) {
   const metaEntries = Object.entries(span.metadata ?? {});
   // Per-dimension cost components that actually carry a value (skip null/0), so
@@ -1690,8 +1732,17 @@ function SpanDetail({
   useEffect(() => {
     setTab("overview");
   }, [span.spanId]);
+  // Same sheet-height rule as TraceDetail: fit the page when the trace is
+  // short, take the extra room once the waterfall makes the page scroll.
   return (
-    <Card className="max-h-[calc(100svh-14rem)] gap-0 py-0 ">
+    <Card
+      className={cn(
+        tall
+          ? "max-h-[calc(100svh-8rem)]"
+          : "max-h-[calc(100svh-14rem)]",
+        "gap-0 py-0",
+      )}
+    >
       <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
           {/* Same identity chip as the span's waterfall row — which also
