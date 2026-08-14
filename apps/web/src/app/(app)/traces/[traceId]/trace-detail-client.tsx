@@ -70,7 +70,6 @@ import {
 } from "@/components/app/page-parts";
 import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
-import { SpanTypeBadge } from "@/components/app/span-type";
 import {
   SpanIconChip,
   TraceTimeline,
@@ -1445,10 +1444,10 @@ function SpanDetail({
       <CardHeader className="flex shrink-0 flex-col items-stretch gap-3 p-5 px-5">
         <div className="flex items-center gap-2">
           <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
-            {/* Same identity chip as the span's waterfall row. */}
+            {/* Same identity chip as the span's waterfall row — which also
+                makes a type badge redundant. */}
             <SpanIconChip span={span} />
             <span className="truncate">{span.name}</span>
-            <SpanTypeBadge type={span.spanType} className="shrink-0" />
           </CardTitle>
         </div>
         <div className="flex items-center gap-1">
