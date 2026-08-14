@@ -70,7 +70,11 @@ import {
   TraceTimeline,
   WHOLE_TRACE_ID,
 } from "@/components/app/trace-timeline";
-import { ModelLogo, formatModelName } from "@/components/model-logo";
+import {
+  ModelLogo,
+  formatModelName,
+  modelBrandColor,
+} from "@/components/model-logo";
 import {
   formatCost,
   formatCount,
@@ -699,6 +703,102 @@ function TimeComposition({
   );
 }
 
+// Fallback segment colors for CostComposition, used when a model has no brand
+// color (or two models share one) — the timeline palette, as hex so segments
+// and brand colors mix in the same inline style.
+const COST_FALLBACK_COLORS = [
+  "#8b5cf6", // violet-500
+  "#3b82f6", // blue-500
+  "#10b981", // emerald-500
+  "#f59e0b", // amber-500
+  "#64748b", // slate-500
+];
+
+/**
+ * The money sibling of {@link TimeComposition}: one strip splitting the trace's
+ * spend by model, priciest first. Plain proportions — unlike time, cost has no
+ * overlap problem — so the strip always sums to the trace total. Brand colors
+ * echo the model chips; renders nothing unless the cost actually splits across
+ * two or more buckets (a single full-width segment says nothing).
+ */
+function CostComposition({
+  spans,
+  className,
+}: {
+  spans: Span[];
+  className?: string;
+}) {
+  const parts = useMemo(() => {
+    const byKey = new Map<
+      string,
+      { label: string; cost: number; brand: string | null }
+    >();
+    for (const s of spans) {
+      if (s.totalCost == null || s.totalCost <= 0) continue;
+      const key = s.modelId ?? `type:${s.spanType}`;
+      const cur = byKey.get(key);
+      if (cur) {
+        cur.cost += s.totalCost;
+      } else {
+        byKey.set(key, {
+          label: s.modelId ? formatModelName(s.modelId) : s.spanType,
+          cost: s.totalCost,
+          brand: s.modelId ? modelBrandColor(s.provider, s.modelId) : null,
+        });
+      }
+    }
+    const sorted = [...byKey.values()].sort((a, b) => b.cost - a.cost);
+    // Two models of one provider share a brand color, which would merge their
+    // adjacent segments — later duplicates take fallback shades instead.
+    const used = new Set<string>();
+    let fi = 0;
+    return sorted.map((p) => {
+      let color = p.brand;
+      if (!color || used.has(color)) {
+        color = COST_FALLBACK_COLORS[fi % COST_FALLBACK_COLORS.length];
+        fi += 1;
+      }
+      used.add(color);
+      return { label: p.label, cost: p.cost, color };
+    });
+  }, [spans]);
+  const total = parts.reduce((acc, p) => acc + p.cost, 0);
+  if (parts.length < 2 || total <= 0) return null;
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      <span className="text-xs font-medium text-muted-foreground">
+        Cost distribution
+      </span>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex h-2 w-full gap-px">
+          {parts.map((p) => (
+            <div
+              key={p.label}
+              title={`${p.label}: ${formatCost(p.cost)}`}
+              className="h-full rounded-xs"
+              style={{
+                width: `${(p.cost / total) * 100}%`,
+                backgroundColor: p.color,
+              }}
+            />
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-muted-foreground tabular-nums">
+          {parts.map((p) => (
+            <span key={p.label} className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2 rounded-xs"
+                style={{ backgroundColor: p.color }}
+              />
+              {p.label} {formatCost(p.cost)}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** "p91 · this agent" — where this trace's value falls among the same agent's
  * traces over the last week. The hint is purely additive: while the query is in
  * flight, fails, or declines to answer (no agent, too few traces, unpriced),
@@ -981,24 +1081,38 @@ function spanFields(
       if (span.ttftMs !== null) {
         add(
           "TTFT",
-          span.reasoningDurationMs != null && span.reasoningDurationMs > 0 ? (
-            // Reasoning models: show how much of the wait was thinking.
-            <span>
-              {formatDuration(span.ttftMs)}{" "}
-              <span className="text-muted-foreground">
-                ({formatDuration(span.reasoningDurationMs)} thinking)
+          <span className="flex flex-col gap-1">
+            {span.reasoningDurationMs != null &&
+            span.reasoningDurationMs > 0 ? (
+              // Reasoning models: show how much of the wait was thinking.
+              <span>
+                {formatDuration(span.ttftMs)}{" "}
+                <span className="text-muted-foreground">
+                  ({formatDuration(span.reasoningDurationMs)} thinking)
+                </span>
               </span>
-            </span>
-          ) : (
-            formatDuration(span.ttftMs)
-          )
+            ) : (
+              <span>{formatDuration(span.ttftMs)}</span>
+            )}
+            <TtftSplitBar ttftMs={span.ttftMs} durationMs={span.durationMs} />
+          </span>
         );
       }
       add("Model", model);
       // No Provider field — the model logo/name already carries it.
       add(
         "Tokens",
-        `${formatTokens(span.inputTokens)} in · ${formatTokens(span.outputTokens)} out`
+        <span className="flex flex-col gap-1">
+          <span>
+            {formatTokens(span.inputTokens)} in ·{" "}
+            {formatTokens(span.outputTokens)} out
+          </span>
+          <TokenSplitBar
+            input={span.inputTokens}
+            cached={span.cachedInputTokens ?? 0}
+            output={span.outputTokens}
+          />
+        </span>
       );
       add("Cost", formatCost(span.totalCost));
       // No "Model call" field — the llm span now closes at the model-call end,
@@ -1031,6 +1145,76 @@ function spanFields(
     }
   }
   return fields;
+}
+
+/** Thin bar under the TTFT number splitting the llm span's wall into the
+ * pre-first-token wait (faded, matching the waterfall's TTFT treatment) and
+ * generation. */
+function TtftSplitBar({
+  ttftMs,
+  durationMs,
+}: {
+  ttftMs: number;
+  durationMs: number;
+}) {
+  if (durationMs <= 0 || ttftMs <= 0) return null;
+  const wait = Math.min(ttftMs, durationMs);
+  return (
+    <span className="flex h-1 w-full overflow-hidden rounded-full">
+      <span
+        title={`Waiting for first token: ${formatDuration(wait)}`}
+        className="h-full bg-violet-500/30"
+        style={{ width: `${(wait / durationMs) * 100}%` }}
+      />
+      <span
+        title={`Generating: ${formatDuration(Math.max(0, durationMs - wait))}`}
+        className="h-full flex-1 bg-violet-500"
+      />
+    </span>
+  );
+}
+
+/** Thin proportion bar under the token headline: cached input (faded — it
+ * rhymes with "barely cost anything"), fresh input, and output. */
+function TokenSplitBar({
+  input,
+  cached,
+  output,
+}: {
+  input: number;
+  cached: number;
+  output: number;
+}) {
+  const total = input + output;
+  if (total <= 0) return null;
+  const cachedPart = Math.min(Math.max(cached, 0), input);
+  const fresh = input - cachedPart;
+  const pct = (n: number) => `${(n / total) * 100}%`;
+  return (
+    <span className="flex h-1 w-full gap-px overflow-hidden rounded-full">
+      {cachedPart > 0 && (
+        <span
+          title={`Cached input: ${formatTokens(cachedPart)}`}
+          className="h-full bg-sky-500/35"
+          style={{ width: pct(cachedPart) }}
+        />
+      )}
+      {fresh > 0 && (
+        <span
+          title={`Input: ${formatTokens(fresh)}`}
+          className="h-full bg-sky-500"
+          style={{ width: pct(fresh) }}
+        />
+      )}
+      {output > 0 && (
+        <span
+          title={`Output: ${formatTokens(output)}`}
+          className="h-full bg-emerald-500"
+          style={{ width: pct(output) }}
+        />
+      )}
+    </span>
+  );
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -1206,6 +1390,7 @@ function DetailPanel({
           spans={spans}
           evalMeta={evalMeta}
           presetName={presetName}
+          onStep={onStep}
         />
       ) : span ? (
         <SpanDetail
@@ -1236,12 +1421,17 @@ function TraceDetail({
   spans,
   evalMeta,
   presetName,
+  onStep,
 }: {
   trace: TraceSummary;
   spans: Span[];
   evalMeta: Map<string, EvalMeta>;
   presetName: Map<string, string>;
+  onStep: (delta: number) => void;
 }) {
+  // Same Overview/Raw split as SpanDetail — the whole-trace view is curated,
+  // Raw is the verbatim summary + root payloads.
+  const [tab, setTab] = useState("overview");
   // The trace's root span carries the conversation-level payloads: the messages
   // in, the final output, and the tool catalog the model was offered. Prefer
   // the earliest top-level `agent` span (the SDK's container), else the
@@ -1262,12 +1452,63 @@ function TraceDetail({
           </span>
           <span className="truncate">Whole trace</span>
         </CardTitle>
+        {/* Same control trio as SpanDetail, so the panel's chrome doesn't jump
+            when the selection moves between the trace and a span. */}
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            className="text-muted-foreground/60 hover:text-foreground"
+            onClick={() => setTab(tab === "raw" ? "overview" : "raw")}
+          >
+            {tab === "raw" ? "Overview" : "Raw"}
+          </Button>
+          {/* The trace row sits above the span list, so ↑ has nowhere to go. */}
+          <Button
+            type="button"
+            size="icon-xs"
+            variant="ghost"
+            className="text-muted-foreground/60 hover:text-foreground"
+            disabled
+            aria-label="Previous span"
+            title="Previous span (↑)"
+          >
+            <IconChevronUp className="size-4 text-current" />
+          </Button>
+          <Button
+            type="button"
+            size="icon-xs"
+            variant="ghost"
+            className="text-muted-foreground/60 hover:text-foreground"
+            onClick={() => onStep(1)}
+            disabled={spans.length === 0}
+            aria-label="Next span"
+            title="First span (↓)"
+          >
+            <IconChevronDown className="size-4 text-current" />
+          </Button>
+          <CopyButton
+            value={JSON.stringify(trace, null, 2)}
+            title="Copy trace summary as JSON"
+          />
+        </div>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col p-0">
-        <ScrollFade
-          containerClassName="flex min-h-0 flex-1 flex-col"
-          className="flex min-h-0 flex-1 flex-col gap-4 py-5"
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(String(v))}
+          className="flex min-h-0 flex-1 flex-col gap-0"
         >
+          {/* No TabsList — the header's Raw/Overview toggle drives `tab`. */}
+          <TabsContent
+            value="overview"
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <ScrollFade
+              containerClassName="flex min-h-0 flex-1 flex-col"
+              className="flex min-h-0 flex-1 flex-col gap-4 py-5"
+            >
           <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
             <Field label="Started" value={formatDateTime(trace.startTime)} />
             <Field
@@ -1288,6 +1529,12 @@ function TraceDetail({
               <TimeComposition spans={spans} totalMs={trace.durationMs} />
             </div>
           )}
+
+          {/* Renders only when the spend splits across 2+ models. */}
+          <CostComposition
+            spans={spans}
+            className="border-b border-border/40 py-5 px-5"
+          />
 
           {trace.scores.length > 0 && (
             <div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
@@ -1328,7 +1575,35 @@ function TraceDetail({
               className="px-5 py-5"
             />
           )}
-        </ScrollFade>
+            </ScrollFade>
+          </TabsContent>
+          <TabsContent value="raw" className="flex min-h-0 flex-1 flex-col">
+            <ScrollFade
+              containerClassName="flex min-h-0 flex-1 flex-col"
+              className="flex min-h-0 flex-1 flex-col gap-4 py-5"
+            >
+              <Payload
+                label="Trace"
+                value={JSON.stringify(trace)}
+                className="border-b border-border/40 px-5 py-5"
+              />
+              {root?.input && (
+                <Payload
+                  label="Root input"
+                  value={root.input}
+                  className="border-b border-border/40 px-5 py-5"
+                />
+              )}
+              {root?.output && (
+                <Payload
+                  label="Root output"
+                  value={root.output}
+                  className="px-5 py-5"
+                />
+              )}
+            </ScrollFade>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
