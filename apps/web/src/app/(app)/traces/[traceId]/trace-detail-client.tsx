@@ -1038,7 +1038,10 @@ function computeSubtreeStats(spans: Span[]): Map<string, SubtreeStats> {
  */
 function spanFields(
   span: Span,
-  subtree: SubtreeStats | undefined
+  subtree: SubtreeStats | undefined,
+  /** The span's descendant spans — agent containers aggregate these into the
+   * same token/model breakdowns an llm span shows for itself. */
+  descendants: Span[]
 ): { label: string; value: React.ReactNode }[] {
   const fields: { label: string; value: React.ReactNode }[] = [];
   const add = (label: string, value: React.ReactNode) => {
@@ -1129,10 +1132,27 @@ function spanFields(
       break;
     }
     case "agent": {
-      if (subtree && subtree.spans > 0) {
-        if (subtree.tokens > 0) add("Tokens", formatTokens(subtree.tokens));
-        if (subtree.cost != null) add("Cost", formatCost(subtree.cost));
-      }
+      const usage = aggregateUsage(descendants);
+      if (usage.models.length > 0)
+        add(
+          usage.models.length === 1 ? "Model" : "Models",
+          <ModelList models={usage.models} />
+        );
+      if (subtree?.cost != null) add("Cost", formatCost(subtree.cost));
+      if (usage.input + usage.output > 0)
+        add(
+          "Tokens",
+          <span className="flex flex-col gap-2">
+            <span>
+              {formatTokens(usage.input)} in · {formatTokens(usage.output)} out
+            </span>
+            <TokenSplitBar
+              input={usage.input}
+              cached={usage.cached}
+              output={usage.output}
+            />
+          </span>
+        );
       if (span.status !== "ok") add("Status", status);
       break;
     }
@@ -1235,6 +1255,148 @@ function TokenSplitBar({
           style={{ width: pct(output) }}
         />
       )}
+    </span>
+  );
+}
+
+type CostPart = { label: string; value: number; color: string };
+
+/** Per-category cost components that actually carry a value, so a breakdown
+ * shows only what applies. Labels, colors, and stack order match the agent
+ * page's Cost breakdown chart (cost-breakdown-card.tsx CATEGORIES); the
+ * dimensions that chart lumps into "Other" get slate shades here. */
+function costPartsOf(src: {
+  promptCost: number | null;
+  cacheReadCost: number | null;
+  cacheWriteCost: number | null;
+  completionCost: number | null;
+  reasoningCost: number | null;
+  imageCost: number | null;
+  webSearchCost: number | null;
+  requestCost: number | null;
+}): CostPart[] {
+  return [
+    { label: "Input", value: src.promptCost, color: "#F97316" },
+    { label: "Cached input", value: src.cacheReadCost, color: "#FDBA74" },
+    { label: "Cache write", value: src.cacheWriteCost, color: "#C2410C" },
+    { label: "Output", value: src.completionCost, color: "#0090FD" },
+    { label: "Reasoning", value: src.reasoningCost, color: "#93C5FD" },
+    { label: "Image", value: src.imageCost, color: "#64748b" },
+    { label: "Web search", value: src.webSearchCost, color: "#94a3b8" },
+    { label: "Request", value: src.requestCost, color: "#475569" },
+  ].filter((p): p is CostPart => p.value != null && p.value > 0);
+}
+
+/** Token/cost/model rollup over a set of spans — what lets an agent span or
+ * the whole trace show the same breakdowns an individual llm span gets. */
+function aggregateUsage(list: Span[]): {
+  input: number;
+  cached: number;
+  output: number;
+  models: { modelId: string; provider: string | null }[];
+  costParts: CostPart[];
+} {
+  let input = 0;
+  let cached = 0;
+  let output = 0;
+  const sums = {
+    promptCost: 0,
+    cacheReadCost: 0,
+    cacheWriteCost: 0,
+    completionCost: 0,
+    reasoningCost: 0,
+    imageCost: 0,
+    webSearchCost: 0,
+    requestCost: 0,
+  };
+  // First-use order — reads as the trace unfolded, and stays stable while
+  // costs stream in.
+  const models = new Map<string, string | null>();
+  for (const s of list) {
+    input += s.inputTokens;
+    cached += s.cachedInputTokens ?? 0;
+    output += s.outputTokens;
+    sums.promptCost += s.promptCost ?? 0;
+    sums.cacheReadCost += s.cacheReadCost ?? 0;
+    sums.cacheWriteCost += s.cacheWriteCost ?? 0;
+    sums.completionCost += s.completionCost ?? 0;
+    sums.reasoningCost += s.reasoningCost ?? 0;
+    sums.imageCost += s.imageCost ?? 0;
+    sums.webSearchCost += s.webSearchCost ?? 0;
+    sums.requestCost += s.requestCost ?? 0;
+    if (s.modelId && !models.has(s.modelId)) models.set(s.modelId, s.provider);
+  }
+  return {
+    input,
+    cached,
+    output,
+    models: [...models].map(([modelId, provider]) => ({ modelId, provider })),
+    costParts: costPartsOf(sums),
+  };
+}
+
+/** The strip-plus-legend body shared by every per-category cost breakdown —
+ * same shape as Time distribution. The caller supplies the section label. */
+function CostStrip({
+  parts,
+  className,
+}: {
+  parts: CostPart[];
+  className?: string;
+}) {
+  const total = parts.reduce((acc, p) => acc + p.value, 0);
+  if (parts.length === 0 || total <= 0) return null;
+  return (
+    <div className={cn("flex flex-col gap-3", className)}>
+      <div className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
+        {parts.map((p) => (
+          <div
+            key={p.label}
+            title={`${p.label}: ${formatCost(p.value)}`}
+            className="h-full"
+            style={{
+              width: `${(p.value / total) * 100}%`,
+              backgroundColor: p.color,
+            }}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
+        {parts.map((p) => (
+          <span key={p.label} className="inline-flex items-center gap-1.5">
+            <span
+              className="size-2 rounded-xs"
+              style={{ backgroundColor: p.color }}
+            />
+            {p.label} {formatCost(p.value)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Stacked model rows (logo + name) for a Models field — the multi-model
+ * sibling of the single Model field on llm spans. */
+function ModelList({
+  models,
+}: {
+  models: { modelId: string; provider: string | null }[];
+}) {
+  return (
+    <span className="flex flex-col gap-1.5">
+      {models.map((m) => (
+        <span key={m.modelId} className="flex min-w-0 items-center gap-1.5">
+          <ModelLogo
+            provider={m.provider}
+            modelId={m.modelId}
+            className="size-3 shrink-0"
+          />
+          <span className="truncate" title={m.modelId}>
+            {formatModelName(m.modelId)}
+          </span>
+        </span>
+      ))}
     </span>
   );
 }
@@ -1454,6 +1616,7 @@ function DetailPanel({
       ) : span ? (
         <SpanDetail
           span={span}
+          spans={spans}
           scores={scores}
           evalMeta={evalMeta}
           presetName={presetName}
@@ -1511,6 +1674,9 @@ function TraceDetail({
       .sort((a, b) => toMs(a.startTime) - toMs(b.startTime));
     return tops.find((s) => s.spanType === "agent") ?? tops[0] ?? null;
   }, [spans]);
+  // Trace-wide token/cost/model rollup — the whole-trace view shows the same
+  // breakdowns an individual llm span gets.
+  const usage = useMemo(() => aggregateUsage(spans), [spans]);
   // Short traces size the sheet so the page never scrolls (-14rem accounts for
   // the chrome above + below it); once the waterfall outgrows the viewport the
   // page scrolls anyway, so the sheet takes the extra room (-6rem).
@@ -1606,11 +1772,30 @@ function TraceDetail({
                 />
                 <Field
                   label="Tokens"
-                  value={rankedValue(
-                    formatTokens(trace.tokens),
-                    rank?.tokenPercentile
-                  )}
+                  value={
+                    <span className="flex flex-col gap-2">
+                      {rankedValue(
+                        usage.input + usage.output > 0
+                          ? `${formatTokens(usage.input)} in · ${formatTokens(
+                              usage.output
+                            )} out`
+                          : formatTokens(trace.tokens),
+                        rank?.tokenPercentile
+                      )}
+                      <TokenSplitBar
+                        input={usage.input}
+                        cached={usage.cached}
+                        output={usage.output}
+                      />
+                    </span>
+                  }
                 />
+                {usage.models.length > 0 && (
+                  <Field
+                    label={usage.models.length === 1 ? "Model" : "Models"}
+                    value={<ModelList models={usage.models} />}
+                  />
+                )}
                 {/* No Spans/Errors counters — the waterfall shows the spans and the
                 issues strip already surfaces errors. */}
               </div>
@@ -1629,6 +1814,17 @@ function TraceDetail({
                 spans={spans}
                 className="border-b border-border/40 py-5 px-5"
               />
+
+              {/* The per-category sibling of the per-model strip above — the
+                  same breakdown an llm span shows, summed across the trace. */}
+              {usage.costParts.length > 1 && (
+                <div className="flex flex-col gap-2 border-b border-border/40 py-5 px-5">
+                  <span className="text-xs text-muted-foreground">
+                    Cost breakdown
+                  </span>
+                  <CostStrip parts={usage.costParts} />
+                </div>
+              )}
 
               {trace.scores.length > 0 && (
                 <div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
@@ -1706,6 +1902,7 @@ function TraceDetail({
 
 function SpanDetail({
   span,
+  spans,
   scores,
   evalMeta,
   presetName,
@@ -1718,6 +1915,9 @@ function SpanDetail({
   toolCounts,
 }: {
   span: Span;
+  /** All spans of the trace — agent containers aggregate their descendants
+   * into the token/cost/model breakdowns. */
+  spans: Span[];
   scores: TraceScore[];
   evalMeta: Map<string, EvalMeta>;
   presetName: Map<string, string>;
@@ -1732,25 +1932,33 @@ function SpanDetail({
   toolCounts: Map<string, number>;
 }) {
   const metaEntries = Object.entries(span.metadata ?? {});
+  // Everything below the selected agent span — what its breakdowns aggregate.
+  const descendants = useMemo(() => {
+    if (span.spanType !== "agent") return [];
+    const childrenOf = new Map<string, Span[]>();
+    for (const s of spans) {
+      if (!s.parentSpanId) continue;
+      const bucket = childrenOf.get(s.parentSpanId);
+      if (bucket) bucket.push(s);
+      else childrenOf.set(s.parentSpanId, [s]);
+    }
+    const out: Span[] = [];
+    const queue = [...(childrenOf.get(span.spanId) ?? [])];
+    while (queue.length > 0) {
+      const s = queue.shift() as Span;
+      out.push(s);
+      queue.push(...(childrenOf.get(s.spanId) ?? []));
+    }
+    return out;
+  }, [span, spans]);
   // Per-dimension cost components that actually carry a value (skip null/0), so
-  // the breakdown shows only what applies to this span — e.g. cache costs only
-  // appear when caching was used. These sum to span.totalCost. Labels, colors,
-  // and stack order match the agent page's Cost breakdown chart
-  // (cost-breakdown-card.tsx CATEGORIES) so cost reads the same everywhere;
-  // the dimensions that chart lumps into "Other" get slate shades here.
-  const costParts = [
-    { label: "Input", value: span.promptCost, color: "#F97316" },
-    { label: "Cached input", value: span.cacheReadCost, color: "#FDBA74" },
-    { label: "Cache write", value: span.cacheWriteCost, color: "#C2410C" },
-    { label: "Output", value: span.completionCost, color: "#0090FD" },
-    { label: "Reasoning", value: span.reasoningCost, color: "#93C5FD" },
-    { label: "Image", value: span.imageCost, color: "#64748b" },
-    { label: "Web search", value: span.webSearchCost, color: "#94a3b8" },
-    { label: "Request", value: span.requestCost, color: "#475569" },
-  ].filter(
-    (p): p is typeof p & { value: number } => p.value != null && p.value > 0
-  );
-  const costTotal = costParts.reduce((acc, p) => acc + p.value, 0);
+  // the breakdown shows only what applies — e.g. cache costs only appear when
+  // caching was used. An agent container carries no costs of its own, so it
+  // sums its descendants' instead.
+  const costParts =
+    span.spanType === "agent"
+      ? aggregateUsage(descendants).costParts
+      : costPartsOf(span);
   // Usage counters beyond the headline in/out tokens; shown only when present.
   // `tok`-unit rows format as tokens (compact), the rest as plain counts.
   const usageExtras = [
@@ -1782,7 +1990,10 @@ function SpanDetail({
   const lowTokenHeadroom = tokenPct != null && tokenPct < LOW_HEADROOM_PCT;
   const lowRequestHeadroom =
     requestPct != null && requestPct < LOW_HEADROOM_PCT;
-  const fields = useMemo(() => spanFields(span, subtree), [span, subtree]);
+  const fields = useMemo(
+    () => spanFields(span, subtree, descendants),
+    [span, subtree, descendants]
+  );
   const hasSignals =
     sources.length > 0 || lowTokenHeadroom || lowRequestHeadroom;
   // Overview is curated and per-type, so it can omit fields; Raw is the
@@ -1914,37 +2125,7 @@ function SpanDetail({
                   </span>
                   {/* Same strip-plus-legend shape as Time distribution; the
                       span's total already lives in the Cost field above. */}
-                  {costParts.length > 0 && costTotal > 0 && (
-                    <div className="flex flex-col gap-3 px-1">
-                      <div className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
-                        {costParts.map((p) => (
-                          <div
-                            key={p.label}
-                            title={`${p.label}: ${formatCost(p.value)}`}
-                            className="h-full"
-                            style={{
-                              width: `${(p.value / costTotal) * 100}%`,
-                              backgroundColor: p.color,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
-                        {costParts.map((p) => (
-                          <span
-                            key={p.label}
-                            className="inline-flex items-center gap-1.5"
-                          >
-                            <span
-                              className="size-2 rounded-xs"
-                              style={{ backgroundColor: p.color }}
-                            />
-                            {p.label} {formatCost(p.value)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <CostStrip parts={costParts} className="px-1" />
                   {/* The usage-count side of the breakdown — cached/reasoning
                   tokens, retries — so the costs above have their volumes. */}
                   {usageExtras.length > 0 && (
