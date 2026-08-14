@@ -1215,27 +1215,24 @@ function TokenSplitBar({
   const pct = (n: number) => `${(n / total) * 100}%`;
   return (
     <span className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
-      {/* Same input/cached/output palette as the cost-breakdown chart
-          (cost-breakdown-card.tsx CATEGORIES), so token and cost splits
-          read as the same dimensions. */}
       {cachedPart > 0 && (
         <span
           title={`Cached input: ${formatTokens(cachedPart)}`}
-          className="h-full bg-[#FDBA74]"
+          className="h-full bg-sky-500/35"
           style={{ width: pct(cachedPart) }}
         />
       )}
       {fresh > 0 && (
         <span
           title={`Input: ${formatTokens(fresh)}`}
-          className="h-full bg-[#F97316]"
+          className="h-full bg-sky-500"
           style={{ width: pct(fresh) }}
         />
       )}
       {output > 0 && (
         <span
           title={`Output: ${formatTokens(output)}`}
-          className="h-full bg-[#0090FD]"
+          className="h-full bg-emerald-500"
           style={{ width: pct(output) }}
         />
       )}
