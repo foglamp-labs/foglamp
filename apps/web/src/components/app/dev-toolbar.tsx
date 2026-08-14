@@ -72,7 +72,9 @@ export const TTFT_VARIANTS: { value: TtftVariant; label: string }[] = [
 ];
 
 const TTFT_KEY = "foglamp:dev:ttft-variant";
-const TTFT_DEFAULT: TtftVariant = "dashed";
+// "Faded" won the A/B — production always renders it; the other variants stay
+// pickable from the dev toolbar.
+const TTFT_DEFAULT: TtftVariant = "faded";
 
 function readTtftVariant(): TtftVariant {
 	if (typeof window === "undefined") return TTFT_DEFAULT;
