@@ -256,9 +256,9 @@ function ClampedBody({ children }: { children: React.ReactNode }) {
 			{clamped && (
 				<Button
 					type="button"
-					variant="outline"
+					variant="secondary"
 					size="sm"
-					className="mt-1 w-full text-muted-foreground hover:text-foreground"
+					className="mt-3 w-full text-muted-foreground hover:text-foreground"
 					onClick={() => setFull((f) => !f)}
 				>
 					<IconChevronDown className={cn("size-3.5", full && "rotate-180")} />
