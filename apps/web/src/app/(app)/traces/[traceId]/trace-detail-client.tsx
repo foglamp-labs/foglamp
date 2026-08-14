@@ -654,17 +654,17 @@ function TimeComposition({
 
   return (
     <div className={cn("flex flex-col gap-2.5", className)}>
-      <div className="flex h-2 w-full gap-px">
+      <div className="flex h-1 w-full gap-px overflow-hidden rounded-full">
         {segs.parts.map((p) => (
           <div
             key={p.key}
             title={`${p.key}: ${formatDuration(p.exact)}`}
-            className={cn("h-full rounded-xs", p.bar)}
+            className={cn("h-full", p.bar)}
             style={{ width: `${(p.width / totalMs) * 100}%` }}
           />
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-muted-foreground tabular-nums">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
         {segs.parts.map((p) => (
           <span key={p.key} className="inline-flex items-center gap-1.5">
             <span className={cn("size-2 rounded-xs", p.bar)} />
@@ -741,12 +741,12 @@ function CostComposition({
     <div className={cn("flex flex-col gap-2", className)}>
       <span className="text-xs text-muted-foreground">Cost distribution</span>
       <div className="flex flex-col gap-2.5">
-        <div className="flex h-2 w-full gap-px">
+        <div className="flex h-1 w-full gap-px overflow-hidden rounded-full">
           {parts.map((p) => (
             <div
               key={p.label}
               title={`${p.label}: ${formatCost(p.cost)}`}
-              className="h-full rounded-xs"
+              className="h-full"
               style={{
                 width: `${(p.cost / total) * 100}%`,
                 backgroundColor: p.color,
@@ -754,7 +754,7 @@ function CostComposition({
             />
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-muted-foreground tabular-nums">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
           {parts.map((p) => (
             <span key={p.label} className="inline-flex items-center gap-1.5">
               <span
@@ -1903,12 +1903,12 @@ function SpanDetail({
                       span's total already lives in the Cost field above. */}
                   {costParts.length > 0 && costTotal > 0 && (
                     <div className="flex flex-col gap-2.5 px-1">
-                      <div className="flex h-2 w-full gap-px">
+                      <div className="flex h-1 w-full gap-px overflow-hidden rounded-full">
                         {costParts.map((p) => (
                           <div
                             key={p.label}
                             title={`${p.label}: ${formatCost(p.value)}`}
-                            className="h-full rounded-xs"
+                            className="h-full"
                             style={{
                               width: `${(p.value / costTotal) * 100}%`,
                               backgroundColor: p.color,
@@ -1916,7 +1916,7 @@ function SpanDetail({
                           />
                         ))}
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 text-[11px] text-muted-foreground tabular-nums">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
                         {costParts.map((p) => (
                           <span
                             key={p.label}
