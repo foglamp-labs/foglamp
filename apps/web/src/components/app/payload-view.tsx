@@ -234,7 +234,7 @@ function MessageBlock({ message }: { message: Message }) {
 							expanded && "rotate-90",
 						)}
 					/>
-					{RoleIcon && <RoleIcon className="mb-px size-3 shrink-0" />}
+					{RoleIcon && <RoleIcon className="mb-0.5 size-3 shrink-0" />}
 					{message.role.charAt(0).toUpperCase() + message.role.slice(1)}
 				</button>
 			)}
