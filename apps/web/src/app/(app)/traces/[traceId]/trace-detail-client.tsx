@@ -653,8 +653,8 @@ function TimeComposition({
   if (totalMs <= 0 || segs.parts.length === 0) return null;
 
   return (
-    <div className={cn("flex flex-col gap-2.5", className)}>
-      <div className="flex h-1 w-full gap-px overflow-hidden rounded-full">
+    <div className={cn("flex flex-col gap-3", className)}>
+      <div className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
         {segs.parts.map((p) => (
           <div
             key={p.key}
@@ -740,8 +740,8 @@ function CostComposition({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <span className="text-xs text-muted-foreground">Cost distribution</span>
-      <div className="flex flex-col gap-2.5">
-        <div className="flex h-1 w-full gap-px overflow-hidden rounded-full">
+      <div className="flex flex-col gap-3">
+        <div className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
           {parts.map((p) => (
             <div
               key={p.label}
@@ -1214,7 +1214,7 @@ function TokenSplitBar({
   const fresh = input - cachedPart;
   const pct = (n: number) => `${(n / total) * 100}%`;
   return (
-    <span className="flex h-1 w-full gap-px overflow-hidden rounded-full">
+    <span className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
       {/* Same input/cached/output palette as the cost-breakdown chart
           (cost-breakdown-card.tsx CATEGORIES), so token and cost splits
           read as the same dimensions. */}
@@ -1902,8 +1902,8 @@ function SpanDetail({
                   {/* Same strip-plus-legend shape as Time distribution; the
                       span's total already lives in the Cost field above. */}
                   {costParts.length > 0 && costTotal > 0 && (
-                    <div className="flex flex-col gap-2.5 px-1">
-                      <div className="flex h-1 w-full gap-px overflow-hidden rounded-full">
+                    <div className="flex flex-col gap-3 px-1">
+                      <div className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
                         {costParts.map((p) => (
                           <div
                             key={p.label}
