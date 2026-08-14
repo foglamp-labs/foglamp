@@ -13,7 +13,13 @@ import {
   IconChevronRight,
   IconPlayerStopFilled,
 } from "@tabler/icons-react";
-import { type CSSProperties, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
 import { useTtftVariant } from "@/components/app/dev-toolbar";
@@ -226,6 +232,43 @@ export function TraceTimeline({
   const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(
     new Set()
   );
+  // Hover time cursor — a vertical line + offset chip following the pointer
+  // over the track. Driven imperatively (direct style writes on refs) so
+  // mousemove never re-renders the row tree.
+  const trackOverlayRef = useRef<HTMLDivElement>(null);
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const cursorLabelRef = useRef<HTMLSpanElement>(null);
+  const moveCursor = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const overlay = trackOverlayRef.current;
+    const cursor = cursorRef.current;
+    const label = cursorLabelRef.current;
+    if (!overlay || !cursor || !label) return;
+    const rect = overlay.getBoundingClientRect();
+    const frac = (e.clientX - rect.left) / Math.max(rect.width, 1);
+    if (frac < 0 || frac > 1) {
+      cursor.style.display = "none";
+      return;
+    }
+    const offsetMs = frac * total;
+    cursor.style.display = "block";
+    cursor.style.left = `${frac * 100}%`;
+    label.textContent = `${formatSpanDuration(offsetMs)} · ${new Date(
+      window.start + offsetMs
+    ).toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      fractionalSecondDigits: 3,
+    })}`;
+    // Flip the chip to the line's left near the right edge so it stays inside.
+    const flip = frac > 0.75;
+    label.style.left = flip ? "auto" : "6px";
+    label.style.right = flip ? "6px" : "auto";
+  };
+  const hideCursor = () => {
+    if (cursorRef.current) cursorRef.current.style.display = "none";
+  };
+
   const expandGroup = (key: string) =>
     setExpandedGroups((prev) => {
       const next = new Set(prev);
@@ -308,12 +351,35 @@ export function TraceTimeline({
   }, [scores]);
 
   return (
-    <div className="flex flex-col">
+    // biome-ignore lint/a11y/noStaticElementInteractions: purely decorative hover cursor
+    <div
+      className="relative flex flex-col"
+      onMouseMove={moveCursor}
+      onMouseLeave={hideCursor}
+    >
       {/* Time ruler, aligned to the bar track. */}
       <div className="grid grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center">
         <div />
         <TimeRuler total={total} />
         <div />
+      </div>
+
+      {/* Hover time cursor: a full-height line at the pointer with an
+          elapsed-time chip up in the ruler row. Same insets as the gridlines. */}
+      <div
+        ref={trackOverlayRef}
+        className="pointer-events-none absolute inset-y-0 left-60 right-26 z-20"
+      >
+        <div
+          ref={cursorRef}
+          style={{ display: "none" }}
+          className="absolute inset-y-0 w-px bg-foreground/25"
+        >
+          <span
+            ref={cursorLabelRef}
+            className="absolute top-0 whitespace-nowrap rounded-sm border bg-background px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground shadow-sm"
+          />
+        </div>
       </div>
 
       <div className="relative">
