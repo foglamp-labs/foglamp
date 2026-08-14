@@ -1575,7 +1575,7 @@ function TraceDetail({
                 <Transcript
                   label="Output"
                   value={root.output}
-                  className="px-5 py-5"
+                  className="px-5 pt-5"
                 />
               )}
             </ScrollFade>
@@ -1601,7 +1601,7 @@ function TraceDetail({
                 <Payload
                   label="Root output"
                   value={root.output}
-                  className="px-5 py-5"
+                  className="px-5 pt-5"
                 />
               )}
             </ScrollFade>
@@ -1986,7 +1986,7 @@ function SpanDetail({
                 <Transcript
                   label={span.spanType === "tool" ? "Result" : "Output"}
                   value={span.output}
-                  className="px-5 py-5"
+                  className="px-5 pt-5"
                 />
               )}
             </ScrollFade>
@@ -2040,7 +2040,7 @@ function SpanRaw({ span }: { span: Span }) {
         />
       )}
       {span.output && (
-        <Payload label="Output" value={span.output} className="px-5 py-5" />
+        <Payload label="Output" value={span.output} className="px-5 pt-5" />
       )}
     </>
   );
@@ -2169,7 +2169,7 @@ function Payload({
   const html = useShikiHtml(formatted, isJson ? "json" : "typescript");
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium">{label}</span>
       {/* The copy button floats inside the block's top-right corner — pinned
           to this wrapper, not the scroll content, so it stays put while the
           payload scrolls under it. bg-muted keeps it legible over code. */}
@@ -2177,7 +2177,7 @@ function Payload({
         <CopyButton
           value={formatted}
           title={`Copy ${label.toLowerCase()}`}
-          className="absolute top-1.5 right-1.5 z-10 bg-muted"
+          className="absolute top-3.5 right-3.5 z-10 bg-muted"
         />
         {html ? (
           // Shiki sets the pre's background via an inline style; `bg-muted!`
