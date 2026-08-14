@@ -1441,16 +1441,14 @@ function SpanDetail({
   }, [span.spanId]);
   return (
     <Card className="max-h-[calc(100svh-16rem)] gap-0 py-0 ">
-      <CardHeader className="flex shrink-0 flex-col items-stretch gap-3 p-5 px-5">
-        <div className="flex items-center gap-2">
-          <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
-            {/* Same identity chip as the span's waterfall row — which also
-                makes a type badge redundant. */}
-            <SpanIconChip span={span} />
-            <span className="truncate">{span.name}</span>
-          </CardTitle>
-        </div>
-        <div className="flex items-center gap-1">
+      <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5">
+        <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
+          {/* Same identity chip as the span's waterfall row — which also
+              makes a type badge redundant. */}
+          <SpanIconChip span={span} />
+          <span className="truncate">{span.name}</span>
+        </CardTitle>
+        <div className="flex shrink-0 items-center gap-1">
           {/* The ↑/↓ shortcuts have always worked; these buttons are what make
 					    them discoverable, so both name the key in their tooltip. */}
           <Button
@@ -1475,15 +1473,9 @@ function SpanDetail({
           >
             <IconChevronDown className="size-4" />
           </Button>
-          {spanIndex >= 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {spanIndex + 1} / {spanCount}
-            </span>
-          )}
           <CopyButton
             value={JSON.stringify(span, null, 2)}
             title="Copy span as JSON"
-            className="ml-auto"
           />
         </div>
       </CardHeader>
