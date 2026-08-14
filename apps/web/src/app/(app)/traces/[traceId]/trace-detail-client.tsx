@@ -2186,12 +2186,12 @@ function Payload({
           // overrides it (an !important class beats a non-important inline style)
           // so the block matches the panel's other muted surfaces.
           <div
-            className="max-h-80 overflow-auto rounded-md text-xs [&_pre]:m-0 [&_pre]:bg-muted! [&_pre]:p-3 [&_pre]:whitespace-pre-wrap [&_pre]:wrap-break-word"
+            className="max-h-80 overflow-auto overscroll-none rounded-md text-xs [&_pre]:m-0 [&_pre]:bg-muted! [&_pre]:p-3 [&_pre]:whitespace-pre-wrap [&_pre]:wrap-break-word"
             // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted Shiki output
             dangerouslySetInnerHTML={{ __html: html }}
           />
         ) : (
-          <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap wrap-break-word">
+          <pre className="max-h-80 overflow-auto overscroll-none rounded-md bg-muted p-3 text-xs whitespace-pre-wrap wrap-break-word">
             {formatted}
           </pre>
         )}
