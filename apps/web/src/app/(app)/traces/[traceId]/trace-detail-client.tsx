@@ -1398,7 +1398,8 @@ function SpanDetail({
     { label: "Reasoning", value: span.reasoningTokens, unit: " tok" },
     { label: "Images", value: span.imageCount, unit: "" },
     { label: "Web searches", value: span.webSearchCount, unit: "" },
-    { label: "Requests", value: span.requestCount, unit: "" },
+    // No "Requests" row — it's 1 for virtually every LLM call, so it only ever
+    // added a noise section. Raw still has requestCount.
   ].filter((p) => p.value > 0);
   const hasBreakdown =
     costParts.length > 0 ||
@@ -1428,7 +1429,7 @@ function SpanDetail({
     setTab("overview");
   }, [span.spanId]);
   return (
-    <Card className="max-h-[calc(100svh-16rem)] gap-0 py-0 ">
+    <Card className="max-h-[calc(100svh-20rem)] gap-0 py-0 ">
       <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
         <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
           {/* Same identity chip as the span's waterfall row — which also
