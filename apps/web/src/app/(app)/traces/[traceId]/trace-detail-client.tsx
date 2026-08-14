@@ -653,7 +653,7 @@ function TimeComposition({
   if (totalMs <= 0 || segs.parts.length === 0) return null;
 
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("flex flex-col gap-2.5", className)}>
       <div className="flex h-2 w-full gap-px">
         {segs.parts.map((p) => (
           <div
@@ -740,7 +740,7 @@ function CostComposition({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <span className="text-xs text-muted-foreground">Cost distribution</span>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2.5">
         <div className="flex h-2 w-full gap-px">
           {parts.map((p) => (
             <div
@@ -1902,7 +1902,7 @@ function SpanDetail({
                   {/* Same strip-plus-legend shape as Time distribution; the
                       span's total already lives in the Cost field above. */}
                   {costParts.length > 0 && costTotal > 0 && (
-                    <div className="flex flex-col gap-1.5 px-1">
+                    <div className="flex flex-col gap-2.5 px-1">
                       <div className="flex h-2 w-full gap-px">
                         {costParts.map((p) => (
                           <div
