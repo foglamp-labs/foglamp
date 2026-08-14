@@ -2254,8 +2254,9 @@ function ToolsAvailable({
           <IconChevronRight
             className={cn("size-3.5 transition-transform", open && "rotate-90")}
           />
-          Tools available ({tools.length})
-          {usedCount > 0 && ` · ${usedCount} used`}
+          {usedCount > 0
+            ? `Tools available · ${usedCount}/${tools.length} used`
+            : `Tools available (${tools.length})`}
         </button>
         <CopyButton value={catalog} title="Copy tool catalog" />
       </div>
