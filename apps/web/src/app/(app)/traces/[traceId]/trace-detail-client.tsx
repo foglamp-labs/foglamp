@@ -2017,11 +2017,26 @@ function SpanDetail({
                   <span className="text-xs text-muted-foreground">
                     Metadata
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
+                  {/* One row per entry with a dotted leader, so long value
+                      lists stay scannable — a badge cloud makes keys and
+                      values visually identical. */}
+                  <div className="flex flex-col gap-1.5">
                     {metaEntries.map(([k, v]) => (
-                      <Badge key={k} variant="secondary">
-                        {k}: {v}
-                      </Badge>
+                      <div
+                        key={k}
+                        className="flex items-baseline gap-2 text-sm"
+                      >
+                        <span className="shrink-0 text-muted-foreground">
+                          {k}
+                        </span>
+                        <span
+                          aria-hidden
+                          className="min-w-4 flex-1 self-center border-b border-dotted border-border"
+                        />
+                        <span className="min-w-0 truncate" title={v}>
+                          {v}
+                        </span>
+                      </div>
                     ))}
                   </div>
                 </div>
