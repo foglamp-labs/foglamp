@@ -2017,27 +2017,28 @@ function SpanDetail({
                   <span className="text-xs text-muted-foreground">
                     Metadata
                   </span>
-                  {/* One row per entry with a dotted leader, so long value
-                      lists stay scannable — a badge cloud makes keys and
-                      values visually identical. */}
-                  <div className="flex flex-col gap-1.5">
-                    {metaEntries.map(([k, v]) => (
-                      <div
-                        key={k}
-                        className="flex items-baseline gap-2 text-sm"
-                      >
-                        <span className="shrink-0 text-muted-foreground">
-                          {k}
-                        </span>
-                        <span
-                          aria-hidden
-                          className="min-w-4 flex-1 self-center border-b border-dotted border-border"
-                        />
-                        <span className="min-w-0 truncate" title={v}>
+                  {/* Real text, TOC-style: monospace lines padded with "."
+                      so the values right-align. Every character (dots
+                      included) is selectable, and a copy pastes as the
+                      aligned block you see. */}
+                  <div className="flex flex-col gap-1 overflow-x-auto font-mono text-xs whitespace-pre">
+                    {(() => {
+                      const width =
+                        Math.max(
+                          ...metaEntries.map(([k, v]) => k.length + v.length)
+                        ) + 4;
+                      return metaEntries.map(([k, v]) => (
+                        <div key={k}>
+                          <span className="text-muted-foreground">{k}</span>
+                          <span className="text-muted-foreground/50">
+                            {".".repeat(
+                              Math.max(2, width - k.length - v.length)
+                            )}
+                          </span>
                           {v}
-                        </span>
-                      </div>
-                    ))}
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </div>
               )}
