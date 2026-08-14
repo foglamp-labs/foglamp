@@ -24,6 +24,7 @@ import {
   IconAffiliate,
   IconAlertTriangle,
   IconAlertTriangleFilled,
+  IconArrowUpRight,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
@@ -444,19 +445,11 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
             />
           )}
           {ctx.sessionId && (
-            <>
-              <ContextChip
-                href={`/sessions/${encodeURIComponent(ctx.sessionId)}`}
-                icon={IconMessage2Filled}
-                iconClassName="text-sky-500"
-                label={ctx.sessionId}
-              />
-              {/* Walk the session's turns from right where its chip sits. */}
-              <TurnNav
-                prev={neighbors.data?.prev ?? null}
-                next={neighbors.data?.next ?? null}
-              />
-            </>
+            <SessionChip
+              sessionId={ctx.sessionId}
+              prev={neighbors.data?.prev ?? null}
+              next={neighbors.data?.next ?? null}
+            />
           )}
           {ctx.workflowName && (
             <ContextChip
@@ -725,75 +718,88 @@ function rankHint(percentile?: number | null) {
   );
 }
 
-/** Move between the traces of one session. Session traces are conversation
- * turns — the sessions page frames them that way, so this does too. Rendered
- * disabled (not hidden) at the ends of the session, so the control doesn't
- * appear and disappear as you walk a conversation. */
-function TurnNav({
+/** The session context chip with the turn nav built in — "session | ‹ ›".
+ * Session traces are conversation turns (the sessions page frames them that
+ * way, so this does too), and the arrows render dimmed (not hidden) at the
+ * ends of the session, so the control doesn't appear and disappear as you
+ * walk a conversation. Hand-rolls the ContextChip surface: a chip that also
+ * contains nav links can't be a single Button-as-Link. */
+function SessionChip({
+  sessionId,
   prev,
   next,
 }: {
+  sessionId: string;
   prev: { traceId: string } | null;
   next: { traceId: string } | null;
 }) {
   const link = (t: { traceId: string } | null) =>
     t ? `/traces/${encodeURIComponent(t.traceId)}` : null;
   return (
-    <div className="flex items-center gap-1">
-      <TurnNavButton
+    <span className="flex h-8 max-w-xs items-center rounded-full bg-background text-sm shadow-(--custom-outline-shadow) dark:bg-card">
+      <Link
+        // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
+        href={`/sessions/${encodeURIComponent(sessionId)}` as any}
+        className="flex h-full min-w-0 items-center gap-[5.5px] rounded-l-full pl-2.5 pr-2 outline-none transition-colors hover:bg-muted focus-visible:ring-[1.5px] focus-visible:ring-ring/50"
+      >
+        <IconMessage2Filled className="size-3.5 shrink-0 text-sky-500" />
+        <span className="truncate">{sessionId}</span>
+        <IconArrowUpRight className="-ml-0.5 mt-px size-3.5 shrink-0 text-muted-foreground" />
+      </Link>
+      <span className="h-4 w-px shrink-0 bg-border" />
+      <TurnNavSegment
         href={link(prev)}
         label="Previous turn"
         icon={IconChevronLeft}
+        className="pl-2 pr-1"
       />
-      <TurnNavButton
+      <TurnNavSegment
         href={link(next)}
         label="Next turn"
         icon={IconChevronRight}
+        className="rounded-r-full pl-1 pr-2"
       />
-    </div>
+    </span>
   );
 }
 
-function TurnNavButton({
+function TurnNavSegment({
   href,
   label,
   icon: Icon,
+  className,
 }: {
   href: string | null;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  className: string;
 }) {
+  const cls = cn(
+    "flex h-full items-center text-muted-foreground outline-none transition-colors focus-visible:ring-[1.5px] focus-visible:ring-ring/50",
+    href ? "hover:bg-muted hover:text-foreground" : "opacity-50",
+    className,
+  );
   return (
     <TooltipProvider delay={150}>
       <Tooltip>
         {href ? (
           <TooltipTrigger
             render={
-              <Button
-                size="icon-xs"
-                variant="ghost"
-                aria-label={label}
-                // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
-                render={<Link href={href as any} />}
-              >
-                <Icon className="size-4" />
-              </Button>
+              // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
+              <Link href={href as any} aria-label={label} className={cls}>
+                <Icon className="size-3.5" />
+              </Link>
             }
           />
         ) : (
-          // A disabled button swallows pointer events, so the tooltip anchors
-          // to a wrapping span instead.
-          <TooltipTrigger render={<span className="inline-flex" />}>
-            <Button
-              type="button"
-              size="icon-xs"
-              variant="ghost"
-              disabled
-              aria-label={label}
-            >
-              <Icon className="size-4" />
-            </Button>
-          </TooltipTrigger>
+          // The end of the session: inert, but still explains itself on hover.
+          <TooltipTrigger
+            render={
+              <span aria-disabled className={cls}>
+                <Icon className="size-3.5" />
+              </span>
+            }
+          />
         )}
         <TooltipContent>{label}</TooltipContent>
       </Tooltip>

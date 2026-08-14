@@ -283,8 +283,8 @@ export function TraceTimeline({
               className={cn(
                 "grid w-full cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center rounded-r-sm rounded-l-md py-0.5 text-left text-sm",
                 selected === WHOLE_TRACE_ID
-                  ? "bg-accent/70"
-                  : "hover:bg-accent/50"
+                  ? "bg-accent dark:bg-accent/70"
+                  : "hover:bg-accent/80 dark:hover:bg-accent/50"
               )}
             >
               <div className="flex min-w-0 items-start gap-2 pr-3 pl-1.5">
