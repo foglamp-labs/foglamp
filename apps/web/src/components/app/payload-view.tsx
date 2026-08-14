@@ -7,12 +7,17 @@ import {
 	IconPaperclip,
 	IconTool,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Streamdown } from "streamdown";
 
 import { useShikiHtml } from "./code-block";
 import { markdownComponents } from "./markdown";
-import { type Message, type Part, toMessages } from "./payload-messages";
+import {
+	type Message,
+	type Part,
+	toMessages,
+	unchangedPrefix,
+} from "./payload-messages";
 
 // Renders a span/trace input or output payload readably instead of as raw JSON.
 // The normalization lives in ./payload-messages (and is tested there); this file
@@ -261,12 +266,31 @@ function ClampedBody({ children }: { children: React.ReactNode }) {
 
 export function PayloadView({
 	value,
+	previousValue,
 	className,
 }: {
 	value: string;
+	/** The equivalent payload from the previous LLM call in the same trace.
+	 * When it's an exact message-prefix of `value` (agent inputs grow by
+	 * appending), the unchanged messages fold away and only the new ones
+	 * render — re-scanning 30 repeated messages per step is the main cost of
+	 * reading an agent loop. Anything else (edited history, unparseable
+	 * payloads) falls back to the full view, so the delta never lies. */
+	previousValue?: string | null;
 	className?: string;
 }) {
-	const messages = toMessages(value);
+	const { messages, shared } = useMemo(() => {
+		const messages = toMessages(value);
+		if (!messages || !previousValue) return { messages, shared: 0 };
+		const prev = toMessages(previousValue);
+		if (!prev) return { messages, shared: 0 };
+		return { messages, shared: unchangedPrefix(messages, prev) };
+	}, [value, previousValue]);
+	const [showEarlier, setShowEarlier] = useState(false);
+	// The component instance survives span switches — fold back down for each
+	// new payload.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `value` is the reset trigger, not a used value
+	useEffect(() => setShowEarlier(false), [value]);
 	if (!messages) {
 		// Not JSON — a plain (markdown) answer, or a payload truncated at the
 		// storage cap. Either way the raw string is the honest thing to show.
@@ -280,9 +304,36 @@ export function PayloadView({
 	}
 	return (
 		<div className={cn("flex flex-col gap-3", className)}>
-			{messages.map((message, i) => (
+			{shared > 0 && (
+				<button
+					type="button"
+					onClick={() => setShowEarlier((s) => !s)}
+					className="flex cursor-pointer items-center gap-1 self-start text-xs text-muted-foreground transition-colors hover:text-foreground"
+				>
+					<IconChevronRight
+						className={cn(
+							"size-3 shrink-0 transition-transform",
+							showEarlier && "rotate-90",
+						)}
+					/>
+					{shared} earlier {shared === 1 ? "message" : "messages"} · unchanged
+					from the previous call
+				</button>
+			)}
+			{(showEarlier ? messages.slice(0, shared) : []).map((message, i) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: messages are positional and static
 				<MessageBlock key={i} message={message} />
+			))}
+			{shared > 0 && showEarlier && (
+				<div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/60">
+					<span className="h-px flex-1 bg-border" />
+					new in this call
+					<span className="h-px flex-1 bg-border" />
+				</div>
+			)}
+			{messages.slice(shared).map((message, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: messages are positional and static
+				<MessageBlock key={shared + i} message={message} />
 			))}
 		</div>
 	);

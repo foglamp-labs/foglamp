@@ -1273,6 +1273,24 @@ function DetailPanel({
   subtreeStats: Map<string, SubtreeStats>;
   rank: TraceRank | null;
 }) {
+  // Input of the LLM call that started closest before the selected one — the
+  // baseline the Input transcript diffs against. Any llm span in the trace
+  // counts (agent loops interleave tool spans between calls).
+  const previousInput = useMemo(() => {
+    if (!span || span.spanType !== "llm" || !span.input) return null;
+    const start = toMs(span.startTime);
+    let best: Span | null = null;
+    for (const s of spans) {
+      if (s.spanType !== "llm" || s.spanId === span.spanId || !s.input)
+        continue;
+      if (
+        toMs(s.startTime) < start &&
+        (!best || toMs(s.startTime) > toMs(best.startTime))
+      )
+        best = s;
+    }
+    return best?.input ?? null;
+  }, [span, spans]);
   const [width, setWidth] = useState(PANEL_WIDTH);
   // Mirror for the pointer-up persist, so the handler doesn't need to re-bind
   // on every pixel of drag.
@@ -1368,6 +1386,7 @@ function DetailPanel({
           spanCount={spanCount}
           onStep={onStep}
           subtree={subtreeStats.get(span.spanId)}
+          previousInput={previousInput}
         />
       ) : null}
     </aside>
@@ -1604,6 +1623,7 @@ function SpanDetail({
   spanCount,
   onStep,
   subtree,
+  previousInput,
 }: {
   span: Span;
   scores: TraceScore[];
@@ -1613,6 +1633,9 @@ function SpanDetail({
   spanCount: number;
   onStep: (delta: number) => void;
   subtree: SubtreeStats | undefined;
+  /** Input of the trace's previous LLM call — folds the unchanged message
+   * prefix out of this span's Input transcript. Null for the first call. */
+  previousInput: string | null;
 }) {
   const metaEntries = Object.entries(span.metadata ?? {});
   // Per-dimension cost components that actually carry a value (skip null/0), so
@@ -1928,6 +1951,7 @@ function SpanDetail({
                 <Transcript
                   label={span.spanType === "tool" ? "Arguments" : "Input"}
                   value={span.input}
+                  previousValue={previousInput}
                   className="border-b border-border/40 px-5 py-5"
                 />
               )}
@@ -2094,10 +2118,14 @@ function ToolsAvailable({
 function Transcript({
   label,
   value,
+  previousValue,
   className,
 }: {
   label: string;
   value: string;
+  /** Same payload from the previous LLM call — lets PayloadView fold the
+   * unchanged message prefix (see its prop doc). */
+  previousValue?: string | null;
   className?: string;
 }) {
   return (
@@ -2106,7 +2134,7 @@ function Transcript({
         <span className="text-xs text-muted-foreground">{label}</span>
         <CopyButton value={value} title={`Copy ${label.toLowerCase()}`} />
       </div>
-      <PayloadView value={value} />
+      <PayloadView value={value} previousValue={previousValue} />
     </div>
   );
 }

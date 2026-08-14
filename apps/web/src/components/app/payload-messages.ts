@@ -112,3 +112,19 @@ export function toMessages(value: string): Message[] | null {
 	// A bare array of parts (typical for assistant output) → one roleless block.
 	return [{ role: null, parts: items.map(partFrom) }];
 }
+
+/** How many leading messages of `current` are carried over unchanged from
+ * `previous` — the fold point for the transcript's "N earlier messages" delta.
+ * Non-zero only when `previous` is an exact message-prefix of `current` (agent
+ * inputs grow by appending); an edited history or a shrunk list returns 0, so
+ * the delta view never hides a message that actually changed. */
+export function unchangedPrefix(
+	current: Message[],
+	previous: Message[],
+): number {
+	if (previous.length === 0 || current.length <= previous.length) return 0;
+	for (let i = 0; i < previous.length; i++) {
+		if (JSON.stringify(previous[i]) !== JSON.stringify(current[i])) return 0;
+	}
+	return previous.length;
+}

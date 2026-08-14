@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { partFrom, toMessages } from "./payload-messages";
+import { partFrom, toMessages, unchangedPrefix } from "./payload-messages";
 
 // The payloads under test are captured verbatim from the Vercel AI SDK, so the
 // shapes here are the real ones the SDK emits — not a normalized schema. The
@@ -184,5 +184,42 @@ describe("partFrom", () => {
 			kind: "json",
 			data: { type: "text" },
 		});
+	});
+});
+
+describe("unchangedPrefix — the transcript delta fold", () => {
+	const msg = (role: string, text: string) => ({
+		role,
+		parts: [{ kind: "text" as const, text }],
+	});
+	const history = [
+		msg("system", "You are helpful."),
+		msg("user", "Hi"),
+		msg("assistant", "Hello!"),
+	];
+
+	test("a clean append folds the whole previous input", () => {
+		expect(
+			unchangedPrefix([...history, msg("user", "Next question")], history),
+		).toBe(3);
+	});
+
+	test("an edited history returns 0 — the delta must never hide a change", () => {
+		const edited = [msg("system", "You are terse."), ...history.slice(1)];
+		expect(
+			unchangedPrefix([...edited, msg("user", "Next question")], history),
+		).toBe(0);
+	});
+
+	test("same length is not a delta", () => {
+		expect(unchangedPrefix(history, history)).toBe(0);
+	});
+
+	test("a shrunk list is not a delta", () => {
+		expect(unchangedPrefix(history.slice(0, 2), history)).toBe(0);
+	});
+
+	test("an empty previous input is not a delta", () => {
+		expect(unchangedPrefix(history, [])).toBe(0);
 	});
 });
