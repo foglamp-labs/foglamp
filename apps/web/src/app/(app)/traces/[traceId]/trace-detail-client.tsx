@@ -794,15 +794,25 @@ function rankedValue(value: React.ReactNode, percentile?: number | null) {
   return (
     <span className="flex flex-wrap items-baseline gap-x-1.5">
       {value}
-      <span
-        className={cn(
-          "rounded px-1 py-px text-[10px] font-medium tabular-nums",
-          tone
-        )}
-        title={`Higher than ${percentile}% of this agent's traces this week`}
-      >
-        p{percentile}
-      </span>
+      <TooltipProvider delay={150}>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span
+                className={cn(
+                  "rounded px-1 py-px text-[10px] font-medium tabular-nums",
+                  tone
+                )}
+              />
+            }
+          >
+            p{percentile}
+          </TooltipTrigger>
+          <TooltipContent>
+            Higher than {percentile}% of this agent&apos;s traces this week
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     </span>
   );
 }
