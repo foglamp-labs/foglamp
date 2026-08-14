@@ -416,7 +416,11 @@ export function TraceTimeline({
                   : "hover:bg-accent/80 dark:hover:bg-accent/50"
               )}
             >
-              <div className="flex min-w-0 items-center gap-2 pr-3 pl-1.5">
+              {/* pl-1 + the empty chevron slot puts this chip one 12px indent
+                  step above the depth-0 rows — the same rhythm as every other
+                  level, instead of a double-wide first jump. */}
+              <div className="flex min-w-0 items-center gap-2 pr-3 pl-1">
+                <span aria-hidden className="size-3.5 shrink-0" />
                 <span className="flex size-4.5 shrink-0 items-center shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)] dark:shadow-(--custom-shadow) justify-center rounded-md corner-squircle bg-primary/15 text-primary">
                   <IconAffiliate className="size-3" />
                 </span>
@@ -816,7 +820,9 @@ function GroupedRow({
     >
       <div
         className="flex min-w-0 items-center gap-2 pr-3"
-        style={{ paddingLeft: (depth + 1) * 14 + 4 }}
+        // Same indent formula as SpanRow, so the expanded calls (same depth)
+        // line up chip-to-chip with this row.
+        style={{ paddingLeft: (depth + 1) * 12 + 4 }}
       >
         <span className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/50">
           <IconChevronRight
