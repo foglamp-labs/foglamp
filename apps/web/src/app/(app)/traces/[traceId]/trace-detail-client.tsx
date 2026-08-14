@@ -1994,7 +1994,7 @@ function SpanDetail({
           <TabsContent value="raw" className="flex min-h-0 flex-1 flex-col">
             <ScrollFade
               containerClassName="flex min-h-0 flex-1 flex-col"
-              className="flex min-h-0 flex-1 flex-col gap-4 py-5"
+              className="flex min-h-0 flex-1 flex-col gap-4 py-5 pt-4"
             >
               <SpanRaw span={span} />
             </ScrollFade>
@@ -2030,7 +2030,7 @@ function SpanRaw({ span }: { span: Span }) {
       <Payload
         label="Span"
         value={fields}
-        className="border-b border-border/40 px-5 py-5"
+        className="border-b border-border/40 px-5 py-5 pt-1"
       />
       {span.input && (
         <Payload
@@ -2172,12 +2172,14 @@ function Payload({
       <span className="text-xs font-medium">{label}</span>
       {/* The copy button floats inside the block's top-right corner — pinned
           to this wrapper, not the scroll content, so it stays put while the
-          payload scrolls under it. bg-muted keeps it legible over code. */}
+          payload scrolls under it. bg-muted keeps it legible over code.
+          top-2 + the button's own p-1 puts the icon level with the first text
+          line (the pre's p-3), which doubles as dead-center on one-liners. */}
       <div className="relative">
         <CopyButton
           value={formatted}
           title={`Copy ${label.toLowerCase()}`}
-          className="absolute top-3.5 right-3.5 z-10 bg-muted"
+          className="absolute top-2 right-2 z-10 bg-muted"
         />
         {html ? (
           // Shiki sets the pre's background via an inline style; `bg-muted!`
