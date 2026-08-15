@@ -1925,7 +1925,12 @@ function TraceDetail({
                 <Transcript
                   label="Input"
                   value={root.input}
-                  className="border-b border-border/40 px-5 py-5"
+                  // Divider only when an Output section follows — a trailing
+                  // border on the last section reads as a bug.
+                  className={cn(
+                    "px-5 py-5",
+                    root.output && "border-b border-border/40"
+                  )}
                 />
               )}
               {root?.output && (
@@ -2159,7 +2164,7 @@ function SpanDetail({
                   <CopyButton
                     value={span.errorMessage}
                     title="Copy error"
-                    className="-mr-1 -mt-0.5 text-destructive hover:text-destructive"
+                    className="-mr-1 -mt-0.5 text-destructive hover:text-destructive/70"
                   />
                 </div>
               )}
@@ -2362,7 +2367,10 @@ function SpanDetail({
                   label={span.spanType === "tool" ? "Arguments" : "Input"}
                   value={span.input}
                   previousValue={previousInput}
-                  className="border-b border-border/40 px-5 py-5"
+                  className={cn(
+                    "px-5 py-5",
+                    span.output && "border-b border-border/40"
+                  )}
                 />
               )}
               {span.output && (
