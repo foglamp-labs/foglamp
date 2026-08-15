@@ -883,7 +883,11 @@ function GroupedRow({
     Math.max(((last - first) / total) * 100, 1.5),
     Math.max(100 - offset, 0)
   );
-  const durationMs = spans.reduce((sum, s) => sum + s.durationMs, 0);
+  // Wall-clock envelope (first start → last end), not the summed durations:
+  // the calls often run in parallel, a sum can exceed the trace itself, and
+  // the number should match the bar, which draws exactly this span. Cost and
+  // tokens stay summed — those are additive regardless of overlap.
+  const durationMs = last - first;
   const tokens = spans.reduce((sum, s) => sum + s.totalTokens, 0);
   const priced = spans.some((s) => s.totalCost != null);
   const cost = priced

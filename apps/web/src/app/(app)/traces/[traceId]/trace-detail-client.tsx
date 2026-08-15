@@ -2291,7 +2291,10 @@ function SpanDetail({
                   {/* The usage-count side of the breakdown — cached/reasoning
                   tokens, retries — so the costs above have their volumes. */}
                   {usageExtras.length > 0 && (
-                    <>
+                    // The section wrapper's px-5 would inset this border —
+                    // bleed back out so it spans edge to edge like the
+                    // section dividers.
+                    <div className="-mx-5 flex flex-col gap-3 border-t border-border/40 px-5 pt-4">
                       <span className="text-xs text-muted-foreground">
                         Usage
                       </span>
@@ -2308,7 +2311,7 @@ function SpanDetail({
                           />
                         ))}
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               )}
