@@ -1678,40 +1678,6 @@ export function queryToolBreakdown(
 	);
 }
 
-export type CacheSummaryRow = {
-	input_tokens: string;
-	cached_input_tokens: string;
-	cache_read_cost: string;
-	/** What the cached reads would have cost at each span's own full input
-	 * rate (prompt_cost / uncached input tokens) — a Float64 estimate. Spans
-	 * that were fully cached or unpriced contribute nothing. */
-	cached_at_prompt_rate: number | null;
-};
-
-/** Window totals for the cache stat tiles: input/cached token volumes, what
- * cache reads actually cost, and what they would have cost at full price. */
-export function queryCacheSummary(
-	client: ClickHouseClient,
-	params: { projectId: string; from: string; to: string },
-): Promise<CacheSummaryRow[]> {
-	return rows<CacheSummaryRow>(
-		client,
-		`SELECT
-       toUInt64(sum(spans.input_tokens)) AS input_tokens,
-       toUInt64(sum(spans.cached_input_tokens)) AS cached_input_tokens,
-       sum(ifNull(spans.cache_read_cost, CAST(0 AS Decimal(38, 10)))) AS cache_read_cost,
-       sum(toFloat64(spans.cached_input_tokens)
-         * (toFloat64(spans.prompt_cost)
-            / nullIf(toFloat64(spans.input_tokens) - toFloat64(spans.cached_input_tokens), 0))
-       ) AS cached_at_prompt_rate
-     FROM spans
-     WHERE project_id = {projectId:String}
-       AND span_type = 'llm'
-       AND start_time >= {from:DateTime} AND start_time < {to:DateTime}`,
-		{ projectId: params.projectId, from: params.from, to: params.to },
-	);
-}
-
 export type AgentBreakdownRow = {
 	agent_name: string;
 	span_count: string;

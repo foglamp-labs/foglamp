@@ -47,7 +47,6 @@ const routePrefetch: Partial<Record<Route, (ctx: PrefetchCtx) => void>> = {
 		warm(trpc.metrics.timeseries.queryOptions(args));
 		warm(trpc.metrics.models.queryOptions(args));
 		warm(trpc.metrics.costByModel.queryOptions(args));
-		warm(trpc.metrics.cacheSummary.queryOptions(args));
 		warm(trpc.agents.list.queryOptions({ ...args, limit: 100 }));
 		warm(
 			trpc.workflows.list.queryOptions({

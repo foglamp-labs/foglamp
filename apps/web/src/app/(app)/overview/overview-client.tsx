@@ -22,7 +22,6 @@ import {
   IconBoxModel2,
   IconChartAreaFilled,
   IconCircleCheckFilled,
-  IconCirclePercentageFilled,
   IconCirclesFilled,
   IconCoinFilled,
   IconCpu,
@@ -419,19 +418,6 @@ export function OverviewClient() {
     enabled,
     placeholderData: (prev) => prev,
   });
-  // Cache hit rate + estimated savings tiles beside the cost chart.
-  const cacheSummary = useQuery({
-    ...trpc.metrics.cacheSummary.queryOptions(args),
-    enabled,
-    placeholderData: (prev) => prev,
-  });
-  // Discount rate on cached reads: savings as a share of what those tokens
-  // would have cost at the full input rate (drives the savings meter).
-  const cacheDiscount = useMemo(() => {
-    const d = cacheSummary.data;
-    if (!d || d.estimatedSavings == null || !d.cachedAtFullPrice) return null;
-    return d.estimatedSavings / d.cachedAtFullPrice;
-  }, [cacheSummary.data]);
   // Top agents by cost for the "By agent" card (server default sort is cost desc).
   const agents = useQuery({
     ...trpc.agents.list.queryOptions({ ...args, limit: 100 }),
@@ -475,7 +461,6 @@ export function OverviewClient() {
     timeseries.isLoading ||
     models.isLoading ||
     costByModel.isLoading ||
-    cacheSummary.isLoading ||
     agents.isLoading ||
     workflows.isLoading ||
     customers.isLoading ||
@@ -811,10 +796,10 @@ export function OverviewClient() {
             label="Total cost"
             size="sm"
             value={cur?.totalCost ?? "—"}
-            formatValue={(n) => formatCost(n, 4)}
+            formatValue={(n) => formatCost(n, 2)}
             delta={formatDelta(cur?.totalCost, prev?.totalCost)}
             deltaInverted
-            hint={`~${formatCost(projectMonthlyCost(cur?.totalCost ?? null, windowMs), 4)}/mo`}
+            hint={`~${formatCost(projectMonthlyCost(cur?.totalCost ?? null, windowMs), 2)}/mo`}
             chart={
               <CardSparkline
                 data={seriesData.map((d) => d.cost)}
@@ -1307,52 +1292,6 @@ export function OverviewClient() {
           </Card>
         )}
       </section>
-
-      <div className="px-8">
-        {/* Cache efficiency — how much input was served from cache, and what
-          those reads saved vs paying each span's own full input rate. */}
-        {pageLoading ? (
-          showSkeleton ? (
-            <StatCardsSkeleton
-              count={2}
-              className={cn(
-                "md:grid-cols-2 xl:grid-cols-2",
-                entrance && "page-fade-in"
-              )}
-            />
-          ) : null
-        ) : (
-          <section
-            className={cn(
-              "grid gap-4 md:grid-cols-2",
-              entrance && !skeletonShown && "page-fade-in"
-            )}
-          >
-            <StatCard
-              label="Cache hit rate"
-              icon={IconCirclePercentageFilled}
-              value={cacheSummary.data?.hitRate ?? "—"}
-              formatValue={formatPercent}
-              hint={
-                (cacheSummary.data?.inputTokens ?? 0) > 0
-                  ? `${formatTokens(cacheSummary.data?.cachedInputTokens ?? 0)} of ${formatTokens(cacheSummary.data?.inputTokens ?? 0)} input tokens read from cache`
-                  : "No input tokens in this range"
-              }
-            />
-            <StatCard
-              label="Cache savings"
-              icon={IconCoinFilled}
-              value={cacheSummary.data?.estimatedSavings ?? "—"}
-              formatValue={(n) => formatCost(n)}
-              hint={
-                cacheDiscount != null
-                  ? `cached reads cost ${formatPercent(cacheDiscount)} less than the full input rate`
-                  : "vs paying the full input rate for cached tokens"
-              }
-            />
-          </section>
-        )}
-      </div>
     </>
   );
 }

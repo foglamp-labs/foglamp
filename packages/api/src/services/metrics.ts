@@ -1,7 +1,6 @@
 import {
   type ProjectSummaryRow,
   type ScoreSummaryRow,
-  queryCacheSummary,
   queryCostTimeseriesByCategory,
   queryMetricsTimeseries,
   queryMetricsTimeseriesByModel,
@@ -241,42 +240,4 @@ export async function getCostTimeseriesByCategory(
     reasoningCost: decimalOrNull(r.internal_reasoning_cost) ?? 0,
     otherCost: decimalOrNull(r.other_cost) ?? 0,
   }));
-}
-
-/**
- * Cache stat-tile numbers for a window. `estimatedSavings` compares each
- * span's cache reads against its own full input rate (so custom pricing and
- * historical price changes are respected); null when nothing was cached or
- * no cached span carried a price.
- */
-export async function getCacheSummary(
-  db: Db,
-  ch: Ch,
-  userId: string,
-  input: { projectId: string; from: Date; to: Date },
-) {
-  await requireProjectAccess(db, userId, input.projectId);
-  const [row] = await queryCacheSummary(ch, {
-    projectId: input.projectId,
-    from: toClickHouseDateTime(input.from),
-    to: toClickHouseDateTime(input.to),
-  });
-  const inputTokens = num(row?.input_tokens);
-  const cachedInputTokens = num(row?.cached_input_tokens);
-  const cacheReadCost = decimalOrNull(row?.cache_read_cost ?? null);
-  const cachedAtPromptRate = row?.cached_at_prompt_rate ?? null;
-  return {
-    inputTokens,
-    cachedInputTokens,
-    // Fraction of input tokens served from cache (0..1); null with no input.
-    hitRate: inputTokens > 0 ? cachedInputTokens / inputTokens : null,
-    cacheReadCost,
-    // What the cached reads would have cost at the full input rate — the
-    // baseline the savings are measured against (drives the discount meter).
-    cachedAtFullPrice: cachedAtPromptRate,
-    estimatedSavings:
-      cachedAtPromptRate != null
-        ? cachedAtPromptRate - (cacheReadCost ?? 0)
-        : null,
-  };
 }

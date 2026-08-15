@@ -3,7 +3,6 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../index";
 import { resolveRange } from "../lib/util";
 import {
-  getCacheSummary,
   getCostTimeseriesByCategory,
   getCostTimeseriesByModel,
   getModelBreakdown,
@@ -101,13 +100,4 @@ export const metricsRouter = router({
         workflowName: input.workflowName,
       });
     }),
-
-  cacheSummary: protectedProcedure.input(rangeInput).query(({ ctx, input }) => {
-    const { from, to } = resolveRange(input.from, input.to);
-    return getCacheSummary(ctx.db, ctx.ch, ctx.session.user.id, {
-      projectId: input.projectId,
-      from,
-      to,
-    });
-  }),
 });
