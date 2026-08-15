@@ -2136,6 +2136,11 @@ function SpanDetail({
   // Only what the section actually renders — pricing metadata (pricedModelId,
   // pricedAt) lives in Raw, so it must not summon an empty section here.
   const hasBreakdown = costParts.length > 0 || usageExtras.length > 0;
+  // The breakdown's headline total — an agent container carries no cost of
+  // its own (its spend is its descendants'), so it headlines the subtree
+  // aggregate, same as its Cost field.
+  const breakdownTotal =
+    span.spanType === "agent" ? (subtree?.cost ?? null) : span.totalCost;
   // Secondary provider signals: grounding sources and rate-limit headroom.
   // Headroom shows only when it's actually low — "98% left" on every span is
   // reassurance noise, and the issues strip already points here when it dips.
@@ -2300,9 +2305,9 @@ function SpanDetail({
                     <span className="text-xs text-muted-foreground">
                       Cost breakdown
                     </span>
-                    {span.totalCost != null && (
+                    {breakdownTotal != null && (
                       <span className="text-[13px] tabular-nums">
-                        {formatCost(span.totalCost)}
+                        {formatCost(breakdownTotal)}
                       </span>
                     )}
                   </div>
