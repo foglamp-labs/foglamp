@@ -968,7 +968,7 @@ export function EvalsClient() {
 				{!evals.isLoading && visible.length === 0 ? (
 					// Zero evals defined → onboarding + CTA; evals exist but the
 					// filters exclude them all → "no matching".
-					<div className="px-8">
+					<div className="mt-2 px-8">
 						{rows.length === 0 ? (
 							<EmptyState
 								icon={IconGaugeFilled}

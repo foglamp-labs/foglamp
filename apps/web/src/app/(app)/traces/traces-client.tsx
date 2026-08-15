@@ -531,7 +531,7 @@ export function TracesClient() {
         </Toolbar>
 
         {!traces.isLoading && rows.length === 0 && page === 0 ? (
-          <div className="px-8">
+          <div className="mt-2 px-8">
             {hasFilters ? (
               <EmptyState
                 icon={IconAffiliateFilled}

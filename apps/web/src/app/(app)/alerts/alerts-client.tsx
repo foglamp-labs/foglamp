@@ -563,7 +563,7 @@ export function AlertsClient() {
 					</div>
 				) : null
 			) : rows.length === 0 ? (
-				<div className="px-8">
+				<div className="mt-2 px-8">
 					<EmptyState
 						icon={IconAlertTriangleFilled}
 						title="No alerts yet"
