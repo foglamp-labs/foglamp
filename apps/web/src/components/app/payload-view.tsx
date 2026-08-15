@@ -8,8 +8,8 @@ import {
 	IconChevronRight,
 	IconGhostFilled,
 	IconPaperclip,
-	IconPuzzleFilled,
 	IconSettingsFilled,
+	IconTool,
 	IconUserFilled,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
@@ -125,7 +125,7 @@ function ToolPart({
 				{failed ? (
 					<IconAlertTriangle className="size-3.5 shrink-0" />
 				) : (
-					<IconPuzzleFilled className="size-3.5 shrink-0" />
+					<IconTool className="size-3.5 shrink-0 fill-current" />
 				)}
 				<span className={cn(!failed && "text-muted-foreground/70")}>
 					{label}
@@ -201,13 +201,13 @@ function PartView({ part }: { part: Part }) {
 const CLAMP_HEIGHT = 240;
 
 // Assistant gets the same ghost as the Agents nav entry — one identity for
-// "the model" everywhere. Tabler ships no filled wrench, so tools are the
-// filled puzzle piece (the plugin metaphor), here and on ToolPart headers.
+// "the model" everywhere. Tabler ships no filled wrench, so the tool icon
+// self-fills via fill-current, here and on ToolPart headers.
 const ROLE_ICONS: Record<string, typeof IconUserFilled> = {
 	user: IconUserFilled,
 	assistant: IconGhostFilled,
 	system: IconSettingsFilled,
-	tool: IconPuzzleFilled,
+	tool: IconTool,
 };
 
 function MessageBlock({ message }: { message: Message }) {
@@ -249,7 +249,9 @@ function MessageBlock({ message }: { message: Message }) {
 							expanded && "rotate-90",
 						)}
 					/>
-					{RoleIcon && <RoleIcon className="mb-0.5 size-3 shrink-0" />}
+					{RoleIcon && (
+						<RoleIcon className="mb-0.5 size-3 shrink-0 fill-current" />
+					)}
 					{message.role.charAt(0).toUpperCase() + message.role.slice(1)}
 				</button>
 			)}

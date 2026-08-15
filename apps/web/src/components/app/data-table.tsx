@@ -274,7 +274,7 @@ export function Toolbar({ children }: { children: React.ReactNode }) {
   const group = useMemo(() => ({ openId, setOpenId }), [openId]);
   return (
     <FilterGroupContext.Provider value={group}>
-      <div className="flex flex-wrap items-center gap-2 pl-7 pr-8">
+      <div className="flex flex-wrap items-center gap-2 pl-7 pr-9">
         {children}
       </div>
     </FilterGroupContext.Provider>
