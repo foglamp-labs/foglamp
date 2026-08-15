@@ -737,7 +737,7 @@ function CostComposition({
   const total = parts.reduce((acc, p) => acc + p.cost, 0);
   if (parts.length < 2 || total <= 0) return null;
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex flex-col gap-3", className)}>
       <span className="text-xs text-muted-foreground">Cost distribution</span>
       <div className="flex flex-col gap-3">
         <div className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
@@ -779,16 +779,17 @@ type TraceRank = {
 
 /** A Field value with a percentile chip beside it — where this trace's value
  * falls among the same agent's traces over the last week. Outliers only: a
- * typical value (p25–p75) renders bare, high ones get an amber (p75+) or rose
- * (p95+) chip, unusually low ones emerald. The tooltip carries the plain
- * words. Purely additive: while the query is in flight, fails, or declines to
- * answer (no agent, too few traces, unpriced), the bare value renders alone. */
+ * typical value (p5–p90) renders bare, high ones get an amber (p90+) or rose
+ * (p95+) chip, unusually low ones (p5 and below) emerald. The tooltip carries
+ * the plain words. Purely additive: while the query is in flight, fails, or
+ * declines to answer (no agent, too few traces, unpriced), the bare value
+ * renders alone. */
 function rankedValue(value: React.ReactNode, percentile?: number | null) {
-  if (percentile == null || (percentile > 25 && percentile < 75)) return value;
+  if (percentile == null || (percentile > 5 && percentile < 90)) return value;
   const tone =
     percentile >= 95
       ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-      : percentile >= 75
+      : percentile >= 90
         ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
         : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
   return (
@@ -1837,7 +1838,7 @@ function TraceDetail({
               {/* The per-category sibling of the per-model strip below — the
                   same breakdown an llm span shows, summed across the trace. */}
               {usage.costParts.length > 1 && (
-                <div className="flex flex-col gap-2 border-b border-border/40 py-5 px-5">
+                <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
                   <span className="text-xs text-muted-foreground">
                     Cost breakdown
                   </span>
@@ -1852,7 +1853,7 @@ function TraceDetail({
               />
 
               {trace.durationMs > 0 && (
-                <div className="flex flex-col gap-2 border-b border-border/40 py-5 px-5">
+                <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
                   <span className="text-xs text-muted-foreground">
                     Time distribution
                   </span>
@@ -2159,20 +2160,20 @@ function SpanDetail({
 
               {hasBreakdown && (
                 <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
-                  <span className="text-xs text-muted-foreground px-1">
+                  <span className="text-xs text-muted-foreground">
                     Cost breakdown
                   </span>
                   {/* Same strip-plus-legend shape as Time distribution; the
                       span's total already lives in the Cost field above. */}
-                  <CostStrip parts={costParts} className="px-1" />
+                  <CostStrip parts={costParts} />
                   {/* The usage-count side of the breakdown — cached/reasoning
                   tokens, retries — so the costs above have their volumes. */}
                   {usageExtras.length > 0 && (
                     <>
-                      <span className="text-xs text-muted-foreground px-1">
+                      <span className="text-xs text-muted-foreground">
                         Usage
                       </span>
-                      <div className="grid grid-cols-2 gap-4 px-1">
+                      <div className="grid grid-cols-2 gap-4">
                         {usageExtras.map((p) => (
                           <Field
                             key={p.label}
