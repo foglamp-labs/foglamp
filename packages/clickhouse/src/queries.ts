@@ -34,6 +34,8 @@ export type TraceListRow = {
 	aborted_count: string;
 	total_cost: string;
 	priced_span_count: string;
+	input_tokens: string;
+	output_tokens: string;
 	total_tokens: string;
 	/** Distinct LLM model ids used across the trace's spans. */
 	models: string[];
@@ -129,6 +131,8 @@ export function listTraces(
        sum(aborted_count) AS aborted_count,
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
+       sum(input_tokens) AS input_tokens,
+       sum(output_tokens) AS output_tokens,
        sum(total_tokens) AS total_tokens,
        groupUniqArrayMerge(models) AS models
      FROM trace_summary
@@ -2039,6 +2043,8 @@ export function listTracesByWorkflowRun(
        sum(aborted_count) AS aborted_count,
        sum(total_cost) AS total_cost,
        sum(priced_span_count) AS priced_span_count,
+       sum(input_tokens) AS input_tokens,
+       sum(output_tokens) AS output_tokens,
        sum(total_tokens) AS total_tokens,
        groupUniqArrayMerge(models) AS models
      FROM trace_summary

@@ -221,7 +221,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                 value fields as the trace sheet, in place of the old stat
                 cards), then jump-to-turn within long conversations. */}
             <nav className="hidden lg:block">
-              <div className="sticky top-4 flex flex-col gap-0.5">
+              <div className="sticky top-8 flex flex-col gap-0.5">
                 <div className="mb-3 flex flex-col gap-3 border-b border-border/40 px-2 pb-4">
                   <SessionStats stats={stats} durationMs={durationMs} />
                 </div>
@@ -272,7 +272,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                   ref={(el) => {
                     turnRefs.current[i] = el;
                   }}
-                  className="scroll-mt-4"
+                  className="scroll-mt-8"
                 >
                   <TurnBlock
                     turn={t}
@@ -298,30 +298,36 @@ function SessionStats({
   durationMs,
 }: {
   stats: {
-    turnCount: number;
     totalTokens: number;
+    inputTokens: number;
+    outputTokens: number;
     totalCost: number | null;
     firstSeen: string | null;
   } | null;
   durationMs: number | null;
 }) {
+  const inTok = stats?.inputTokens ?? 0;
+  const outTok = stats?.outputTokens ?? 0;
   return (
     <>
-      <SessionStat label="Turns" value={formatCount(stats?.turnCount ?? 0)} />
       <SessionStat
-        label="Tokens"
-        value={formatTokens(stats?.totalTokens ?? 0)}
+        label="Started"
+        value={
+          stats?.firstSeen ? <RelativeTime value={stats.firstSeen} /> : "—"
+        }
       />
       <SessionStat
         label="Duration"
+        value={durationMs == null ? "—" : formatSpanDuration(durationMs)}
+      />
+      <SessionStat
+        label="Tokens"
         value={
           <span className="flex flex-col">
-            <span>
-              {durationMs == null ? "—" : formatSpanDuration(durationMs)}
-            </span>
-            {stats?.firstSeen && (
+            <span>{formatTokens(stats?.totalTokens ?? 0)}</span>
+            {(inTok > 0 || outTok > 0) && (
               <span className="text-xs text-muted-foreground">
-                started <RelativeTime value={stats.firstSeen} />
+                {formatTokens(inTok)} in · {formatTokens(outTok)} out
               </span>
             )}
           </span>

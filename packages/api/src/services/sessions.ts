@@ -189,6 +189,8 @@ export async function getSessionDetail(
       assistantOutput: c.output || null,
       rawInput: c.input ? c.input.slice(0, RAW_INPUT_CAP) : null,
       totalCost: decimalOrNull(m?.total_cost),
+      inputTokens: m ? num(m.input_tokens) : 0,
+      outputTokens: m ? num(m.output_tokens) : 0,
       totalTokens: m ? num(m.total_tokens) : 0,
       spanCount: m ? num(m.span_count) : 0,
       errorCount: m ? num(m.error_count) : 0,
@@ -199,6 +201,8 @@ export async function getSessionDetail(
   const stats = {
     turnCount: turns.length,
     totalCost: turns.reduce((acc, t) => acc + (t.totalCost ?? 0), 0),
+    inputTokens: turns.reduce((acc, t) => acc + t.inputTokens, 0),
+    outputTokens: turns.reduce((acc, t) => acc + t.outputTokens, 0),
     totalTokens: turns.reduce((acc, t) => acc + t.totalTokens, 0),
     errorCount: turns.reduce((acc, t) => acc + t.errorCount, 0),
     firstSeen: turns[0]?.startTime ?? null,
