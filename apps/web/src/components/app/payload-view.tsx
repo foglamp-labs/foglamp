@@ -8,8 +8,8 @@ import {
 	IconChevronRight,
 	IconGhostFilled,
 	IconPaperclip,
+	IconPuzzleFilled,
 	IconSettingsFilled,
-	IconTool,
 	IconUserFilled,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
@@ -100,7 +100,9 @@ function ToolPart({
 	return (
 		<div
 			className={cn(
-				"rounded-lg border bg-background/50",
+				// The top margin (on top of the parts container's gap) sets tool
+				// traffic slightly apart from the prose that precedes it.
+				"rounded-lg border bg-background/50 [&:not(:first-child)]:mt-1",
 				failed ? "border-rose-500/40 bg-rose-500/5" : "border-border/60",
 			)}
 		>
@@ -123,7 +125,7 @@ function ToolPart({
 				{failed ? (
 					<IconAlertTriangle className="size-3.5 shrink-0" />
 				) : (
-					<IconTool className="size-3.5 shrink-0" />
+					<IconPuzzleFilled className="size-3.5 shrink-0" />
 				)}
 				<span className={cn(!failed && "text-muted-foreground/70")}>
 					{label}
@@ -199,12 +201,13 @@ function PartView({ part }: { part: Part }) {
 const CLAMP_HEIGHT = 240;
 
 // Assistant gets the same ghost as the Agents nav entry — one identity for
-// "the model" everywhere. Tool stays outline: Tabler ships no filled wrench.
+// "the model" everywhere. Tabler ships no filled wrench, so tools are the
+// filled puzzle piece (the plugin metaphor), here and on ToolPart headers.
 const ROLE_ICONS: Record<string, typeof IconUserFilled> = {
 	user: IconUserFilled,
 	assistant: IconGhostFilled,
 	system: IconSettingsFilled,
-	tool: IconTool,
+	tool: IconPuzzleFilled,
 };
 
 function MessageBlock({ message }: { message: Message }) {
@@ -212,6 +215,18 @@ function MessageBlock({ message }: { message: Message }) {
 	// for — start them folded.
 	const [expanded, setExpanded] = useState(message.role !== "system");
 	const RoleIcon = message.role ? ROLE_ICONS[message.role] : undefined;
+	// Tool and file parts are already collapsed behind their own disclosures, so
+	// the height clamp adds nothing — worse, expanding a tool block inside a
+	// clamped body used to surface a "Show more" that revealed a sliver. A
+	// message of only such parts renders unclamped; opening a block shows all
+	// of it.
+	const selfCollapsing = message.parts.every(
+		(p) =>
+			p.kind === "tool-call" ||
+			p.kind === "tool-result" ||
+			p.kind === "tool-error" ||
+			p.kind === "file",
+	);
 	const body = (
 		<div className="flex flex-col gap-1.5">
 			{message.parts.map((part, i) => (
@@ -238,7 +253,7 @@ function MessageBlock({ message }: { message: Message }) {
 					{message.role.charAt(0).toUpperCase() + message.role.slice(1)}
 				</button>
 			)}
-			{expanded && <ClampedBody>{body}</ClampedBody>}
+			{expanded && (selfCollapsing ? body : <ClampedBody>{body}</ClampedBody>)}
 		</div>
 	);
 }
