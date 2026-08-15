@@ -1381,7 +1381,7 @@ function costPartsOf(src: {
     { label: "Reasoning", value: src.reasoningCost, color: "#93C5FD" },
     { label: "Output", value: src.completionCost, color: "#0090FD" },
     { label: "Image", value: src.imageCost, color: "#64748b" },
-    { label: "Web search", value: src.webSearchCost, color: "#94a3b8" },
+    { label: "Web search", value: src.webSearchCost, color: "#14B8A6" },
     { label: "Request", value: src.requestCost, color: "#475569" },
   ].filter((p): p is CostPart => p.value != null && p.value > 0);
 }
