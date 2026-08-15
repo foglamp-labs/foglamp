@@ -1111,10 +1111,8 @@ function spanFields(
       add(
         "Tokens",
         <span className="flex flex-col gap-2">
-          <span>
-            {formatTokens(span.inputTokens)} in ·{" "}
-            {formatTokens(span.outputTokens)} out
-          </span>
+          {/* Total only — the legend under the bar carries the split. */}
+          <span>{formatTokens(span.inputTokens + span.outputTokens)}</span>
           <TokenSplitBar
             input={span.inputTokens}
             cached={span.cachedInputTokens ?? 0}
@@ -1166,9 +1164,7 @@ function spanFields(
         add(
           "Tokens",
           <span className="flex flex-col gap-2">
-            <span>
-              {formatTokens(usage.input)} in · {formatTokens(usage.output)} out
-            </span>
+            <span>{formatTokens(usage.input + usage.output)}</span>
             <TokenSplitBar
               input={usage.input}
               cached={usage.cached}
@@ -1242,8 +1238,9 @@ function TtftSplitBar({
   );
 }
 
-/** Thin proportion bar under the token headline: cached input (faded — it
- * rhymes with "barely cost anything"), fresh input, and output. */
+/** Token proportion strip + legend — same strip-plus-legend shape as the Cost
+ * breakdown and Time distribution, so every bar on the page reads the same
+ * way. Cached input is faded (it rhymes with "barely cost anything"). */
 function TokenSplitBar({
   input,
   cached,
@@ -1258,29 +1255,31 @@ function TokenSplitBar({
   const cachedPart = Math.min(Math.max(cached, 0), input);
   const fresh = input - cachedPart;
   const pct = (n: number) => `${(n / total) * 100}%`;
+  const parts = [
+    { label: "Cached input", value: cachedPart, swatch: "bg-fuchsia-500/35" },
+    { label: "Input", value: fresh, swatch: "bg-fuchsia-500" },
+    { label: "Output", value: output, swatch: "bg-emerald-500" },
+  ].filter((p) => p.value > 0);
   return (
-    <span className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
-      {cachedPart > 0 && (
-        <span
-          title={`Cached input: ${formatTokens(cachedPart)}`}
-          className="h-full bg-fuchsia-500/35"
-          style={{ width: pct(cachedPart) }}
-        />
-      )}
-      {fresh > 0 && (
-        <span
-          title={`Input: ${formatTokens(fresh)}`}
-          className="h-full bg-fuchsia-500"
-          style={{ width: pct(fresh) }}
-        />
-      )}
-      {output > 0 && (
-        <span
-          title={`Output: ${formatTokens(output)}`}
-          className="h-full bg-emerald-500"
-          style={{ width: pct(output) }}
-        />
-      )}
+    <span className="flex flex-col gap-3">
+      <span className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
+        {parts.map((p) => (
+          <span
+            key={p.label}
+            title={`${p.label}: ${formatTokens(p.value)}`}
+            className={cn("h-full", p.swatch)}
+            style={{ width: pct(p.value) }}
+          />
+        ))}
+      </span>
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
+        {parts.map((p) => (
+          <span key={p.label} className="inline-flex items-center gap-1.5">
+            <span className={cn("size-2 rounded-xs", p.swatch)} />
+            {p.label} {formatTokens(p.value)}
+          </span>
+        ))}
+      </span>
     </span>
   );
 }
@@ -1817,9 +1816,7 @@ function TraceDetail({
                     <span className="flex flex-col gap-2">
                       {rankedValue(
                         usage.input + usage.output > 0
-                          ? `${formatTokens(usage.input)} in · ${formatTokens(
-                              usage.output
-                            )} out`
+                          ? formatTokens(usage.input + usage.output)
                           : formatTokens(trace.tokens),
                         rank?.tokenPercentile
                       )}
