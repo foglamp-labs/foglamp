@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@foglamp/ui/components/badge";
+import { Skeleton } from "@foglamp/ui/components/skeleton";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAlertTriangle,
@@ -33,7 +34,6 @@ import {
   EmptyState,
   NoProject,
   PageHeader,
-  TableSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { RelativeTime } from "@/components/app/relative-time";
@@ -139,8 +139,22 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
         />
       </div>
 
+      {/* Chip-shaped placeholders where the context chips will land, so the
+          layout below doesn't shift when they arrive. */}
+      {detail.isLoading && showSkeleton && (
+        <div
+          className={cn(
+            "mt-1 flex flex-wrap items-center gap-2 px-7",
+            entrance && "page-fade-in"
+          )}
+        >
+          <Skeleton className="h-8 w-32 rounded-full" />
+          <Skeleton className="h-8 w-28 rounded-full" />
+        </div>
+      )}
+
       {/* Context chips: the customer this session served and the agent that
-			    ran it — same linked-entity pills as the trace detail page. */}
+				    ran it — same linked-entity pills as the trace detail page. */}
       {(data?.customer || data?.agentName) && (
         <div
           className={cn(
@@ -185,8 +199,8 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
 
       {detail.isLoading ? (
         showSkeleton ? (
-          <div className={cn(entrance && "page-fade-in", "px-8")}>
-            <TableSkeleton />
+          <div className={cn(entrance && "page-fade-in")}>
+            <SessionDetailSkeleton />
           </div>
         ) : null
       ) : turns.length === 0 ? (
@@ -513,6 +527,92 @@ function Bubble({
             </pre>
           </details>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Loading treatment shaped like the loaded page: the real rail structure with
+ * the stat labels kept as-is (only the values are skeletons), placeholder
+ * turn-nav rows, and a couple of conversation-turn skeletons on the right —
+ * so nothing about the layout changes when the session lands.
+ */
+function SessionDetailSkeleton() {
+  return (
+    <div className="mt-3 grid gap-8 px-8 lg:grid-cols-[180px_minmax(0,1fr)]">
+      <div className="flex flex-wrap gap-x-8 gap-y-3 lg:hidden">
+        <SessionStatsSkeleton />
+      </div>
+      <nav className="hidden lg:block">
+        <div className="sticky top-8 flex flex-col gap-0.5">
+          <div className="mb-3 flex flex-col gap-3 border-b border-border/40 px-2 pb-4">
+            <SessionStatsSkeleton />
+          </div>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+              <Skeleton className="h-3.5 w-12" />
+              <Skeleton className="ml-auto h-3 w-10" />
+            </div>
+          ))}
+        </div>
+      </nav>
+      <div className="flex flex-col gap-8">
+        <TurnSkeleton />
+        <TurnSkeleton lines={2} />
+      </div>
+    </div>
+  );
+}
+
+/** The four rail stats with real labels and skeleton values. */
+function SessionStatsSkeleton() {
+  return (
+    <>
+      {(
+        [
+          ["Started", "w-14"],
+          ["Duration", "w-10"],
+          ["Tokens", "w-12"],
+          ["Cost", "w-14"],
+        ] as const
+      ).map(([label, w]) => (
+        <div key={label} className="flex min-w-0 flex-col gap-1">
+          <span className="text-xs text-muted-foreground">{label}</span>
+          <Skeleton className={cn("h-4", w)} />
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** One conversation turn: header line, user bubble, assistant paragraph —
+ * mirroring {@link TurnBlock}'s spacing (border-l-2 + pl-4 + avatar gutter). */
+function TurnSkeleton({ lines = 3 }: { lines?: number }) {
+  return (
+    <div className="flex flex-col gap-4 border-l-2 border-transparent pl-4">
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-3.5 w-12" />
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-3 w-14" />
+      </div>
+      <div className="flex gap-3">
+        <Skeleton className="mt-1.5 size-6 shrink-0 rounded-full" />
+        <Skeleton className="h-14 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl" />
+      </div>
+      <div className="flex gap-3">
+        <Skeleton className="size-6 shrink-0 rounded-full" />
+        <div className="flex min-w-0 flex-1 flex-col gap-2 px-1 pt-1">
+          {Array.from({ length: lines }, (_, i) => (
+            <Skeleton
+              key={i}
+              className={cn(
+                "h-3.5",
+                i === lines - 1 ? "w-2/3" : i % 2 ? "w-11/12" : "w-full"
+              )}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

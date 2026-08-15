@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@foglamp/ui/components/card";
+import { Skeleton } from "@foglamp/ui/components/skeleton";
 import { Tabs, TabsContent } from "@foglamp/ui/components/tabs";
 import {
   Tooltip,
@@ -57,7 +58,6 @@ import {
   NoProject,
   PageHeader,
   ScrollFade,
-  TableSkeleton,
 } from "@/components/app/page-parts";
 import { toMessages } from "@/components/app/payload-messages";
 import { PayloadView } from "@/components/app/payload-view";
@@ -468,6 +468,22 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 
       {/* Context chips: link back to the owning session / workflow / agent,
 			    plus the end-customer this trace served (links to their traces). */}
+      {/* Chip-shaped placeholders where the context chips will land — the
+          real chips only exist once the trace arrives, and without these the
+          waterfall skeleton would sit flush under the header then shift. */}
+      {detail.isLoading && showSkeleton && (
+        <div
+          className={cn(
+            "mt-1 flex flex-wrap items-center gap-2 px-7",
+            entrance && "page-fade-in"
+          )}
+        >
+          <Skeleton className="h-8 w-36 rounded-full" />
+          <Skeleton className="h-8 w-28 rounded-full" />
+          <Skeleton className="h-8 w-32 rounded-full" />
+        </div>
+      )}
+
       {(ctx?.sessionId ||
         ctx?.workflowName ||
         ctx?.agentName ||
@@ -538,8 +554,8 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
 
       {detail.isLoading ? (
         showSkeleton ? (
-          <div className={cn(entrance && "page-fade-in", "px-8")}>
-            <TableSkeleton />
+          <div className={cn(entrance && "page-fade-in")}>
+            <TraceDetailSkeleton />
           </div>
         ) : null
       ) : ordered.length === 0 ? (
@@ -2798,6 +2814,83 @@ function Payload({
           </pre>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Fake waterfall rows for {@link TraceDetailSkeleton}: a root span and a few
+ * staggered children whose bars march left→right, echoing a real trace's
+ * shape. Widths/offsets are hand-picked, purely decorative. */
+const TIMELINE_SKELETON_ROWS = [
+  { depth: 0, name: "w-24", left: "0%", width: "100%" },
+  { depth: 1, name: "w-32", left: "2%", width: "26%" },
+  { depth: 2, name: "w-20", left: "5%", width: "13%" },
+  { depth: 1, name: "w-28", left: "31%", width: "22%" },
+  { depth: 2, name: "w-16", left: "35%", width: "9%" },
+  { depth: 1, name: "w-24", left: "57%", width: "25%" },
+  { depth: 2, name: "w-20", left: "61%", width: "12%" },
+  { depth: 1, name: "w-16", left: "85%", width: "13%" },
+] as const;
+
+/**
+ * Loading treatment shaped like the loaded page: the waterfall's
+ * name / bar / duration grid on the left and the inspector sheet on the
+ * right, so nothing jumps when the trace lands. Mirrors the real layout's
+ * grid template, row heights, and panel width.
+ */
+function TraceDetailSkeleton() {
+  return (
+    <div className="mt-2 flex items-start gap-6 px-8">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        {TIMELINE_SKELETON_ROWS.map((r, i) => (
+          <div
+            key={i}
+            className="grid min-h-10 grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center py-1"
+          >
+            <div
+              className="flex min-w-0 items-center gap-2 pr-3"
+              style={{ paddingLeft: (r.depth + 1) * 12 + 4 }}
+            >
+              {/* Invisible chevron slot, same as real rows, so icons align. */}
+              <span aria-hidden className="size-3.5 shrink-0" />
+              <Skeleton className="size-4.5 shrink-0 rounded-md" />
+              <Skeleton className={cn("h-4", r.name)} />
+            </div>
+            <div className="relative h-5">
+              <Skeleton
+                className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs"
+                style={{ left: r.left, width: r.width }}
+              />
+            </div>
+            <div className="flex justify-end pr-2">
+              <Skeleton className="h-3 w-10" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <aside className="shrink-0 self-start" style={{ width: PANEL_WIDTH }}>
+        <Card className="gap-0 py-0">
+          <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
+            <Skeleton className="size-4.5 shrink-0 rounded-md" />
+            <Skeleton className="h-4 w-28" />
+          </CardHeader>
+          <CardContent className="flex flex-col p-0 py-5">
+            <div className="grid grid-cols-2 gap-4 border-b border-border/40 px-5 pb-5">
+              {["w-24", "w-20", "w-16", "w-14"].map((w) => (
+                <div key={w} className="flex flex-col gap-1.5">
+                  <Skeleton className="h-3 w-12" />
+                  <Skeleton className={cn("h-4", w)} />
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-3 px-5 pt-4">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-2 w-full rounded-full" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          </CardContent>
+        </Card>
+      </aside>
     </div>
   );
 }
