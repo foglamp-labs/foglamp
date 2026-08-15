@@ -148,8 +148,8 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
             entrance && "page-fade-in"
           )}
         >
-          <Skeleton className="h-8 w-32 rounded-full" />
-          <Skeleton className="h-8 w-28 rounded-full" />
+          <Skeleton className="h-8 w-32 rounded-full squircle:rounded-full" />
+          <Skeleton className="h-8 w-28 rounded-full squircle:rounded-full" />
         </div>
       )}
 
@@ -579,7 +579,11 @@ function SessionStatsSkeleton() {
       ).map(([label, w]) => (
         <div key={label} className="flex min-w-0 flex-col gap-1">
           <span className="text-xs text-muted-foreground">{label}</span>
-          <Skeleton className={cn("h-4", w)} />
+          {/* Sized to the value's line box (text-[13px] ≈ 20px) so the loaded
+              value doesn't shift the rail when it replaces the blob. */}
+          <span className="flex h-5 items-center">
+            <Skeleton className={cn("h-3", w)} />
+          </span>
         </div>
       ))}
     </>
@@ -597,11 +601,11 @@ function TurnSkeleton({ lines = 3 }: { lines?: number }) {
         <Skeleton className="h-3 w-14" />
       </div>
       <div className="flex gap-3">
-        <Skeleton className="mt-1.5 size-6 shrink-0 rounded-full" />
+        <Skeleton className="mt-1.5 size-6 shrink-0 rounded-full squircle:rounded-full" />
         <Skeleton className="h-14 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl" />
       </div>
       <div className="flex gap-3">
-        <Skeleton className="size-6 shrink-0 rounded-full" />
+        <Skeleton className="size-6 shrink-0 rounded-full squircle:rounded-full" />
         <div className="flex min-w-0 flex-1 flex-col gap-2 px-1 pt-1">
           {Array.from({ length: lines }, (_, i) => (
             <Skeleton

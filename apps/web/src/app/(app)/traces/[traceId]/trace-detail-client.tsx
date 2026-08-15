@@ -478,9 +478,9 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
             entrance && "page-fade-in"
           )}
         >
-          <Skeleton className="h-8 w-36 rounded-full" />
-          <Skeleton className="h-8 w-28 rounded-full" />
-          <Skeleton className="h-8 w-32 rounded-full" />
+          <Skeleton className="h-8 w-36 rounded-full squircle:rounded-full" />
+          <Skeleton className="h-8 w-28 rounded-full squircle:rounded-full" />
+          <Skeleton className="h-8 w-32 rounded-full squircle:rounded-full" />
         </div>
       )}
 
@@ -2832,13 +2832,32 @@ const TIMELINE_SKELETON_ROWS = [
   { depth: 1, name: "w-16", left: "85%", width: "13%" },
 ] as const;
 
+/** A skeleton blob sized to a Field value's line box (text-[13px] line ≈
+ * 20px), so the loaded value doesn't nudge the grid when it replaces it. */
+function FieldValueSkeleton({ w }: { w: string }) {
+  return (
+    <span className="flex h-5 items-center">
+      <Skeleton className={cn("h-3", w)} />
+    </span>
+  );
+}
+
 /**
  * Loading treatment shaped like the loaded page: the waterfall's
- * name / bar / duration grid on the left and the inspector sheet on the
- * right, so nothing jumps when the trace lands. Mirrors the real layout's
- * grid template, row heights, and panel width.
+ * name / bar / duration grid on the left, and the real inspector sheet
+ * chrome — "Whole trace" header, real field labels — with only the values
+ * as skeletons, so nothing jumps when the trace lands.
  */
 function TraceDetailSkeleton() {
+  // The sheet's width is user-resizable and persisted; match it so the
+  // skeleton occupies exactly the space the real panel will.
+  const [width] = useState(() => {
+    if (typeof window === "undefined") return PANEL_WIDTH;
+    const stored = Number(localStorage.getItem(PANEL_WIDTH_KEY));
+    return Number.isFinite(stored) && stored > 0
+      ? clampPanelWidth(stored)
+      : PANEL_WIDTH;
+  });
   return (
     <div className="mt-2 flex items-start gap-6 px-8">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -2849,10 +2868,8 @@ function TraceDetailSkeleton() {
           >
             <div
               className="flex min-w-0 items-center gap-2 pr-3"
-              style={{ paddingLeft: (r.depth + 1) * 12 + 4 }}
+              style={{ paddingLeft: r.depth * 12 + 4 }}
             >
-              {/* Invisible chevron slot, same as real rows, so icons align. */}
-              <span aria-hidden className="size-3.5 shrink-0" />
               <Skeleton className="size-4.5 shrink-0 rounded-md" />
               <Skeleton className={cn("h-4", r.name)} />
             </div>
@@ -2868,20 +2885,29 @@ function TraceDetailSkeleton() {
           </div>
         ))}
       </div>
-      <aside className="shrink-0 self-start" style={{ width: PANEL_WIDTH }}>
+      <aside className="shrink-0 self-start" style={{ width }}>
+        {/* Same Card chrome as TraceDetail — real title and field labels,
+            skeleton values. */}
         <Card className="gap-0 py-0">
           <CardHeader className="flex shrink-0 items-center gap-2 p-5 px-5 pb-1">
-            <Skeleton className="size-4.5 shrink-0 rounded-md" />
-            <Skeleton className="h-4 w-28" />
+            <CardTitle className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="flex size-4.5 shrink-0 items-center shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)] dark:shadow-(--custom-shadow) justify-center rounded-md corner-squircle bg-primary/15 text-primary">
+                <IconAffiliate className="size-3" />
+              </span>
+              <span className="truncate">Whole trace</span>
+            </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col p-0 py-5">
             <div className="grid grid-cols-2 gap-4 border-b border-border/40 px-5 pb-5">
-              {["w-24", "w-20", "w-16", "w-14"].map((w) => (
-                <div key={w} className="flex flex-col gap-1.5">
-                  <Skeleton className="h-3 w-12" />
-                  <Skeleton className={cn("h-4", w)} />
-                </div>
-              ))}
+              <Field label="Started" value={<FieldValueSkeleton w="w-24" />} />
+              <Field label="Model" value={<FieldValueSkeleton w="w-28" />} />
+              <Field label="Duration" value={<FieldValueSkeleton w="w-14" />} />
+              <Field label="Cost" value={<FieldValueSkeleton w="w-16" />} />
+              <Field
+                label="Tokens"
+                className="col-span-2"
+                value={<FieldValueSkeleton w="w-40" />}
+              />
             </div>
             <div className="flex flex-col gap-3 px-5 pt-4">
               <Skeleton className="h-3 w-24" />
