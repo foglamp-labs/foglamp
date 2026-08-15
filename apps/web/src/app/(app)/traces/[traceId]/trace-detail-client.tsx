@@ -569,6 +569,92 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
   );
 }
 
+/** One segment of a {@link BreakdownStrip}. `weight` overrides the bar width
+ * when it must differ from the legend value (TimeComposition fit-scales
+ * overlapping categories); color comes as a hex `color` or a Tailwind
+ * `swatch` class, whichever the caller has. */
+type StripSegment = {
+  label: string;
+  value: number;
+  color?: string;
+  swatch?: string;
+  weight?: number;
+};
+
+/**
+ * The one strip-plus-legend used by every proportional breakdown on this page
+ * (cost by category, cost by model, time, tokens, TTFT) — same bar, same
+ * legend, same hover behavior everywhere. Hovering either a segment or its
+ * legend entry dims the rest, which is what makes thin slivers findable. The
+ * legend carries each part's share of `total` (defaults to the sum of values;
+ * TimeComposition passes wall-clock, so overlapping categories can genuinely
+ * sum past 100%). Spans only — it renders inside Field values, where a div
+ * would be invalid HTML.
+ */
+function BreakdownStrip({
+  parts,
+  format,
+  total,
+  className,
+}: {
+  parts: StripSegment[];
+  format: (value: number) => string;
+  total?: number;
+  className?: string;
+}) {
+  const [hovered, setHovered] = useState<string | null>(null);
+  const sum = parts.reduce((acc, p) => acc + p.value, 0);
+  const denom = total ?? sum;
+  if (parts.length === 0 || sum <= 0 || denom <= 0) return null;
+  const share = (value: number) => {
+    const pct = (value / denom) * 100;
+    return pct < 1 ? "<1%" : `${Math.round(pct)}%`;
+  };
+  return (
+    <span className={cn("flex flex-col gap-3", className)}>
+      <span className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
+        {parts.map((p) => (
+          <span
+            key={p.label}
+            title={`${p.label}: ${format(p.value)} · ${share(p.value)}`}
+            onMouseEnter={() => setHovered(p.label)}
+            onMouseLeave={() => setHovered(null)}
+            className={cn(
+              "h-full transition-opacity",
+              p.swatch,
+              hovered !== null && hovered !== p.label && "opacity-25"
+            )}
+            style={{
+              width: `${((p.weight ?? p.value) / denom) * 100}%`,
+              backgroundColor: p.color,
+            }}
+          />
+        ))}
+      </span>
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
+        {parts.map((p) => (
+          <span
+            key={p.label}
+            onMouseEnter={() => setHovered(p.label)}
+            onMouseLeave={() => setHovered(null)}
+            className={cn(
+              "inline-flex items-center gap-1.5 transition-opacity",
+              hovered !== null && hovered !== p.label && "opacity-40"
+            )}
+          >
+            <span
+              className={cn("size-2 rounded-xs", p.swatch)}
+              style={{ backgroundColor: p.color }}
+            />
+            {p.label} {format(p.value)}
+            <span className="text-muted-foreground/60">{share(p.value)}</span>
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
 /**
  * One horizontal strip splitting the trace's wall-clock into model time (pure
  * model-call when the SDK reported it, else the whole LLM span), tool
@@ -652,26 +738,17 @@ function TimeComposition({
   if (totalMs <= 0 || segs.parts.length === 0) return null;
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
-        {segs.parts.map((p) => (
-          <div
-            key={p.key}
-            title={`${p.key}: ${formatDuration(p.exact)}`}
-            className={cn("h-full", p.bar)}
-            style={{ width: `${(p.width / totalMs) * 100}%` }}
-          />
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
-        {segs.parts.map((p) => (
-          <span key={p.key} className="inline-flex items-center gap-1.5">
-            <span className={cn("size-2 rounded-xs", p.bar)} />
-            {p.key} {formatDuration(p.exact)}
-          </span>
-        ))}
-      </div>
-    </div>
+    <BreakdownStrip
+      className={className}
+      total={totalMs}
+      format={formatDuration}
+      parts={segs.parts.map((p) => ({
+        label: p.key,
+        value: p.exact,
+        weight: p.width,
+        swatch: p.bar,
+      }))}
+    />
   );
 }
 
@@ -686,85 +763,100 @@ const COST_FALLBACK_COLORS = [
   "#64748b", // slate-500
 ];
 
+/** Per-model spend, priciest first, in brand colors. The by-model half of the
+ * trace's Cost breakdown; unlike time, cost has no overlap problem, so the
+ * parts always sum to the trace total. */
+function costByModelParts(spans: Span[]): StripSegment[] {
+  const byKey = new Map<
+    string,
+    { label: string; cost: number; brand: string | null }
+  >();
+  for (const s of spans) {
+    if (s.totalCost == null || s.totalCost <= 0) continue;
+    const key = s.modelId ?? `type:${s.spanType}`;
+    const cur = byKey.get(key);
+    if (cur) {
+      cur.cost += s.totalCost;
+    } else {
+      byKey.set(key, {
+        label: s.modelId ? formatModelName(s.modelId) : s.spanType,
+        cost: s.totalCost,
+        brand: s.modelId ? modelBrandColor(s.provider, s.modelId) : null,
+      });
+    }
+  }
+  const sorted = [...byKey.values()].sort((a, b) => b.cost - a.cost);
+  // Two models of one provider share a brand color, which would merge their
+  // adjacent segments — later duplicates take fallback shades instead.
+  const used = new Set<string>();
+  let fi = 0;
+  return sorted.map((p) => {
+    let color = p.brand;
+    if (!color || used.has(color)) {
+      color = COST_FALLBACK_COLORS[fi % COST_FALLBACK_COLORS.length];
+      fi += 1;
+    }
+    used.add(color);
+    return { label: p.label, value: p.cost, color };
+  });
+}
+
 /**
- * The money sibling of {@link TimeComposition}: one strip splitting the trace's
- * spend by model, priciest first. Plain proportions — unlike time, cost has no
- * overlap problem — so the strip always sums to the trace total. Brand colors
- * echo the model chips; renders nothing unless the cost actually splits across
- * two or more buckets (a single full-width segment says nothing).
+ * The trace's single Cost breakdown section: the per-category strip and the
+ * per-model strip are two views of the same spend, so they share one heading
+ * with a By category / By model toggle instead of stacking as two sections.
+ * Either view renders alone (no toggle) when the other doesn't split — a
+ * one-segment strip says nothing.
  */
-function CostComposition({
+function TraceCostSection({
+  byCategory,
   spans,
   className,
 }: {
+  byCategory: CostPart[];
   spans: Span[];
   className?: string;
 }) {
-  const parts = useMemo(() => {
-    const byKey = new Map<
-      string,
-      { label: string; cost: number; brand: string | null }
-    >();
-    for (const s of spans) {
-      if (s.totalCost == null || s.totalCost <= 0) continue;
-      const key = s.modelId ?? `type:${s.spanType}`;
-      const cur = byKey.get(key);
-      if (cur) {
-        cur.cost += s.totalCost;
-      } else {
-        byKey.set(key, {
-          label: s.modelId ? formatModelName(s.modelId) : s.spanType,
-          cost: s.totalCost,
-          brand: s.modelId ? modelBrandColor(s.provider, s.modelId) : null,
-        });
-      }
-    }
-    const sorted = [...byKey.values()].sort((a, b) => b.cost - a.cost);
-    // Two models of one provider share a brand color, which would merge their
-    // adjacent segments — later duplicates take fallback shades instead.
-    const used = new Set<string>();
-    let fi = 0;
-    return sorted.map((p) => {
-      let color = p.brand;
-      if (!color || used.has(color)) {
-        color = COST_FALLBACK_COLORS[fi % COST_FALLBACK_COLORS.length];
-        fi += 1;
-      }
-      used.add(color);
-      return { label: p.label, cost: p.cost, color };
-    });
-  }, [spans]);
-  const total = parts.reduce((acc, p) => acc + p.cost, 0);
-  if (parts.length < 2 || total <= 0) return null;
+  const [mode, setMode] = useState<"category" | "model">("category");
+  const byModel = useMemo(() => costByModelParts(spans), [spans]);
+  const hasCategory = byCategory.length > 1;
+  const hasModel = byModel.length > 1;
+  if (!hasCategory && !hasModel) return null;
+  const active = hasCategory && hasModel ? mode : hasCategory ? "category" : "model";
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <span className="text-xs text-muted-foreground">Cost distribution</span>
-      <div className="flex flex-col gap-3">
-        <div className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
-          {parts.map((p) => (
-            <div
-              key={p.label}
-              title={`${p.label}: ${formatCost(p.cost)}`}
-              className="h-full"
-              style={{
-                width: `${(p.cost / total) * 100}%`,
-                backgroundColor: p.color,
-              }}
-            />
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
-          {parts.map((p) => (
-            <span key={p.label} className="inline-flex items-center gap-1.5">
-              <span
-                className="size-2 rounded-xs"
-                style={{ backgroundColor: p.color }}
-              />
-              {p.label} {formatCost(p.cost)}
-            </span>
-          ))}
-        </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">Cost breakdown</span>
+        {hasCategory && hasModel && (
+          <div className="flex items-center gap-2 text-[11px]">
+            {(
+              [
+                ["category", "By category"],
+                ["model", "By model"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setMode(value)}
+                className={cn(
+                  "cursor-pointer transition-colors",
+                  active === value
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+      {active === "category" ? (
+        <CostStrip parts={byCategory} />
+      ) : (
+        <BreakdownStrip parts={byModel} format={formatCost} />
+      )}
     </div>
   );
 }
@@ -1224,23 +1316,23 @@ function TtftSplitBar({
   if (durationMs <= 0 || ttftMs <= 0) return null;
   const wait = Math.min(ttftMs, durationMs);
   return (
-    <span className="flex h-1 w-full overflow-hidden rounded-full">
-      <span
-        title={`Waiting for first token: ${formatDuration(wait)}`}
-        className="h-full bg-violet-500/30"
-        style={{ width: `${(wait / durationMs) * 100}%` }}
-      />
-      <span
-        title={`Generating: ${formatDuration(Math.max(0, durationMs - wait))}`}
-        className="h-full flex-1 bg-violet-500"
-      />
-    </span>
+    <BreakdownStrip
+      format={formatDuration}
+      parts={[
+        { label: "First token wait", value: wait, swatch: "bg-violet-500/30" },
+        {
+          label: "Generating",
+          value: Math.max(0, durationMs - wait),
+          swatch: "bg-violet-500",
+        },
+      ].filter((p) => p.value > 0)}
+    />
   );
 }
 
-/** Token proportion strip + legend — same strip-plus-legend shape as the Cost
- * breakdown and Time distribution, so every bar on the page reads the same
- * way. Cached input is faded (it rhymes with "barely cost anything"). */
+/** Token proportion strip + legend, in the cost-category palette — Input,
+ * Cached input, and Output keep the same colors whether the strip is measuring
+ * tokens or dollars, so the two breakdowns visibly rhyme. */
 function TokenSplitBar({
   input,
   cached,
@@ -1254,33 +1346,15 @@ function TokenSplitBar({
   if (total <= 0) return null;
   const cachedPart = Math.min(Math.max(cached, 0), input);
   const fresh = input - cachedPart;
-  const pct = (n: number) => `${(n / total) * 100}%`;
-  const parts = [
-    { label: "Cached input", value: cachedPart, swatch: "bg-fuchsia-500/35" },
-    { label: "Input", value: fresh, swatch: "bg-fuchsia-500" },
-    { label: "Output", value: output, swatch: "bg-emerald-500" },
-  ].filter((p) => p.value > 0);
   return (
-    <span className="flex flex-col gap-3">
-      <span className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
-        {parts.map((p) => (
-          <span
-            key={p.label}
-            title={`${p.label}: ${formatTokens(p.value)}`}
-            className={cn("h-full", p.swatch)}
-            style={{ width: pct(p.value) }}
-          />
-        ))}
-      </span>
-      <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
-        {parts.map((p) => (
-          <span key={p.label} className="inline-flex items-center gap-1.5">
-            <span className={cn("size-2 rounded-xs", p.swatch)} />
-            {p.label} {formatTokens(p.value)}
-          </span>
-        ))}
-      </span>
-    </span>
+    <BreakdownStrip
+      format={formatTokens}
+      parts={[
+        { label: "Input", value: fresh, color: "#F97316" },
+        { label: "Cached input", value: cachedPart, color: "#FDBA74" },
+        { label: "Output", value: output, color: "#0090FD" },
+      ].filter((p) => p.value > 0)}
+    />
   );
 }
 
@@ -1369,35 +1443,8 @@ function CostStrip({
   parts: CostPart[];
   className?: string;
 }) {
-  const total = parts.reduce((acc, p) => acc + p.value, 0);
-  if (parts.length === 0 || total <= 0) return null;
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
-        {parts.map((p) => (
-          <div
-            key={p.label}
-            title={`${p.label}: ${formatCost(p.value)}`}
-            className="h-full"
-            style={{
-              width: `${(p.value / total) * 100}%`,
-              backgroundColor: p.color,
-            }}
-          />
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
-        {parts.map((p) => (
-          <span key={p.label} className="inline-flex items-center gap-1.5">
-            <span
-              className="size-2 rounded-xs"
-              style={{ backgroundColor: p.color }}
-            />
-            {p.label} {formatCost(p.value)}
-          </span>
-        ))}
-      </div>
-    </div>
+    <BreakdownStrip parts={parts} format={formatCost} className={className} />
   );
 }
 
@@ -1832,19 +1879,9 @@ function TraceDetail({
                 issues strip already surfaces errors. */}
               </div>
 
-              {/* The per-category sibling of the per-model strip below — the
-                  same breakdown an llm span shows, summed across the trace. */}
-              {usage.costParts.length > 1 && (
-                <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
-                  <span className="text-xs text-muted-foreground">
-                    Cost breakdown
-                  </span>
-                  <CostStrip parts={usage.costParts} />
-                </div>
-              )}
-
-              {/* Renders only when the spend splits across 2+ models. */}
-              <CostComposition
+              {/* One section for the spend, viewable by category or by model. */}
+              <TraceCostSection
+                byCategory={usage.costParts}
                 spans={spans}
                 className="border-b border-border/40 py-5 px-5"
               />
