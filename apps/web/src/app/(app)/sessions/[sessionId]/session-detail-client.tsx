@@ -148,8 +148,10 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
             entrance && "page-fade-in"
           )}
         >
-          <Skeleton className="h-8 w-32 rounded-full squircle:rounded-full" />
-          <Skeleton className="h-8 w-28 rounded-full squircle:rounded-full" />
+          {/* Plain divs, not <Skeleton> — its base corner-squircle squares off
+              rounded-full, and these must read as the pills they stand in for. */}
+          <div className="h-8 w-32 animate-pulse rounded-full bg-muted" />
+          <div className="h-8 w-28 animate-pulse rounded-full bg-muted" />
         </div>
       )}
 
@@ -337,10 +339,12 @@ function SessionStats({
       <SessionStat
         label="Tokens"
         value={
-          <span className="flex flex-col">
+          // Split inline with the total (one line, like every other stat), so
+          // the loaded value matches the skeleton's line box with zero shift.
+          <span className="flex flex-wrap items-baseline gap-x-1.5">
             <span>{formatTokens(stats?.totalTokens ?? 0)}</span>
             {(inTok > 0 || outTok > 0) && (
-              <span className="text-xs text-muted-foreground">
+              <span className="whitespace-nowrap text-xs text-muted-foreground">
                 {formatTokens(inTok)} in · {formatTokens(outTok)} out
               </span>
             )}
@@ -601,11 +605,13 @@ function TurnSkeleton({ lines = 3 }: { lines?: number }) {
         <Skeleton className="h-3 w-14" />
       </div>
       <div className="flex gap-3">
-        <Skeleton className="mt-1.5 size-6 shrink-0 rounded-full squircle:rounded-full" />
+        {/* Avatar circles are plain divs — <Skeleton>'s corner-squircle would
+            square off rounded-full. */}
+        <div className="mt-1.5 size-6 shrink-0 animate-pulse rounded-full bg-muted" />
         <Skeleton className="h-14 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl" />
       </div>
       <div className="flex gap-3">
-        <Skeleton className="size-6 shrink-0 rounded-full squircle:rounded-full" />
+        <div className="size-6 shrink-0 animate-pulse rounded-full bg-muted" />
         <div className="flex min-w-0 flex-1 flex-col gap-2 px-1 pt-1">
           {Array.from({ length: lines }, (_, i) => (
             <Skeleton
