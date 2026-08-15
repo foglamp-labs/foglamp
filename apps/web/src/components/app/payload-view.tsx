@@ -235,7 +235,7 @@ function MessageBlock({ message }: { message: Message }) {
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="flex cursor-pointer items-center gap-1 self-start text-xs font-medium text-muted-foreground/70 transition-colors hover:text-foreground"
+          className="flex cursor-pointer items-center gap-1 self-start text-xs font-medium text-muted-foreground/70 group transition-colors hover:text-foreground"
         >
           <IconChevronRight
             className={cn(
@@ -244,7 +244,7 @@ function MessageBlock({ message }: { message: Message }) {
             )}
           />
           {RoleIcon && (
-            <RoleIcon className="mb-0.5 size-3 shrink-0 fill-current text-[#B8B8B8] dark:text-[#5B5B5B]" />
+            <RoleIcon className="mb-0.5 size-3 shrink-0 fill-current text-[#9E9E9E] transition-colors group-hover:text-foreground dark:text-[#787878] dark:group-hover:text-foreground" />
           )}
           {message.role.charAt(0).toUpperCase() + message.role.slice(1)}
         </button>
