@@ -2153,7 +2153,7 @@ function SpanDetail({
             >
               {span.errorMessage && (
                 <div className="flex items-start justify-between gap-2 bg-destructive/20 text-sm text-destructive px-3 py-2.5 mb-5 mx-5 corner-squircle shadow-(--custom-shadow-rose) rounded-lg">
-                  <span className="min-w-0 wrap-break-word">
+                  <span className="min-w-0 wrap-break-word text-balance">
                     {span.errorMessage}
                   </span>
                   <CopyButton
