@@ -5,10 +5,6 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAlertTriangle,
   IconArrowUpRight,
-  IconBoltFilled,
-  IconCirclesFilled,
-  IconClockFilled,
-  IconCoinFilled,
   IconGhostFilled,
   IconMessageOff,
   IconPlayerStopFilled,
@@ -18,7 +14,7 @@ import {
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef } from "react";
 import { Streamdown } from "streamdown";
 
 import { AgentIcon } from "@/components/app/agent-icon";
@@ -37,7 +33,6 @@ import {
   EmptyState,
   NoProject,
   PageHeader,
-  StatCard,
   TableSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
@@ -214,53 +209,22 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
             entrance && !skeletonShown && "page-fade-in"
           )}
         >
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 px-8">
-            <StatCard
-              icon={IconBoltFilled}
-              iconClassName="text-orange-500 dark:text-orange-500"
-              size="sm"
-              label="Turns"
-              value={stats?.turnCount ?? 0}
-              formatValue={formatCount}
-            />
-            <StatCard
-              icon={IconCirclesFilled}
-              iconClassName="text-blue-500 dark:text-blue-500"
-              size="sm"
-              label="Tokens"
-              value={stats?.totalTokens ?? 0}
-              formatValue={formatTokens}
-            />
-            <StatCard
-              icon={IconClockFilled}
-              iconClassName="text-sky-500 dark:text-sky-500"
-              size="sm"
-              label="Duration"
-              value={
-                <span className="flex items-baseline gap-1.5">
-                  {durationMs == null ? "—" : formatSpanDuration(durationMs)}
-                  {stats?.firstSeen && (
-                    <span className="text-xs font-normal text-muted-foreground">
-                      started <RelativeTime value={stats.firstSeen} />
-                    </span>
-                  )}
-                </span>
-              }
-            />
-            <StatCard
-              icon={IconCoinFilled}
-              iconClassName="text-yellow-400 dark:text-yellow-500"
-              size="sm"
-              label="Cost"
-              value={stats?.totalCost ?? "—"}
-              formatValue={(n) => formatCost(n, 4)}
-            />
-          </div>
+          <div className="grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)] mt-2 px-8">
+            {/* The rail is hidden below lg, so the stats need a home there —
+                a horizontal row above the turns. `hidden` keeps it out of the
+                lg grid (display:none elements aren't grid items). */}
+            <div className="flex flex-wrap gap-x-8 gap-y-3 lg:hidden">
+              <SessionStats stats={stats} durationMs={durationMs} />
+            </div>
 
-          <div className="grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)] mt-4 px-8">
-            {/* Turn navigation rail — jump within long conversations. */}
+            {/* Turn navigation rail — session facts on top (same label-over-
+                value fields as the trace sheet, in place of the old stat
+                cards), then jump-to-turn within long conversations. */}
             <nav className="hidden lg:block">
               <div className="sticky top-4 flex flex-col gap-0.5">
+                <div className="mb-3 flex flex-col gap-3 border-b border-border/40 px-2 pb-4">
+                  <SessionStats stats={stats} durationMs={durationMs} />
+                </div>
                 {(stats?.errorCount ?? 0) > 0 && (
                   <Badge
                     variant="rose"
@@ -271,9 +235,6 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                     {(stats?.errorCount ?? 0) === 1 ? "error" : "errors"}
                   </Badge>
                 )}
-                <span className="px-2 pt-2 pb-1.5 text-xs font-medium text-muted-foreground">
-                  {turns.length} {turns.length === 1 ? "turn" : "turns"}
-                </span>
                 {turns.map((t, i) => (
                   <button
                     key={t.traceId}
@@ -325,6 +286,67 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
         </div>
       )}
     </>
+  );
+}
+
+/** The session's headline numbers as label-over-value fields (the trace
+ * sheet's Field styling) — rendered vertically in the turn rail on lg+, and as
+ * a wrapping horizontal row above the turns below that. Layout comes from the
+ * parent container, which is why this is a fragment. */
+function SessionStats({
+  stats,
+  durationMs,
+}: {
+  stats: {
+    turnCount: number;
+    totalTokens: number;
+    totalCost: number | null;
+    firstSeen: string | null;
+  } | null;
+  durationMs: number | null;
+}) {
+  return (
+    <>
+      <SessionStat label="Turns" value={formatCount(stats?.turnCount ?? 0)} />
+      <SessionStat
+        label="Tokens"
+        value={formatTokens(stats?.totalTokens ?? 0)}
+      />
+      <SessionStat
+        label="Duration"
+        value={
+          <span className="flex flex-col">
+            <span>
+              {durationMs == null ? "—" : formatSpanDuration(durationMs)}
+            </span>
+            {stats?.firstSeen && (
+              <span className="text-xs text-muted-foreground">
+                started <RelativeTime value={stats.firstSeen} />
+              </span>
+            )}
+          </span>
+        }
+      />
+      <SessionStat
+        label="Cost"
+        value={stats?.totalCost != null ? formatCost(stats.totalCost, 4) : "—"}
+      />
+    </>
+  );
+}
+
+function SessionStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-[13px] tabular-nums">{value}</span>
+    </div>
   );
 }
 
