@@ -2159,7 +2159,7 @@ function SpanDetail({
                   <CopyButton
                     value={span.errorMessage}
                     title="Copy error"
-                    className="-mr-1 -mt-0.5 text-muted-foreground hover:text-foreground"
+                    className="-mr-1 -mt-0.5 text-destructive hover:text-destructive"
                   />
                 </div>
               )}
