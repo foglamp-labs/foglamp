@@ -59,10 +59,12 @@ import {
   ScrollFade,
   TableSkeleton,
 } from "@/components/app/page-parts";
+import { toMessages } from "@/components/app/payload-messages";
 import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
 import {
   SpanIconChip,
+  type TimelineNavEntry,
   TraceTimeline,
   WHOLE_TRACE_ID,
 } from "@/components/app/trace-timeline";
@@ -346,17 +348,36 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
     [pathname, router, searchParams]
   );
 
-  // Position of the selected span in the flattened waterfall order — drives both
-  // the keyboard shortcuts and the inspector's prev/next buttons.
-  const selectedIndex = ordered.findIndex((o) => o.span.spanId === selected);
+  // The timeline's visible rows in visual order — what ↑/↓ walk. A folded
+  // group is one stop (its head span answers for the run); its members only
+  // join once the group is expanded. Group fold state lives here (not in the
+  // timeline) so Enter can toggle it from the keyboard.
+  const [navRows, setNavRows] = useState<TimelineNavEntry[]>([]);
+  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(
+    new Set()
+  );
+  const toggleGroup = useCallback(
+    (key: string) =>
+      setExpandedGroups((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      }),
+    []
+  );
+
+  // Position of the selected span among the visible rows — drives both the
+  // keyboard shortcuts and the inspector's prev/next buttons.
+  const selectedIndex = navRows.findIndex((r) => r.spanId === selected);
   const stepSelection = useCallback(
     (delta: number) => {
-      if (ordered.length === 0) return;
-      const i = ordered.findIndex((o) => o.span.spanId === selected);
+      if (navRows.length === 0) return;
+      const i = navRows.findIndex((r) => r.spanId === selected);
       // The whole-trace row sits above the spans: ↓ from it enters the list,
       // ↑ from the first span returns to it.
       if (i < 0) {
-        if (delta > 0) select(ordered[0].span.spanId);
+        if (delta > 0) select(navRows[0].spanId);
         return;
       }
       const ni = i + delta;
@@ -364,18 +385,36 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
         select(WHOLE_TRACE_ID);
         return;
       }
-      select(ordered[Math.min(ni, ordered.length - 1)].span.spanId);
+      select(navRows[Math.min(ni, navRows.length - 1)].spanId);
     },
-    [ordered, selected, select]
+    [navRows, selected, select]
   );
 
-  // Keyboard navigation: ↑/↓ or j/k move through the ordered spans. Ignored
-  // while typing in a field so it never hijacks copy/scroll inside payloads.
+  // Keyboard navigation: ↑/↓ or j/k move through the visible rows; Enter on a
+  // group row unfolds the run (and folds it back from any of its members).
+  // Ignored while typing in a field so it never hijacks copy/scroll inside
+  // payloads.
   useEffect(() => {
-    if (ordered.length === 0) return;
+    if (navRows.length === 0) return;
     const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "Enter") {
+        // A focused button/link handles its own Enter — stepping in here too
+        // would double-toggle the row the user just clicked.
+        if (target?.closest?.("button, a, [role=button]")) return;
+        const entry = navRows.find((r) => r.spanId === selected);
+        if (!entry?.groupKey) return;
+        e.preventDefault();
+        toggleGroup(entry.groupKey);
+        // Folding from a member would strand the selection on a hidden row —
+        // land it on the group row (which answers for the head span).
+        if (entry.groupExpanded && entry.groupHeadId) {
+          select(entry.groupHeadId);
+        }
+        return;
+      }
       const next = e.key === "ArrowDown" || e.key === "j";
       const prev = e.key === "ArrowUp" || e.key === "k";
       if (!next && !prev) return;
@@ -385,7 +424,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
     // `window` is shadowed by the timeline memo above — use globalThis.
     globalThis.addEventListener("keydown", onKey);
     return () => globalThis.removeEventListener("keydown", onKey);
-  }, [ordered.length, stepSelection]);
+  }, [navRows, selected, select, toggleGroup, stepSelection]);
 
   const back = navItem("/traces");
   const ctx = detail.data;
@@ -542,6 +581,9 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
                 scores={scores.data ?? []}
                 evalMeta={evalMeta}
                 presetName={presetName}
+                expandedGroups={expandedGroups}
+                onToggleGroup={toggleGroup}
+                onNavChange={setNavRows}
               />
             </div>
             <DetailPanel
@@ -552,7 +594,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
               evalMeta={evalMeta}
               presetName={presetName}
               spanIndex={selectedIndex}
-              spanCount={ordered.length}
+              spanCount={navRows.length}
               onStep={stepSelection}
               subtreeStats={subtreeStats}
               rank={rank}
@@ -609,23 +651,32 @@ function BreakdownStrip({
   return (
     <span className={cn("flex flex-col gap-3", className)}>
       <span className="flex h-1 w-full gap-px overflow-hidden rounded-[1px]">
-        {parts.map((p) => (
-          <span
-            key={p.label}
-            title={`${p.label}: ${format(p.value)} · ${share(p.value)}`}
-            onMouseEnter={() => setHovered(p.label)}
-            onMouseLeave={() => setHovered(null)}
-            className={cn(
-              "h-full cursor-zoom-in transition-opacity",
-              p.swatch,
-              hovered !== null && hovered !== p.label && "opacity-25"
-            )}
-            style={{
-              width: `${((p.weight ?? p.value) / denom) * 100}%`,
-              backgroundColor: p.color,
-            }}
-          />
-        ))}
+        <TooltipProvider>
+          {parts.map((p) => (
+            <Tooltip key={p.label}>
+              <TooltipTrigger
+                render={
+                  <span
+                    onMouseEnter={() => setHovered(p.label)}
+                    onMouseLeave={() => setHovered(null)}
+                    className={cn(
+                      "h-full cursor-zoom-in transition-opacity",
+                      p.swatch,
+                      hovered !== null && hovered !== p.label && "opacity-25"
+                    )}
+                    style={{
+                      width: `${((p.weight ?? p.value) / denom) * 100}%`,
+                      backgroundColor: p.color,
+                    }}
+                  />
+                }
+              />
+              <TooltipContent>
+                {p.label}: {format(p.value)} · {share(p.value)}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </TooltipProvider>
       </span>
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground tabular-nums">
         {parts.map((p) => (
@@ -1114,12 +1165,40 @@ function computeSubtreeStats(spans: Span[]): Map<string, SubtreeStats> {
  * the header stat strip (the grid needs a card-shaped thing) and cost on an
  * `llm` span, where a null means "we failed to price this", not "no cost".
  */
+/** "Started" as an offset into the trace (`+2.3s`) — where the span sits is
+ * what you're orienting by; the absolute wall-clock time waits in the tooltip.
+ * The trace's own start (offset ~0) reads as words instead of `+0ms`. */
+function StartedOffset({
+  startTime,
+  traceStartMs,
+}: {
+  startTime: string;
+  traceStartMs: number;
+}) {
+  const offsetMs = Math.max(0, toMs(startTime) - traceStartMs);
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger
+          render={<span className="cursor-help tabular-nums" />}
+        >
+          {offsetMs < 1 ? "Trace start" : `+${formatSpanDuration(offsetMs)}`}
+        </TooltipTrigger>
+        <TooltipContent>{formatDateTime(startTime)}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function spanFields(
   span: Span,
   subtree: SubtreeStats | undefined,
   /** The span's descendant spans — agent containers aggregate these into the
    * same token/model breakdowns an llm span shows for itself. */
-  descendants: Span[]
+  descendants: Span[],
+  /** Earliest span start of the trace — the zero the Started offset counts
+   * from. */
+  traceStartMs: number
 ): {
   label: string;
   value: React.ReactNode;
@@ -1155,12 +1234,20 @@ function spanFields(
     </span>
   ) : null;
 
-  add("Started", formatDateTime(span.startTime));
-  add("Duration", formatSpanDuration(span.durationMs));
+  // Field order is column layout: the 2-col grid fills row-major, so evens
+  // land left and odds right. Interleaving time fields (Started, Duration,
+  // TTFT) with identity/money ones (Model, Cost) puts each kind in its own
+  // column — which is why Duration is added per-branch, not up front.
+  const started = (
+    <StartedOffset startTime={span.startTime} traceStartMs={traceStartMs} />
+  );
+  const duration = formatSpanDuration(span.durationMs);
+  add("Started", started);
 
   switch (span.spanType) {
     case "llm": {
       add("Model", model);
+      add("Duration", duration);
       // No Provider field — the model logo/name already carries it.
       add("Cost", formatCost(span.totalCost));
       if (span.ttftMs !== null) {
@@ -1205,6 +1292,7 @@ function spanFields(
     }
     case "embedding": {
       add("Model", model);
+      add("Duration", duration);
       add("Provider", span.provider);
       if (span.inputTokens > 0)
         add("Input tokens", formatTokens(span.inputTokens));
@@ -1218,6 +1306,7 @@ function spanFields(
           usage.models.length === 1 ? "Model" : "Models",
           <ModelList models={usage.models} />
         );
+      add("Duration", duration);
       if (subtree?.cost != null) add("Cost", formatCost(subtree.cost));
       if (usage.input + usage.output > 0)
         add(
@@ -1243,6 +1332,7 @@ function spanFields(
     // how you end up with a grid of dashes. No Status field either: the sheet
     // header shows the status icon next to the name (see SpanStatusIcon).
     default: {
+      add("Duration", duration);
       if (span.totalCost != null && span.totalCost !== 0)
         add("Cost", formatCost(span.totalCost));
       break;
@@ -1257,18 +1347,25 @@ function spanFields(
 function SpanStatusIcon({ status }: { status: string }) {
   const label = status.charAt(0).toUpperCase() + status.slice(1);
   return (
-    <span title={label} className="flex shrink-0 items-center">
-      {status === "ok" ? (
-        <IconCircleCheckFilled className="size-3.5 text-emerald-500" />
-      ) : (
-        <IconAlertTriangleFilled
-          className={cn(
-            "size-3.5",
-            status === "aborted" ? "text-amber-500" : "text-rose-500"
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger
+          render={<span className="flex shrink-0 items-center" />}
+        >
+          {status === "ok" ? (
+            <IconCircleCheckFilled className="size-3.5 text-emerald-500" />
+          ) : (
+            <IconAlertTriangleFilled
+              className={cn(
+                "size-3.5",
+                status === "aborted" ? "text-amber-500" : "text-rose-500"
+              )}
+            />
           )}
-        />
-      )}
-    </span>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -1800,17 +1897,13 @@ function TraceDetail({
               containerClassName="flex min-h-0 flex-1 flex-col"
               className="flex min-h-0 flex-1 flex-col gap-4 py-5"
             >
+              {/* Same column logic as spanFields: evens left, odds right —
+                  time fields (Started, Duration) stack left, identity/money
+                  (Models, Cost) right. */}
               <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
                 <Field
                   label="Started"
                   value={formatDateTime(trace.startTime)}
-                />
-                <Field
-                  label="Duration"
-                  value={rankedValue(
-                    formatSpanDuration(trace.durationMs),
-                    rank?.durationPercentile
-                  )}
                 />
                 {usage.models.length > 0 && (
                   <Field
@@ -1818,6 +1911,13 @@ function TraceDetail({
                     value={<ModelList models={usage.models} />}
                   />
                 )}
+                <Field
+                  label="Duration"
+                  value={rankedValue(
+                    formatSpanDuration(trace.durationMs),
+                    rank?.durationPercentile
+                  )}
+                />
                 <Field
                   label="Cost"
                   value={rankedValue(
@@ -2033,9 +2133,14 @@ function SpanDetail({
   const lowTokenHeadroom = tokenPct != null && tokenPct < LOW_HEADROOM_PCT;
   const lowRequestHeadroom =
     requestPct != null && requestPct < LOW_HEADROOM_PCT;
+  // The trace's zero point for the Started offset field.
+  const traceStartMs = useMemo(
+    () => Math.min(...spans.map((s) => toMs(s.startTime))),
+    [spans]
+  );
   const fields = useMemo(
-    () => spanFields(span, subtree, descendants),
-    [span, subtree, descendants]
+    () => spanFields(span, subtree, descendants, traceStartMs),
+    [span, subtree, descendants, traceStartMs]
   );
   const hasSignals =
     sources.length > 0 || lowTokenHeadroom || lowRequestHeadroom;
@@ -2587,6 +2692,18 @@ function ToolsAvailable({
 /** A payload rendered as a conversation rather than JSON — same label + copy
  * header as {@link Payload}, which still backs the Raw tab and the tool catalog.
  * Copy yields the original string, not the rendered view. */
+/** A transcript's one-line size hint: message count when the payload parses,
+ * else how much raw text is waiting behind the fold. */
+function transcriptHint(value: string): string {
+  const messages = toMessages(value);
+  if (messages) {
+    return `${messages.length} ${messages.length === 1 ? "message" : "messages"}`;
+  }
+  return value.length >= 1024
+    ? `${(value.length / 1024).toFixed(1)} KB`
+    : `${value.length} chars`;
+}
+
 function Transcript({
   label,
   value,
@@ -2600,13 +2717,29 @@ function Transcript({
   previousValue?: string | null;
   className?: string;
 }) {
+  // Collapsed by default: the field grid and breakdowns above are the summary
+  // you scan first, and a transcript is a read-it-on-purpose payload. The
+  // header's count says what's behind the fold. Copy stays a sibling of the
+  // toggle (nested buttons are invalid HTML) and works without expanding.
+  const [open, setOpen] = useState(false);
+  const hint = useMemo(() => transcriptHint(value), [value]);
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex min-w-0 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <IconChevronRight
+            className={cn("size-3 transition-transform", open && "rotate-90")}
+          />
+          {label}
+          <span className="text-muted-foreground/60 tabular-nums">{hint}</span>
+        </button>
         <CopyButton value={value} title={`Copy ${label.toLowerCase()}`} />
       </div>
-      <PayloadView value={value} previousValue={previousValue} />
+      {open && <PayloadView value={value} previousValue={previousValue} />}
     </div>
   );
 }

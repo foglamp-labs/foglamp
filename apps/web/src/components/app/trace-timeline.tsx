@@ -16,6 +16,7 @@ import {
 import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -52,6 +53,18 @@ const EMPTY_PRESET_NAME = new Map<string, string>();
 /** Sentinel `selected` value for the synthetic whole-trace root row — distinct
  * from any real span id, so the parent can render a trace-level inspector. */
 export const WHOLE_TRACE_ID = "__whole_trace__";
+
+/** One keyboard-navigable row of the waterfall, in visual order. A folded group
+ * is a single entry (its head span stands in for the run); an expanded group
+ * contributes its members but not its header row. `groupKey` marks entries
+ * Enter can toggle; `groupExpanded` says which way, and `groupHeadId` is where
+ * the selection lands when the run folds back up. */
+export type TimelineNavEntry = {
+  spanId: string;
+  groupKey?: string;
+  groupExpanded?: boolean;
+  groupHeadId?: string;
+};
 
 type SpanRow = {
   kind: "span";
@@ -208,6 +221,9 @@ export function TraceTimeline({
   scores = EMPTY_SCORES,
   evalMeta = EMPTY_EVAL_META,
   presetName = EMPTY_PRESET_NAME,
+  expandedGroups: expandedGroupsProp,
+  onToggleGroup,
+  onNavChange,
 }: {
   spans: TraceSpan[];
   selected: string | null;
@@ -218,6 +234,14 @@ export function TraceTimeline({
   scores?: TraceScore[];
   evalMeta?: Map<string, EvalMeta>;
   presetName?: Map<string, string>;
+  /** Optional controlled fold state for repeated-sibling groups. Pass both to
+   * hoist it (the trace page does, so Enter can toggle groups from the
+   * keyboard); omit both and the timeline keeps its own state. */
+  expandedGroups?: ReadonlySet<string>;
+  onToggleGroup?: (key: string) => void;
+  /** Reports the keyboard-navigable rows whenever the visible rows change, so
+   * the parent's ↑/↓ walk what's on screen instead of every span. */
+  onNavChange?: (entries: TimelineNavEntry[]) => void;
 }) {
   const window = useMemo(() => computeWindow(spans), [spans]);
   const ordered = useMemo(() => orderSpans(spans), [spans]);
@@ -228,10 +252,12 @@ export function TraceTimeline({
   // Dev-only A/B of the pre-first-token bar rendering; fixed in production.
   const ttftVariant = useTtftVariant();
   // Runs of identical siblings fold by default; this holds the ones the reader
-  // has since opened back up.
-  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(
-    new Set()
-  );
+  // has since opened back up. Controlled by the parent when both group props
+  // are passed (so keyboard Enter can toggle), self-managed otherwise.
+  const [internalExpanded, setInternalExpanded] = useState<
+    ReadonlySet<string>
+  >(new Set());
+  const expandedGroups = expandedGroupsProp ?? internalExpanded;
   // Hover time cursor — a vertical line + offset chip following the pointer
   // over the track. Driven imperatively (direct style writes on refs) so
   // mousemove never re-renders the row tree.
@@ -269,13 +295,18 @@ export function TraceTimeline({
     if (cursorRef.current) cursorRef.current.style.display = "none";
   };
 
-  const expandGroup = (key: string) =>
-    setExpandedGroups((prev) => {
+  const expandGroup = (key: string) => {
+    if (onToggleGroup) {
+      onToggleGroup(key);
+      return;
+    }
+    setInternalExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
     });
+  };
   const toggleCollapse = (spanId: string) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -318,6 +349,46 @@ export function TraceTimeline({
     }
     return groupRepeatedSiblings(flat, expandedGroups);
   }, [ordered, collapsed, expandedGroups]);
+
+  // Keyboard nav walks what's on screen: a folded run is one stop (its head
+  // span stands in), an expanded run contributes its members but not its
+  // header row. Members immediately follow their header, so tracking the last
+  // expanded group while iterating is enough to tag them.
+  useEffect(() => {
+    if (!onNavChange) return;
+    const entries: TimelineNavEntry[] = [];
+    let openGroup: GroupRow | null = null;
+    for (const row of visibleRows) {
+      if (row.kind === "group") {
+        if (row.expanded) {
+          openGroup = row;
+          continue;
+        }
+        openGroup = null;
+        entries.push({
+          spanId: row.spans[0].spanId,
+          groupKey: row.key,
+          groupExpanded: false,
+          groupHeadId: row.spans[0].spanId,
+        });
+        continue;
+      }
+      if (
+        openGroup?.spans.some((s) => s.spanId === row.span.spanId)
+      ) {
+        entries.push({
+          spanId: row.span.spanId,
+          groupKey: openGroup.key,
+          groupExpanded: true,
+          groupHeadId: openGroup.spans[0].spanId,
+        });
+      } else {
+        openGroup = null;
+        entries.push({ spanId: row.span.spanId });
+      }
+    }
+    onNavChange(entries);
+  }, [visibleRows, onNavChange]);
 
   // Trace-wide cost/token rollup for the synthetic "Whole trace" root row.
   const traceTotals = useMemo(() => {
@@ -466,6 +537,11 @@ export function TraceTimeline({
                     window={window}
                     total={total}
                     onToggle={() => expandGroup(row.key)}
+                    // A folded run answers for its head span, so keyboard
+                    // selection landing there highlights the group row.
+                    selected={
+                      !row.expanded && selected === row.spans[0].spanId
+                    }
                   />
                 );
               }
@@ -790,11 +866,13 @@ function GroupedRow({
   window,
   total,
   onToggle,
+  selected,
 }: {
   row: GroupRow;
   window: { start: number; span: number };
   total: number;
   onToggle: () => void;
+  selected?: boolean;
 }) {
   const { spans, depth, expanded } = row;
   const starts = spans.map((s) => toMs(s.startTime) - window.start);
@@ -817,7 +895,12 @@ function GroupedRow({
       type="button"
       onClick={onToggle}
       title={expanded ? "Fold repeated calls" : "Show each call"}
-      className="grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm hover:bg-accent/80 dark:hover:bg-accent/50"
+      className={cn(
+        "grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm",
+        selected
+          ? "bg-accent dark:bg-accent/70"
+          : "hover:bg-accent/80 dark:hover:bg-accent/50"
+      )}
     >
       <div
         className="flex min-w-0 items-center gap-2 pr-3"
