@@ -239,7 +239,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
   }, [spans]);
   // The three trace-level problems, collapsed into one severity-ordered list so
   // they occupy a single strip instead of three stacked banners. The first entry
-  // sets the strip's tone and is the one whose detail text shows inline.
+  // sets the strip's tone.
   const issues = useMemo(() => {
     const list: Issue[] = [];
     if (erroredSpans.length > 0) {
@@ -247,8 +247,6 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
         tone: "rose",
         icon: IconAlertTriangle,
         label: `${erroredSpans.length} ${erroredSpans.length === 1 ? "span" : "spans"} errored`,
-        detail: erroredSpans[0].errorMessage,
-        copyLabel: "Copy error",
         spanId: erroredSpans[0].spanId,
       });
     }
@@ -260,7 +258,6 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
           abortedSpans.length === 1
             ? "Run aborted"
             : `${abortedSpans.length} spans aborted`,
-        detail: abortedSpans[0].errorMessage,
         spanId: abortedSpans[0].spanId,
       });
     }
@@ -269,7 +266,6 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
         tone: "orange",
         icon: IconGaugeFilled,
         label: "Rate limit nearly exhausted",
-        detail: `${lowHeadroom.pct}% of ${lowHeadroom.kind} remaining after ${lowHeadroom.span.name}`,
         spanId: lowHeadroom.span.spanId,
       });
     }
@@ -1004,46 +1000,33 @@ type Issue = {
   icon: React.ComponentType<{ className?: string }>;
   /** Chip text — short enough to sit alongside the other issues. */
   label: string;
-  /** Longer context, shown inline only for the leading (most severe) issue. */
-  detail: string | null;
-  /** When set, the detail gets a copy control. */
-  copyLabel?: string;
   /** The span the chip selects. */
   spanId: string;
 };
 
 // Tailwind can't build class names at runtime, so each tone spells its classes
 // out in full.
-const ISSUE_TONES: Record<
-  Issue["tone"],
-  { strip: string; chip: string; detail: string; copy: string }
-> = {
+const ISSUE_TONES: Record<Issue["tone"], { strip: string; chip: string }> = {
   rose: {
     strip:
       "bg-rose-500/10 shadow-(--custom-shadow-rose) dark:bg-rose-500/15 text-rose-600 dark:text-rose-400",
     chip: "text-rose-600 hover:bg-rose-500/20 dark:text-rose-400 dark:hover:bg-rose-500/25",
-    detail: "text-rose-600/80 dark:text-rose-400/80",
-    copy: "text-rose-600/70 hover:text-rose-600 dark:text-rose-400/70 dark:hover:text-rose-400",
   },
   amber: {
     strip:
       "bg-amber-500/10 shadow-(--custom-shadow-amber) dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
     chip: "text-amber-700 hover:bg-amber-500/20 dark:text-amber-400 dark:hover:bg-amber-500/25",
-    detail: "text-amber-700/80 dark:text-amber-400/80",
-    copy: "text-amber-700/70 hover:text-amber-700 dark:text-amber-400/70 dark:hover:text-amber-400",
   },
   orange: {
     strip:
       "bg-orange-500/10 shadow-(--custom-shadow-orange) dark:bg-orange-500/15 text-orange-700 dark:text-orange-400",
     chip: "text-orange-700 hover:bg-orange-500/20 dark:text-orange-400 dark:hover:bg-orange-500/25",
-    detail: "text-orange-700/80 dark:text-orange-400/80",
-    copy: "text-orange-700/70 hover:text-orange-700 dark:text-orange-400/70 dark:hover:text-orange-400",
   },
 };
 
-/** Every trace-level problem in one severity-ordered strip: one chip each, and
- * the leading issue's detail text inline underneath — so the common
- * single-error trace reads the same as the dedicated banner it replaces. */
+/** Every trace-level problem in one severity-ordered strip, one chip each. No
+ * inline error message — clicking a chip opens the span, and the details
+ * sheet's banner carries the full text with its copy button. */
 function IssuesStrip({
   issues,
   onSelect,
@@ -1055,50 +1038,31 @@ function IssuesStrip({
 }) {
   const lead = issues[0];
   if (!lead) return null;
-  const tone = ISSUE_TONES[lead.tone];
   return (
     <div className={className}>
       <div
         className={cn(
-          "flex flex-col gap-1.5 rounded-lg px-2 py-2 text-sm",
-          tone.strip
+          "flex flex-wrap items-center gap-1 rounded-lg px-2 py-2 text-sm",
+          ISSUE_TONES[lead.tone].strip
         )}
       >
-        <div className="flex flex-wrap items-center gap-1">
-          {issues.map((issue) => {
-            const t = ISSUE_TONES[issue.tone];
-            return (
-              <button
-                key={issue.tone}
-                type="button"
-                onClick={() => onSelect(issue.spanId)}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left font-medium transition-colors",
-                  t.chip
-                )}
-              >
-                <issue.icon className="size-4 shrink-0" />
-                <span>{issue.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        {lead.detail && (
-          // The copy control is a sibling of the detail text, not nested inside
-          // a chip button — nested buttons are invalid markup.
-          <div className="flex items-start justify-between gap-2 px-2 pb-0.5">
-            <span className={cn("min-w-0 text-balance", tone.detail)}>
-              {lead.detail}
-            </span>
-            {lead.copyLabel && (
-              <CopyButton
-                value={lead.detail}
-                title={lead.copyLabel}
-                className={cn("-mt-0.5 shrink-0", tone.copy)}
-              />
-            )}
-          </div>
-        )}
+        {issues.map((issue) => {
+          const t = ISSUE_TONES[issue.tone];
+          return (
+            <button
+              key={issue.tone}
+              type="button"
+              onClick={() => onSelect(issue.spanId)}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-left font-medium transition-colors",
+                t.chip
+              )}
+            >
+              <issue.icon className="size-4 shrink-0" />
+              <span>{issue.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -1162,23 +1126,6 @@ function spanFields(
   const add = (label: string, value: React.ReactNode, wide?: boolean) => {
     if (value != null) fields.push({ label, value, wide });
   };
-  const status =
-    span.status === "ok" ? (
-      <span className="flex items-center gap-1">
-        <IconCircleCheckFilled className="size-3.5 shrink-0 text-emerald-500" />
-        Ok
-      </span>
-    ) : (
-      <span className="flex items-center gap-1">
-        <IconAlertTriangleFilled
-          className={cn(
-            "size-3.5 shrink-0",
-            span.status === "aborted" ? "text-amber-500" : "text-rose-500"
-          )}
-        />
-        {span.status.charAt(0).toUpperCase() + span.status.slice(1)}
-      </span>
-    );
   const model = span.modelId ? (
     <span className="flex min-w-0 items-center gap-1.5">
       <ModelLogo
@@ -1267,7 +1214,8 @@ function spanFields(
           // point of it.
           true
         );
-      if (span.status !== "ok") add("Status", status);
+      // No Status field — the sheet header's status icon and the error banner
+      // already carry it.
       break;
     }
     // `tool` and `other` carry none of the model fields — guessing at them is
@@ -2157,15 +2105,21 @@ function SpanDetail({
               className="flex min-h-0 flex-1 flex-col gap-4 py-5"
             >
               {span.errorMessage && (
-                <div className="flex items-start justify-between gap-2 bg-destructive/20 text-sm text-destructive px-3 py-2.5 mb-5 mx-5 corner-squircle shadow-(--custom-shadow-rose) rounded-lg">
+                <div className="flex flex-col gap-1 bg-destructive/20 text-sm text-destructive px-3 py-2.5 mb-5 mx-5 corner-squircle shadow-(--custom-shadow-rose) rounded-lg">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-xs font-medium">
+                      <IconAlertTriangleFilled className="size-3.5 shrink-0" />
+                      Error
+                    </span>
+                    <CopyButton
+                      value={span.errorMessage}
+                      title="Copy error"
+                      className="-mr-1 -mt-0.5 text-destructive hover:text-destructive/70"
+                    />
+                  </div>
                   <span className="min-w-0 wrap-break-word text-balance">
                     {span.errorMessage}
                   </span>
-                  <CopyButton
-                    value={span.errorMessage}
-                    title="Copy error"
-                    className="-mr-1 -mt-0.5 text-destructive hover:text-destructive/70"
-                  />
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
