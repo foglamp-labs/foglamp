@@ -2107,7 +2107,7 @@ function SpanDetail({
               {span.errorMessage && (
                 <div className="flex flex-col gap-1 bg-destructive/20 text-sm text-destructive px-3 py-2.5 mb-5 mx-5 corner-squircle shadow-(--custom-shadow-rose) rounded-lg">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 text-xs font-medium">
+                    <span className="flex items-center gap-1.5 text-sm font-medium">
                       <IconAlertTriangleFilled className="size-3.5 shrink-0" />
                       Error
                     </span>
