@@ -876,14 +876,10 @@ function costByModelParts(spans: Span[]): StripSegment[] {
 function TraceCostSection({
   byCategory,
   spans,
-  total,
   className,
 }: {
   byCategory: CostPart[];
   spans: Span[];
-  /** The trace's total spend, shown inline after the label like the other
-   * breakdown sections (Tokens, Time distribution). */
-  total: number | null;
   className?: string;
 }) {
   const [mode, setMode] = useState<"category" | "model">("category");
@@ -893,12 +889,10 @@ function TraceCostSection({
   if (!hasCategory && !hasModel) return null;
   const active = hasCategory && hasModel ? mode : hasCategory ? "category" : "model";
   return (
-    <StripField
-      label="Cost breakdown"
-      value={formatCost(total)}
-      className={className}
-      actions={
-        hasCategory && hasModel ? (
+    <div className={cn("flex flex-col gap-3", className)}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">Cost breakdown</span>
+        {hasCategory && hasModel && (
           <div className="flex items-center gap-2 text-[11px]">
             {(
               [
@@ -921,15 +915,14 @@ function TraceCostSection({
               </button>
             ))}
           </div>
-        ) : undefined
-      }
-    >
+        )}
+      </div>
       {active === "category" ? (
         <CostStrip parts={byCategory} />
       ) : (
         <BreakdownStrip parts={byModel} format={formatCost} />
       )}
-    </StripField>
+    </div>
   );
 }
 
@@ -1229,16 +1222,12 @@ function spanFields(
   value: React.ReactNode;
   wide?: boolean;
   separated?: boolean;
-  /** A strip/legend under the label+value row — renders the field as a
-   * {@link StripField} instead of a plain {@link Field}. */
-  bar?: React.ReactNode;
 }[] {
   const fields: {
     label: string;
     value: React.ReactNode;
     wide?: boolean;
     separated?: boolean;
-    bar?: React.ReactNode;
   }[] = [];
   const add = (
     label: string,
@@ -1246,10 +1235,9 @@ function spanFields(
     wide?: boolean,
     /** Draw a divider above — for the full-width breakdown fields that read as
      * their own section under the plain key/value pairs. */
-    separated?: boolean,
-    bar?: React.ReactNode
+    separated?: boolean
   ) => {
-    if (value != null) fields.push({ label, value, wide, separated, bar });
+    if (value != null) fields.push({ label, value, wide, separated });
   };
   const model = span.modelId ? (
     <span className="flex min-w-0 items-center gap-1.5">
@@ -1280,21 +1268,23 @@ function spanFields(
       add("Duration", duration);
       // No Provider field — the model logo/name already carries it.
       add("Cost", formatCost(span.totalCost));
-      // No TTFT here — it renders as its own full-width strip section below
-      // the Cost breakdown (see SpanDetail).
+      // No TTFT here — it renders as its own full-width section below the
+      // Cost breakdown (see SpanDetail).
       add(
         "Tokens",
-        // Total only — the legend under the bar carries the split.
-        formatTokens(span.inputTokens + span.outputTokens),
+        <span className="flex flex-col gap-2">
+          {/* Total only — the legend under the bar carries the split. */}
+          <span>{formatTokens(span.inputTokens + span.outputTokens)}</span>
+          <TokenSplitBar
+            input={span.inputTokens}
+            cached={span.cachedInputTokens ?? 0}
+            output={span.outputTokens}
+          />
+        </span>,
         // Last and full-width, split from the pairs above — the strip is the
         // point and needs the room.
         true,
-        true,
-        <TokenSplitBar
-          input={span.inputTokens}
-          cached={span.cachedInputTokens ?? 0}
-          output={span.outputTokens}
-        />
+        true
       );
       // No "Model call" field — the llm span now closes at the model-call end,
       // so modelCallMs ≈ durationMs and tool time lives in tool child spans.
@@ -1321,16 +1311,18 @@ function spanFields(
       if (usage.input + usage.output > 0)
         add(
           "Tokens",
-          formatTokens(usage.input + usage.output),
+          <span className="flex flex-col gap-2">
+            <span>{formatTokens(usage.input + usage.output)}</span>
+            <TokenSplitBar
+              input={usage.input}
+              cached={usage.cached}
+              output={usage.output}
+            />
+          </span>,
           // Full-width and split from the pairs above: the split bar needs the
           // room, and a wide bar is the point of it.
           true,
-          true,
-          <TokenSplitBar
-            input={usage.input}
-            cached={usage.cached}
-            output={usage.output}
-          />
+          true
         );
       // No Status field — the sheet header's status icon and the error banner
       // already carry it.
@@ -1560,40 +1552,6 @@ function Field({
     <div className={cn("flex min-w-0 flex-col gap-1", className)}>
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-[13px] tabular-nums">{value}</span>
-    </div>
-  );
-}
-
-/** Full-width breakdown section: the label with its headline value inline on
- * one row, and the strip/legend below. The shared shape for Tokens, Cost
- * breakdown, Time distribution, and TTFT, so the sheet's breakdowns all scan
- * the same way. `actions` sits at the row's far right (the cost section's
- * By category / By model toggle). */
-function StripField({
-  label,
-  value,
-  actions,
-  className,
-  children,
-}: {
-  label: string;
-  value?: React.ReactNode;
-  actions?: React.ReactNode;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-3", className)}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span className="text-xs text-muted-foreground">{label}</span>
-          {value != null && (
-            <span className="text-[13px] tabular-nums">{value}</span>
-          )}
-        </span>
-        {actions}
-      </div>
-      {children}
     </div>
   );
 }
@@ -1942,7 +1900,7 @@ function TraceDetail({
               {/* Same column logic as spanFields: evens left, odds right —
                   time fields (Started, Duration) stack left, identity/money
                   (Models, Cost) right. */}
-              <div className="mx-5 grid grid-cols-2 gap-4 border-b border-border/40 pb-5">
+              <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
                 <Field
                   label="Started"
                   value={formatDateTime(trace.startTime)}
@@ -1967,22 +1925,25 @@ function TraceDetail({
                     rank?.costPercentile
                   )}
                 />
-                <StripField
+                <Field
                   label="Tokens"
                   className="col-span-2 border-t border-border/40 pt-4"
-                  value={rankedValue(
-                    usage.input + usage.output > 0
-                      ? formatTokens(usage.input + usage.output)
-                      : formatTokens(trace.tokens),
-                    rank?.tokenPercentile
-                  )}
-                >
-                  <TokenSplitBar
-                    input={usage.input}
-                    cached={usage.cached}
-                    output={usage.output}
-                  />
-                </StripField>
+                  value={
+                    <span className="flex flex-col gap-2">
+                      {rankedValue(
+                        usage.input + usage.output > 0
+                          ? formatTokens(usage.input + usage.output)
+                          : formatTokens(trace.tokens),
+                        rank?.tokenPercentile
+                      )}
+                      <TokenSplitBar
+                        input={usage.input}
+                        cached={usage.cached}
+                        output={usage.output}
+                      />
+                    </span>
+                  }
+                />
                 {/* No Spans/Errors counters — the waterfall shows the spans and the
                 issues strip already surfaces errors. */}
               </div>
@@ -1991,26 +1952,24 @@ function TraceDetail({
               <TraceCostSection
                 byCategory={usage.costParts}
                 spans={spans}
-                total={trace.cost}
-                className="mx-5 border-b border-border/40 py-5"
+                className="border-b border-border/40 py-5 px-5"
               />
 
               {trace.durationMs > 0 && (
-                <StripField
-                  label="Time distribution"
-                  value={formatSpanDuration(trace.durationMs)}
-                  className="mx-5 border-b border-border/40 py-5"
-                >
+                <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
+                  <span className="text-xs text-muted-foreground">
+                    Time distribution
+                  </span>
                   <TimeComposition spans={spans} totalMs={trace.durationMs} />
-                </StripField>
+                </div>
               )}
 
               {trace.scores.length > 0 && (
-                <div className="mx-5 flex flex-col gap-1 border-b border-border/40 py-5">
-                  <span className="text-xs text-muted-foreground">Evals</span>
-                  {/* Rows bleed slightly past the section edge so their hover
-                      background wraps the text without pushing it inward. */}
-                  <div className="-mx-2 flex flex-col">
+                <div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
+                  <span className="text-xs text-muted-foreground px-2">
+                    Evals
+                  </span>
+                  <div className="flex flex-col">
                     {trace.scores.map((s) => (
                       <ScoreRow
                         key={s.scoreId}
@@ -2027,7 +1986,7 @@ function TraceDetail({
                 <ToolsAvailable
                   catalog={root.toolCatalog}
                   counts={toolCounts}
-                  className="mx-5 border-b border-border/40 py-5"
+                  className="border-b border-border/40 px-5 py-5"
                 />
               )}
 
@@ -2038,7 +1997,7 @@ function TraceDetail({
                   // Divider only when an Output section follows — a trailing
                   // border on the last section reads as a bug.
                   className={cn(
-                    "mx-5 py-5",
+                    "px-5 py-5",
                     root.output && "border-b border-border/40"
                   )}
                 />
@@ -2047,7 +2006,7 @@ function TraceDetail({
                 <Transcript
                   label="Output"
                   value={root.output}
-                  className="mx-5 pt-5"
+                  className="px-5 pt-5"
                 />
               )}
             </ScrollFade>
@@ -2060,20 +2019,20 @@ function TraceDetail({
               <Payload
                 label="Trace"
                 value={JSON.stringify(trace)}
-                className="mx-5 border-b border-border/40 py-5 pt-4"
+                className="border-b border-border/40 px-5 py-5 pt-4"
               />
               {root?.input && (
                 <Payload
                   label="Root input"
                   value={root.input}
-                  className="mx-5 border-b border-border/40 py-5"
+                  className="border-b border-border/40 px-5 py-5"
                 />
               )}
               {root?.output && (
                 <Payload
                   label="Root output"
                   value={root.output}
-                  className="mx-5 pt-5"
+                  className="px-5 pt-5"
                 />
               )}
             </ScrollFade>
@@ -2287,43 +2246,26 @@ function SpanDetail({
                   </span>
                 </div>
               )}
-              {/* Section borders are inset (mx-5, not full-bleed) — they read
-                  as part of the content, matching the separated fields'
-                  border-t inside the grid. */}
-              <div className="mx-5 grid grid-cols-2 gap-4 border-b border-border/40 pb-5">
-                {fields.map((f) =>
-                  f.bar ? (
-                    <StripField
-                      key={f.label}
-                      label={f.label}
-                      value={f.value}
-                      className={cn(
-                        f.wide && "col-span-2",
-                        f.separated && "border-t border-border/40 pt-4"
-                      )}
-                    >
-                      {f.bar}
-                    </StripField>
-                  ) : (
-                    <Field
-                      key={f.label}
-                      label={f.label}
-                      value={f.value}
-                      className={cn(
-                        f.wide && "col-span-2",
-                        f.separated && "border-t border-border/40 pt-4"
-                      )}
-                    />
-                  )
-                )}
+              <div className="grid grid-cols-2 gap-4 border-b border-border/40 pb-5 px-5">
+                {fields.map((f) => (
+                  <Field
+                    key={f.label}
+                    label={f.label}
+                    value={f.value}
+                    className={cn(
+                      f.wide && "col-span-2",
+                      f.separated && "border-t border-border/40 pt-4"
+                    )}
+                  />
+                ))}
               </div>
 
               {scores.length > 0 && (
-                <div className="mx-5 flex flex-col gap-1 border-b border-border/40 py-5">
-                  <span className="text-xs text-muted-foreground">Evals</span>
-                  {/* Rows bleed slightly past the section edge so their hover
-                      background wraps the text without pushing it inward. */}
-                  <div className="-mx-2 flex flex-col">
+                <div className="flex flex-col gap-1 border-b border-border/40 py-5 px-3">
+                  <span className="text-xs text-muted-foreground px-2">
+                    Evals
+                  </span>
+                  <div className="flex flex-col">
                     {scores.map((s) => (
                       <ScoreRow
                         key={s.scoreId}
@@ -2337,16 +2279,20 @@ function SpanDetail({
               )}
 
               {hasBreakdown && (
-                <StripField
-                  label="Cost breakdown"
-                  value={formatCost(span.totalCost)}
-                  className="mx-5 border-b border-border/40 py-5"
-                >
+                <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
+                  <span className="text-xs text-muted-foreground">
+                    Cost breakdown
+                  </span>
+                  {/* Same strip-plus-legend shape as Time distribution; the
+                      span's total already lives in the Cost field above. */}
                   <CostStrip parts={costParts} />
                   {/* The usage-count side of the breakdown — cached/reasoning
                   tokens, retries — so the costs above have their volumes. */}
                   {usageExtras.length > 0 && (
-                    <div className="flex flex-col gap-3 border-t border-border/40 pt-4">
+                    // The section wrapper's px-5 would inset this border —
+                    // bleed back out so it spans edge to edge like the
+                    // section dividers.
+                    <div className="-mx-5 flex flex-col gap-3 border-t border-border/40 px-5 pt-4">
                       <span className="text-xs text-muted-foreground">
                         Usage
                       </span>
@@ -2365,39 +2311,42 @@ function SpanDetail({
                       </div>
                     </div>
                   )}
-                </StripField>
+                </div>
               )}
 
-              {/* TTFT sits under the cost breakdown, same full-width
-                  label + value + strip shape as the other breakdowns. */}
+              {/* TTFT sits under the cost breakdown as its own full-width
+                  section — the split bar needs the room. */}
               {span.spanType === "llm" && span.ttftMs !== null && (
-                <StripField
+                <Field
                   label="TTFT"
+                  className="border-b border-border/40 py-5 px-5"
                   value={
-                    span.reasoningDurationMs != null &&
-                    span.reasoningDurationMs > 0 ? (
-                      // Reasoning models: show how much of the wait was thinking.
-                      <span>
-                        {formatDuration(span.ttftMs)}{" "}
-                        <span className="text-muted-foreground">
-                          ({formatDuration(span.reasoningDurationMs)} thinking)
+                    <span className="flex flex-col gap-2">
+                      {span.reasoningDurationMs != null &&
+                      span.reasoningDurationMs > 0 ? (
+                        // Reasoning models: show how much of the wait was
+                        // thinking.
+                        <span>
+                          {formatDuration(span.ttftMs)}{" "}
+                          <span className="text-muted-foreground">
+                            ({formatDuration(span.reasoningDurationMs)}{" "}
+                            thinking)
+                          </span>
                         </span>
-                      </span>
-                    ) : (
-                      formatDuration(span.ttftMs)
-                    )
+                      ) : (
+                        <span>{formatDuration(span.ttftMs)}</span>
+                      )}
+                      <TtftSplitBar
+                        ttftMs={span.ttftMs}
+                        durationMs={span.durationMs}
+                      />
+                    </span>
                   }
-                  className="mx-5 border-b border-border/40 py-5"
-                >
-                  <TtftSplitBar
-                    ttftMs={span.ttftMs}
-                    durationMs={span.durationMs}
-                  />
-                </StripField>
+                />
               )}
 
               {hasSignals && (
-                <div className="mx-5 flex flex-col gap-3 border-b border-border/40 py-5">
+                <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
                   <span className="text-xs text-muted-foreground px-1">
                     Provider signals
                   </span>
@@ -2482,7 +2431,7 @@ function SpanDetail({
               )}
 
               {metaEntries.length > 0 && (
-                <div className="mx-5 flex flex-col gap-2 border-b border-border/40 py-5">
+                <div className="flex flex-col gap-2 border-b border-border/40 px-5 py-5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
                       Metadata
@@ -2523,7 +2472,7 @@ function SpanDetail({
                 <ToolsAvailable
                   catalog={span.toolCatalog}
                   counts={toolCounts}
-                  className="mx-5 border-b border-border/40 py-5"
+                  className="border-b border-border/40 px-5 py-5"
                 />
               )}
 
@@ -2534,7 +2483,7 @@ function SpanDetail({
                   value={span.input}
                   previousValue={previousInput}
                   className={cn(
-                    "mx-5 py-5",
+                    "px-5 py-5",
                     span.output && "border-b border-border/40"
                   )}
                 />
@@ -2543,7 +2492,7 @@ function SpanDetail({
                 <Transcript
                   label={span.spanType === "tool" ? "Result" : "Output"}
                   value={span.output}
-                  className="mx-5 pt-5"
+                  className="px-5 pt-5"
                 />
               )}
             </ScrollFade>
@@ -2587,17 +2536,17 @@ function SpanRaw({ span }: { span: Span }) {
       <Payload
         label="Span"
         value={fields}
-        className="mx-5 border-b border-border/40 py-5 pt-1"
+        className="border-b border-border/40 px-5 py-5 pt-1"
       />
       {span.input && (
         <Payload
           label="Input"
           value={span.input}
-          className="mx-5 border-b border-border/40 py-5"
+          className="border-b border-border/40 px-5 py-5"
         />
       )}
       {span.output && (
-        <Payload label="Output" value={span.output} className="mx-5 pt-5" />
+        <Payload label="Output" value={span.output} className="px-5 pt-5" />
       )}
     </>
   );
@@ -2964,27 +2913,22 @@ function TraceDetailSkeleton() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col p-0 py-5">
-            <div className="mx-5 grid grid-cols-2 gap-4 border-b border-border/40 pb-5">
+            <div className="grid grid-cols-2 gap-4 border-b border-border/40 px-5 pb-5">
               <Field label="Started" value={<FieldValueSkeleton w="w-24" />} />
               <Field label="Model" value={<FieldValueSkeleton w="w-28" />} />
               <Field label="Duration" value={<FieldValueSkeleton w="w-14" />} />
               <Field label="Cost" value={<FieldValueSkeleton w="w-16" />} />
-              <StripField
+              <Field
                 label="Tokens"
-                className="col-span-2 border-t border-border/40 pt-4"
-                value={<FieldValueSkeleton w="w-16" />}
-              >
-                <Skeleton className="h-2 w-full" />
-              </StripField>
+                className="col-span-2"
+                value={<FieldValueSkeleton w="w-40" />}
+              />
             </div>
-            <StripField
-              label="Cost breakdown"
-              value={<FieldValueSkeleton w="w-14" />}
-              className="mx-5 pt-4"
-            >
-              <Skeleton className="h-2 w-full" />
+            <div className="flex flex-col gap-3 px-5 pt-4">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-2 w-full rounded-full" />
               <Skeleton className="h-3 w-2/3" />
-            </StripField>
+            </div>
           </CardContent>
         </Card>
       </aside>
