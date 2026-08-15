@@ -2508,7 +2508,9 @@ function ToolsAvailable({
                 >
                   <IconChevronRight
                     className={cn(
-                      "size-3 shrink-0 self-center text-muted-foreground/50 transition-[transform,color] group-hover/tool:text-foreground",
+                      // dark: outranks group-hover in the variant order, so the
+                      // hover color needs its own dark-scoped repeat.
+                      "size-3 shrink-0 self-center text-[#B8B8B8] dark:text-[#5B5B5B] transition-[transform,color] group-hover/tool:text-foreground dark:group-hover/tool:text-foreground",
                       isExpanded && "rotate-90",
                       !expandable && "invisible"
                     )}
