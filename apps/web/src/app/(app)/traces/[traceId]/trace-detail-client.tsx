@@ -794,13 +794,13 @@ function rankedValue(value: React.ReactNode, percentile?: number | null) {
   return (
     <span className="flex flex-wrap items-baseline gap-x-1.5">
       {value}
-      <TooltipProvider delay={150}>
+      <TooltipProvider>
         <Tooltip>
           <TooltipTrigger
             render={
               <span
                 className={cn(
-                  "rounded px-1 py-px text-[10px] font-medium tabular-nums",
+                  "cursor-help rounded px-1 py-px text-[10px] font-medium tabular-nums",
                   tone
                 )}
               />
