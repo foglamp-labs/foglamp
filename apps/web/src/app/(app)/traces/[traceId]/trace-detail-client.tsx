@@ -620,7 +620,7 @@ function BreakdownStrip({
             onMouseEnter={() => setHovered(p.label)}
             onMouseLeave={() => setHovered(null)}
             className={cn(
-              "h-full transition-opacity",
+              "h-full cursor-zoom-in transition-opacity",
               p.swatch,
               hovered !== null && hovered !== p.label && "opacity-25"
             )}
@@ -638,7 +638,7 @@ function BreakdownStrip({
             onMouseEnter={() => setHovered(p.label)}
             onMouseLeave={() => setHovered(null)}
             className={cn(
-              "inline-flex items-center gap-1.5 transition-opacity",
+              "inline-flex cursor-zoom-in items-center gap-1.5 transition-opacity",
               hovered !== null && hovered !== p.label && "opacity-40"
             )}
           >
