@@ -1087,7 +1087,7 @@ function IssuesStrip({
           // The copy control is a sibling of the detail text, not nested inside
           // a chip button — nested buttons are invalid markup.
           <div className="flex items-start justify-between gap-2 px-2 pb-0.5">
-            <span className={cn("min-w-0 truncate", tone.detail)}>
+            <span className={cn("min-w-0 text-balance", tone.detail)}>
               {lead.detail}
             </span>
             {lead.copyLabel && (
