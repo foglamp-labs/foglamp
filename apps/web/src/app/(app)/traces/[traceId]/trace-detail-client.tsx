@@ -876,10 +876,13 @@ function costByModelParts(spans: Span[]): StripSegment[] {
 function TraceCostSection({
   byCategory,
   spans,
+  total,
   className,
 }: {
   byCategory: CostPart[];
   spans: Span[];
+  /** The trace's total spend, shown under the label like every other field. */
+  total: number | null;
   className?: string;
 }) {
   const [mode, setMode] = useState<"category" | "model">("category");
@@ -890,8 +893,15 @@ function TraceCostSection({
   const active = hasCategory && hasModel ? mode : hasCategory ? "category" : "model";
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">Cost breakdown</span>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="text-xs text-muted-foreground">Cost breakdown</span>
+          {total != null && (
+            <span className="text-[13px] tabular-nums">
+              {formatCost(total)}
+            </span>
+          )}
+        </div>
         {hasCategory && hasModel && (
           <div className="flex items-center gap-2 text-[11px]">
             {(
@@ -1952,14 +1962,20 @@ function TraceDetail({
               <TraceCostSection
                 byCategory={usage.costParts}
                 spans={spans}
+                total={trace.cost}
                 className="border-b border-border/40 py-5 px-5"
               />
 
               {trace.durationMs > 0 && (
                 <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
-                  <span className="text-xs text-muted-foreground">
-                    Time distribution
-                  </span>
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="text-xs text-muted-foreground">
+                      Time distribution
+                    </span>
+                    <span className="text-[13px] tabular-nums">
+                      {formatSpanDuration(trace.durationMs)}
+                    </span>
+                  </div>
                   <TimeComposition spans={spans} totalMs={trace.durationMs} />
                 </div>
               )}
@@ -2280,11 +2296,16 @@ function SpanDetail({
 
               {hasBreakdown && (
                 <div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
-                  <span className="text-xs text-muted-foreground">
-                    Cost breakdown
-                  </span>
-                  {/* Same strip-plus-legend shape as Time distribution; the
-                      span's total already lives in the Cost field above. */}
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <span className="text-xs text-muted-foreground">
+                      Cost breakdown
+                    </span>
+                    {span.totalCost != null && (
+                      <span className="text-[13px] tabular-nums">
+                        {formatCost(span.totalCost)}
+                      </span>
+                    )}
+                  </div>
                   <CostStrip parts={costParts} />
                   {/* The usage-count side of the breakdown — cached/reasoning
                   tokens, retries — so the costs above have their volumes. */}
