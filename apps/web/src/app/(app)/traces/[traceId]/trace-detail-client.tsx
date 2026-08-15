@@ -1120,11 +1120,27 @@ function spanFields(
   /** The span's descendant spans — agent containers aggregate these into the
    * same token/model breakdowns an llm span shows for itself. */
   descendants: Span[]
-): { label: string; value: React.ReactNode; wide?: boolean }[] {
-  const fields: { label: string; value: React.ReactNode; wide?: boolean }[] =
-    [];
-  const add = (label: string, value: React.ReactNode, wide?: boolean) => {
-    if (value != null) fields.push({ label, value, wide });
+): {
+  label: string;
+  value: React.ReactNode;
+  wide?: boolean;
+  separated?: boolean;
+}[] {
+  const fields: {
+    label: string;
+    value: React.ReactNode;
+    wide?: boolean;
+    separated?: boolean;
+  }[] = [];
+  const add = (
+    label: string,
+    value: React.ReactNode,
+    wide?: boolean,
+    /** Draw a divider above — for the full-width breakdown fields that read as
+     * their own section under the plain key/value pairs. */
+    separated?: boolean
+  ) => {
+    if (value != null) fields.push({ label, value, wide, separated });
   };
   const model = span.modelId ? (
     <span className="flex min-w-0 items-center gap-1.5">
@@ -1147,18 +1163,6 @@ function spanFields(
       add("Model", model);
       // No Provider field — the model logo/name already carries it.
       add("Cost", formatCost(span.totalCost));
-      add(
-        "Tokens",
-        <span className="flex flex-col gap-2">
-          {/* Total only — the legend under the bar carries the split. */}
-          <span>{formatTokens(span.inputTokens + span.outputTokens)}</span>
-          <TokenSplitBar
-            input={span.inputTokens}
-            cached={span.cachedInputTokens ?? 0}
-            output={span.outputTokens}
-          />
-        </span>
-      );
       if (span.ttftMs !== null) {
         add(
           "TTFT",
@@ -1179,6 +1183,22 @@ function spanFields(
           </span>
         );
       }
+      add(
+        "Tokens",
+        <span className="flex flex-col gap-2">
+          {/* Total only — the legend under the bar carries the split. */}
+          <span>{formatTokens(span.inputTokens + span.outputTokens)}</span>
+          <TokenSplitBar
+            input={span.inputTokens}
+            cached={span.cachedInputTokens ?? 0}
+            output={span.outputTokens}
+          />
+        </span>,
+        // Last and full-width, split from the pairs above — the strip is the
+        // point and needs the room.
+        true,
+        true
+      );
       // No "Model call" field — the llm span now closes at the model-call end,
       // so modelCallMs ≈ durationMs and tool time lives in tool child spans.
       break;
@@ -1210,8 +1230,9 @@ function spanFields(
               output={usage.output}
             />
           </span>,
-          // Full-width: the split bar needs the room, and a wide bar is the
-          // point of it.
+          // Full-width and split from the pairs above: the split bar needs the
+          // room, and a wide bar is the point of it.
+          true,
           true
         );
       // No Status field — the sheet header's status icon and the error banner
@@ -1806,7 +1827,7 @@ function TraceDetail({
                 />
                 <Field
                   label="Tokens"
-                  className="col-span-2"
+                  className="col-span-2 border-t border-border/40 pt-4"
                   value={
                     <span className="flex flex-col gap-2">
                       {rankedValue(
@@ -2128,7 +2149,10 @@ function SpanDetail({
                     key={f.label}
                     label={f.label}
                     value={f.value}
-                    className={f.wide ? "col-span-2" : undefined}
+                    className={cn(
+                      f.wide && "col-span-2",
+                      f.separated && "border-t border-border/40 pt-4"
+                    )}
                   />
                 ))}
               </div>
