@@ -63,6 +63,7 @@ import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
+import { ToolBreakdownCard } from "@/components/app/tool-breakdown-card";
 import {
   ChartLegend,
   formatBucketFull,
@@ -457,6 +458,18 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
               </CardContent>
             </Card>
           </section>
+
+          {/* Which tools this workflow's runs lean on. The "Ungrouped" pseudo-
+              workflow has no name to filter by, so the card is skipped there
+              rather than silently showing project-wide numbers. */}
+          {!ungrouped && (
+            <section className="px-8">
+              <ToolBreakdownCard
+                workflowName={workflowName}
+                className={cn(entrance && "page-fade-in")}
+              />
+            </section>
+          )}
 
           {/* Step flow for the selected run. */}
           {activeRunId && (

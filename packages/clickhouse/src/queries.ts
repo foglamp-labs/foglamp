@@ -1623,6 +1623,10 @@ export type ToolBreakdownRow = {
 	call_count: string;
 	error_count: string;
 	aborted_count: string;
+	/** Distinct runs (traces, or workflow runs when workflow-scoped) that called this tool. */
+	run_count: string;
+	/** Distinct runs in the same scope and window, tool calls or not. */
+	total_run_count: string;
 	/** [p50, p95, p99] tool duration in milliseconds. */
 	duration_quantiles: number[];
 };
@@ -1645,15 +1649,18 @@ export function queryToolBreakdown(
 		limit?: number;
 	},
 ): Promise<ToolBreakdownRow[]> {
-	const filters: string[] = [
+	const scopeFilters: string[] = [
 		"project_id = {projectId:String}",
-		"span_type = 'tool'",
 		"start_time >= {from:DateTime}",
 		"start_time < {to:DateTime}",
 	];
-	if (params.agentName) filters.push("agent_name = {agentName:String}");
+	if (params.agentName) scopeFilters.push("agent_name = {agentName:String}");
 	if (params.workflowName)
-		filters.push("workflow_name = {workflowName:String}");
+		scopeFilters.push("workflow_name = {workflowName:String}");
+	const filters = [...scopeFilters, "span_type = 'tool'"];
+	// The run unit is a trace, except on a workflow scope where one workflow
+	// run may span several traces and the run id is the honest denominator.
+	const runUnit = params.workflowName ? "workflow_run_id" : "trace_id";
 	return rows<ToolBreakdownRow>(
 		client,
 		`SELECT
@@ -1661,6 +1668,12 @@ export function queryToolBreakdown(
        toUInt64(count()) AS call_count,
        toUInt64(countIf(status = 'error')) AS error_count,
        toUInt64(countIf(status = 'aborted')) AS aborted_count,
+       toUInt64(uniqIf(${runUnit}, ${runUnit} != '')) AS run_count,
+       (
+         SELECT toUInt64(uniqIf(${runUnit}, ${runUnit} != ''))
+         FROM spans
+         WHERE ${scopeFilters.join(" AND ")}
+       ) AS total_run_count,
        quantiles(0.5, 0.95, 0.99)(duration_ms) AS duration_quantiles
      FROM spans
      WHERE ${filters.join(" AND ")}

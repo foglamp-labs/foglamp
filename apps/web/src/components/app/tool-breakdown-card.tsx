@@ -111,11 +111,16 @@ export function ToolBreakdownCard({
 										</div>
 									</div>
 									{/* Right: call count + share-of-calls bar. */}
-									<div className="flex shrink-0 flex-col items-end gap-2">
+									<div className="flex shrink-0 flex-col items-end gap-1">
 										<span className="text-sm tabular-nums">
 											{formatCount(t.callCount)}
 											{t.callCount === 1 ? " call" : " calls"}
 										</span>
+										{t.totalRunCount > 0 && (
+											<span className="text-xs tabular-nums text-muted-foreground/70">
+												{formatPercent(t.runCount / t.totalRunCount)} of runs
+											</span>
+										)}
 										<div className="h-0.5 w-14 overflow-hidden rounded-full bg-muted-foreground/10">
 											<div
 												className="ml-auto h-full rounded-full bg-blue-500"

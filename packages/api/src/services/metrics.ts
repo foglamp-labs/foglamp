@@ -206,6 +206,8 @@ export async function getToolBreakdown(
     callCount: num(r.call_count),
     errorCount: num(r.error_count),
     abortedCount: num(r.aborted_count),
+    runCount: num(r.run_count),
+    totalRunCount: num(r.total_run_count),
     latencyMs: quantiles(r.duration_quantiles),
   }));
 }
