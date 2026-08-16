@@ -237,7 +237,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                 value fields as the trace sheet, in place of the old stat
                 cards), then jump-to-turn within long conversations. */}
             <nav className="hidden lg:block">
-              <div className="sticky top-8 flex flex-col gap-0.5">
+              <div className="sticky top-8 flex max-h-[calc(100svh-4rem)] flex-col gap-0.5">
                 <div className="mb-3 flex flex-col gap-3 border-b border-border/40 px-2 pb-4">
                   <SessionStats stats={stats} durationMs={durationMs} />
                 </div>
@@ -251,33 +251,35 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                     {(stats?.errorCount ?? 0) === 1 ? "error" : "errors"}
                   </Badge>
                 )}
-                {turns.map((t, i) => (
-                  <button
-                    key={t.traceId}
-                    type="button"
-                    onClick={() => scrollToTurn(i)}
-                    className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
-                  >
-                    <span className="font-medium tabular-nums">
-                      Turn {i + 1}
-                    </span>
-                    {t.status === "error" && (
-                      <span className="size-1.5 shrink-0 rounded-full bg-rose-500" />
-                    )}
-                    {t.status === "aborted" && (
-                      <span className="size-1.5 shrink-0 rounded-full bg-amber-500" />
-                    )}
-                    <span
-                      className={cn(
-                        "ml-auto tabular-nums",
-                        costShade(t.totalCost, costThresholds) ??
-                          "text-muted-foreground"
-                      )}
+                <div className="flex min-h-0 flex-col gap-0.5 overflow-y-auto">
+                  {turns.map((t, i) => (
+                    <button
+                      key={t.traceId}
+                      type="button"
+                      onClick={() => scrollToTurn(i)}
+                      className="flex items-center gap-2 cursor-pointer rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
                     >
-                      {formatCost(t.totalCost)}
-                    </span>
-                  </button>
-                ))}
+                      <span className="font-medium tabular-nums">
+                        Turn {i + 1}
+                      </span>
+                      {t.status === "error" && (
+                        <span className="size-1.5 shrink-0 rounded-full bg-rose-500" />
+                      )}
+                      {t.status === "aborted" && (
+                        <span className="size-1.5 shrink-0 rounded-full bg-amber-500" />
+                      )}
+                      <span
+                        className={cn(
+                          "ml-auto tabular-nums",
+                          costShade(t.totalCost, costThresholds) ??
+                            "text-muted-foreground"
+                        )}
+                      >
+                        {formatCost(t.totalCost)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </nav>
 
