@@ -3,6 +3,7 @@ import { agentsRouter } from "./agents";
 import { alertsRouter } from "./alerts";
 import { customersRouter } from "./customers";
 import { evalsRouter } from "./evals";
+import { instrumentationPlansRouter } from "./instrumentationPlans";
 import { metricsRouter } from "./metrics";
 import { orgsRouter } from "./orgs";
 import { platformRouter } from "./platform";
@@ -28,6 +29,7 @@ export const appRouter = router({
   metrics: metricsRouter,
   alerts: alertsRouter,
   evals: evalsRouter,
+  instrumentationPlans: instrumentationPlansRouter,
   orgs: orgsRouter,
   providerKeys: providerKeysRouter,
   pricing: pricingRouter,

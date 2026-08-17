@@ -4,7 +4,19 @@ export type ActivationEvent =
   | "user_signed_up"
   | "api_key_provisioned"
   | "project_sent_spans"
-  | "subscription_started";
+  | "subscription_started"
+  // The onboarding approval loop. Fired server-side because most of these
+  // transitions are driven by the user's coding agent, not their browser.
+  // Each one fires at most once per plan: they hang off a conditional UPDATE
+  // that flips a null timestamp, so reloads and repeated polls can't duplicate.
+  | "instrumentation_plan_created"
+  | "instrumentation_plan_approved"
+  | "instrumentation_agent_resumed"
+  | "instrumentation_changes_applied"
+  | "instrumentation_waiting_for_trace"
+  | "instrumentation_verified"
+  | "instrumentation_plan_expired"
+  | "instrumentation_plan_failed";
 
 type CaptureInput = {
   event: ActivationEvent;

@@ -1,9 +1,15 @@
 // Single source of truth for the "paste this into your coding agent" prompts.
 //
-// The instrumentation half is identical whether the user is signed in (key
-// minted server-side and inlined) or on the landing page (key obtained via
+// Both prompts are deliberately tiny: the real contract lives at /setup/prompt
+// (lib/setup-prompt.ts) and the agent fetches it. That keeps what the user
+// copies short enough to trust, and lets the contract change without anyone
+// re-copying a prompt out of a screenshot.
+//
+// The shared body is identical whether the user is signed in (key minted
+// server-side and inlined) or on the landing page (key obtained via
 // `npx foglamp login`); only the preamble — how the agent gets a key — differs.
-// Keeping the shared body here means the two prompts can't drift.
+
+import { SITE_URL } from "./links";
 
 export const DOCS_URL = "https://docs.foglamp.dev/quickstart";
 // Markdown page written for coding agents — the canonical instrumentation
@@ -13,41 +19,31 @@ export const AGENT_DOCS_URL = "https://docs.foglamp.dev/ai-instrument.md";
 export const LLMS_INDEX_URL = "https://docs.foglamp.dev/llms.txt";
 // The dev-only live overlay (`foglamp/hud`) — a great first-run "wow".
 export const HUD_DOCS_URL = "https://docs.foglamp.dev/sdk/hud";
+// The full agent contract: discover → upload a plan → wait for the user to
+// approve → apply → report. Served as plain text so `curl` is enough.
+export const SETUP_PROMPT_URL = `${SITE_URL}/setup/prompt`;
 
-// Steps after the key is in place (docs + mapping rules, then the verification
-// hand-off), plus the closing notes. `startStep` numbers them continuously
-// after the caller's own preamble steps.
+// Steps after the key is in place. `startStep` numbers them continuously after
+// the caller's own preamble steps.
+//
+// The user is told up front that they'll be asked to approve something, because
+// the agent is about to hand them a link and then go quiet on purpose — without
+// this line that silence reads as a hang.
 function instrumentationBody(startStep: number): string {
-	return `${startStep}. Fetch ${AGENT_DOCS_URL} (written for coding agents) and follow it. First
-   check which Vercel AI SDK major this repo uses and take the matching path:
-   on v4–v6 wrap the \`ai\` module with \`wrap()\` from \`foglamp/wrap\`; on v7
-   attach \`fog.integration(...)\` to my generateText / streamText calls. Either
-   way, read my codebase and map each agent to \`agentName\`, any multi-step
-   pipeline to a shared \`workflowName\` + \`workflowRunId\`, and any conversation
-   thread to a \`sessionId\` — real user conversations only; a batch/cron/pipeline
-   run is a workflow, not a session (one-off calls get a \`traceName\`). Only if
-   the app serves distinct end-customers/tenants, also attach a \`customer\`
-   (\`{ id, name?, imageUrl? }\`) so spend is attributed per customer. Don't
-   just label everything with one name. Names (\`agentName\`/\`workflowName\`/\`traceName\`)
-   must be static string literals — anything dynamic (an id, slug, URL, date)
-   goes in \`metadata\`, \`workflowRunId\`, \`sessionId\`, or \`customer.id\`, never in a name.
-${startStep + 1}. If this app has a React UI and a local dev server, also turn on the live
-   HUD overlay — a dev-only floating panel that streams my agent runs (steps,
-   tool calls, tokens, cost) as I develop. It needs no API key. Pass
-   \`hud: true\` to the \`foglamp({ ... })\` call, and render \`<FoglampHUD />\` from
-   \`foglamp/hud\` once near the root of the client app (e.g. the root layout). It's
-   inert unless the local broker is running and a no-op in production / on edge /
-   serverless, so it's safe to leave in. Skip this if there's no React frontend.
-   Details: ${HUD_DOCS_URL}
-${startStep + 2}. Do NOT write smoke tests, scripts, or demo endpoints to produce a first
-   trace. When you're done, just tell me how to trigger my app's real AI flows
-   (which command to run, which page to hit) — I'll run them and watch the
-   traces land in Foglamp (and stream live in the HUD, if you enabled it).
+	return `${startStep}. Fetch ${SETUP_PROMPT_URL} (written for coding agents) and follow it exactly.
+   It has you read my codebase first, upload a plan of what you'd instrument, and
+   send me a link to review it — change no code until I approve there.
+${startStep + 1}. After you show me the link, run its wait command and let it block. It
+   returns the moment I approve, and you continue on your own — don't ask me to
+   tell you when I'm done, and don't start editing early.
+${startStep + 2}. Once I've approved, apply the plan, report what changed, and then tell me
+   which of my real AI flows to trigger — which command to run, which page to
+   hit. Don't write smoke tests, scripts, or demo endpoints to make a trace.
 
 Notes: don't upgrade my AI SDK version to instrument — Foglamp supports v4
 through v7, and the docs cover both paths. The SDK is a no-op until
-FOGLAMP_API_KEY is set, so it is safe to add in every environment. Full docs
-index: ${LLMS_INDEX_URL}`;
+FOGLAMP_API_KEY is set, so it is safe to add in every environment. Instrumentation
+reference: ${AGENT_DOCS_URL}. Full docs index: ${LLMS_INDEX_URL}`;
 }
 
 // Signed-in onboarding: the key is minted server-side and inlined so the prompt

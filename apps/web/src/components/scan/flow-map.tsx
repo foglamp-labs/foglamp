@@ -211,6 +211,7 @@ export function FlowMap({
 	embedded = false,
 	frame = false,
 	direction = "RIGHT",
+	padding,
 }: {
 	graph: ScanData["graph"];
 	focusKinds: NodeKind[] | null;
@@ -227,6 +228,13 @@ export function FlowMap({
 	frame?: boolean;
 	/** Flow direction — DOWN suits portrait containers (mobile hero). */
 	direction?: "RIGHT" | "DOWN";
+	/**
+	 * Override the initial-fit clearance, in px. The default leaves room for the
+	 * scan viewer's floating left sidebar; the setup review page also has a
+	 * decisions panel on the right, so it passes its own. Ignored in
+	 * embedded/frame mode, which fit tight by design.
+	 */
+	padding?: { left?: number; right?: number };
 }) {
 	const folded = useMemo(() => foldGraph(graph), [graph]);
 
@@ -398,8 +406,9 @@ export function FlowMap({
 	useLayoutEffect(() => {
 		const el = viewportRef.current;
 		if (!el || fitted.current || !layout || layout.width === 0) return;
-		const padL = embedded ? 0 : frame ? 24 : 432; // clear the floating sidebar
-		const padR = embedded ? 0 : frame ? 24 : 48;
+		// Clear the floating sidebar (and, on the setup page, the decisions panel).
+		const padL = embedded ? 0 : frame ? 24 : (padding?.left ?? 432);
+		const padR = embedded ? 0 : frame ? 24 : (padding?.right ?? 48);
 		const padY = embedded ? 0 : frame ? 24 : 56;
 		const availW = Math.max(200, el.clientWidth - padL - padR);
 		const availH = Math.max(200, el.clientHeight - padY * 2);
@@ -427,7 +436,7 @@ export function FlowMap({
 		}
 		fitted.current = true;
 		applyTransform();
-	}, [layout, embedded, frame]);
+	}, [layout, embedded, frame, padding?.left, padding?.right]);
 
 	// Wheel zoom (and trackpad pinch, which arrives as ctrlKey+wheel). Native
 	// listener so we can preventDefault (React's onWheel is passive).

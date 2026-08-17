@@ -1,0 +1,402 @@
+// @foglamp/contracts — the instrumentation-plan contract.
+//
+// The onboarding loop: a coding agent reads the user's repo, uploads a
+// DetectedPlan, and blocks. The user reviews it at /setup/<planId> and
+// approves. The agent resumes, applies the plan, and uploads an AppliedReport.
+//
+// Two hard rules shape everything here:
+//
+//  1. NO SOURCE. Only structured metadata — symbol names, file:line refs,
+//     counts, and short descriptions. Never code, prompts, completions, env
+//     values, or secrets. Every string is capped so a buggy agent can't smuggle
+//     a file body through a `rationale` field.
+//
+//  2. ScanData IS EMBEDDED, NOT EXTENDED. The graph reuses the public Scan
+//     contract verbatim (`scan.ts`), which is `.strict()` and pinned at
+//     `version: 1`. Instrumentation decisions live in a sibling object, so the
+//     lead-magnet renderer and every scan already in the database keep working.
+//
+// This module is deliberately dependency-free apart from zod: the state machine
+// below is imported by the server, the web app, and unit tests, none of which
+// should have to boot a database connection to ask whether a transition is
+// legal.
+
+import { z } from "zod";
+
+import { ScanData } from "./scan";
+
+/** Schema version for the plan payloads, independent of ScanData's version. */
+export const PLAN_VERSION = 1;
+
+// ---------------------------------------------------------------------------
+// State machine
+// ---------------------------------------------------------------------------
+
+/**
+ * The lifecycle of a plan. Persisted as text; the transition table below is the
+ * only thing allowed to move a row between these.
+ *
+ *  - awaiting_approval: uploaded, the agent is polling, the user hasn't acted
+ *  - approved:          the user said yes; the agent hasn't picked it up yet
+ *  - applying:          the agent resumed and is editing the repo
+ *  - applied:           code changes are in; waiting for the first real trace
+ *  - verified:          a real span arrived — onboarding is complete
+ *  - rejected:          the user said no; the agent exits cleanly
+ *  - expired:           nobody acted before expiresAt; swept by the cron
+ *  - failed:            the agent gave up (it reports which stage)
+ *
+ * Note there is no separate `waiting_for_trace` state: it would always coincide
+ * exactly with `applied`, and two states that must flip together are a bug
+ * waiting to happen. The UI renders `applied` as "Waiting for your first real
+ * trace" — the user-facing distinction is copy, not state.
+ */
+export const PLAN_STATUSES = [
+  "awaiting_approval",
+  "approved",
+  "applying",
+  "applied",
+  "verified",
+  "rejected",
+  "expired",
+  "failed",
+] as const;
+export const PlanStatus = z.enum(PLAN_STATUSES);
+export type PlanStatus = z.infer<typeof PlanStatus>;
+
+/** Statuses from which nothing further can happen. */
+export const TERMINAL_STATUSES = ["verified", "rejected", "expired", "failed"] as const;
+
+/**
+ * The only legal moves. Anything not listed is rejected — a status write can
+ * never silently overwrite a terminal state, so a late-arriving agent request
+ * can't un-reject or un-expire a plan.
+ */
+const TRANSITIONS: Record<PlanStatus, readonly PlanStatus[]> = {
+  awaiting_approval: ["approved", "rejected", "expired"],
+  approved: ["applying", "expired", "failed"],
+  applying: ["applied", "failed"],
+  applied: ["verified", "failed"],
+  // Terminal — absorbing states.
+  verified: [],
+  rejected: [],
+  expired: [],
+  failed: [],
+};
+
+export function isTerminalStatus(status: PlanStatus): boolean {
+  return (TERMINAL_STATUSES as readonly string[]).includes(status);
+}
+
+/**
+ * Can a plan move from `from` to `to`? Pure — no I/O, no clock, no database.
+ *
+ * A self-transition (`from === to`) is always legal so that retries and
+ * duplicate requests are no-ops rather than errors: the caller's conditional
+ * `UPDATE ... WHERE status = <expected>` simply matches zero rows the second
+ * time, which is exactly the idempotency we want.
+ */
+export function canTransition(from: PlanStatus, to: PlanStatus): boolean {
+  if (from === to) return true;
+  return TRANSITIONS[from].includes(to);
+}
+
+/** The statuses a plan can still leave — i.e. worth polling for a change. */
+export function isPending(status: PlanStatus): boolean {
+  return !isTerminalStatus(status);
+}
+
+// ---------------------------------------------------------------------------
+// Shared primitives
+// ---------------------------------------------------------------------------
+
+/** Where something lives in the repo, e.g. "src/agents/support.ts:42". */
+const SourceRef = z.string().min(1).max(160);
+
+/** One short sentence explaining a recommendation. Never contains code. */
+const Rationale = z.string().min(1).max(200);
+
+/** How sure the agent is. Drives the review UI's emphasis, nothing else. */
+export const Confidence = z.enum(["high", "medium", "low"]);
+export type Confidence = z.infer<typeof Confidence>;
+
+/**
+ * A static name attached to a span (`agentName`, `workflowName`, `traceName`).
+ * The constraint that matters: these must be stable literals so they group
+ * across runs. Anything dynamic (an id, slug, URL, timestamp) belongs in
+ * metadata / workflowRunId / sessionId / customer.id instead.
+ */
+const StaticName = z.string().min(1).max(48);
+
+/**
+ * A described source for a dynamic value, e.g. how to derive a workflowRunId.
+ * Prose, not code: "the job id from the queue payload". The agent turns this
+ * into an expression when it applies the plan.
+ */
+const ValueSource = z.string().min(1).max(160);
+
+/** The AI SDK major this repo is on — decides wrap() vs fog.integration(). */
+const SdkInfo = z
+  .object({
+    major: z.union([z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
+    /** Exact installed version string, e.g. "5.0.12". Display only. */
+    version: z.string().min(1).max(32),
+  })
+  .strict();
+export type SdkInfo = z.infer<typeof SdkInfo>;
+
+/** A single model call site found in the repo. */
+const CallSite = z
+  .object({
+    /** Unique within the plan; referenced by decisions. */
+    id: z.string().min(1).max(64),
+    /** The AI SDK function called, e.g. "streamText". */
+    fn: z.string().min(1).max(40),
+    sourceRef: SourceRef,
+    /** Model id if statically determinable, e.g. "gpt-4o". */
+    modelId: z.string().max(64).optional(),
+  })
+  .strict();
+export type CallSite = z.infer<typeof CallSite>;
+
+// ---------------------------------------------------------------------------
+// Decisions — the reviewable part
+// ---------------------------------------------------------------------------
+
+/**
+ * A named agent flow. `oneOff` marks calls that aren't a repeated agent at all
+ * (a one-shot classification, a title generator) — those get a `traceName`
+ * rather than an `agentName`.
+ */
+const AgentDecision = z
+  .object({
+    id: z.string().min(1).max(64),
+    name: StaticName,
+    /** Call site ids this name covers. */
+    callIds: z.array(z.string().min(1).max(64)).min(1).max(50),
+    oneOff: z.boolean().default(false),
+    confidence: Confidence,
+    sourceRef: SourceRef,
+    rationale: Rationale,
+  })
+  .strict();
+export type AgentDecision = z.infer<typeof AgentDecision>;
+
+/**
+ * A multi-step pipeline whose calls share a workflowName + workflowRunId.
+ * Batch jobs, crons and pipelines are workflows — never sessions.
+ */
+const WorkflowDecision = z
+  .object({
+    id: z.string().min(1).max(64),
+    name: StaticName,
+    callIds: z.array(z.string().min(1).max(64)).min(1).max(50),
+    /** How to derive the per-run id that ties the steps together. */
+    runIdSource: ValueSource,
+    confidence: Confidence,
+    sourceRef: SourceRef,
+    rationale: Rationale,
+  })
+  .strict();
+export type WorkflowDecision = z.infer<typeof WorkflowDecision>;
+
+/**
+ * A real end-user conversation thread. Only genuine back-and-forth qualifies —
+ * one-off calls, background jobs, batches and pipelines must not be labelled
+ * with a sessionId.
+ */
+const SessionDecision = z
+  .object({
+    id: z.string().min(1).max(64),
+    /** Human label for the review UI, e.g. "Support chat". */
+    label: z.string().min(1).max(48),
+    callIds: z.array(z.string().min(1).max(64)).min(1).max(50),
+    /** How to derive the conversation id, e.g. "the thread id on the request". */
+    sessionIdSource: ValueSource,
+    confidence: Confidence,
+    sourceRef: SourceRef,
+    rationale: Rationale,
+  })
+  .strict();
+export type SessionDecision = z.infer<typeof SessionDecision>;
+
+/**
+ * Per-customer spend attribution. Only recommended when the app clearly serves
+ * distinct end-customers or tenants; `recommended: false` is the common and
+ * correct answer for a single-tenant app.
+ */
+const CustomerDecision = z
+  .object({
+    recommended: z.boolean(),
+    /** How to derive customer.id. Required when recommended. */
+    idSource: ValueSource.optional(),
+    nameSource: ValueSource.optional(),
+    imageUrlSource: ValueSource.optional(),
+    confidence: Confidence,
+    rationale: Rationale,
+  })
+  .strict()
+  .refine((c) => !c.recommended || Boolean(c.idSource), {
+    message: "idSource is required when customer attribution is recommended",
+  });
+export type CustomerDecision = z.infer<typeof CustomerDecision>;
+
+const Decisions = z
+  .object({
+    agents: z.array(AgentDecision).max(40).default([]),
+    workflows: z.array(WorkflowDecision).max(20).default([]),
+    sessions: z.array(SessionDecision).max(20).default([]),
+    customer: CustomerDecision,
+  })
+  .strict();
+export type Decisions = z.infer<typeof Decisions>;
+
+// ---------------------------------------------------------------------------
+// DetectedPlan — what the agent uploads before touching any code
+// ---------------------------------------------------------------------------
+
+export const DetectedPlan = z
+  .object({
+    version: z.literal(PLAN_VERSION),
+    sdk: SdkInfo,
+    /** Whether the repo has a React UI — decides if the HUD is offered. */
+    hasReactUi: z.boolean().default(false),
+    /** The architecture map, in the public Scan contract's exact shape. */
+    scan: ScanData,
+    calls: z.array(CallSite).max(200).default([]),
+    decisions: Decisions,
+  })
+  .strict()
+  .superRefine((plan, ctx) => {
+    const callIds = new Set(plan.calls.map((c) => c.id));
+    const seen = new Set<string>();
+    for (const c of plan.calls) {
+      if (seen.has(c.id)) {
+        ctx.addIssue({ code: "custom", path: ["calls"], message: "call ids must be unique" });
+        break;
+      }
+      seen.add(c.id);
+    }
+    const groups = [
+      ["agents", plan.decisions.agents],
+      ["workflows", plan.decisions.workflows],
+      ["sessions", plan.decisions.sessions],
+    ] as const;
+    for (const [key, list] of groups) {
+      for (const d of list) {
+        for (const id of d.callIds) {
+          if (!callIds.has(id)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["decisions", key],
+              message: `unknown call id "${id}"`,
+            });
+          }
+        }
+      }
+    }
+  });
+export type DetectedPlan = z.infer<typeof DetectedPlan>;
+
+/**
+ * What the agent receives back once the user approves. Stage 1 hands back the
+ * decisions unchanged (the review UI is read-only); the shape is separate from
+ * DetectedPlan so Stage 2 can return user-edited decisions without the agent
+ * needing to change how it reads them.
+ */
+export const ApprovedPlan = z
+  .object({
+    version: z.literal(PLAN_VERSION),
+    decisions: Decisions,
+  })
+  .strict();
+export type ApprovedPlan = z.infer<typeof ApprovedPlan>;
+
+// ---------------------------------------------------------------------------
+// AppliedReport — what the agent uploads after editing the repo
+// ---------------------------------------------------------------------------
+
+const AppliedCall = z
+  .object({
+    id: z.string().min(1).max(64),
+    instrumented: z.boolean(),
+    /** Why it was skipped, when it wasn't instrumented. */
+    note: z.string().max(160).optional(),
+  })
+  .strict();
+
+export const AppliedReport = z
+  .object({
+    version: z.literal(PLAN_VERSION),
+    /** The map as it stands after instrumentation — powers the after-state diff. */
+    scan: ScanData,
+    calls: z.array(AppliedCall).max(200).default([]),
+    /** Repo-relative paths only. No diffs, no contents. */
+    filesChanged: z.array(z.string().min(1).max(200)).max(100).default([]),
+    /** Anything the user should know, e.g. "flush() needed in the cron entry". */
+    warnings: z.array(z.string().min(1).max(200)).max(20).default([]),
+    hudEnabled: z.boolean().default(false),
+  })
+  .strict();
+export type AppliedReport = z.infer<typeof AppliedReport>;
+
+/** The stage an agent gave up at, reported on failure. */
+export const FailureStage = z.enum(["detect", "apply", "verify"]);
+export type FailureStage = z.infer<typeof FailureStage>;
+
+// ---------------------------------------------------------------------------
+// Validation helpers — same shape as validateScan (scan.ts)
+// ---------------------------------------------------------------------------
+
+export interface PlanValidateOk<T> {
+  ok: true;
+  data: T;
+}
+export interface PlanValidateErr {
+  ok: false;
+  /** Human-readable lines like `decisions.agents.0.name: too long`. */
+  errors: string[];
+}
+
+function flatten(issues: z.ZodIssue[]): string[] {
+  return issues.map((issue) => {
+    const path = issue.path.join(".") || "(root)";
+    return `${path}: ${issue.message}`;
+  });
+}
+
+export function validateDetectedPlan(
+  input: unknown,
+): PlanValidateOk<DetectedPlan> | PlanValidateErr {
+  const res = DetectedPlan.safeParse(input);
+  if (res.success) return { ok: true, data: res.data };
+  return { ok: false, errors: flatten(res.error.issues) };
+}
+
+export function validateAppliedReport(
+  input: unknown,
+): PlanValidateOk<AppliedReport> | PlanValidateErr {
+  const res = AppliedReport.safeParse(input);
+  if (res.success) return { ok: true, data: res.data };
+  return { ok: false, errors: flatten(res.error.issues) };
+}
+
+// ---------------------------------------------------------------------------
+// Summary — the one-line headline on the review page
+// ---------------------------------------------------------------------------
+
+export interface PlanSummary {
+  agents: number;
+  workflows: number;
+  sessions: number;
+  calls: number;
+}
+
+/** Counts for "Foglamp found 4 agents, 2 workflows, …". */
+export function summarizePlan(plan: DetectedPlan): PlanSummary {
+  return {
+    agents: plan.decisions.agents.length,
+    workflows: plan.decisions.workflows.length,
+    sessions: plan.decisions.sessions.length,
+    calls: plan.calls.length,
+  };
+}

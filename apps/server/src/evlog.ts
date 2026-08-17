@@ -1,3 +1,4 @@
+import type { ResolvedKey } from "@foglamp/api/services/apiKeys";
 import { auth } from "@foglamp/auth";
 import { createRequestLogger } from "evlog";
 import { maskEmail } from "evlog/better-auth";
@@ -7,10 +8,18 @@ import { createMiddleware } from "hono/factory";
 type SessionResult = Awaited<ReturnType<typeof auth.api.getSession>>;
 
 export type AppEnv = {
-  Variables: EvlogVariables["Variables"] & { session: SessionResult };
+  Variables: EvlogVariables["Variables"] & {
+    session: SessionResult;
+    /** Set by the requireApiKey middleware on agent-facing routes. */
+    apiKey: ResolvedKey;
+  };
 };
 
-const SKIP_IDENTIFY_PREFIXES = ["/api/auth/"];
+// Paths that authenticate some other way and would only pay for a session
+// lookup they never read. `/instrumentation-plans/` is API-key authed and gets
+// long-polled every few seconds during onboarding, so this is the difference
+// between one auth query per wait and hundreds.
+const SKIP_IDENTIFY_PREFIXES = ["/api/auth/", "/instrumentation-plans"];
 
 export const evlog = createMiddleware<AppEnv>(async (c, next) => {
   const log = createRequestLogger({

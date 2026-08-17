@@ -4,36 +4,11 @@
 
 export const SCAN_ENDPOINT = "https://api.foglamp.dev/scan";
 
-export const SCAN_PROMPT = `Analyze THIS repository and publish a shareable "codebase scan" to foglamp —
-a map of how the codebase works and how it uses AI. You produce only the data
-(a small JSON object); a fixed renderer draws the scan. Write no HTML or CSS.
-
-## Steps
-1. Investigate the repo and build the JSON below. Write it to .foglamp/scan.json.
-2. Tell the user plainly: "This uploads a high-level summary of your architecture
-   (models, tools, integrations, and main flows — no code or secrets) to
-   foglamp.dev and creates a public, unlisted link." Continue only if they agree.
-3. Upload it (see "Publish") and capture the JSON response.
-4. Save the response to .foglamp/scan.lock.json (so a later run updates the same
-   URL). Make sure .foglamp/ is gitignored — the edit token is a secret.
-5. Open the returned url and give it to the user.
-
-## How to investigate
-- Find where AI runs: generateText / streamText / generateObject / streamObject,
-  @ai-sdk/* providers, agent loops, tool definitions (tool({...})).
-- Identify the models and their provider (OpenAI, Anthropic, Google, …).
-- Identify tools models can call (Exa, Firecrawl, Parallel, DB queries, internal
-  functions) and external integrations/services.
-- Map the business logic too: the internal services/pipelines the product is
-  built from (billing, ingestion, background workers, domain services) — these
-  become "service" nodes, and the interesting sentence goes on the edge
-  (e.g. "charges Stripe on trial end").
-- Map the main flows: entry points (routes, webhooks, pages, CLIs), scheduled jobs
-  (crons/queues/workers), the agents, the models/tools they use, and the
-  datastores/services they read and write.
-
-## Output contract — write EXACTLY this shape to .foglamp/scan.json
-{
+// The `ScanData` shape and the rules that keep every map consistent. Exported
+// because the setup prompt (lib/setup-prompt.ts) embeds the same object inside
+// an instrumentation plan — `DetectedPlan.scan` is `ScanData` by reference, so
+// the two prompts describing it differently would be a real bug.
+export const SCAN_SHAPE = `{
   "version": 1,
   "project": {
     "name": "string (<=48)",
@@ -63,10 +38,9 @@ a map of how the codebase works and how it uses AI. You produce only the data
       { "from": "billing", "to": "pg", "kind": "writes", "label": "charges on trial end" }
     ]
   }
-}
+}`;
 
-## Rules (these keep every scan consistent — do not break them)
-- Caps: topModels <= 3, topTools <= 10, topIntegrations <= 10, graph.nodes <= 60,
+export const SCAN_RULES = `- Caps: topModels <= 3, topTools <= 10, topIntegrations <= 10, graph.nodes <= 60,
   graph.edges <= 120. One map holds everything — AI flows AND business logic.
   Big maps are welcome (the viewer pans); aim for 20-40 nodes on a substantial
   codebase. Rich, not sparse — but every node must earn its place.
@@ -95,7 +69,41 @@ a map of how the codebase works and how it uses AI. You produce only the data
   the node lives, e.g. "src/agents/support.ts:42" — add it to internal nodes so
   teammates can jump to code.
 - Every edge's from/to must reference an existing node id; ids unique.
-- Use today's date for project.date.
+- Use today's date for project.date.`;
+
+export const SCAN_PROMPT = `Analyze THIS repository and publish a shareable "codebase scan" to foglamp —
+a map of how the codebase works and how it uses AI. You produce only the data
+(a small JSON object); a fixed renderer draws the scan. Write no HTML or CSS.
+
+## Steps
+1. Investigate the repo and build the JSON below. Write it to .foglamp/scan.json.
+2. Tell the user plainly: "This uploads a high-level summary of your architecture
+   (models, tools, integrations, and main flows — no code or secrets) to
+   foglamp.dev and creates a public, unlisted link." Continue only if they agree.
+3. Upload it (see "Publish") and capture the JSON response.
+4. Save the response to .foglamp/scan.lock.json (so a later run updates the same
+   URL). Make sure .foglamp/ is gitignored — the edit token is a secret.
+5. Open the returned url and give it to the user.
+
+## How to investigate
+- Find where AI runs: generateText / streamText / generateObject / streamObject,
+  @ai-sdk/* providers, agent loops, tool definitions (tool({...})).
+- Identify the models and their provider (OpenAI, Anthropic, Google, …).
+- Identify tools models can call (Exa, Firecrawl, Parallel, DB queries, internal
+  functions) and external integrations/services.
+- Map the business logic too: the internal services/pipelines the product is
+  built from (billing, ingestion, background workers, domain services) — these
+  become "service" nodes, and the interesting sentence goes on the edge
+  (e.g. "charges Stripe on trial end").
+- Map the main flows: entry points (routes, webhooks, pages, CLIs), scheduled jobs
+  (crons/queues/workers), the agents, the models/tools they use, and the
+  datastores/services they read and write.
+
+## Output contract — write EXACTLY this shape to .foglamp/scan.json
+${SCAN_SHAPE}
+
+## Rules (these keep every scan consistent — do not break them)
+${SCAN_RULES}
 
 ## Publish
 First run (no .foglamp/scan.lock.json):

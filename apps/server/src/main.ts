@@ -1,5 +1,6 @@
 import { trpcServer } from "@hono/trpc-server";
 import { startAlertEvaluator } from "@foglamp/api/alertCron";
+import { startInstrumentationPlanExpiry } from "@foglamp/api/instrumentationCron";
 import { startScanCleanup } from "@foglamp/api/scanCron";
 import { startQuotaWarnSweep } from "@foglamp/api/quotaCron";
 import { startScoringWorker } from "@foglamp/api/scoringCron";
@@ -17,6 +18,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 
+import { requireApiKey } from "./apiKeyAuth";
 import { evlog, type AppEnv } from "./evlog";
 import {
   handleFoggy,
@@ -24,6 +26,12 @@ import {
   handleFoggyThreadList,
 } from "./foggy";
 import { pruneFoggyRateLimits } from "./foggyRateLimit";
+import {
+  handlePlanApplied,
+  handlePlanCreate,
+  handlePlanFailed,
+  handlePlanStatus,
+} from "./instrumentation";
 import {
   handleScanClaim,
   handleScanCreate,
@@ -132,6 +140,34 @@ app.post(
 );
 app.get("/poster/:slug", handleScanGet);
 
+// Instrumentation plans — the onboarding approval loop. The user's coding
+// agent uploads what it found, long-polls until the user approves it at
+// /setup/<id>, then reports what it applied. Authenticated with the project's
+// FOGLAMP_API_KEY (see apiKeyAuth.ts), so every route is project-scoped;
+// rate limits are per-key and applied inside the handlers.
+app.post(
+  "/instrumentation-plans",
+  requireApiKey,
+  bodyLimit({
+    maxSize: 256 * 1024,
+    onError: (c) => c.json({ error: "payload too large" }, 413),
+  }),
+  handlePlanCreate,
+);
+// `?wait=1` holds the request open until the status changes — this is what
+// lets the agent resume on approval without the user prompting it again.
+app.get("/instrumentation-plans/:id/status", requireApiKey, handlePlanStatus);
+app.post(
+  "/instrumentation-plans/:id/applied",
+  requireApiKey,
+  bodyLimit({
+    maxSize: 256 * 1024,
+    onError: (c) => c.json({ error: "payload too large" }, 413),
+  }),
+  handlePlanApplied,
+);
+app.post("/instrumentation-plans/:id/failed", requireApiKey, handlePlanFailed);
+
 app.get("/", (c) => {
   return c.text("OK");
 });
@@ -149,6 +185,8 @@ const stopQuotaWarnSweep = startQuotaWarnSweep();
 const stopStorageWatchSweep = startStorageWatchSweep();
 // Scan cleanup: delete expired anonymous codebase scans (daily).
 const stopScanCleanup = startScanCleanup();
+// Instrumentation plan expiry: mark unapproved onboarding plans expired (hourly).
+const stopPlanExpiry = startInstrumentationPlanExpiry();
 
 // Periodically shed stale in-memory rate-limit entries (foggy + scan).
 const pruneTimer = setInterval(() => {
@@ -171,6 +209,7 @@ async function shutdown(signal: string): Promise<void> {
       stopQuotaWarnSweep(),
       stopStorageWatchSweep(),
       stopScanCleanup(),
+      stopPlanExpiry(),
     ]);
     log.emit({ outcome: "shutdown", signal });
   } catch (err) {

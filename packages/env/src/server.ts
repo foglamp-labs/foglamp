@@ -46,6 +46,18 @@ const serverSchema = {
   // Max Foggy chat request body; rejected (413) before parsing.
   FOGGY_MAX_BODY_BYTES: z.coerce.number().default(1_048_576), // 1 MB
 
+  // --- Onboarding: codebase scan + instrumentation plans (apps/server) ---
+  // Anonymous scan publishes per IP per hour.
+  SCAN_CREATE_PER_HOUR: z.coerce.number().default(15),
+  // How long an unapproved instrumentation plan stays reviewable. Long enough
+  // that approving after lunch works; short enough that abandoned plans go away.
+  SETUP_PLAN_TTL_HOURS: z.coerce.number().default(24),
+  // Plan uploads per API key per hour.
+  SETUP_PLAN_CREATE_PER_HOUR: z.coerce.number().default(10),
+  // Status polls per API key per hour. The waiting agent long-polls every ~9s,
+  // so this budget is far larger than the create one on purpose.
+  SETUP_PLAN_POLL_PER_HOUR: z.coerce.number().default(600),
+
   // --- Alerts (evaluator cron in apps/server) ---
   // How often the evaluator sweeps enabled rules; default every 60s.
   ALERT_EVAL_INTERVAL_MS: z.coerce.number().default(60_000),

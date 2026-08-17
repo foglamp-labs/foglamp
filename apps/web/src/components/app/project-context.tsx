@@ -34,7 +34,11 @@ type ProjectContextValue = {
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
 
-const STORAGE_KEY = "foglamp.projectId";
+// Exported so pages outside the (app) shell can point the app at a specific
+// project before linking into it — /setup does this so "view your first trace"
+// lands in the project that was just instrumented, not the last one viewed.
+export const PROJECT_STORAGE_KEY = "foglamp.projectId";
+const STORAGE_KEY = PROJECT_STORAGE_KEY;
 
 // Detail routes reference records that belong to a single project. After a
 // project switch the record on screen is from the previous project, so we send
