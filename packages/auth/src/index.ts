@@ -1,4 +1,5 @@
 import { stripe as stripePlugin } from "@better-auth/stripe";
+import { captureActivationEvent } from "@foglamp/analytics";
 import { getOrgPlan, isBillingEnabled, PLAN_LIMITS } from "@foglamp/billing";
 import { createClickHouseClient, updateOrgRetention } from "@foglamp/clickhouse";
 import { createDb } from "@foglamp/db";
@@ -147,6 +148,23 @@ export function createAuth() {
           ],
           onSubscriptionComplete: async ({ subscription }) => {
             await syncRetention(subscription.referenceId);
+            const owners = await db
+              .select({ userId: member.userId })
+              .from(member)
+              .where(
+                and(
+                  eq(member.organizationId, subscription.referenceId),
+                  eq(member.role, "owner"),
+                ),
+              )
+              .limit(1);
+            if (owners[0]) {
+              void captureActivationEvent({
+                event: "subscription_started",
+                distinctId: owners[0].userId,
+                properties: { organization_id: subscription.referenceId },
+              });
+            }
           },
           onSubscriptionUpdate: async ({ subscription }) => {
             await syncRetention(subscription.referenceId);
@@ -230,7 +248,14 @@ export function createAuth() {
                   ),
                 )
                 .limit(1);
-              if (pending[0]) return;
+              if (pending[0]) {
+                void captureActivationEvent({
+                  event: "user_signed_up",
+                  distinctId: user.id,
+                  properties: { invited: true, workspace_created: false },
+                });
+                return;
+              }
 
               const orgId = uuidv7();
               const local = user.name || user.email.split("@")[0] || "workspace";
@@ -253,6 +278,15 @@ export function createAuth() {
                 orgId,
                 name: "Default",
                 slug: "default",
+              });
+              void captureActivationEvent({
+                event: "user_signed_up",
+                distinctId: user.id,
+                properties: {
+                  invited: false,
+                  organization_id: orgId,
+                  workspace_created: true,
+                },
               });
             } catch (err) {
               console.error("[auth] signup workspace bootstrap failed", err);

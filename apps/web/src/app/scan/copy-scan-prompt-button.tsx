@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { CopyIcon } from "@/components/app/copy-icon";
 import { useCopied } from "@/components/app/use-copied";
+import { captureActivationEvent } from "@/lib/analytics";
 import { SCAN_PROMPT } from "@/lib/scan-prompt";
 
 // The scan page's "paste into your coding agent" button — same power-on
@@ -62,6 +63,9 @@ export function CopyScanPromptButton({ className }: { className?: string }) {
 				className={cn("text-base h-[37px] pl-4", className)}
 				onClick={() => {
 					void navigator.clipboard.writeText(SCAN_PROMPT);
+					captureActivationEvent("scan_prompt_copied", {
+						surface: "scan_landing",
+					});
 					markCopied();
 				}}
 				aria-label="Copy the scan prompt"

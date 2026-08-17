@@ -43,7 +43,7 @@ import { FeaturedBeam } from "./featured-beam";
 
 export const metadata: Metadata = {
 	title: "Pricing",
-	description: "Simple, usage-based pricing for AI observability.",
+	description: "Simple pricing for AI observability.",
 	alternates: { canonical: "/pricing" },
 };
 
@@ -117,7 +117,7 @@ const PLANS: Plan[] = [
 		price: "$49",
 		cadence: "per month",
 		blurb: "Production-grade observability for growing teams.",
-		cta: { label: "Start free trial", href: "/login" },
+		cta: { label: "Get started", href: "/login" },
 		featured: true,
 		badge: "Popular",
 		limits: [

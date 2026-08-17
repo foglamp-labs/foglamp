@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 
 import { db } from "@foglamp/db";
 import { apiKey } from "@foglamp/db/schema/apiKey";
+import { member } from "@foglamp/db/schema/organization";
 import { project } from "@foglamp/db/schema/project";
 import { env } from "@foglamp/env/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 // API-key resolution on the ingest hot path. Keys are `fl_…`; only their sha256
 // hash is stored in Postgres, so we hash the presented key and look it up by
@@ -14,7 +15,12 @@ import { eq } from "drizzle-orm";
 // This cache is per-instance (no Redis) — acceptable because it only adds up to
 // `API_KEY_CACHE_TTL_MS` of staleness to a revoke, and the key store is small.
 
-export type ResolvedKey = { apiKeyId: string; projectId: string; orgId: string };
+export type ResolvedKey = {
+  apiKeyId: string;
+  projectId: string;
+  orgId: string;
+  ownerUserId: string | null;
+};
 
 type CacheEntry = { value: ResolvedKey | null; expiresAt: number };
 
@@ -57,17 +63,27 @@ export async function resolveApiKey(key: string): Promise<ResolvedKey | null> {
       id: apiKey.id,
       projectId: apiKey.projectId,
       orgId: project.orgId,
+      ownerUserId: member.userId,
       revokedAt: apiKey.revokedAt,
     })
     .from(apiKey)
     .innerJoin(project, eq(project.id, apiKey.projectId))
+    .leftJoin(
+      member,
+      and(eq(member.organizationId, project.orgId), eq(member.role, "owner")),
+    )
     .where(eq(apiKey.keyHash, hash))
     .limit(1);
 
   const row = rows[0];
   const value: ResolvedKey | null =
     row && !row.revokedAt
-      ? { apiKeyId: row.id, projectId: row.projectId, orgId: row.orgId }
+      ? {
+          apiKeyId: row.id,
+          projectId: row.projectId,
+          orgId: row.orgId,
+          ownerUserId: row.ownerUserId,
+        }
       : null;
 
   cache.set(hash, {

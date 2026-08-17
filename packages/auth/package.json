@@ -12,6 +12,7 @@
   },
   "scripts": {},
   "dependencies": {
+    "@foglamp/analytics": "workspace:*",
     "@foglamp/billing": "workspace:*",
     "@foglamp/clickhouse": "workspace:*",
     "@foglamp/db": "workspace:*",

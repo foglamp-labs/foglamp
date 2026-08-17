@@ -81,6 +81,7 @@ import {
   formatSpanDuration,
   formatTokens,
 } from "@/lib/format";
+import { captureActivationEvent } from "@/lib/analytics";
 import {
   type TraceSpan,
   computeWindow,
@@ -119,6 +120,12 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
     ...trpc.traces.get.queryOptions({ projectId: projectId!, traceId }),
     enabled: !!projectId,
   });
+  const viewedTrace = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detail.data || !projectId || viewedTrace.current === traceId) return;
+    viewedTrace.current = traceId;
+    captureActivationEvent("trace_viewed", { project_id: projectId });
+  }, [detail.data, projectId, traceId]);
   const scores = useQuery({
     ...trpc.evals.traceScores.queryOptions({ projectId: projectId!, traceId }),
     enabled: !!projectId,

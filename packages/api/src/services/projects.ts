@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { captureActivationEvent } from "@foglamp/analytics";
 import { getOrgPlan } from "@foglamp/billing";
 import { deleteProjectData } from "@foglamp/clickhouse";
 import { apiKey } from "@foglamp/db/schema/apiKey";
@@ -129,6 +130,20 @@ export async function createApiKey(
       keyPrefix: keyPrefix(key),
     })
     .returning({ id: apiKey.id, keyPrefix: apiKey.keyPrefix });
+
+  void captureActivationEvent({
+    event: "api_key_provisioned",
+    distinctId: userId,
+    properties: {
+      project_id: input.projectId,
+      source:
+        input.name === "CLI"
+          ? "cli"
+          : input.name === "Onboarding"
+            ? "onboarding"
+            : "dashboard",
+    },
+  });
 
   // `key` is the only time the plaintext exists outside the caller.
   return { id: rows[0]!.id, name: input.name, keyPrefix: rows[0]!.keyPrefix, key };

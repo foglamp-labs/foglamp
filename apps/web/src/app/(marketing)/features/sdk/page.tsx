@@ -23,8 +23,8 @@ export default function SdkPage() {
 		<div className="flex flex-col gap-36 pb-42">
 			<ProductHero
 				product={product}
-				headline="Two lines. Every call, instrumented."
-				sub="Wrap your model with foglamp(). Every generateText and streamText call is then traced, costed, and scored, with no prompt changes and no new infrastructure."
+				headline="Two lines. Every AI SDK call, instrumented."
+				sub="Register Foglamp once with AI SDK v7 and every generateText and streamText call is traced and costed. Using v4-v6? The version-aware wrapper gives you the same traces."
 				visual={
 					<div className="mx-auto max-w-2xl">
 						<CodeBlock code={INSTALL_CODE} filename="model.ts" />
@@ -36,9 +36,9 @@ export default function SdkPage() {
 				accentClassName={ACCENT}
 				eyebrow="Drop-in"
 				title="Built for the code you already wrote."
-				description="Foglamp wraps the model object you already pass to generateText and streamText. Your prompts, tools, and control flow stay exactly as they are. You just get telemetry for free."
+				description="Foglamp uses AI SDK v7's native telemetry integration and a version-aware wrapper for v4-v6. Your prompts, models, tools, and control flow stay exactly as they are."
 				bullets={[
-					"Works with generateText, streamText, and tools",
+					"Works with Vercel AI SDK v4 through v7",
 					"No prompt or business-logic changes",
 					"TypeScript-first, fully typed",
 				]}

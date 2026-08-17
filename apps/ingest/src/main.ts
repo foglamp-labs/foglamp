@@ -5,6 +5,7 @@ import {
   insertCustomers,
   runMigrations,
 } from "@foglamp/clickhouse";
+import { captureActivationEvent } from "@foglamp/analytics";
 import { ingestPayloadSchema } from "@foglamp/contracts";
 import { getPricingTable } from "@foglamp/cost";
 import { env } from "@foglamp/env/server";
@@ -26,6 +27,10 @@ import { buildCustomerRows, buildSpanRows } from "./transform";
 // ClickHouse. Scales independently from the read-heavy dashboard (apps/server).
 
 const boot = createLogger({ service: "ingest", phase: "boot" });
+
+// One activity event per project per UTC day is enough for activation and
+// retention analysis without mirroring every ingest request into PostHog.
+const projectActivityDay = new Map<string, string>();
 
 // --- Boot: ClickHouse client, schema, retention, pricing warmup -----------
 const client = createClickHouseClient(await clickHouseConfigFromEnv());
@@ -59,6 +64,10 @@ const pruneTimer = setInterval(() => {
   pruneOrgLimits();
   pruneApiKeyCache();
   pruneCustomPricing();
+  const today = new Date().toISOString().slice(0, 10);
+  for (const [projectId, day] of projectActivityDay) {
+    if (day !== today) projectActivityDay.delete(projectId);
+  }
 }, 60_000);
 pruneTimer.unref?.();
 
@@ -149,6 +158,24 @@ app.post(
     now,
   });
   buffer.push(rows);
+
+  const activityDay = new Date(now).toISOString().slice(0, 10);
+  if (
+    resolved.ownerUserId &&
+    projectActivityDay.get(resolved.projectId) !== activityDay
+  ) {
+    projectActivityDay.set(resolved.projectId, activityDay);
+    void captureActivationEvent({
+      event: "project_sent_spans",
+      distinctId: resolved.ownerUserId,
+      properties: {
+        organization_id: resolved.orgId,
+        project_id: resolved.projectId,
+        span_count: rows.length,
+        trace_count: parsed.data.traces.length,
+      },
+    });
+  }
 
   // Best-effort: upsert the customer dimension (id → name/image) so the Overview
   // can show display fields. Off the span path — a failure here never fails the

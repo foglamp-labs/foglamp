@@ -13,6 +13,10 @@ const serverSchema = {
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
 
+  // --- Product analytics (hosted deployment; optional for self-hosts) ---
+  POSTHOG_KEY: z.string().min(1).optional(),
+  POSTHOG_HOST: z.url().default("https://us.i.posthog.com"),
+
   // Injected by the host (Cloud Run, Railway, Fly.io, …); 3000 for local dev.
   PORT: z.coerce.number().default(3000),
 

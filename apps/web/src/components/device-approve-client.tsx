@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BrandMark } from "@/components/marketing/brand-mark";
 import { authClient } from "@/lib/auth-client";
+import { captureActivationEvent } from "@/lib/analytics";
 import { Card } from "@foglamp/ui/components/card";
 
 // The verification step of `npx foglamp login`. The CLI prints a URL that lands
@@ -108,6 +109,9 @@ export function DeviceApprove({
 			setPhase("error");
 			setMessage(errMessage(error, `Could not ${action} the request.`));
 			return;
+		}
+		if (action === "approve") {
+			captureActivationEvent("device_authorization_approved");
 		}
 		setPhase(action === "approve" ? "approved" : "denied");
 	};

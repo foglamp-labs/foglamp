@@ -21,6 +21,7 @@ import { CopyIcon } from "@/components/app/copy-icon";
 import { useProject } from "@/components/app/project-context";
 import { useCopied } from "@/components/app/use-copied";
 import { DOCS_URL, buildKeyedPrompt } from "@/lib/agent-prompt";
+import { captureActivationEvent } from "@/lib/analytics";
 import { trpc } from "@/utils/trpc";
 
 const KEY_NAME = "Onboarding";
@@ -87,6 +88,7 @@ export function OnboardingPanel() {
   const copy = () => {
     if (!prompt) return;
     void navigator.clipboard.writeText(prompt);
+    captureActivationEvent("onboarding_prompt_copied", { project_id: projectId });
     markCopied();
   };
 

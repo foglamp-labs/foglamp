@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { CopyIcon } from "@/components/app/copy-icon";
 import { useCopied } from "@/components/app/use-copied";
 import { buildLandingPrompt } from "@/lib/agent-prompt";
+import { captureActivationEvent } from "@/lib/analytics";
 
 // The "paste into your coding agent" prompt button, shared by the hero and the
 // closing CTA. On copy, a colorful BorderBeam powers on around the button — the
@@ -55,6 +56,9 @@ export function CopyPromptButton({ className }: { className?: string }) {
 
 	const copyPrompt = () => {
 		void navigator.clipboard.writeText(buildLandingPrompt());
+		captureActivationEvent("instrumentation_prompt_copied", {
+			surface: "homepage",
+		});
 		markCopied();
 	};
 

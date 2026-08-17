@@ -11,6 +11,7 @@
     "start": "bun run dist/main.mjs"
   },
   "dependencies": {
+    "@foglamp/analytics": "workspace:*",
     "@foglamp/billing": "workspace:*",
     "@foglamp/clickhouse": "workspace:*",
     "@foglamp/contracts": "workspace:*",

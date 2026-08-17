@@ -19,6 +19,7 @@
     "apps/ingest": {
       "name": "ingest",
       "dependencies": {
+        "@foglamp/analytics": "workspace:*",
         "@foglamp/billing": "workspace:*",
         "@foglamp/clickhouse": "workspace:*",
         "@foglamp/contracts": "workspace:*",
@@ -152,12 +153,25 @@
         "vite": "^7.0.0",
       },
     },
+    "packages/analytics": {
+      "name": "@foglamp/analytics",
+      "version": "0.0.0",
+      "dependencies": {
+        "@foglamp/env": "workspace:*",
+      },
+      "devDependencies": {
+        "@foglamp/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "^5",
+      },
+    },
     "packages/api": {
       "name": "@foglamp/api",
       "dependencies": {
         "@ai-sdk/anthropic": "4.0.0",
         "@ai-sdk/google": "4.0.0",
         "@ai-sdk/openai": "catalog:",
+        "@foglamp/analytics": "workspace:*",
         "@foglamp/auth": "workspace:*",
         "@foglamp/billing": "workspace:*",
         "@foglamp/clickhouse": "workspace:*",
@@ -185,6 +199,7 @@
       "name": "@foglamp/auth",
       "dependencies": {
         "@better-auth/stripe": "catalog:",
+        "@foglamp/analytics": "workspace:*",
         "@foglamp/billing": "workspace:*",
         "@foglamp/clickhouse": "workspace:*",
         "@foglamp/db": "workspace:*",
@@ -294,7 +309,7 @@
     },
     "packages/sdk": {
       "name": "foglamp",
-      "version": "0.7.1",
+      "version": "0.9.0",
       "bin": {
         "foglamp": "./dist/cli.mjs",
       },
@@ -575,6 +590,8 @@
     "@floating-ui/react-dom": ["@floating-ui/react-dom@2.1.8", "", { "dependencies": { "@floating-ui/dom": "^1.7.6" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-cC52bHwM/n/CxS87FH0yWdngEZrjdtLW/qVruo68qg+prK7ZQ4YGdut2GyDVpoGeAYe/h899rVeOVm6Oi40k2A=="],
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.11", "", {}, "sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg=="],
+
+    "@foglamp/analytics": ["@foglamp/analytics@workspace:packages/analytics"],
 
     "@foglamp/api": ["@foglamp/api@workspace:packages/api"],
 
