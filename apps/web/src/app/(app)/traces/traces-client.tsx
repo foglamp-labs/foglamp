@@ -65,7 +65,7 @@ import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
 import { ModelLogo, formatModelName } from "@/components/model-logo";
 import {
-  formatCost,
+  formatCostFixed,
   formatCount,
   formatDuration,
   formatSpanDuration,
@@ -821,7 +821,7 @@ export function TracesClient() {
                           metric="cost"
                           bold
                         >
-                          {formatCost(t.totalCost)}
+                          {formatCostFixed(t.totalCost, 6)}
                         </HeatCell>
                         <TableCell className="text-right text-muted-foreground">
                           <RelativeTime value={t.startTime} />

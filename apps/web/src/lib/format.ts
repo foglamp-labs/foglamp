@@ -1,33 +1,46 @@
 // Display formatters for the dashboard. Costs come back as numbers|null (null =
 // unpriced, must render "—", never "$0.00"); counts/durations as numbers.
 
-// Cost formatters keyed by their max fraction digits, built lazily and cached
+// Cost formatters keyed by their fraction-digit range, built lazily and cached
 // (Intl.NumberFormat construction isn't free). Full precision (6) is the
 // default; stat-card headline figures pass 4 for a more compact number.
-const usdFormatters = new Map<number, Intl.NumberFormat>();
-function usdFormatter(maxDecimals: number): Intl.NumberFormat {
-	let f = usdFormatters.get(maxDecimals);
+const usdFormatters = new Map<string, Intl.NumberFormat>();
+function usdFormatter(minDecimals: number, maxDecimals: number) {
+	const key = `${minDecimals}:${maxDecimals}`;
+	let f = usdFormatters.get(key);
 	if (!f) {
 		f = new Intl.NumberFormat("en-US", {
 			style: "currency",
 			currency: "USD",
-			minimumFractionDigits: 2,
+			minimumFractionDigits: minDecimals,
 			maximumFractionDigits: maxDecimals,
 		});
-		usdFormatters.set(maxDecimals, f);
+		usdFormatters.set(key, f);
 	}
 	return f;
 }
 
 /** A cost value; `null`/`undefined` → em dash (unpriced, never $0). `maxDecimals`
  * caps the fractional digits — 6 (full precision) by default, 4 for the more
- * compact stat-card treatment. */
+ * compact stat-card treatment. Trailing zeros are trimmed back to 2 decimals. */
 export function formatCost(
 	value: number | null | undefined,
 	maxDecimals = 6,
 ): string {
 	if (value === null || value === undefined) return "—";
-	return usdFormatter(maxDecimals).format(value);
+	return usdFormatter(2, maxDecimals).format(value);
+}
+
+/** A cost value padded to exactly `decimals` fraction digits, so a column of
+ * them lines up on the decimal point ("$0.003350" above "$0.002773") instead of
+ * raggedly trimming trailing zeros. For table cells; elsewhere use `formatCost`,
+ * which keeps numbers short. */
+export function formatCostFixed(
+	value: number | null | undefined,
+	decimals: number,
+): string {
+	if (value === null || value === undefined) return "—";
+	return usdFormatter(decimals, decimals).format(value);
 }
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact" });
