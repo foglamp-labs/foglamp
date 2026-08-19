@@ -2,7 +2,7 @@
 
 import type { NodeKind, ScanData } from "@foglamp/contracts/scan";
 import { cn } from "@foglamp/ui/lib/utils";
-import { IconSitemap } from "@tabler/icons-react";
+import { IconSitemapFilled } from "@tabler/icons-react";
 import { BorderBeam } from "border-beam";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -607,11 +607,10 @@ export function FlowMap({
 							>
 								{isWorkflow ? (
 									// Same vocabulary as the dashboard's Workflows nav:
-									// IconSitemap + emerald, plus a live dot like the agents get.
+									// IconSitemapFilled + emerald.
 									<span className="absolute top-4 left-4 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-										<IconSitemap className="size-3" />
+										<IconSitemapFilled className="size-3" />
 										{g.label}
-										<span className="size-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
 									</span>
 								) : (
 									<span className="absolute top-4 left-4 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">

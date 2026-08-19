@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@foglamp/ui/lib/utils";
-import { IconGhostFilled, IconMessages, IconSitemap } from "@tabler/icons-react";
+import { IconGhostFilled, IconMessages, IconSitemapFilled } from "@tabler/icons-react";
 
 // The setup page's legend answers a different question than the scan's:
 // not "what kinds of things are in this codebase" but "what gets instrumented".
@@ -87,7 +87,7 @@ export function SetupLegend({
         <Chip
           label={`${workflowCount} workflow${workflowCount === 1 ? "" : "s"}`}
           icon={
-            <IconSitemap
+            <IconSitemapFilled
               className={cn(
                 "size-3 text-emerald-500 transition-transform",
                 focus?.type === "workflows" ? "scale-110" : "opacity-80",

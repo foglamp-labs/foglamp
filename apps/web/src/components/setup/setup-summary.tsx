@@ -81,7 +81,7 @@ export function SetupSummary({
   if (plan.calls.length) parts.push(plural(plan.calls.length, "model call"));
 
   return (
-    <Card className="rounded-[28px] squircle:rounded-[28px]">
+    <Card className="rounded-[28px] squircle:rounded-[28px] py-0">
       <CardContent className="px-5 py-4">
         <h1 className="font-display text-base leading-snug font-semibold tracking-tight">
           Foglamp found {phrase(parts)}.

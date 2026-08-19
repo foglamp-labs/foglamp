@@ -40,10 +40,10 @@ export function SetupBoard({
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-neutral-100 text-foreground dark:bg-background">
-      {/* The one column: what was found + approve, then why. Fixed height by
-          design — sections truncate to "+N more" instead of scrolling, and the
-          map is the browser for everything. */}
-      <div className="absolute top-6 bottom-24 left-6 z-20 flex w-[400px] flex-col gap-4 overflow-hidden *:shrink-0">
+      {/* The one column: what was found + approve, then why. The page never
+          scrolls — the decisions card fills whatever height the summary
+          leaves and scrolls inside itself. */}
+      <div className="absolute top-6 bottom-24 left-6 z-20 flex w-[400px] flex-col gap-4">
         <SetupSummary
           plan={plan}
           status={status}

@@ -10,14 +10,15 @@ import {
   IconRoute,
   IconUsers,
 } from "@tabler/icons-react";
-import type { ComponentType } from "react";
+import { type ComponentType, useState } from "react";
 
-// What Foglamp decided, and why — compact on purpose. This column exists to
-// prove the agent understood the repo, not to enumerate it: each section shows
-// its first few entries and a "+N more" line, and the map is the real browser
-// of everything. Read-only for now; editing is the next stage.
+// What Foglamp decided, and why — one card, all sections, scrolling inside
+// itself so the page never scrolls. Each section opens with its first few
+// entries and a "Show N more" toggle; the point of the fold is that five good
+// names prove the agent understood the repo better than a wall of 33 does.
+// Read-only for now; editing is the next stage.
 
-/** Entries shown per section before folding into "+N more". */
+/** Entries shown per section before folding behind "Show N more". */
 const SHOWN = 4;
 
 // Confidence renders only when it's a warning. A green "high" on every row is
@@ -73,41 +74,60 @@ function Row({
   );
 }
 
-function Group({
+interface Entry {
+  key: string;
+  name: string;
+  detail?: string;
+  sourceRef?: string;
+  rationale: string;
+  confidence: Confidence;
+}
+
+function Section({
   label,
   Icon,
-  count,
-  children,
+  entries,
 }: {
   label: string;
   Icon: ComponentType<IconProps>;
-  count: number;
-  children: React.ReactNode;
+  entries: Entry[];
 }) {
-  if (count === 0) return null;
+  const [expanded, setExpanded] = useState(false);
+  if (entries.length === 0) return null;
+  const shown = expanded ? entries : entries.slice(0, SHOWN);
+  const hidden = entries.length - shown.length;
+
   return (
-    <section>
-      <h2 className="mb-2 flex items-center gap-2 px-1 text-xs text-muted-foreground">
+    <section className="border-b border-border/50 last:border-b-0">
+      {/* Sticky so the section you're scrolled into stays named. */}
+      <h2 className="sticky top-0 z-10 flex items-center gap-2 border-b border-border/50 bg-card px-4 py-2.5 text-xs text-muted-foreground">
         <Icon className="size-3 opacity-60" />
         <span className="leading-none">
-          {label} ({count})
+          {label} ({entries.length})
         </span>
       </h2>
-      <Card className="overflow-hidden rounded-[20px] squircle:rounded-[20px] py-0">
-        <CardContent className="p-0">
-          <ul className="list-none">{children}</ul>
-        </CardContent>
-      </Card>
+      <ul className="list-none">
+        {shown.map((e) => (
+          <Row
+            key={e.key}
+            name={e.name}
+            detail={e.detail}
+            sourceRef={e.sourceRef}
+            rationale={e.rationale}
+            confidence={e.confidence}
+          />
+        ))}
+      </ul>
+      {hidden > 0 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="w-full px-4 py-2.5 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Show {hidden} more
+        </button>
+      ) : null}
     </section>
-  );
-}
-
-function More({ hidden }: { hidden: number }) {
-  if (hidden <= 0) return null;
-  return (
-    <li className="px-4 py-2 text-[11px] text-muted-foreground/70">
-      + {hidden} more — all of them are on the map.
-    </li>
   );
 }
 
@@ -115,63 +135,63 @@ export function DecisionList({ plan }: { plan: DetectedPlan }) {
   const { agents, workflows, sessions, customer } = plan.decisions;
 
   return (
-    <div className="flex flex-col gap-4">
-      <Group label="Agents" Icon={IconAiAgent} count={agents.length}>
-        {agents.slice(0, SHOWN).map((a) => (
-          <Row
-            key={a.id}
-            name={a.name}
-            detail={a.oneOff ? "One-off trace" : undefined}
-            sourceRef={a.sourceRef}
-            rationale={a.rationale}
-            confidence={a.confidence}
-          />
-        ))}
-        <More hidden={agents.length - SHOWN} />
-      </Group>
-
-      <Group label="Workflows" Icon={IconRoute} count={workflows.length}>
-        {workflows.slice(0, SHOWN).map((w) => (
-          <Row
-            key={w.id}
-            name={w.name}
-            detail={`Run id from ${w.runIdSource}`}
-            sourceRef={w.sourceRef}
-            rationale={w.rationale}
-            confidence={w.confidence}
-          />
-        ))}
-        <More hidden={workflows.length - SHOWN} />
-      </Group>
-
-      <Group label="Conversations" Icon={IconMessages} count={sessions.length}>
-        {sessions.slice(0, SHOWN).map((s) => (
-          <Row
-            key={s.id}
-            name={s.label}
-            detail={`Thread id from ${s.sessionIdSource}`}
-            sourceRef={s.sourceRef}
-            rationale={s.rationale}
-            confidence={s.confidence}
-          />
-        ))}
-        <More hidden={sessions.length - SHOWN} />
-      </Group>
-
-      {/* Always shown, including the "no" answer — a user should be able to see
-          that per-customer attribution was considered and deliberately skipped. */}
-      <Group label="Customer attribution" Icon={IconUsers} count={1}>
-        <Row
-          name={customer.recommended ? "Enabled" : "Not recommended"}
-          detail={
-            customer.recommended && customer.idSource
-              ? `Customer id from ${customer.idSource}`
-              : undefined
-          }
-          rationale={customer.rationale}
-          confidence={customer.confidence}
+    <Card className="min-h-0 flex-1 overflow-hidden rounded-[28px] squircle:rounded-[28px] py-0">
+      <CardContent className="no-scrollbar h-full overflow-y-auto p-0">
+        <Section
+          label="Agents"
+          Icon={IconAiAgent}
+          entries={agents.map((a) => ({
+            key: a.id,
+            name: a.name,
+            detail: a.oneOff ? "One-off trace" : undefined,
+            sourceRef: a.sourceRef,
+            rationale: a.rationale,
+            confidence: a.confidence,
+          }))}
         />
-      </Group>
-    </div>
+        <Section
+          label="Workflows"
+          Icon={IconRoute}
+          entries={workflows.map((w) => ({
+            key: w.id,
+            name: w.name,
+            detail: `Run id from ${w.runIdSource}`,
+            sourceRef: w.sourceRef,
+            rationale: w.rationale,
+            confidence: w.confidence,
+          }))}
+        />
+        <Section
+          label="Conversations"
+          Icon={IconMessages}
+          entries={sessions.map((s) => ({
+            key: s.id,
+            name: s.label,
+            detail: `Thread id from ${s.sessionIdSource}`,
+            sourceRef: s.sourceRef,
+            rationale: s.rationale,
+            confidence: s.confidence,
+          }))}
+        />
+        {/* Always shown, including the "no" answer — a user should be able to
+            see that per-customer attribution was considered and skipped. */}
+        <Section
+          label="Customer attribution"
+          Icon={IconUsers}
+          entries={[
+            {
+              key: "customer",
+              name: customer.recommended ? "Enabled" : "Not recommended",
+              detail:
+                customer.recommended && customer.idSource
+                  ? `Customer id from ${customer.idSource}`
+                  : undefined,
+              rationale: customer.rationale,
+              confidence: customer.confidence,
+            },
+          ]}
+        />
+      </CardContent>
+    </Card>
   );
 }
