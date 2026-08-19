@@ -140,6 +140,10 @@ const ownerImage = sql<string | null>`min(${user.image})`;
 // come first; the rest is filled with the most recent (often zero-volume) orgs.
 const TOP_ORGS_DISPLAY = 12;
 
+// How many of the newest accounts the "recent signups" panel surfaces. Matched
+// to TOP_ORGS_DISPLAY so the two side-by-side panels are the same height.
+const RECENT_SIGNUPS_DISPLAY = 12;
+
 /** Org lookup for the access-grant UI (name or slug, case-insensitive). */
 export async function searchOrgs(db: Db, query: string) {
   const pattern = `%${query}%`;
@@ -241,6 +245,7 @@ export async function getPlatformStats(db: Db, ch: Ch) {
       orgsWithProjectsRows,
       planRows,
       signupRows,
+      recentSignupRows,
     ],
     usageByDay,
     errorsByDay,
@@ -277,6 +282,17 @@ export async function getPlatformStats(db: Db, ch: Ch) {
         .where(gte(user.createdAt, since30d))
         .groupBy(sql`to_char(${user.createdAt}, 'YYYY-MM-DD')`)
         .orderBy(sql`to_char(${user.createdAt}, 'YYYY-MM-DD')`),
+      db
+        .select({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          createdAt: user.createdAt,
+        })
+        .from(user)
+        .orderBy(desc(user.createdAt))
+        .limit(RECENT_SIGNUPS_DISPLAY),
     ]),
     queryPlatformUsageByDay(ch, ymd(since30d)),
     queryPlatformErrorsByDay(ch, ymd(since30d)),
@@ -390,6 +406,17 @@ export async function getPlatformStats(db: Db, ch: Ch) {
       views: Number(scanRows[0]?.views ?? 0),
     },
     signupsByDay: signupRows.map((r) => ({ day: r.day, users: r.n })),
+    // Newest accounts, for the operator's "who just showed up" panel. The
+    // timestamp goes over the wire as epoch millis: this router has no
+    // superjson transformer, so a Date would arrive as an ISO string that the
+    // client's formatRelative() can't parse.
+    recentSignups: recentSignupRows.map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      image: u.image,
+      createdAtMs: u.createdAt.getTime(),
+    })),
     usageByDay: usageByDay.map((r) => {
       const err = errorByDayMap.get(r.day);
       return {
