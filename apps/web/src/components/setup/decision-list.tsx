@@ -4,10 +4,10 @@ import type { Confidence, DetectedPlan } from "@foglamp/contracts/instrumentatio
 import { Card, CardContent } from "@foglamp/ui/components/card";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
-  IconAiAgent,
+  IconGhostFilled,
   IconMessages,
   type IconProps,
-  IconRoute,
+  IconSitemapFilled,
   IconUsers,
 } from "@tabler/icons-react";
 import { type ComponentType, useState } from "react";
@@ -73,10 +73,13 @@ function Row({ entry }: { entry: Entry }) {
 function Section({
   label,
   Icon,
+  iconClassName,
   entries,
 }: {
   label: string;
   Icon: ComponentType<IconProps>;
+  /** Map vocabulary: the same tint this thing carries on the flow map. */
+  iconClassName: string;
   entries: Entry[];
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -87,7 +90,7 @@ function Section({
   return (
     <section className="mt-8 px-1 first:mt-1">
       <h2 className="mb-3 ml-px flex items-center gap-2 text-xs text-muted-foreground">
-        <Icon className="size-[12px] opacity-50" />
+        <Icon className={cn("size-[12px]", iconClassName)} />
         <span className="leading-none">
           {label} ({entries.length})
         </span>
@@ -120,7 +123,8 @@ export function DecisionList({ plan }: { plan: DetectedPlan }) {
       <CardContent className="scroll-fade no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5 pb-10">
         <Section
           label="Agents"
-          Icon={IconAiAgent}
+          Icon={IconGhostFilled}
+          iconClassName="text-orange-500"
           entries={agents.map((a) => ({
             key: a.id,
             name: a.name,
@@ -132,7 +136,8 @@ export function DecisionList({ plan }: { plan: DetectedPlan }) {
         />
         <Section
           label="Workflows"
-          Icon={IconRoute}
+          Icon={IconSitemapFilled}
+          iconClassName="text-emerald-500"
           entries={workflows.map((w) => ({
             key: w.id,
             name: w.name,
@@ -145,6 +150,7 @@ export function DecisionList({ plan }: { plan: DetectedPlan }) {
         <Section
           label="Conversations"
           Icon={IconMessages}
+          iconClassName="text-sky-500"
           entries={sessions.map((s) => ({
             key: s.id,
             name: s.label,
@@ -159,6 +165,7 @@ export function DecisionList({ plan }: { plan: DetectedPlan }) {
         <Section
           label="Customer attribution"
           Icon={IconUsers}
+          iconClassName="text-violet-500"
           entries={[
             {
               key: "customer",
