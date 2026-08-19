@@ -3,9 +3,17 @@
 import { isPending as isPlanPending } from "@foglamp/contracts/instrumentation";
 import { Button } from "@foglamp/ui/components/button";
 import { Card, CardContent } from "@foglamp/ui/components/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@foglamp/ui/components/dialog";
 import { Spinner } from "@foglamp/ui/components/spinner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PROJECT_STORAGE_KEY } from "@/components/app/project-context";
@@ -68,10 +76,17 @@ export function SetupClient({ planId }: { planId: string }) {
     });
   }, [data]);
 
+  // Browsers won't let a page close a tab it didn't open, so the next best
+  // thing to "approve closes the tab" is saying out loud that closing is safe:
+  // the agent is unblocked the moment the approval lands, not when this page
+  // is looked at.
+  const [approvedOpen, setApprovedOpen] = useState(false);
+
   const approve = useMutation(
     trpc.instrumentationPlans.approve.mutationOptions({
       onSuccess: async () => {
         captureActivationEvent("instrumentation_plan_approved");
+        setApprovedOpen(true);
         // Refetch immediately: the agent resumes within a second or so, and the
         // page should be showing "applying" by the time the user looks up.
         await qc.invalidateQueries({ queryKey });
@@ -118,15 +133,32 @@ export function SetupClient({ planId }: { planId: string }) {
   }
 
   return (
-    <SetupBoard
-      plan={data.detected}
-      status={data.status}
-      firstTraceId={data.firstTraceId}
-      failureStage={data.failureStage}
-      onApprove={() => approve.mutate({ planId })}
-      onReject={() => reject.mutate({ planId })}
-      approving={approve.isPending || reject.isPending}
-    />
+    <>
+      <SetupBoard
+        plan={data.detected}
+        status={data.status}
+        firstTraceId={data.firstTraceId}
+        failureStage={data.failureStage}
+        onApprove={() => approve.mutate({ planId })}
+        onReject={() => reject.mutate({ planId })}
+        approving={approve.isPending || reject.isPending}
+      />
+      <Dialog open={approvedOpen} onOpenChange={setApprovedOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Approved — you're done here</DialogTitle>
+            <DialogDescription>
+              Your coding agent picked the plan up and is implementing the
+              instrumentation on its own. You can close this tab — or keep it
+              open to watch your first trace land.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setApprovedOpen(false)}>Got it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -86,14 +86,8 @@ export function SetupSummary({
         <h1 className="font-display text-base leading-snug font-semibold tracking-tight">
           Foglamp found {phrase(parts)}.
         </h1>
-        <p className="mt-1.5 text-xs text-muted-foreground">
-          In {plan.scan.project.name}, using AI SDK v{plan.sdk.major}. Approve
-          the plan and your coding agent picks up on its own — no need to
-          message it again.
-        </p>
-
         {status === "awaiting_approval" ? (
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2">
             <Button size="sm" onClick={onApprove} disabled={approving}>
               {approving ? "Approving…" : "Approve and instrument"}
             </Button>
@@ -102,7 +96,7 @@ export function SetupSummary({
             </Button>
           </div>
         ) : (
-          <div className={cn("mt-4 flex items-start gap-2", TONE_TEXT[STATUS_LINE[status].tone])}>
+          <div className={cn("mt-3 flex items-start gap-2", TONE_TEXT[STATUS_LINE[status].tone])}>
             <StatusIcon tone={STATUS_LINE[status].tone} />
             <div className="flex flex-col gap-2">
               <p className="text-xs leading-relaxed">

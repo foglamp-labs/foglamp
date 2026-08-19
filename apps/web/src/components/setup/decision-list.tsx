@@ -12,11 +12,10 @@ import {
 } from "@tabler/icons-react";
 import { type ComponentType, useState } from "react";
 
-// What Foglamp decided, and why — one card, all sections, scrolling inside
-// itself so the page never scrolls. Each section opens with its first few
-// entries and a "Show N more" toggle; the point of the fold is that five good
-// names prove the agent understood the repo better than a wall of 33 does.
-// Read-only for now; editing is the next stage.
+// What Foglamp decided, and why — one card, styled like the scan's left rail:
+// airy sections instead of bordered rows, all scrolling inside the card so the
+// page never scrolls. Each section opens with its first few entries and a
+// "Show N more" toggle. Read-only for now; editing is the next stage.
 
 /** Entries shown per section before folding behind "Show N more". */
 const SHOWN = 4;
@@ -40,40 +39,6 @@ function ConfidenceDot({ level }: { level: Confidence }) {
   );
 }
 
-function Row({
-  name,
-  detail,
-  sourceRef,
-  rationale,
-  confidence,
-}: {
-  name: string;
-  detail?: string;
-  sourceRef?: string;
-  rationale: string;
-  confidence: Confidence;
-}) {
-  return (
-    <li className="border-b border-border/50 px-4 py-2.5 last:border-b-0">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="truncate font-mono text-xs font-medium">{name}</span>
-        <ConfidenceDot level={confidence} />
-      </div>
-      {detail ? (
-        <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
-      ) : null}
-      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
-        {rationale}
-      </p>
-      {sourceRef ? (
-        <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
-          {sourceRef}
-        </p>
-      ) : null}
-    </li>
-  );
-}
-
 interface Entry {
   key: string;
   name: string;
@@ -81,6 +46,28 @@ interface Entry {
   sourceRef?: string;
   rationale: string;
   confidence: Confidence;
+}
+
+function Row({ entry }: { entry: Entry }) {
+  return (
+    <li className="flex flex-col gap-0.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="truncate text-sm font-medium">{entry.name}</span>
+        <ConfidenceDot level={entry.confidence} />
+      </div>
+      {entry.detail ? (
+        <p className="text-[11px] text-muted-foreground">{entry.detail}</p>
+      ) : null}
+      <p className="line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+        {entry.rationale}
+      </p>
+      {entry.sourceRef ? (
+        <p className="truncate font-mono text-[10px] text-muted-foreground/60">
+          {entry.sourceRef}
+        </p>
+      ) : null}
+    </li>
+  );
 }
 
 function Section({
@@ -98,31 +85,23 @@ function Section({
   const hidden = entries.length - shown.length;
 
   return (
-    <section className="border-b border-border/50 last:border-b-0">
-      {/* Sticky so the section you're scrolled into stays named. */}
-      <h2 className="sticky top-0 z-10 flex items-center gap-2 border-b border-border/50 bg-card px-4 py-2.5 text-xs text-muted-foreground">
-        <Icon className="size-3 opacity-60" />
+    <section className="mt-8 px-1 first:mt-1">
+      <h2 className="mb-3 ml-px flex items-center gap-2 text-xs text-muted-foreground">
+        <Icon className="size-[12px] opacity-50" />
         <span className="leading-none">
           {label} ({entries.length})
         </span>
       </h2>
-      <ul className="list-none">
+      <ul className="flex list-none flex-col gap-4">
         {shown.map((e) => (
-          <Row
-            key={e.key}
-            name={e.name}
-            detail={e.detail}
-            sourceRef={e.sourceRef}
-            rationale={e.rationale}
-            confidence={e.confidence}
-          />
+          <Row key={e.key} entry={e} />
         ))}
       </ul>
       {hidden > 0 ? (
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="w-full px-4 py-2.5 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="mt-3 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           Show {hidden} more
         </button>
@@ -135,8 +114,10 @@ export function DecisionList({ plan }: { plan: DetectedPlan }) {
   const { agents, workflows, sessions, customer } = plan.decisions;
 
   return (
-    <Card className="min-h-0 flex-1 overflow-hidden rounded-[28px] squircle:rounded-[28px] py-0">
-      <CardContent className="no-scrollbar h-full overflow-y-auto p-0">
+    <Card className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[36px] squircle:rounded-[36px] py-0">
+      {/* Scroll (and all vertical padding) lives on the content so the fade
+          mask reaches the card edges and dissolves rows, not the card. */}
+      <CardContent className="scroll-fade no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5 pb-10">
         <Section
           label="Agents"
           Icon={IconAiAgent}
