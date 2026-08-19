@@ -52,7 +52,7 @@ import { toast } from "sonner";
 import { useEntranceOnce } from "@/components/app/hooks";
 import { PageHeader, StatCard } from "@/components/app/page-parts";
 import { RelativeTime } from "@/components/app/relative-time";
-import { formatCount } from "@/lib/format";
+import { formatCount, formatExactCount } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@foglamp/ui/lib/utils";
 
@@ -374,7 +374,7 @@ export function PlatformClient() {
 					label="Users"
 					size="sm"
 					value={d.totals.users}
-					formatValue={formatCount}
+					formatValue={formatExactCount}
 					icon={IconUserFilled}
 					iconClassName="text-sky-500"
 				/>
@@ -382,7 +382,7 @@ export function PlatformClient() {
 					label="New users (7d)"
 					size="sm"
 					value={d.totals.usersLast7d}
-					formatValue={formatCount}
+					formatValue={formatExactCount}
 					icon={IconCirclePlusFilled}
 					iconClassName="text-emerald-500"
 				/>
@@ -390,7 +390,7 @@ export function PlatformClient() {
 					label="Organizations"
 					size="sm"
 					value={d.totals.orgs}
-					formatValue={formatCount}
+					formatValue={formatExactCount}
 					icon={IconBriefcaseFilled}
 					iconClassName="text-violet-500"
 				/>
@@ -398,7 +398,7 @@ export function PlatformClient() {
 					label="Projects"
 					size="sm"
 					value={d.totals.projects}
-					formatValue={formatCount}
+					formatValue={formatExactCount}
 					icon={IconFolderFilled}
 					iconClassName="text-teal-500"
 				/>
@@ -406,7 +406,7 @@ export function PlatformClient() {
 					label="Paid subs"
 					size="sm"
 					value={d.totals.activeSubscriptions}
-					formatValue={formatCount}
+					formatValue={formatExactCount}
 					icon={IconCreditCardFilled}
 					iconClassName="text-rose-500"
 				/>
@@ -414,7 +414,7 @@ export function PlatformClient() {
 					label="Spans (24h)"
 					size="sm"
 					value={d.spans.last24h}
-					formatValue={formatCount}
+					formatValue={formatExactCount}
 					icon={IconStack2Filled}
 					iconClassName="text-fuchsia-500"
 				/>
@@ -422,7 +422,7 @@ export function PlatformClient() {
 					label="Scans"
 					size="sm"
 					value={d.scans.total}
-					formatValue={formatCount}
+					formatValue={formatExactCount}
 					icon={IconZoomScanFilled}
 					iconClassName="text-orange-500"
 				/>
@@ -430,7 +430,7 @@ export function PlatformClient() {
 					label="New scans (7d)"
 					size="sm"
 					value={d.scans.last7d}
-					formatValue={formatCount}
+					formatValue={formatExactCount}
 					icon={IconZoomScanFilled}
 					iconClassName="text-lime-500"
 				/>
@@ -438,7 +438,7 @@ export function PlatformClient() {
 					label="Scan views"
 					size="sm"
 					value={d.scans.views}
-					formatValue={formatCount}
+					formatValue={formatExactCount}
 					icon={IconEyeFilled}
 					iconClassName="text-cyan-500"
 				/>
@@ -467,7 +467,7 @@ export function PlatformClient() {
 											{step.label}
 										</span>
 										<span className="tabular-nums text-muted-foreground">
-											{formatCount(step.value)}
+											{formatExactCount(step.value)}
 										</span>
 									</div>
 									<div className="h-1 w-full overflow-hidden rounded-full bg-muted">
@@ -499,7 +499,7 @@ export function PlatformClient() {
 												{p.plan}
 											</span>
 											<span className="tabular-nums text-muted-foreground">
-												{formatCount(p.orgs)}
+												{formatExactCount(p.orgs)}
 											</span>
 										</div>
 										<div className="h-1 w-full overflow-hidden rounded-full bg-muted">

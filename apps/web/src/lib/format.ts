@@ -50,6 +50,12 @@ export function formatCount(value: number): string {
 	return value >= 1000 ? compact.format(value) : plain.format(value);
 }
 
+/** A count with no compaction — "1,024", never "1K". For operator figures where
+ * the exact number is the point and 1,024 vs 1,499 must not both read "1K". */
+export function formatExactCount(value: number): string {
+	return plain.format(value);
+}
+
 export function formatTokens(value: number): string {
 	return compact.format(value);
 }
