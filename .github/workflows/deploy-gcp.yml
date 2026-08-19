@@ -136,7 +136,7 @@ jobs:
             --project "$PROJECT" --region "$REGION" \
             --image "$REPO/ingest:$GITHUB_SHA"
 
-      # Image-only update: single-instance / no-CPU-throttling / NODE_ENV carry
+      # Image-only update: scale-to-zero / max-one / CPU-throttling / NODE_ENV carry
       # over from the live revision (see examples/hud-demo/DEPLOY.md).
       - name: Deploy hud-demo
         if: steps.changes.outputs.hud == 'true'

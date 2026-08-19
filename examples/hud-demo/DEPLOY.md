@@ -1,9 +1,9 @@
 # Deploying the HUD demo → hud.foglamp.dev
 
-The demo is a long-lived Bun server (it hosts an in-process SSE broker and proxies
-it onto its own origin at `/hud/events`). That rules out static/edge/serverless
-hosting — it needs **one always-on instance**. We run it on **Cloud Run**, reusing
-the repo's multi-target `Dockerfile` (`--target hud-demo`) and Artifact Registry.
+The demo is a Bun server that hosts an in-process SSE broker and proxies it onto
+its own origin at `/hud/events`. We run it on **Cloud Run**, reusing the repo's
+multi-target `Dockerfile` (`--target hud-demo`) and Artifact Registry. It scales
+to zero while idle; an active SSE request keeps the single allowed instance alive.
 
 ## Why these settings
 
@@ -12,11 +12,13 @@ the repo's multi-target `Dockerfile` (`--target hud-demo`) and Artifact Registry
   broker actually starts. (Cloud Run's `K_SERVICE` is **not** treated as
   serverless by the SDK, and Bun reports `process.versions.node`, so the only gate
   that matters is `NODE_ENV`.)
-- **Single instance** (`--min-instances=1 --max-instances=1`): the broker is
-  in-process, so every visitor must hit the same instance to share the live stream.
-- **CPU always allocated** (`--no-cpu-throttling`): keeps the broker + the
-  heartbeat (a steady trickle of mock runs) alive between requests, so a fresh
-  visitor lands on live activity (the broker replays its ring buffer on connect).
+- **Scale to zero, maximum one instance** (`--min-instances=0
+  --max-instances=1`): the broker is in-process, so concurrent visitors must hit
+  the same instance to share the live stream. The first visitor after an idle
+  period can see a cold start.
+- **CPU throttled between requests** (`--cpu-throttling`): no compute is reserved
+  while the demo is idle. The mock heartbeat runs while the SSE stream keeps the
+  instance active; its in-memory replay buffer resets after scale-to-zero.
 - **No token cost:** the agents are `MockLanguageModelV4` — no real model calls.
 
 ## First deploy (creates the service)
@@ -39,8 +41,8 @@ gcloud run deploy foglamp-hud \
   --project "$PROJECT" --region "$REGION" \
   --image "$REPO/hud-demo:latest" \
   --allow-unauthenticated \
-  --min-instances=1 --max-instances=1 \
-  --no-cpu-throttling \
+  --min-instances=0 --max-instances=1 \
+  --cpu-throttling \
   --cpu=1 --memory=512Mi \
   --port=8080
 ```
