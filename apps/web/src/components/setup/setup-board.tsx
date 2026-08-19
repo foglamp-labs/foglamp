@@ -59,7 +59,11 @@ export function SetupBoard({
       </div>
 
       {/* Right column: what Foglamp decided, and the approve/live status. */}
-      <div className="absolute top-6 right-6 bottom-24 z-20 flex w-[380px] flex-col gap-4 overflow-y-auto no-scrollbar">
+      {/* `*:shrink-0`: with 30+ decisions the list overflows this scroll
+          column, and flex would otherwise squash the summary/status cards
+          (whose overflow-hidden then clips their text — and the Approve
+          button with it). */}
+      <div className="absolute top-6 right-6 bottom-24 z-20 flex w-[380px] flex-col gap-4 overflow-y-auto no-scrollbar *:shrink-0">
         <SetupSummary plan={plan} />
         <StatusStrip
           status={status}
