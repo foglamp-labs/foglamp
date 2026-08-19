@@ -31,16 +31,18 @@ import {
 import {
 	type Icon,
 	IconBoltFilled,
+	IconBriefcaseFilled,
 	IconBuilding,
 	IconBuildingSkyscraper,
+	IconCirclePlusFilled,
 	IconCoinFilled,
 	IconCreditCard,
+	IconCreditCardFilled,
 	IconEyeFilled,
 	IconFolderFilled,
 	IconGiftFilled,
 	IconStack2Filled,
 	IconUserFilled,
-	IconUserPlus,
 	IconZoomScanFilled,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -49,6 +51,7 @@ import { toast } from "sonner";
 
 import { useEntranceOnce } from "@/components/app/hooks";
 import { PageHeader, StatCard } from "@/components/app/page-parts";
+import { RelativeTime } from "@/components/app/relative-time";
 import { formatCount } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { cn } from "@foglamp/ui/lib/utils";
@@ -299,7 +302,7 @@ export function PlatformClient() {
 		return (
 			<>
 				<PageHeader title="Platform" />
-				<p className="text-sm text-muted-foreground">
+				<p className="px-8 text-sm text-muted-foreground">
 					You don&apos;t have access to platform stats.
 				</p>
 			</>
@@ -311,7 +314,7 @@ export function PlatformClient() {
 		return (
 			<>
 				<PageHeader title="Platform" />
-				<p className="text-sm text-muted-foreground">Loading…</p>
+				<p className="px-8 text-sm text-muted-foreground">Loading…</p>
 			</>
 		);
 	}
@@ -350,15 +353,12 @@ export function PlatformClient() {
 			{/* This page has no header.tsx shared with loading.tsx, so its own
           header is a plain top-level slot — fade it along with the rest. */}
 			<div className={cn(entrance && "page-fade-in")}>
-				<PageHeader
-					title="Platform"
-					description="Cross-org numbers for the hosted deployment. Refreshes every minute."
-				/>
+				<PageHeader title="Platform" />
 			</div>
 
 			<div
 				className={cn(
-					"grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5",
+					"grid grid-cols-2 gap-4 px-8 md:grid-cols-4 xl:grid-cols-5",
 					entrance && "page-fade-in",
 				)}
 			>
@@ -383,7 +383,7 @@ export function PlatformClient() {
 					size="sm"
 					value={d.totals.usersLast7d}
 					formatValue={formatCount}
-					icon={IconUserPlus}
+					icon={IconCirclePlusFilled}
 					iconClassName="text-emerald-500"
 				/>
 				<StatCard
@@ -391,7 +391,7 @@ export function PlatformClient() {
 					size="sm"
 					value={d.totals.orgs}
 					formatValue={formatCount}
-					icon={IconBuilding}
+					icon={IconBriefcaseFilled}
 					iconClassName="text-violet-500"
 				/>
 				<StatCard
@@ -407,7 +407,7 @@ export function PlatformClient() {
 					size="sm"
 					value={d.totals.activeSubscriptions}
 					formatValue={formatCount}
-					icon={IconCreditCard}
+					icon={IconCreditCardFilled}
 					iconClassName="text-rose-500"
 				/>
 				<StatCard
@@ -445,70 +445,77 @@ export function PlatformClient() {
 			</div>
 
 			<div
-				className={cn("grid gap-4 lg:grid-cols-3", entrance && "page-fade-in")}
+				className={cn(
+					"grid gap-4 px-8 lg:grid-cols-3",
+					entrance && "page-fade-in",
+				)}
 			>
-				<Card>
-					<CardHeader>
-						<CardTitle>Signup funnel</CardTitle>
-						<CardDescription>Signup → project → usage → paid</CardDescription>
-					</CardHeader>
-					<CardContent className="mt-2 flex flex-col gap-6">
-						{funnelSteps.map((step) => (
-							<div key={step.label} className="flex flex-col gap-3.5">
-								<div className="flex justify-between text-sm">
-									<span className="flex items-center gap-2">
-										<step.icon className={`size-4 ${step.iconClassName}`} />
-										{step.label}
-									</span>
-									<span className="tabular-nums text-muted-foreground">
-										{formatCount(step.value)}
-									</span>
-								</div>
-								<div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-									<div
-										className="h-full rounded-full bg-primary"
-										style={{
-											width: `${Math.min(100, (step.value / funnelMax) * 100)}%`,
-										}}
-									/>
-								</div>
-							</div>
-						))}
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader>
-						<CardTitle>Plans</CardTitle>
-						<CardDescription>Organizations by plan</CardDescription>
-					</CardHeader>
-					<CardContent className="mt-2 flex flex-col gap-6">
-						{d.plans.map((p) => {
-							const style = PLAN_STYLE[p.plan] ?? PLAN_STYLE_FALLBACK;
-							return (
-								<div key={p.plan} className="flex flex-col gap-3.5">
+				{/* Funnel and Plans share a column: both are short bar lists, and
+            stacking them squares the row up against the 30-row tables. */}
+				<div className="flex flex-col gap-4">
+					<Card>
+						<CardHeader>
+							<CardTitle>Signup funnel</CardTitle>
+							<CardDescription>Signup → project → usage → paid</CardDescription>
+						</CardHeader>
+						<CardContent className="mt-2 flex flex-col gap-6">
+							{funnelSteps.map((step) => (
+								<div key={step.label} className="flex flex-col gap-3.5">
 									<div className="flex justify-between text-sm">
-										<span className="flex items-center gap-2 capitalize">
-											<style.icon className={`size-4 ${style.className}`} />
-											{p.plan}
+										<span className="flex items-center gap-2">
+											<step.icon className={`size-4 ${step.iconClassName}`} />
+											{step.label}
 										</span>
 										<span className="tabular-nums text-muted-foreground">
-											{formatCount(p.orgs)}
+											{formatCount(step.value)}
 										</span>
 									</div>
 									<div className="h-1 w-full overflow-hidden rounded-full bg-muted">
 										<div
 											className="h-full rounded-full bg-primary"
 											style={{
-												width: `${Math.min(100, (p.orgs / planMax) * 100)}%`,
+												width: `${Math.min(100, (step.value / funnelMax) * 100)}%`,
 											}}
 										/>
 									</div>
 								</div>
-							);
-						})}
-					</CardContent>
-				</Card>
+							))}
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Plans</CardTitle>
+							<CardDescription>Organizations by plan</CardDescription>
+						</CardHeader>
+						<CardContent className="mt-2 flex flex-col gap-6">
+							{d.plans.map((p) => {
+								const style = PLAN_STYLE[p.plan] ?? PLAN_STYLE_FALLBACK;
+								return (
+									<div key={p.plan} className="flex flex-col gap-3.5">
+										<div className="flex justify-between text-sm">
+											<span className="flex items-center gap-2 capitalize">
+												<style.icon className={`size-4 ${style.className}`} />
+												{p.plan}
+											</span>
+											<span className="tabular-nums text-muted-foreground">
+												{formatCount(p.orgs)}
+											</span>
+										</div>
+										<div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+											<div
+												className="h-full rounded-full bg-primary"
+												style={{
+													width: `${Math.min(100, (p.orgs / planMax) * 100)}%`,
+												}}
+											/>
+										</div>
+									</div>
+								);
+							})}
+						</CardContent>
+					</Card>
+				</div>
 
 				<Card>
 					<CardHeader>
@@ -537,10 +544,51 @@ export function PlatformClient() {
 						</table>
 					</CardContent>
 				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Recent signups</CardTitle>
+						<CardDescription>Newest accounts first</CardDescription>
+					</CardHeader>
+					<CardContent className="flex flex-col">
+						{d.recentSignups.map((u) => (
+							<div
+								key={u.id}
+								className="flex items-center justify-between gap-3 border-t border-border/50 py-2.5 first:border-t-0"
+							>
+								<div className="flex min-w-0 items-center gap-2.5">
+									<Avatar size="sm">
+										{u.image ? <AvatarImage src={u.image} alt="" /> : null}
+										<AvatarFallback>
+											{initials(u.name || u.email)}
+										</AvatarFallback>
+									</Avatar>
+									<div className="flex min-w-0 flex-col">
+										<span className="truncate text-sm">{u.name || "—"}</span>
+										<span className="truncate text-xs text-muted-foreground">
+											{u.email}
+										</span>
+									</div>
+								</div>
+								<span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+									<RelativeTime value={new Date(u.createdAtMs)} />
+								</span>
+							</div>
+						))}
+						{d.recentSignups.length === 0 && (
+							<p className="py-3 text-center text-sm text-muted-foreground">
+								No signups yet.
+							</p>
+						)}
+					</CardContent>
+				</Card>
 			</div>
 
 			<div
-				className={cn("grid gap-4 lg:grid-cols-2", entrance && "page-fade-in")}
+				className={cn(
+					"grid gap-4 px-8 lg:grid-cols-2",
+					entrance && "page-fade-in",
+				)}
 			>
 				<Card>
 					<CardHeader>
@@ -644,10 +692,15 @@ export function PlatformClient() {
 				</Card>
 			</div>
 
-			<AccessGrantsCard className={cn(entrance && "page-fade-in")} />
+			<div className={cn("px-8", entrance && "page-fade-in")}>
+				<AccessGrantsCard />
+			</div>
 
 			<div
-				className={cn("grid gap-4 lg:grid-cols-3", entrance && "page-fade-in")}
+				className={cn(
+					"grid gap-4 px-8 lg:grid-cols-3",
+					entrance && "page-fade-in",
+				)}
 			>
 				<Card>
 					<CardHeader>
@@ -670,35 +723,6 @@ export function PlatformClient() {
 										<td className="py-1 text-right tabular-nums">
 											{formatCount(t.rows)}
 										</td>
-										<td className="py-1 text-right tabular-nums">
-											{formatBytes(t.bytes)}
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader>
-						<CardTitle>Postgres storage</CardTitle>
-						<CardDescription>
-							{formatBytes(d.postgres.totalBytes)} total · heaviest tables
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<table className="w-full text-sm">
-							<thead>
-								<tr className="text-left text-xs text-muted-foreground">
-									<th className="py-1 font-medium">Table</th>
-									<th className="py-1 text-right font-medium">Size</th>
-								</tr>
-							</thead>
-							<tbody>
-								{d.postgres.tables.map((t) => (
-									<tr key={t.table} className="border-t border-border/50">
-										<td className="py-1 font-mono text-xs">{t.table}</td>
 										<td className="py-1 text-right tabular-nums">
 											{formatBytes(t.bytes)}
 										</td>
@@ -738,6 +762,35 @@ export function PlatformClient() {
 								</div>
 							);
 						})}
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Postgres storage</CardTitle>
+						<CardDescription>
+							{formatBytes(d.postgres.totalBytes)} total · heaviest tables
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<table className="w-full text-sm">
+							<thead>
+								<tr className="text-left text-xs text-muted-foreground">
+									<th className="py-1 font-medium">Table</th>
+									<th className="py-1 text-right font-medium">Size</th>
+								</tr>
+							</thead>
+							<tbody>
+								{d.postgres.tables.map((t) => (
+									<tr key={t.table} className="border-t border-border/50">
+										<td className="py-1 font-mono text-xs">{t.table}</td>
+										<td className="py-1 text-right tabular-nums">
+											{formatBytes(t.bytes)}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
 					</CardContent>
 				</Card>
 			</div>
