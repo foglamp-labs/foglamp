@@ -122,10 +122,7 @@ export function SetupClient({ planId }: { planId: string }) {
       plan={data.detected}
       status={data.status}
       firstTraceId={data.firstTraceId}
-      spanCount={data.spanCount}
-      secondsToFirstTrace={data.secondsToFirstTrace}
       failureStage={data.failureStage}
-      filesChanged={data.applied?.filesChanged.length}
       onApprove={() => approve.mutate({ planId })}
       onReject={() => reject.mutate({ planId })}
       approving={approve.isPending || reject.isPending}

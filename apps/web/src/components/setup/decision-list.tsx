@@ -12,22 +12,25 @@ import {
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 
-// What Foglamp decided, and why. Read-only for now: this pass is about making
-// the reasoning visible before code changes land, not about editing it.
-//
-// Each row answers the three questions a user actually has — what will this be
-// called, where did you find it, and how sure are you.
+// What Foglamp decided, and why — compact on purpose. This column exists to
+// prove the agent understood the repo, not to enumerate it: each section shows
+// its first few entries and a "+N more" line, and the map is the real browser
+// of everything. Read-only for now; editing is the next stage.
 
-const CONFIDENCE_STYLE: Record<Confidence, string> = {
-  high: "text-emerald-600 dark:text-emerald-400",
-  medium: "text-amber-600 dark:text-amber-400",
-  low: "text-muted-foreground",
-};
+/** Entries shown per section before folding into "+N more". */
+const SHOWN = 4;
 
+// Confidence renders only when it's a warning. A green "high" on every row is
+// noise; an amber "medium"/"low" is exactly the row the user should read
+// before approving.
 function ConfidenceDot({ level }: { level: Confidence }) {
+  if (level === "high") return null;
   return (
     <span
-      className={cn("flex items-center gap-1 text-[10px]", CONFIDENCE_STYLE[level])}
+      className={cn(
+        "flex shrink-0 items-center gap-1 text-[10px]",
+        level === "medium" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
+      )}
       title={`${level} confidence`}
     >
       <span className="size-1.5 rounded-full bg-current" />
@@ -50,7 +53,7 @@ function Row({
   confidence: Confidence;
 }) {
   return (
-    <li className="border-b border-border/50 px-4 py-3 last:border-b-0">
+    <li className="border-b border-border/50 px-4 py-2.5 last:border-b-0">
       <div className="flex items-baseline justify-between gap-3">
         <span className="truncate font-mono text-xs font-medium">{name}</span>
         <ConfidenceDot level={confidence} />
@@ -58,7 +61,7 @@ function Row({
       {detail ? (
         <p className="mt-1 text-[11px] text-muted-foreground">{detail}</p>
       ) : null}
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
         {rationale}
       </p>
       {sourceRef ? (
@@ -99,51 +102,60 @@ function Group({
   );
 }
 
+function More({ hidden }: { hidden: number }) {
+  if (hidden <= 0) return null;
+  return (
+    <li className="px-4 py-2 text-[11px] text-muted-foreground/70">
+      + {hidden} more — all of them are on the map.
+    </li>
+  );
+}
+
 export function DecisionList({ plan }: { plan: DetectedPlan }) {
   const { agents, workflows, sessions, customer } = plan.decisions;
-  const callById = new Map(plan.calls.map((c) => [c.id, c]));
-  const callCount = (ids: string[]) =>
-    `${ids.length} call${ids.length === 1 ? "" : "s"}`;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <Group label="Agents" Icon={IconAiAgent} count={agents.length}>
-        {agents.map((a) => (
+        {agents.slice(0, SHOWN).map((a) => (
           <Row
             key={a.id}
             name={a.name}
-            detail={`${a.oneOff ? "One-off trace" : "Agent"} · ${callCount(a.callIds)}`}
+            detail={a.oneOff ? "One-off trace" : undefined}
             sourceRef={a.sourceRef}
             rationale={a.rationale}
             confidence={a.confidence}
           />
         ))}
+        <More hidden={agents.length - SHOWN} />
       </Group>
 
       <Group label="Workflows" Icon={IconRoute} count={workflows.length}>
-        {workflows.map((w) => (
+        {workflows.slice(0, SHOWN).map((w) => (
           <Row
             key={w.id}
             name={w.name}
-            detail={`${callCount(w.callIds)} · run id from ${w.runIdSource}`}
+            detail={`Run id from ${w.runIdSource}`}
             sourceRef={w.sourceRef}
             rationale={w.rationale}
             confidence={w.confidence}
           />
         ))}
+        <More hidden={workflows.length - SHOWN} />
       </Group>
 
       <Group label="Conversations" Icon={IconMessages} count={sessions.length}>
-        {sessions.map((s) => (
+        {sessions.slice(0, SHOWN).map((s) => (
           <Row
             key={s.id}
             name={s.label}
-            detail={`${callCount(s.callIds)} · thread id from ${s.sessionIdSource}`}
+            detail={`Thread id from ${s.sessionIdSource}`}
             sourceRef={s.sourceRef}
             rationale={s.rationale}
             confidence={s.confidence}
           />
         ))}
+        <More hidden={sessions.length - SHOWN} />
       </Group>
 
       {/* Always shown, including the "no" answer — a user should be able to see
@@ -160,15 +172,6 @@ export function DecisionList({ plan }: { plan: DetectedPlan }) {
           confidence={customer.confidence}
         />
       </Group>
-
-      {plan.calls.length > 0 ? (
-        <p className="px-1 text-[11px] text-muted-foreground">
-          {plan.calls.length} model call
-          {plan.calls.length === 1 ? "" : "s"} found across{" "}
-          {new Set([...callById.values()].map((c) => c.sourceRef.split(":")[0])).size}{" "}
-          files.
-        </p>
-      ) : null}
     </div>
   );
 }

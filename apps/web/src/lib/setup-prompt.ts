@@ -104,7 +104,9 @@ Plan rules (a plan that breaks one is rejected with 422 and a details list):
 
 ## 3. The architecture map ("scan")
 This is the picture the user reviews, so make it worth looking at: map the
-business logic too, not just the AI calls.
+business logic too, not just the AI calls. When nodes belong to a workflow you
+listed in decisions, set their \`group\` to that workflow's exact name — the
+review map draws matching groups as workflows.
 ${SCAN_SHAPE}
 
 ${SCAN_RULES}

@@ -2,6 +2,7 @@
 
 import type { NodeKind, ScanData } from "@foglamp/contracts/scan";
 import { cn } from "@foglamp/ui/lib/utils";
+import { IconSitemap } from "@tabler/icons-react";
 import { BorderBeam } from "border-beam";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -212,6 +213,8 @@ export function FlowMap({
 	frame = false,
 	direction = "RIGHT",
 	padding,
+	workflowGroups,
+	focusGroups,
 }: {
 	graph: ScanData["graph"];
 	focusKinds: NodeKind[] | null;
@@ -235,6 +238,17 @@ export function FlowMap({
 	 * embedded/frame mode, which fit tight by design.
 	 */
 	padding?: { left?: number; right?: number };
+	/**
+	 * Group labels that are approved/proposed workflows (setup review page).
+	 * Matching group boxes get the dashboard's workflow treatment — IconSitemap
+	 * and the emerald accent — instead of the plain uppercase label.
+	 */
+	workflowGroups?: string[];
+	/**
+	 * Legend focus by group label: spotlight the nodes inside these groups and
+	 * dim everything else. Composes with `focusKinds`; null means no filter.
+	 */
+	focusGroups?: string[] | null;
 }) {
 	const folded = useMemo(() => foldGraph(graph), [graph]);
 
@@ -318,6 +332,24 @@ export function FlowMap({
 		);
 	}, [focusKinds, folded.nodes]);
 
+	// Legend focus (hover) by group label — the setup page's "Workflows" chip.
+	const groupFocus = useMemo(() => {
+		if (!focusGroups || focusGroups.length === 0) return null;
+		return new Set(focusGroups.map((l) => l.toLowerCase()));
+	}, [focusGroups]);
+	const groupActive = useMemo(() => {
+		if (!groupFocus) return null;
+		return new Set(
+			folded.nodes
+				.filter((n) => n.group && groupFocus.has(n.group.toLowerCase()))
+				.map((n) => n.id),
+		);
+	}, [groupFocus, folded.nodes]);
+	const workflowLabels = useMemo(
+		() => new Set((workflowGroups ?? []).map((l) => l.toLowerCase())),
+		[workflowGroups],
+	);
+
 	// Beam-hit rings: one overlay per node/group, flashed imperatively when a
 	// beam arrives (refs, not state — a flash shouldn't re-render the graph).
 	const hitRings = useRef(new Map<string, HTMLDivElement>());
@@ -349,12 +381,19 @@ export function FlowMap({
 	}, []);
 
 	const nodeActive = (id: string) =>
-		(!kindActive || kindActive.has(id)) && (!trace || trace.nodes.has(id));
+		(!kindActive || kindActive.has(id)) &&
+		(!groupActive || groupActive.has(id)) &&
+		(!trace || trace.nodes.has(id));
 	const edgeActive = (e: { orig: number[] }) =>
 		(!kindActive ||
 			e.orig.some((i) => {
 				const o = foldedEdgeAt(i);
 				return kindActive.has(o.from) || kindActive.has(o.to);
+			})) &&
+		(!groupActive ||
+			e.orig.some((i) => {
+				const o = foldedEdgeAt(i);
+				return groupActive.has(o.from) || groupActive.has(o.to);
 			})) &&
 		(!trace || e.orig.some((i) => trace.edges.has(i)));
 
@@ -543,10 +582,19 @@ export function FlowMap({
 						}}
 					>
 						{/* group containers — labeled vertical stacks */}
-						{layout.groups.map((g) => (
+						{layout.groups.map((g) => {
+							const isWorkflow = workflowLabels.has(g.label.toLowerCase());
+							const groupDimmed =
+								groupFocus !== null && !groupFocus.has(g.label.toLowerCase());
+							return (
 							<motion.div
 								key={g.id}
-								className="light:border-overlay shadow-(--custom-shadow) absolute rounded-xl squircle:rounded-[32px] corner-squircle bg-card dark:bg-card/50"
+								className={cn(
+									"light:border-overlay shadow-(--custom-shadow) absolute rounded-xl squircle:rounded-[32px] corner-squircle bg-card transition-opacity duration-300 dark:bg-card/50",
+									isWorkflow &&
+										"border border-emerald-500/20 dark:border-emerald-400/15",
+									groupDimmed && "opacity-25",
+								)}
 								style={{
 									left: g.x,
 									top: g.y,
@@ -557,16 +605,27 @@ export function FlowMap({
 								animate={{ opacity: 1 }}
 								transition={{ duration: 0.5, delay: delayAt(g.x) }}
 							>
-								<span className="absolute top-4 left-4 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-									{g.label}
-								</span>
+								{isWorkflow ? (
+									// Same vocabulary as the dashboard's Workflows nav:
+									// IconSitemap + emerald, plus a live dot like the agents get.
+									<span className="absolute top-4 left-4 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+										<IconSitemap className="size-3" />
+										{g.label}
+										<span className="size-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
+									</span>
+								) : (
+									<span className="absolute top-4 left-4 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+										{g.label}
+									</span>
+								)}
 								<div
 									ref={registerHitRing(g.id)}
 									className="pointer-events-none absolute inset-0 rounded-xl squircle:rounded-[32px] corner-squircle border opacity-0 transition-[opacity,border-color] duration-500"
 									style={{ borderColor: "transparent" }}
 								/>
 							</motion.div>
-						))}
+							);
+						})}
 
 						<svg
 							className="pointer-events-none absolute inset-0 overflow-visible"
