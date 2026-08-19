@@ -450,3 +450,61 @@ ${url}
 
 If you didn't request this email, you can safely ignore it.`;
 }
+
+// --- Welcome email -----------------------------------------------------------
+// Deliberately outside the shared HTML chrome above: this one is a plain-text
+// note from a person, and the branded layout would undercut that. It's sent
+// from Gustavo directly so replies land in a human inbox, not a no-reply void.
+
+const WELCOME_FROM = "Gustavo from Foglamp <gustavo@foglamp.dev>";
+const WELCOME_REPLY_TO = "gustavo@foglamp.dev";
+const CAL_URL = "https://cal.com/gustavo-fior/30min";
+
+/** First name only — "Hey Gustavo!", not "Hey Gustavo Fior!". Falls back to a
+ * nameless greeting rather than guessing a name out of the email local part. */
+function greeting(name?: string | null): string {
+	const first = (name ?? "").trim().split(/\s+/)[0] ?? "";
+	return first ? `Hey ${first}!` : "Hey!";
+}
+
+export async function sendWelcomeEmail({
+	to,
+	name,
+}: {
+	to: string;
+	name?: string | null;
+}) {
+	const apiKey = env.RESEND_API_KEY;
+
+	if (!apiKey) {
+		log.info("auth.welcome.skipped_no_api_key", { to });
+		return;
+	}
+
+	const resend = new Resend(apiKey);
+	const { error } = await resend.emails.send({
+		from: WELCOME_FROM,
+		replyTo: WELCOME_REPLY_TO,
+		to: [to],
+		subject: "Welcome to Foglamp",
+		text: `${greeting(name)}
+
+I'm Gustavo, I build Foglamp.
+
+Thanks for signing up.
+
+The fastest way in is the prompt on your dashboard: paste it into your coding
+agent and it instruments your app for you.
+
+If you'd rather talk it through or have ideas for the project, grab 30 minutes with me:
+${CAL_URL}
+
+Either way, would be a pleasure to talk to you!
+
+Gustavo`,
+	});
+
+	if (error) {
+		throw new Error(`Resend request failed: ${error.name} — ${error.message}`);
+	}
+}

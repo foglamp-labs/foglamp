@@ -18,7 +18,12 @@ import {
 import { and, eq, gt } from "drizzle-orm";
 import Stripe from "stripe";
 import { uuidv7 } from "uuidv7";
-import { sendInvitationEmail, sendMagicLinkEmail, sendResetPasswordEmail } from "./email";
+import {
+  sendInvitationEmail,
+  sendMagicLinkEmail,
+  sendResetPasswordEmail,
+  sendWelcomeEmail,
+} from "./email";
 
 // Tiny local slugify — we can't import from @foglamp/api (it depends on auth).
 function slugify(input: string): string {
@@ -288,6 +293,15 @@ export function createAuth() {
                   workspace_created: true,
                 },
               });
+              // Plain-text hello from Gustavo. Fire-and-forget on purpose: a
+              // Resend outage must not fail account creation, and invited
+              // users are skipped above — they already got an invite email and
+              // are joining a workspace someone else set up.
+              void sendWelcomeEmail({ to: user.email, name: user.name }).catch(
+                (err) => {
+                  console.error("[auth] welcome email failed", err);
+                },
+              );
             } catch (err) {
               console.error("[auth] signup workspace bootstrap failed", err);
             }
