@@ -182,7 +182,7 @@ const COST_BY_CATEGORY: StripSegment[] = [
 	{ label: "Output", value: 0.0203, color: "#0090FD" },
 ];
 const COST_BY_MODEL: StripSegment[] = [
-	{ label: "gpt-5.5", value: 0.0339, color: "#10a37f" },
+	{ label: "gpt-5.6-sol", value: 0.0339, color: "#10a37f" },
 	{ label: "gemini-3.5-flash", value: 0.0079, color: "#1ba1e3" },
 ];
 // Wall-clock split of the waterfall: model calls, tool execution, idle gaps.
@@ -321,7 +321,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 										label="Models"
 										value={
 											<span className="flex flex-col gap-1.5">
-												{[row.model, "gemini-3.5-flash"].map((m) => (
+												{[...new Set([row.model, "gemini-3.5-flash"])].map((m) => (
 													<span
 														key={m}
 														className="flex min-w-0 items-center gap-1.5"

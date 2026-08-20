@@ -190,10 +190,6 @@ export function EvalsTab() {
 						}}
 					/>
 					<div className="ml-auto flex items-center gap-3">
-						<span className="hidden whitespace-nowrap text-sm text-muted-foreground/50 tabular-nums sm:inline">
-							{formatCount(visible.length)}{" "}
-							{visible.length === 1 ? "eval" : "evals"}
-						</span>
 						<DemoRange />
 					</div>
 				</Toolbar>

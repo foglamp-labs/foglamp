@@ -384,7 +384,7 @@ export function TracesTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-32"
+										className="w-20"
 									>
 										Spans
 									</SortableHead>
@@ -393,7 +393,7 @@ export function TracesTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-36"
+										className="w-24"
 									>
 										Tokens
 									</SortableHead>
@@ -402,7 +402,7 @@ export function TracesTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-36"
+										className="w-26"
 									>
 										Duration
 									</SortableHead>
@@ -411,7 +411,7 @@ export function TracesTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-40"
+										className="w-28"
 									>
 										Cost
 									</SortableHead>
@@ -420,7 +420,7 @@ export function TracesTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-40"
+										className="w-24"
 									>
 										When
 									</SortableHead>

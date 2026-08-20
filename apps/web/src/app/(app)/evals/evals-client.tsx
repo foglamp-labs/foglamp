@@ -954,13 +954,6 @@ export function EvalsClient() {
 						}}
 					/>
 					<div className="ml-auto flex items-center gap-3">
-						{/* Count reads "0 evals" during load — hide it until real. */}
-						{!evals.isLoading && (
-							<span className="hidden whitespace-nowrap text-sm text-muted-foreground/50 tabular-nums sm:inline">
-								{formatCount(visible.length)}{" "}
-								{visible.length === 1 ? "eval" : "evals"}
-							</span>
-						)}
 						<RangeControl value={range} onChange={setRange} />
 					</div>
 				</Toolbar>

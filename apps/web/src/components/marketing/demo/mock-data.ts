@@ -180,7 +180,7 @@ export const OVERVIEW_SERIES: OverviewPoint[] = OV_BUCKETS.map((bucket, i) => {
 	return { bucket, requests, errors, p50, p95, p99, tokens, cost };
 });
 
-// Per-model cost over time (m0 gpt-5.5 / m1 claude-opus-4.8 / m2 gemini-3.5-flash),
+// Per-model cost over time (m0 gpt-5.6-sol / m1 claude-fable-5 / m2 gemini-3.5-flash),
 // derived from the overview cost so the lines and the "Models" breakdown agree.
 export type OverviewCostPoint = {
 	bucket: string;
@@ -204,9 +204,9 @@ export const OVERVIEW_COST_SERIES: OverviewCostPoint[] = OVERVIEW_SERIES.map(
 // Vendor brand accents (OpenAI / Anthropic / Google) reused by the cost chart
 // and its legend; the "Models" breakdown renders the real ModelLogo per row.
 export const OVERVIEW_COST_CONFIG = {
-	m0: { label: "gpt-5.5", colors: { light: ["#10a37f"], dark: ["#10a37f"] } },
+	m0: { label: "gpt-5.6-sol", colors: { light: ["#10a37f"], dark: ["#10a37f"] } },
 	m1: {
-		label: "claude-opus-4.8",
+		label: "claude-fable-5",
 		colors: { light: ["#d97757"], dark: ["#d97757"] },
 	},
 	m2: {
@@ -220,8 +220,8 @@ export const OVERVIEW_COST_ITEMS: {
 	label: string;
 	color: string;
 }[] = [
-	{ key: "m0", label: "gpt-5.5", color: "#10a37f" },
-	{ key: "m1", label: "claude-opus-4.8", color: "#d97757" },
+	{ key: "m0", label: "gpt-5.6-sol", color: "#10a37f" },
+	{ key: "m1", label: "claude-fable-5", color: "#d97757" },
 	{ key: "m2", label: "gemini-3.5-flash", color: "#1ba1e3" },
 ];
 
@@ -244,14 +244,14 @@ export const OVERVIEW_BREAKDOWN: {
 } = {
 	models: [
 		{
-			name: "gpt-5.5",
+			name: "gpt-5.6-sol",
 			cost: 512.4,
 			fraction: 1,
 			metrics: "8.1k req · 24.2M tok",
 			color: "#10a37f",
 		},
 		{
-			name: "claude-opus-4.8",
+			name: "claude-fable-5",
 			cost: 284.1,
 			fraction: 0.554,
 			metrics: "5.6k req · 14.1M tok",
@@ -457,7 +457,7 @@ export const TRACE_ROWS: TraceRow[] = [
 		traceId: "tr_9f2a4c8e1b7d3a6f5e0c",
 		title:
 			'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
-		model: "gpt-5.5",
+		model: "gpt-5.6-sol",
 		agentName: "support-triage",
 		workflowName: "onboard-customer",
 		sessionId: "ses_a91f",
@@ -471,7 +471,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_3b8e1d6a9c2f7b4e0a5d",
 		title: "Compare vector DB options for a 50M-embedding workload",
-		model: "claude-opus-4.8",
+		model: "claude-fable-5",
 		agentName: "research-planner",
 		workflowName: null,
 		sessionId: null,
@@ -485,7 +485,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_7c1f5a2b8e4d9c6a3f0b",
 		title: "Review PR #1284 — payment retry backoff",
-		model: "gpt-5.5",
+		model: "gpt-5.6-sol",
 		agentName: "code-reviewer",
 		workflowName: "incident-summary",
 		sessionId: null,
@@ -514,7 +514,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_5e0b8d4a2c7f1b9e6a3d",
 		title: "Can you also add expedited shipping since it was delayed?",
-		model: "gpt-5.5",
+		model: "gpt-5.6-sol",
 		agentName: "support-triage",
 		workflowName: "onboard-customer",
 		sessionId: "ses_a91f",
@@ -528,7 +528,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_8a3f1c6b9d2e7a4c0b5f",
 		title: "Summarize this week's churn-risk accounts with sources",
-		model: "claude-opus-4.8",
+		model: "claude-fable-5",
 		agentName: "research-planner",
 		workflowName: null,
 		sessionId: "ses_3c7d",
@@ -542,7 +542,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_4c7d2e9f6a1b8c3e5d0a",
 		title: "Which accounts drove the Q3 revenue dip? Break it down by plan tier",
-		model: "claude-opus-4.8",
+		model: "claude-fable-5",
 		agentName: "sql-analyst",
 		workflowName: null,
 		sessionId: "ses_b44c",
@@ -557,7 +557,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_6d1e9b3a7f4c2d8b0e5a",
 		title: "Summarize the platform-sync standup and file the action items",
-		model: "gpt-5.5",
+		model: "gpt-5.6-sol",
 		agentName: "meeting-notetaker",
 		workflowName: "weekly-digest",
 		sessionId: null,
@@ -571,7 +571,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_1b6f3d8c5a9e2b7d4c0e",
 		title: "Translate the onboarding guide to Japanese, keep the code blocks",
-		model: "gemini-3.5-flash",
+		model: "glm-5",
 		agentName: "doc-translator",
 		workflowName: null,
 		sessionId: null,
@@ -585,7 +585,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_0e5a8c2f7d3b9e6a1c4d",
 		title: "Reconcile the Stripe payout against invoices for July",
-		model: "gemini-3.5-flash",
+		model: "minimax-m2.5",
 		agentName: "billing-reconciler",
 		workflowName: "weekly-digest",
 		sessionId: null,
@@ -599,7 +599,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_9d4b7f1e6c3a8d2f5b0c",
 		title: "Score churn risk for accounts inactive 30+ days",
-		model: "claude-opus-4.8",
+		model: "claude-fable-5",
 		agentName: "churn-predictor",
 		workflowName: "incident-summary",
 		sessionId: null,
@@ -614,7 +614,7 @@ export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_3a8e6c1d9f5b2a7e4d0c",
 		title: "My invoice shows two seats but we only have one active user",
-		model: "gpt-5.5",
+		model: "gpt-5.6-sol",
 		agentName: "support-triage",
 		workflowName: null,
 		sessionId: "ses_9e1d",
@@ -792,7 +792,7 @@ export const AGENTS: AgentCard[] = [
 		costValue: 214.8,
 		passRate: "96%",
 		lastRun: "12s ago",
-		models: ["gpt-5.5", "gemini-3.5-flash"],
+		models: ["gpt-5.6-sol", "gemini-3.5-flash"],
 	},
 	{
 		name: "research-planner",
@@ -805,7 +805,7 @@ export const AGENTS: AgentCard[] = [
 		costValue: 318.2,
 		passRate: "91%",
 		lastRun: "48s ago",
-		models: ["claude-opus-4.8"],
+		models: ["claude-fable-5"],
 	},
 	{
 		name: "code-reviewer",
@@ -818,7 +818,7 @@ export const AGENTS: AgentCard[] = [
 		costValue: 196.4,
 		passRate: "93%",
 		lastRun: "2m ago",
-		models: ["gpt-5.5", "claude-opus-4.8"],
+		models: ["gpt-5.6-sol", "claude-fable-5"],
 	},
 	{
 		name: "email-drafter",
@@ -844,7 +844,7 @@ export const AGENTS: AgentCard[] = [
 		costValue: 84.6,
 		passRate: "87%",
 		lastRun: "6m ago",
-		models: ["claude-opus-4.8", "gpt-5.5"],
+		models: ["claude-fable-5", "gpt-5.6-sol"],
 	},
 	{
 		name: "meeting-notetaker",
@@ -857,7 +857,7 @@ export const AGENTS: AgentCard[] = [
 		costValue: 121.7,
 		passRate: "95%",
 		lastRun: "9m ago",
-		models: ["gpt-5.5"],
+		models: ["gpt-5.6-sol"],
 	},
 	{
 		name: "doc-translator",
@@ -870,7 +870,7 @@ export const AGENTS: AgentCard[] = [
 		costValue: 43.9,
 		passRate: "99%",
 		lastRun: "18m ago",
-		models: ["gemini-3.5-flash", "gpt-5.5"],
+		models: ["glm-5", "gemini-3.5-flash"],
 	},
 	{
 		name: "billing-reconciler",
@@ -883,7 +883,7 @@ export const AGENTS: AgentCard[] = [
 		costValue: 12.4,
 		passRate: "99%",
 		lastRun: "26m ago",
-		models: ["gemini-3.5-flash"],
+		models: ["minimax-m2.5"],
 	},
 	{
 		name: "churn-predictor",
@@ -896,7 +896,7 @@ export const AGENTS: AgentCard[] = [
 		costValue: 66.3,
 		passRate: "82%",
 		lastRun: "1h ago",
-		models: ["claude-opus-4.8"],
+		models: ["claude-fable-5"],
 	},
 ];
 
@@ -1039,7 +1039,7 @@ export const AGENT_FLOW: {
 	{
 		id: "f3",
 		label: "draft-reply",
-		sublabel: "gpt-5.5",
+		sublabel: "gpt-5.6-sol",
 		status: "ok",
 		timestamp: T(3, 320),
 		durationMs: 2460,
