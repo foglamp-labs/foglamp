@@ -201,11 +201,19 @@ const costNoise = (i: number, seed: number) => {
 
 export const OVERVIEW_COST_SERIES: OverviewCostPoint[] = OVERVIEW_SERIES.map(
 	(r, i) => {
-		// Rare per-model bursts (a batch job, a retry storm) on top of the noise.
-		const spike = (s: number) =>
-			costNoise(i, s + 9) > 0.88 ? 1.4 + costNoise(i, s + 17) * 0.6 : 1;
-		const part = (share: number, s: number) =>
-			+(r.cost * share * (0.55 + 0.9 * costNoise(i, s)) * spike(s)).toFixed(3);
+		// Per-model bursts (a batch job, a retry storm) and lulls (a paused
+		// pipeline) on top of two octaves of noise, so no two buckets rhyme.
+		const spike = (s: number) => {
+			const n = costNoise(i, s + 9);
+			if (n > 0.82) return 1.5 + costNoise(i, s + 17) * 0.9;
+			if (n < 0.12) return 0.35;
+			return 1;
+		};
+		const part = (share: number, s: number) => {
+			const rough =
+				0.25 + 1.1 * costNoise(i, s) + 0.45 * costNoise(i * 3 + 7, s + 29);
+			return +(r.cost * share * rough * spike(s)).toFixed(3);
+		};
 		return {
 			bucket: r.bucket,
 			m0: part(0.42, 1),
