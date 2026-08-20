@@ -56,6 +56,7 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
 	type Icon,
 	IconAffiliate,
+	IconAlertTriangle,
 	IconBoltFilled,
 	IconCircleCheck,
 	IconCircleCheckFilled,
@@ -888,7 +889,7 @@ export function EvalsClient() {
 					/>
 				</section>
 
-				<Toolbar>
+				<Toolbar className="px-5.5">
 					<SearchInput
 						value={search}
 						onChange={setSearch}
@@ -1051,16 +1052,24 @@ export function EvalsClient() {
 												key={r.id}
 												interactive
 												onClick={() => router.push(`/evals/${r.id}`)}
-												className={cn(
-													// Left accent bar on errored / key-less evals — they
-													// aren't scoring, so they read at a glance.
-													(r.status === "error" ||
-														r.status === "paused_no_key") &&
-														"shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
-												)}
 											>
-												<TableCell className="truncate font-medium">
-													{r.name}
+												<TableCell className="font-medium">
+													<div className="flex min-w-0 items-center gap-2">
+														<span className="truncate">{r.name}</span>
+														{(r.status === "error" ||
+															r.status === "paused_no_key") && (
+															<span
+																title={
+																	r.status === "paused_no_key"
+																		? "Needs an API key"
+																		: "Erroring"
+																}
+																className="flex shrink-0 items-center font-sans text-sm text-red-600 dark:text-red-400"
+															>
+																<IconAlertTriangle className="size-3.5 fill-current/20" />
+															</span>
+														)}
+													</div>
 												</TableCell>
 												<TableCell>
 													<Badge
