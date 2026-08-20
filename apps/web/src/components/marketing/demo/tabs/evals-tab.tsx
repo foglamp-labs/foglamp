@@ -28,7 +28,6 @@ import {
 	IconProgress,
 	IconSparkles,
 	IconStack2,
-	IconToggleRight,
 	IconTrashFilled,
 } from "@tabler/icons-react";
 import { useState } from "react";
@@ -62,7 +61,6 @@ export function EvalsTab() {
 	const [statusFilter, setStatusFilter] = useState("");
 	const [sourceFilter, setSourceFilter] = useState("");
 	const [levelFilter, setLevelFilter] = useState("");
-	const [stateFilter, setStateFilter] = useState("");
 	const [enabledById, setEnabledById] = useState<Record<string, boolean>>(() =>
 		Object.fromEntries(EVALS.map((e) => [e.id, e.enabled])),
 	);
@@ -77,11 +75,7 @@ export function EvalsTab() {
 			(!statusFilter || e.status === statusFilter) &&
 			(!sourceFilter ||
 				(sourceFilter === "llm" ? e.type === "llm-judge" : e.type === "code")) &&
-			(!levelFilter || e.level === levelFilter) &&
-			(!stateFilter ||
-				(stateFilter === "enabled"
-					? enabledById[e.id]
-					: !enabledById[e.id])),
+			(!levelFilter || e.level === levelFilter),
 	);
 	const visible = sortRows<EvalRow, EvalSortKey>(filtered, sort, {
 		name: (e) => e.name,
@@ -186,32 +180,13 @@ export function EvalsTab() {
 							{ value: "span", label: "Spans", icon: IconStack2 },
 						]}
 					/>
-					<FilterSelect
-						value={stateFilter}
-						onChange={setStateFilter}
-						allLabel="Any state"
-						icon={IconToggleRight}
-						options={[
-							{ value: "enabled", label: "Enabled", icon: IconCircleCheck },
-							{ value: "disabled", label: "Disabled", icon: IconForbid },
-						]}
-					/>
 					<ClearFiltersButton
-						show={
-							!!(
-								search ||
-								statusFilter ||
-								sourceFilter ||
-								levelFilter ||
-								stateFilter
-							)
-						}
+						show={!!(search || statusFilter || sourceFilter || levelFilter)}
 						onClick={() => {
 							setSearch("");
 							setStatusFilter("");
 							setSourceFilter("");
 							setLevelFilter("");
-							setStateFilter("");
 						}}
 					/>
 					<div className="ml-auto flex items-center gap-3">
