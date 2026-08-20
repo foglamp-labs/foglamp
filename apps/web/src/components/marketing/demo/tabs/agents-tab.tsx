@@ -1,94 +1,205 @@
 "use client";
 
-import { Badge } from "@foglamp/ui/components/badge";
 import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@foglamp/ui/components/card";
+	Table,
+	TableBody,
+	TableCell,
+	TableHeader,
+	TableRow,
+} from "@foglamp/ui/components/table";
+import { TooltipProvider } from "@foglamp/ui/components/tooltip";
 import { IconAlertTriangle } from "@tabler/icons-react";
+import { useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
-import { HEAT_SHADES, percentileBucket } from "@/components/app/heat-cell";
-import { navItem } from "@/components/app/nav";
-import { PageHeader } from "@/components/app/page-parts";
-import { Stat } from "@/components/app/stat";
-
 import {
-	DemoRangePill,
-	DemoSearch,
-	DemoToggle,
-	DemoToolbar,
-} from "../demo-chrome";
-import { useDemo } from "../demo-context";
-import { AGENTS, quintiles } from "../mock-data";
+	ClearFiltersButton,
+	PaginationFooter,
+	SearchInput,
+	SortableHead,
+	ToggleChip,
+	Toolbar,
+	sortRows,
+	useTableSort,
+} from "@/components/app/data-table";
+import { HeatCell } from "@/components/app/heat-cell";
+import {
+	formatCost,
+	formatCount,
+	formatDuration,
+	formatTokens,
+} from "@/lib/format";
 
-// Cost quintiles across the listed agents drive the per-card heat shade.
+import { DemoListHeader, DemoRange } from "../demo-chrome";
+import { useDemo } from "../demo-context";
+import { AGENTS, type AgentCard, quintiles } from "../mock-data";
+
 const COST_QUANTILES = quintiles(AGENTS.map((a) => a.costValue));
+
+type AgentSortKey = "name" | "spans" | "tokens" | "latency" | "cost" | "lastRun";
 
 export function AgentsTab() {
 	const { openDetail } = useDemo();
 
+	const [search, setSearch] = useState("");
+	const [errorsOnly, setErrorsOnly] = useState(false);
+	const [pageSize, setPageSize] = useState(25);
+	const { sort, toggle } = useTableSort<AgentSortKey>();
+
+	const q = search.trim().toLowerCase();
+	const filtered = AGENTS.filter(
+		(a) =>
+			(!q || a.name.toLowerCase().includes(q)) &&
+			(!errorsOnly || a.errorCount > 0),
+	);
+	const rows = sortRows<AgentCard, AgentSortKey>(filtered, sort, {
+		name: (a) => a.name,
+		spans: (a) => a.spanCount,
+		tokens: (a) => a.totalTokens,
+		latency: (a) => a.p95Ms,
+		cost: (a) => a.costValue,
+		lastRun: (a) => -AGENTS.indexOf(a),
+	});
+
 	return (
 		<>
-			<PageHeader
-				title="Agents"
-				description="Per-agent cost, latency, and token usage."
-				icon={navItem("/agents")?.icon}
-				iconClassName={navItem("/agents")?.iconClassName}
-			/>
+			<DemoListHeader href="/agents" title="Agents" />
+			<div className="flex flex-col gap-4 mt-1">
+				<Toolbar>
+					<SearchInput
+						value={search}
+						onChange={setSearch}
+						placeholder="Search agents…"
+					/>
+					<ToggleChip
+						active={errorsOnly}
+						onClick={() => setErrorsOnly((v) => !v)}
+					>
+						<IconAlertTriangle className="size-3.5" />
+						Errors only
+					</ToggleChip>
+					<ClearFiltersButton
+						show={!!(search || errorsOnly)}
+						onClick={() => {
+							setSearch("");
+							setErrorsOnly(false);
+						}}
+					/>
+					<div className="ml-auto flex items-center gap-3">
+						<DemoRange />
+					</div>
+				</Toolbar>
 
-			<DemoToolbar>
-				<DemoSearch placeholder="Search agents…" />
-				<DemoToggle icon={IconAlertTriangle} label="Errors only" />
-				<div className="ml-auto">
-					<DemoRangePill />
+				<div className="flex flex-col -mt-2">
+					<TooltipProvider delay={150}>
+						<Table className="table-fixed min-w-[64rem]">
+							<TableHeader>
+								<TableRow>
+									<SortableHead sortKey="name" sort={sort} onSort={toggle}>
+										Agent
+									</SortableHead>
+									<SortableHead
+										sortKey="spans"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-32"
+									>
+										Spans
+									</SortableHead>
+									<SortableHead
+										sortKey="tokens"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-36"
+									>
+										Tokens
+									</SortableHead>
+									<SortableHead
+										sortKey="latency"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-40"
+									>
+										Latency p95
+									</SortableHead>
+									<SortableHead
+										sortKey="cost"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-36"
+									>
+										Cost
+									</SortableHead>
+									<SortableHead
+										sortKey="lastRun"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-40"
+									>
+										Last run
+									</SortableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{rows.map((a) => (
+									<TableRow
+										key={a.name}
+										interactive
+										onClick={() => openDetail({ type: "agent", id: a.name })}
+									>
+										<TableCell className="h-12">
+											<div className="flex min-w-0 items-center gap-2">
+												<AgentIcon name={a.name} className="size-4" />
+												<span className="truncate font-medium">{a.name}</span>
+												{a.errorCount > 0 && (
+													<span
+														title={`${a.errorCount} ${a.errorCount === 1 ? "error" : "errors"}`}
+														className="flex shrink-0 items-center gap-1 ml-1 font-sans text-sm text-red-600 dark:text-red-400"
+													>
+														<IconAlertTriangle className="size-3.5 fill-current/20" />
+														{formatCount(a.errorCount)}
+													</span>
+												)}
+											</div>
+										</TableCell>
+										<TableCell align="right" className="tabular-nums">
+											{formatCount(a.spanCount)}
+										</TableCell>
+										<TableCell align="right" className="tabular-nums">
+											{formatTokens(a.totalTokens)}
+										</TableCell>
+										<TableCell align="right" className="tabular-nums">
+											{formatDuration(a.p95Ms)}
+										</TableCell>
+										<HeatCell value={a.costValue} thresholds={COST_QUANTILES} bold>
+											{formatCost(a.costValue, 4)}
+										</HeatCell>
+										<TableCell align="right" className="text-muted-foreground">
+											{a.lastRun}
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</TooltipProvider>
+
+					{rows.length > 0 && (
+						<PaginationFooter
+							page={0}
+							pageSize={pageSize}
+							total={rows.length}
+							shown={rows.length}
+							noun={["agent", "agents"]}
+							onPageChange={() => {}}
+							onPageSizeChange={setPageSize}
+						/>
+					)}
 				</div>
-			</DemoToolbar>
-
-			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-				{AGENTS.map((a) => {
-					const bucket = percentileBucket(a.costValue, COST_QUANTILES);
-					const hasErrors = Number(a.errorCount) > 0;
-					return (
-						<Card
-							key={a.name}
-							size="sm"
-							className="cursor-pointer transition-colors hover:bg-accent/80 dark:hover:bg-accent/40"
-							onClick={() => openDetail({ type: "agent", id: a.name })}
-						>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<AgentIcon name={a.name} className="size-4" />
-									<span className="truncate">{a.name}</span>
-									{hasErrors && (
-										<Badge variant="rose" className="ml-auto shrink-0">
-											<IconAlertTriangle className="size-3" />
-											{a.errorCount}
-										</Badge>
-									)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="grid grid-cols-2 gap-y-3 text-sm">
-								<Stat
-									label="Spans"
-									value={`${a.spanCount} · ${a.llmSpanCount} LLM`}
-								/>
-								<Stat label="Tokens" value={a.totalTokens} />
-								<Stat label="Latency p95" value={a.p95} />
-								<Stat
-									label="Cost"
-									value={a.cost}
-									emphasis
-									valueClassName={
-										(bucket != null && HEAT_SHADES[bucket]) || undefined
-									}
-								/>
-							</CardContent>
-						</Card>
-					);
-				})}
 			</div>
 		</>
 	);

@@ -437,15 +437,16 @@ export const AGENT_ROWS: AgentRow[] = [
 
 export type TraceRow = {
 	traceId: string;
-	name: string;
+	/** Content-first title — the trace's user message, like the real list. */
+	title: string;
 	model: string;
 	agentName: string;
 	workflowName: string | null;
-	spans: string;
-	tokens: string;
-	duration: string;
+	sessionId: string | null;
+	customer: string | null;
+	spans: number;
+	tokens: number;
 	durationMs: number;
-	cost: string;
 	costValue: number;
 	when: string;
 	errors?: number;
@@ -454,86 +455,87 @@ export type TraceRow = {
 export const TRACE_ROWS: TraceRow[] = [
 	{
 		traceId: "tr_9f2a4c8e1b7d3a6f5e0c",
-		name: "support-triage",
+		title:
+			'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
 		model: "gpt-5.5",
 		agentName: "support-triage",
 		workflowName: "onboard-customer",
-		spans: "8",
-		tokens: "4.2k",
-		duration: "5.84s",
+		sessionId: "ses_a91f",
+		customer: "Acme Inc",
+		spans: 8,
+		tokens: 4200,
 		durationMs: 5840,
-		cost: "$0.0418",
 		costValue: 0.0418,
 		when: "12s ago",
 	},
 	{
 		traceId: "tr_3b8e1d6a9c2f7b4e0a5d",
-		name: "research-planner",
+		title: "Compare vector DB options for a 50M-embedding workload",
 		model: "claude-opus-4.8",
 		agentName: "research-planner",
 		workflowName: null,
-		spans: "14",
-		tokens: "11.8k",
-		duration: "9.12s",
+		sessionId: null,
+		customer: "Globex",
+		spans: 14,
+		tokens: 11800,
 		durationMs: 9120,
-		cost: "$0.1240",
 		costValue: 0.124,
 		when: "48s ago",
 	},
 	{
 		traceId: "tr_7c1f5a2b8e4d9c6a3f0b",
-		name: "code-reviewer",
+		title: "Review PR #1284 — payment retry backoff",
 		model: "gpt-5.5",
 		agentName: "code-reviewer",
 		workflowName: "incident-summary",
-		spans: "6",
-		tokens: "8.1k",
-		duration: "4.36s",
+		sessionId: null,
+		customer: null,
+		spans: 6,
+		tokens: 8100,
 		durationMs: 4360,
-		cost: "$0.0820",
 		costValue: 0.082,
 		when: "2m ago",
 		errors: 1,
 	},
 	{
 		traceId: "tr_2d9a6c3f1b8e5d4a7c0f",
-		name: "email-drafter",
+		title: "Draft a renewal reminder for dormant workspaces",
 		model: "gemini-3.5-flash",
 		agentName: "email-drafter",
 		workflowName: null,
-		spans: "3",
-		tokens: "1.9k",
-		duration: "1.58s",
+		sessionId: null,
+		customer: "Initech",
+		spans: 3,
+		tokens: 1900,
 		durationMs: 1580,
-		cost: "$0.0094",
 		costValue: 0.0094,
 		when: "3m ago",
 	},
 	{
 		traceId: "tr_5e0b8d4a2c7f1b9e6a3d",
-		name: "support-triage",
+		title: "Can you also add expedited shipping since it was delayed?",
 		model: "gpt-5.5",
 		agentName: "support-triage",
 		workflowName: "onboard-customer",
-		spans: "9",
-		tokens: "4.8k",
-		duration: "6.21s",
+		sessionId: "ses_a91f",
+		customer: "Acme Inc",
+		spans: 9,
+		tokens: 4800,
 		durationMs: 6210,
-		cost: "$0.0472",
 		costValue: 0.0472,
 		when: "5m ago",
 	},
 	{
 		traceId: "tr_8a3f1c6b9d2e7a4c0b5f",
-		name: "research-planner",
+		title: "Summarize this week's churn-risk accounts with sources",
 		model: "claude-opus-4.8",
 		agentName: "research-planner",
 		workflowName: null,
-		spans: "12",
-		tokens: "10.2k",
-		duration: "8.74s",
+		sessionId: "ses_3c7d",
+		customer: "Hooli",
+		spans: 12,
+		tokens: 10200,
 		durationMs: 8740,
-		cost: "$0.1080",
 		costValue: 0.108,
 		when: "6m ago",
 	},
@@ -680,74 +682,69 @@ export const TRACE_MESSAGES: {
 
 export type AgentCard = {
 	name: string;
-	spanCount: string;
-	llmSpanCount: string;
-	totalTokens: string;
+	spanCount: number;
+	totalTokens: number;
 	errorRate: string;
-	errorCount: string;
-	p50: string;
-	p95: string;
-	cost: string;
+	errorCount: number;
+	p50Ms: number;
+	p95Ms: number;
 	costValue: number;
 	passRate: string;
+	lastRun: string;
 	models: string[];
 };
 
 export const AGENTS: AgentCard[] = [
 	{
 		name: "support-triage",
-		spanCount: "8.4k",
-		llmSpanCount: "6.2k",
-		totalTokens: "18.2M",
+		spanCount: 8400,
+		totalTokens: 18_200_000,
 		errorRate: "0.5%",
-		errorCount: "31",
-		p50: "1.12s",
-		p95: "2.81s",
-		cost: "$214.80",
+		errorCount: 31,
+		p50Ms: 1120,
+		p95Ms: 2810,
 		costValue: 214.8,
 		passRate: "96%",
+		lastRun: "12s ago",
 		models: ["gpt-5.5", "gemini-3.5-flash"],
 	},
 	{
 		name: "research-planner",
-		spanCount: "5.1k",
-		llmSpanCount: "3.1k",
-		totalTokens: "14.6M",
+		spanCount: 5100,
+		totalTokens: 14_600_000,
 		errorRate: "0.4%",
-		errorCount: "12",
-		p50: "1.84s",
-		p95: "4.12s",
-		cost: "$318.20",
+		errorCount: 12,
+		p50Ms: 1840,
+		p95Ms: 4120,
 		costValue: 318.2,
 		passRate: "91%",
+		lastRun: "48s ago",
 		models: ["claude-opus-4.8"],
 	},
 	{
 		name: "code-reviewer",
-		spanCount: "3.6k",
-		llmSpanCount: "2.4k",
-		totalTokens: "9.4M",
+		spanCount: 3600,
+		totalTokens: 9_400_000,
 		errorRate: "0.3%",
-		errorCount: "8",
-		p50: "1.42s",
-		p95: "3.94s",
-		cost: "$196.40",
+		errorCount: 8,
+		p50Ms: 1420,
+		p95Ms: 3940,
 		costValue: 196.4,
 		passRate: "93%",
+		lastRun: "2m ago",
 		models: ["gpt-5.5", "claude-opus-4.8"],
 	},
 	{
 		name: "email-drafter",
-		spanCount: "2.1k",
-		llmSpanCount: "1.8k",
-		totalTokens: "3.8M",
+		spanCount: 2100,
+		totalTokens: 3_800_000,
 		errorRate: "0.2%",
-		errorCount: "4",
-		p50: "0.68s",
-		p95: "1.62s",
-		cost: "$58.10",
+		errorCount: 4,
+		p50Ms: 680,
+		p95Ms: 1620,
 		costValue: 58.1,
 		passRate: "98%",
+		lastRun: "3m ago",
 		models: ["gemini-3.5-flash"],
 	},
 ];
@@ -905,56 +902,52 @@ export const AGENT_FLOW: {
 
 export type WorkflowRow = {
 	name: string;
-	runs: string;
-	steps: string;
+	runs: number;
+	traces: number;
 	errorRate: string;
 	errors: number;
 	p50: string;
 	p95: string;
-	cost: string;
 	costValue: number;
-	tokens: string;
+	tokens: number;
 	lastRun: string;
 };
 
 export const WORKFLOWS: WorkflowRow[] = [
 	{
 		name: "onboard-customer",
-		runs: "1.2k",
-		steps: "5",
+		runs: 1200,
+		traces: 5900,
 		errorRate: "0.6%",
 		errors: 35,
 		p50: "6.40s",
 		p95: "12.4s",
-		cost: "$142.30",
 		costValue: 142.3,
-		tokens: "8.4M",
+		tokens: 8_400_000,
 		lastRun: "2m ago",
 	},
 	{
 		name: "incident-summary",
-		runs: "318",
-		steps: "6",
+		runs: 318,
+		traces: 1900,
 		errorRate: "1.2%",
 		errors: 22,
 		p50: "9.80s",
 		p95: "18.2s",
-		cost: "$96.10",
 		costValue: 96.1,
-		tokens: "3.6M",
+		tokens: 3_600_000,
 		lastRun: "6m ago",
 	},
 	{
 		name: "weekly-digest",
-		runs: "842",
-		steps: "4",
+		runs: 842,
+		traces: 3400,
 		errorRate: "0.2%",
 		errors: 6,
 		p50: "4.21s",
 		p95: "8.91s",
-		cost: "$88.40",
 		costValue: 88.4,
-		tokens: "5.1M",
+		tokens: 5_100_000,
 		lastRun: "18m ago",
 	},
 ];
@@ -1114,11 +1107,12 @@ export const WORKFLOW_FLOW: {
 
 export type SessionRow = {
 	sessionId: string;
-	user: string;
+	/** First user message — the content-first title the real list leads with. */
+	userMessage: string;
 	agentName: string;
-	turns: string;
-	tokens: string;
-	cost: string;
+	customer: string | null;
+	turns: number;
+	tokens: number;
 	costValue: number;
 	errorCount: number;
 	when: string;
@@ -1127,44 +1121,45 @@ export type SessionRow = {
 export const SESSIONS: SessionRow[] = [
 	{
 		sessionId: "ses_a91f",
-		user: "user_4821",
+		userMessage:
+			'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
 		agentName: "support-triage",
-		turns: "12",
-		tokens: "18.4k",
-		cost: "$0.182",
+		customer: "Acme Inc",
+		turns: 12,
+		tokens: 18_400,
 		costValue: 0.182,
 		errorCount: 0,
 		when: "1m ago",
 	},
 	{
 		sessionId: "ses_3c7d",
-		user: "user_1903",
+		userMessage: "Summarize this week's churn-risk accounts with sources",
 		agentName: "research-planner",
-		turns: "7",
-		tokens: "9.2k",
-		cost: "$0.094",
+		customer: "Hooli",
+		turns: 7,
+		tokens: 9200,
 		costValue: 0.094,
 		errorCount: 1,
 		when: "4m ago",
 	},
 	{
 		sessionId: "ses_e02b",
-		user: "user_7754",
+		userMessage: "I can't connect my Slack workspace — the OAuth flow loops",
 		agentName: "support-triage",
-		turns: "21",
-		tokens: "31.6k",
-		cost: "$0.318",
+		customer: "Globex",
+		turns: 21,
+		tokens: 31_600,
 		costValue: 0.318,
 		errorCount: 0,
 		when: "9m ago",
 	},
 	{
 		sessionId: "ses_5d8a",
-		user: "user_2210",
+		userMessage: "Draft a renewal reminder for dormant workspaces",
 		agentName: "email-drafter",
-		turns: "4",
-		tokens: "4.1k",
-		cost: "$0.041",
+		customer: null,
+		turns: 4,
+		tokens: 4100,
 		costValue: 0.041,
 		errorCount: 0,
 		when: "14m ago",
@@ -1184,6 +1179,7 @@ export type SessionTurn = {
 	totalCost: number;
 	totalTokens: number;
 	durationMs: number;
+	toolCalls?: { name: string; count: number; errorCount: number }[];
 };
 
 export const SESSION_TURNS: SessionTurn[] = [
@@ -1199,6 +1195,10 @@ export const SESSION_TURNS: SessionTurn[] = [
 		totalCost: 0.0142,
 		totalTokens: 2840,
 		durationMs: 5840,
+		toolCalls: [
+			{ name: "fetch-order", count: 1, errorCount: 0 },
+			{ name: "search-knowledge-base", count: 2, errorCount: 0 },
+		],
 	},
 	{
 		traceId: "tr_3b8e1d6a",
@@ -1222,6 +1222,7 @@ export const SESSION_TURNS: SessionTurn[] = [
 		totalCost: 0.0021,
 		totalTokens: 420,
 		durationMs: 1180,
+		toolCalls: [{ name: "search-knowledge-base", count: 1, errorCount: 1 }],
 	},
 	{
 		traceId: "tr_2d9a6c3f",
@@ -1260,10 +1261,19 @@ export type EvalRow = {
 	// The check-catalog preset this eval runs (matches the real preset ids), used
 	// to pull the same colored icon chip the New-eval dialog shows.
 	presetId: string;
+	presetName: string;
 	type: "code" | "llm-judge";
+	level: "trace" | "span";
+	/** Target agent name, or null for "all agents". */
+	agentName: string | null;
+	/** Sampling percentage, 0–100. */
+	sample: number;
 	scored: string;
 	passRate: number;
 	avgScore: number;
+	spend: number;
+	enabled: boolean;
+	status: "ok" | "error" | "paused_no_key";
 };
 
 export const EVALS: EvalRow[] = [
@@ -1271,46 +1281,81 @@ export const EVALS: EvalRow[] = [
 		id: "ev_toxicity",
 		name: "Toxicity / safety",
 		presetId: "toxicity",
+		presetName: "Toxicity",
 		type: "llm-judge",
+		level: "trace",
+		agentName: null,
+		sample: 100,
 		scored: "2.4k",
 		passRate: 0.99,
 		avgScore: 0.99,
+		spend: 4.21,
+		enabled: true,
+		status: "ok",
 	},
 	{
 		id: "ev_tool",
 		name: "Tool selection",
 		presetId: "tool_selection",
+		presetName: "Tool selection",
 		type: "llm-judge",
+		level: "span",
+		agentName: "support-triage",
+		sample: 25,
 		scored: "1.2k",
 		passRate: 0.92,
 		avgScore: 0.88,
+		spend: 2.84,
+		enabled: true,
+		status: "ok",
 	},
 	{
 		id: "ev_faithfulness",
 		name: "Faithfulness (RAG)",
 		presetId: "faithfulness",
+		presetName: "Faithfulness",
 		type: "llm-judge",
+		level: "trace",
+		agentName: "research-planner",
+		sample: 50,
 		scored: "1.4k",
 		passRate: 0.88,
 		avgScore: 0.85,
+		spend: 3.62,
+		enabled: true,
+		status: "error",
 	},
 	{
 		id: "ev_pii",
 		name: "No PII",
 		presetId: "pii",
+		presetName: "Regex match",
 		type: "code",
+		level: "span",
+		agentName: null,
+		sample: 100,
 		scored: "2.1k",
 		passRate: 1.0,
 		avgScore: 1.0,
+		spend: 0,
+		enabled: true,
+		status: "ok",
 	},
 	{
 		id: "ev_helpfulness",
 		name: "Helpfulness",
 		presetId: "helpfulness",
+		presetName: "Helpfulness",
 		type: "llm-judge",
+		level: "trace",
+		agentName: "email-drafter",
+		sample: 10,
 		scored: "1.9k",
 		passRate: 0.94,
 		avgScore: 0.91,
+		spend: 1.18,
+		enabled: false,
+		status: "ok",
 	},
 ];
 
@@ -1363,48 +1408,59 @@ export const EVAL_SAMPLES: {
 export type AlertRow = {
 	id: string;
 	name: string;
-	metric: string;
-	condition: string;
+	/** Real alert metric keys — drive the same icon/label lookup as the app. */
+	metric:
+		| "cost"
+		| "latency_p95"
+		| "error_rate"
+		| "eval_pass_rate"
+		| "token_usage";
+	comparison: "gt" | "gte" | "lt" | "lte";
+	threshold: string;
+	windowSeconds: number;
 	status: "firing" | "ok";
-	lastValue: string;
-	when: string;
+	enabled: boolean;
 };
 
 export const ALERTS: AlertRow[] = [
 	{
 		id: "al_cost",
-		name: "Daily Spend",
+		name: "Daily spend",
 		metric: "cost",
-		condition: "> $1,000 / day",
+		comparison: "gt",
+		threshold: "1000",
+		windowSeconds: 86_400,
 		status: "ok",
-		lastValue: "$842",
-		when: "checked 28s ago",
+		enabled: true,
 	},
 	{
 		id: "al_err",
 		name: "Error-rate spike",
-		metric: "error rate",
-		condition: "> 2% over 5m",
+		metric: "error_rate",
+		comparison: "gt",
+		threshold: "0.02",
+		windowSeconds: 300,
 		status: "firing",
-		lastValue: "3.1%",
-		when: "firing 4m",
+		enabled: true,
 	},
 	{
 		id: "al_lat",
 		name: "P95 latency",
-		metric: "latency",
-		condition: "> 5s over 10m",
+		metric: "latency_p95",
+		comparison: "gt",
+		threshold: "5000",
+		windowSeconds: 900,
 		status: "ok",
-		lastValue: "3.42s",
-		when: "checked 28s ago",
+		enabled: true,
 	},
 	{
 		id: "al_eval",
 		name: "Groundedness drop",
-		metric: "eval pass rate",
-		condition: "< 85% over 1h",
+		metric: "eval_pass_rate",
+		comparison: "lt",
+		threshold: "0.85",
+		windowSeconds: 3600,
 		status: "ok",
-		lastValue: "88%",
-		when: "checked 1m ago",
+		enabled: false,
 	},
 ];

@@ -19,10 +19,8 @@ import { useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
-import { navItem } from "@/components/app/nav";
 import {
 	CardSparkline,
-	PageHeader,
 	PillMeter,
 	ScrollFade,
 	StatCard,
@@ -34,12 +32,12 @@ import {
 	thinTicks,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
-import * as LineChart from "@/components/evilcharts/charts/line-chart";
+import * as BarChart from "@/components/evilcharts/charts/bar-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import { ModelLogo } from "@/components/model-logo";
 import { formatCost, formatCount, formatDuration } from "@/lib/format";
 
-import { DemoRangePill } from "../demo-chrome";
+import { DemoListHeader } from "../demo-chrome";
 import { useDemo } from "../demo-context";
 import {
 	KPIS,
@@ -81,9 +79,16 @@ type LegendItem = {
 	key: string;
 	label: React.ReactNode;
 	color?: string;
+	logo?: React.ReactNode;
 };
 
-// Inert clickable legend, mirroring overview-client's local items-based legend.
+// Cost legend rows pair the swatch with the model's brand logo, like the app.
+const costItems: LegendItem[] = OVERVIEW_COST_ITEMS.map((it) => ({
+	...it,
+	logo: <ModelLogo modelId={it.label} className="size-3.5" />,
+}));
+
+// Clickable legend, mirroring overview-client's local items-based legend.
 function ChartLegend({
 	items,
 	selected,
@@ -115,6 +120,7 @@ function ChartLegend({
 								style={{ backgroundColor: it.color }}
 							/>
 						)}
+						{it.logo}
 						{it.label}
 					</button>
 				);
@@ -143,7 +149,7 @@ function BreakdownRow({
 	onClick?: () => void;
 }) {
 	const rowClassName =
-		"flex w-full items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 px-3";
+		"flex w-full items-center justify-between gap-6 py-3 last:pb-0 px-5 last:pb-6";
 	const inner = (
 		<>
 			<div className="min-w-0 flex-1">
@@ -155,9 +161,9 @@ function BreakdownRow({
 					{metrics}
 				</div>
 			</div>
-			<div className="flex w-1/5 shrink-0 flex-col items-end gap-2">
+			<div className="flex shrink-0 flex-col items-end gap-2">
 				<span className="text-sm tabular-nums">{value}</span>
-				<div className="h-0.5 w-full overflow-hidden rounded-full bg-muted-foreground/10">
+				<div className="h-0.5 w-14 overflow-hidden rounded-full bg-muted-foreground/10">
 					<div
 						className="ml-auto h-full rounded-full"
 						style={{
@@ -233,16 +239,10 @@ export function OverviewTab() {
 
 	return (
 		<>
-			<PageHeader
-				title="Overview"
-				description="Cost, reliability, latency, and usage across this project."
-				icon={navItem("/overview")?.icon}
-				iconClassName={navItem("/overview")?.iconClassName}
-				actions={<DemoRangePill />}
-			/>
+			<DemoListHeader href="/overview" title="Overview" withRange />
 
 			{/* KPIs */}
-			<section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+			<section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8">
 				<StatCard
 					icon={IconCirclesFilled}
 					iconClassName="text-blue-500 dark:text-blue-500"
@@ -301,150 +301,14 @@ export function OverviewTab() {
 					chart={
 						<PillMeter
 							fraction={OVERVIEW_ERROR_RATE}
-							className="text-rose-400 dark:text-rose-700"
+							className="text-red-400 dark:text-red-700"
 						/>
 					}
 				/>
 			</section>
 
-			{/* Requests & errors + Latency */}
-			<section className="grid gap-4 lg:grid-cols-2">
-				<Card size="sm">
-					<CardHeader className="flex flex-row items-center justify-between gap-4">
-						<CardTitle>Requests & errors</CardTitle>
-						<ChartLegend
-							items={volumeItems}
-							selected={volumeSelected}
-							onSelect={setVolumeSelected}
-						/>
-					</CardHeader>
-					<CardContent className="mt-3">
-						<AreaChart.EvilAreaChart
-							config={volumeConfig}
-							data={OVERVIEW_SERIES}
-							xDataKey="bucket"
-							selectedDataKey={volumeSelected}
-							onSelectionChange={setVolumeSelected}
-							className="h-65 w-full"
-							chartProps={{ margin: { top: 5, right: 5, bottom: 5, left: 5 } }}
-						>
-							<AreaChart.Grid />
-							<AreaChart.XAxis
-								dataKey="bucket"
-								ticks={seriesTicks}
-								tickFormatter={bucketLabel}
-								interval={0}
-								tick={edgeTick}
-							/>
-							<AreaChart.YAxis
-								width={32}
-								allowDecimals={false}
-								tickFormatter={(v) => formatCount(Number(v))}
-							/>
-							<AreaChart.Tooltip
-								labelFormatter={(v) => formatBucketFull(String(v))}
-							/>
-							<AreaChart.Area dataKey="requests" strokeVariant="solid" />
-							<AreaChart.Area
-								dataKey="errors"
-								strokeVariant="solid"
-								variant="lines"
-							/>
-						</AreaChart.EvilAreaChart>
-					</CardContent>
-				</Card>
-
-				<Card size="sm">
-					<CardHeader className="flex flex-row items-center justify-between gap-4">
-						<CardTitle>Latency</CardTitle>
-						<ChartLegend
-							items={latencyItems}
-							selected={latencySelected}
-							onSelect={setLatencySelected}
-						/>
-					</CardHeader>
-					<CardContent className="mt-3">
-						<AreaChart.EvilAreaChart
-							config={latencyConfig}
-							data={latencyData}
-							xDataKey="bucket"
-							stackType="stacked"
-							selectedDataKey={latencySelected}
-							onSelectionChange={setLatencySelected}
-							className="h-65 w-full"
-						>
-							<AreaChart.Grid />
-							<AreaChart.XAxis
-								dataKey="bucket"
-								ticks={seriesTicks}
-								tickFormatter={bucketLabel}
-								interval={0}
-								tick={edgeTick}
-							/>
-							<AreaChart.YAxis
-								width={48}
-								tickFormatter={(v) => formatDuration(Number(v))}
-							/>
-							<AreaChart.Tooltip
-								labelFormatter={(v) => formatBucketFull(String(v))}
-								valueFormatter={(_v, key, row) =>
-									formatDuration(Number(row[`${key}Abs`] ?? _v))
-								}
-								reverse
-							/>
-							<AreaChart.Area dataKey="p50" strokeVariant="solid" />
-							<AreaChart.Area dataKey="p95" strokeVariant="solid" />
-							<AreaChart.Area dataKey="p99" strokeVariant="solid" />
-						</AreaChart.EvilAreaChart>
-					</CardContent>
-				</Card>
-			</section>
-
-			{/* Cost over time, stacked by model */}
-			<Card size="sm">
-				<CardHeader className="flex flex-row items-center justify-between gap-4">
-					<CardTitle>Cost over time</CardTitle>
-					<ChartLegend
-						items={OVERVIEW_COST_ITEMS}
-						selected={costSelected}
-						onSelect={setCostSelected}
-					/>
-				</CardHeader>
-				<CardContent className="mt-3">
-					<LineChart.EvilLineChart
-						config={OVERVIEW_COST_CONFIG}
-						data={OVERVIEW_COST_SERIES}
-						xDataKey="bucket"
-						selectedDataKey={costSelected}
-						onSelectionChange={setCostSelected}
-						className="h-65 w-full"
-					>
-						<LineChart.Grid />
-						<LineChart.XAxis
-							dataKey="bucket"
-							ticks={seriesTicks}
-							tickFormatter={bucketLabel}
-							interval={0}
-							tick={edgeTick}
-						/>
-						<LineChart.YAxis
-							width={50}
-							tickFormatter={(v) => costAxisUsd.format(Number(v))}
-							dx={-2}
-						/>
-						<LineChart.Tooltip
-							labelFormatter={(v) => formatBucketFull(String(v))}
-							valueFormatter={(v) => formatCost(Number(v))}
-						/>
-						{Object.keys(OVERVIEW_COST_CONFIG).map((k) => (
-							<LineChart.Line key={k} dataKey={k} strokeVariant="solid" />
-						))}
-					</LineChart.EvilLineChart>
-				</CardContent>
-			</Card>
-
 			{/* Models / Agents / Workflows / Customers breakdown */}
-			<section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+			<section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4 px-8">
 				<BreakdownCard title="Models">
 					{OVERVIEW_BREAKDOWN.models.map((m) => (
 						<BreakdownRow
@@ -509,11 +373,155 @@ export function OverviewTab() {
 					))}
 				</BreakdownCard>
 			</section>
+
+			{/* Cost over time, stacked by model */}
+			<div className="px-8">
+				<Card size="sm">
+					<CardHeader className="flex flex-row items-center justify-between gap-4">
+						<CardTitle>Cost over time</CardTitle>
+						<ChartLegend
+							items={costItems}
+							selected={costSelected}
+							onSelect={setCostSelected}
+						/>
+					</CardHeader>
+					<CardContent className="mt-3">
+						<BarChart.EvilBarChart
+							config={OVERVIEW_COST_CONFIG}
+							data={OVERVIEW_COST_SERIES}
+							stackType="stacked"
+							selectedDataKey={costSelected}
+							onSelectionChange={setCostSelected}
+							className="h-65 w-full"
+							chartProps={{
+								// left: 2 (vs Recharts' default 5) tucks the auto-width
+								// y-axis labels closer to the card content edge.
+								margin: { top: 5, right: 5, bottom: 5, left: 2 },
+								// Wider gap between buckets (Recharts default: 10%) keeps
+								// the bars slim at any bucket count.
+								barCategoryGap: "40%",
+							}}
+						>
+							<BarChart.Grid />
+							<BarChart.XAxis
+								dataKey="bucket"
+								ticks={seriesTicks}
+								tickFormatter={bucketLabel}
+								interval={0}
+								tick={edgeTick}
+							/>
+							<BarChart.YAxis
+								tickFormatter={(v) => costAxisUsd.format(Number(v))}
+							/>
+							<BarChart.Tooltip
+								labelFormatter={(v) => formatBucketFull(String(v))}
+								valueFormatter={(v) => formatCost(Number(v))}
+								reverse
+							/>
+							{Object.keys(OVERVIEW_COST_CONFIG).map((k) => (
+								<BarChart.Bar key={k} dataKey={k} isClickable />
+							))}
+						</BarChart.EvilBarChart>
+					</CardContent>
+				</Card>
+			</div>
+
+			{/* Requests & errors + Latency */}
+			<section className="grid gap-4 lg:grid-cols-2 px-8">
+				<Card size="sm">
+					<CardHeader className="flex flex-row items-center justify-between gap-4">
+						<CardTitle>Requests & errors</CardTitle>
+						<ChartLegend
+							items={volumeItems}
+							selected={volumeSelected}
+							onSelect={setVolumeSelected}
+						/>
+					</CardHeader>
+					<CardContent className="mt-3">
+						<AreaChart.EvilAreaChart
+							config={volumeConfig}
+							data={OVERVIEW_SERIES}
+							xDataKey="bucket"
+							selectedDataKey={volumeSelected}
+							onSelectionChange={setVolumeSelected}
+							className="h-65 w-full"
+							chartProps={{ margin: { top: 5, right: 5, bottom: 5, left: 2 } }}
+						>
+							<AreaChart.Grid />
+							<AreaChart.XAxis
+								dataKey="bucket"
+								ticks={seriesTicks}
+								tickFormatter={bucketLabel}
+								interval={0}
+								tick={edgeTick}
+							/>
+							<AreaChart.YAxis
+								allowDecimals={false}
+								tickFormatter={(v) => formatCount(Number(v))}
+							/>
+							<AreaChart.Tooltip
+								labelFormatter={(v) => formatBucketFull(String(v))}
+							/>
+							<AreaChart.Area dataKey="requests" strokeVariant="solid" />
+							<AreaChart.Area
+								dataKey="errors"
+								strokeVariant="solid"
+								variant="lines"
+							/>
+						</AreaChart.EvilAreaChart>
+					</CardContent>
+				</Card>
+
+				<Card size="sm">
+					<CardHeader className="flex flex-row items-center justify-between gap-4">
+						<CardTitle>Latency</CardTitle>
+						<ChartLegend
+							items={latencyItems}
+							selected={latencySelected}
+							onSelect={setLatencySelected}
+						/>
+					</CardHeader>
+					<CardContent className="mt-3">
+						<AreaChart.EvilAreaChart
+							config={latencyConfig}
+							data={latencyData}
+							xDataKey="bucket"
+							stackType="stacked"
+							selectedDataKey={latencySelected}
+							onSelectionChange={setLatencySelected}
+							className="h-65 w-full"
+							chartProps={{ margin: { top: 5, right: 5, bottom: 5, left: 2 } }}
+						>
+							<AreaChart.Grid />
+							<AreaChart.XAxis
+								dataKey="bucket"
+								ticks={seriesTicks}
+								tickFormatter={bucketLabel}
+								interval={0}
+								tick={edgeTick}
+							/>
+							<AreaChart.YAxis
+								tickFormatter={(v) => formatDuration(Number(v))}
+							/>
+							<AreaChart.Tooltip
+								labelFormatter={(v) => formatBucketFull(String(v))}
+								valueFormatter={(_v, key, row) =>
+									formatDuration(Number(row[`${key}Abs`] ?? _v))
+								}
+								reverse
+							/>
+							<AreaChart.Area dataKey="p50" strokeVariant="solid" />
+							<AreaChart.Area dataKey="p95" strokeVariant="solid" />
+							<AreaChart.Area dataKey="p99" strokeVariant="solid" />
+						</AreaChart.EvilAreaChart>
+					</CardContent>
+				</Card>
+			</section>
 		</>
 	);
 }
 
-// Shared shell for the three ranked-breakdown cards.
+// Shared shell for the four ranked-breakdown cards.
 function BreakdownCard({
 	title,
 	children,
@@ -526,8 +534,8 @@ function BreakdownCard({
 			<CardHeader>
 				<CardTitle>{title}</CardTitle>
 			</CardHeader>
-			<CardContent className="mt-3">
-				<ScrollFade className="max-h-88 pr-1">
+			<CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+				<ScrollFade className="max-h-60">
 					<div className="divide-y divide-border/40 pb-6">{children}</div>
 				</ScrollFade>
 			</CardContent>

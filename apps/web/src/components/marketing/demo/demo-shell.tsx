@@ -64,7 +64,7 @@ export function DemoShell({
 					<motion.div
 						{...insetReveal}
 						style={{ willChange: "opacity, filter" }}
-						className="mx-auto flex max-w-380 flex-col gap-6 p-6 lg:p-10"
+						className="flex flex-col gap-4 py-6 pb-16"
 					>
 						{children}
 					</motion.div>

@@ -1,53 +1,81 @@
 "use client";
 
+import { Button } from "@foglamp/ui/components/button";
 import { cn } from "@foglamp/ui/lib/utils";
-import {
-	type Icon,
-	IconCalendar,
-	IconChevronDown,
-	IconChevronRight,
-	IconSearch,
-} from "@tabler/icons-react";
+import { IconArrowUpRight, IconChevronRight } from "@tabler/icons-react";
+import type { Route } from "next";
+import { useState } from "react";
 
-// Inert chrome that mirrors the dashboard's toolbar widgets (range picker,
-// search, filter, toggle) without wiring up the real interactive hooks — the
-// demo only needs them to read as a faithful replica.
+import { navItem } from "@/components/app/nav";
+import { PageHeader } from "@/components/app/page-parts";
+import { RangeControl } from "@/components/app/range-picker";
+import { resolvePreset } from "@/lib/range";
 
-export function DemoRangePill() {
+// The demo reuses the dashboard's real chrome (Toolbar, SearchInput,
+// FilterSelect, SortableHead, PaginationFooter, RangeControl…) directly, since
+// those are prop-driven. This file only fills the gaps where the real pieces
+// are wired to routing (Link) or app context.
+
+/** The real RangeControl bound to local state — fully interactive, but the
+ * mock data doesn't refetch, so it's effectively decorative. */
+export function DemoRange() {
+	const [range, setRange] = useState(() => resolvePreset("24h"));
+	return <RangeControl value={range} onChange={setRange} />;
+}
+
+/** List-page header — the real RouteHeader minus the range context: same
+ * PageHeader, section icon looked up from the shared nav config. */
+export function DemoListHeader({
+	href,
+	title,
+	withRange,
+	actions,
+}: {
+	href: Route;
+	title: string;
+	withRange?: boolean;
+	actions?: React.ReactNode;
+}) {
+	const item = navItem(href);
+	const composedActions =
+		withRange || actions ? (
+			<>
+				{actions}
+				{withRange && <DemoRange />}
+			</>
+		) : undefined;
 	return (
-		<span className="inline-flex h-8 items-center gap-2 rounded-md squircle:rounded-2xl corner-squircle bg-card px-3 text-sm shadow-(--custom-shadow)">
-			<IconCalendar className="size-3.5 text-muted-foreground" />
-			Last 24 hours
-			<IconChevronDown className="size-3.5 opacity-50" />
-		</span>
+		<PageHeader
+			title={title}
+			icon={item?.icon}
+			iconClassName={item?.iconClassName}
+			actions={composedActions}
+		/>
 	);
 }
 
-export function DemoToolbar({ children }: { children: React.ReactNode }) {
-	return <div className="flex flex-wrap items-center gap-2">{children}</div>;
-}
-
-// A `[icon] Parent › Title` breadcrumb header for detail views. The parent crumb
-// is a button that pops back to the list (no routing in the demo).
+// A `[icon] Parent › Title` breadcrumb header for detail views — PageHeader's
+// `back` variant with the Link swapped for a button that pops back to the
+// list (no routing in the demo).
 export function DetailHeader({
-	backIcon: BackIcon,
-	backLabel,
-	backIconClassName,
+	backHref,
 	title,
-	description,
+	titleLeading,
+	titleTrailing,
 	actions,
 	onBack,
 }: {
-	backIcon: Icon;
-	backLabel: string;
-	backIconClassName?: string;
+	backHref: Route;
 	title: string;
-	description?: string;
+	titleLeading?: React.ReactNode;
+	titleTrailing?: React.ReactNode;
 	actions?: React.ReactNode;
 	onBack: () => void;
 }) {
+	const item = navItem(backHref);
+	const BackIcon = item?.icon;
 	return (
-		<div className="flex flex-wrap items-end justify-between gap-4">
+		<div className="flex flex-wrap items-end justify-between gap-4 px-8 h-8">
 			<div className="flex min-w-0 flex-col gap-1.5">
 				<h1 className="flex items-center gap-1.5 text-base font-medium tracking-tight">
 					<button
@@ -55,68 +83,46 @@ export function DetailHeader({
 						onClick={onBack}
 						className="flex shrink-0 cursor-pointer items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
 					>
-						<BackIcon className={cn("size-4.5 shrink-0", backIconClassName)} />
-						{backLabel}
+						{BackIcon && (
+							<BackIcon
+								className={cn("size-4.5 shrink-0", item?.iconClassName)}
+							/>
+						)}
+						{item?.label}
 					</button>
-					<IconChevronRight className="size-4 shrink-0 stroke-[1.5px] text-muted-foreground/50" />
+					<IconChevronRight className="size-4 shrink-0 text-muted-foreground/50 stroke-[1.5px]" />
+					{titleLeading}
 					<span className="truncate">{title}</span>
+					{titleTrailing}
 				</h1>
-				{description && (
-					<p className="truncate text-sm text-muted-foreground">
-						{description}
-					</p>
-				)}
 			</div>
 			{actions && <div className="flex items-center gap-2">{actions}</div>}
 		</div>
 	);
 }
 
-export function DemoSearch({ placeholder }: { placeholder: string }) {
-	return (
-		<span className="inline-flex h-8 w-56 items-center gap-2 rounded-md squircle:rounded-2xl corner-squircle bg-card px-3 text-sm text-muted-foreground shadow-(--custom-shadow)">
-			<IconSearch className="size-3.5" />
-			{placeholder}
-		</span>
-	);
-}
-
-export function DemoFilter({
-	icon: Icon,
+/** Linked-entity pill on detail pages — the real ContextChip with the Link
+ * swapped for an inert button. */
+export function DemoContextChip({
+	icon: ChipIcon,
+	iconClassName,
 	label,
+	onClick,
 }: {
-	icon: Icon;
+	icon: React.ComponentType<{ className?: string }>;
+	iconClassName?: string;
 	label: string;
+	onClick?: () => void;
 }) {
 	return (
-		<span className="inline-flex h-8 items-center gap-2 rounded-md squircle:rounded-2xl corner-squircle bg-card px-3 text-sm text-muted-foreground shadow-(--custom-shadow)">
-			<Icon className="size-3.5" />
-			{label}
-			<IconChevronDown className="size-3.5 opacity-50" />
-		</span>
-	);
-}
-
-export function DemoToggle({
-	icon: Icon,
-	label,
-	active = false,
-}: {
-	icon: Icon;
-	label: string;
-	active?: boolean;
-}) {
-	return (
-		<span
-			className={cn(
-				"inline-flex h-8 items-center gap-2 rounded-md squircle:rounded-2xl corner-squircle px-3 text-sm shadow-(--custom-shadow)",
-				active
-					? "bg-foreground/90 text-background"
-					: "bg-card text-muted-foreground",
-			)}
+		<Button
+			variant="outline"
+			className="max-w-xs justify-start font-normal transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)"
+			onClick={onClick}
 		>
-			<Icon className="size-3.5" />
-			{label}
-		</span>
+			<ChipIcon className={cn("size-3.5 shrink-0", iconClassName)} />
+			<span className="truncate">{label}</span>
+			<IconArrowUpRight className="size-3.5 shrink-0 -ml-0.5 mt-px text-muted-foreground" />
+		</Button>
 	);
 }
