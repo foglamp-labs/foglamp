@@ -106,7 +106,7 @@ export function AlertsTab() {
 					</Button>
 				}
 			/>
-			<div className="flex flex-col gap-4">
+			<div className="flex flex-col gap-4 mt-1">
 				<Toolbar>
 					<SearchInput
 						value={search}
