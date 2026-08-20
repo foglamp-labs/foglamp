@@ -154,6 +154,7 @@ export function EvalsTab() {
 						onChange={setStatusFilter}
 						allLabel="Any status"
 						icon={IconProgress}
+						className="min-w-0 px-2.5"
 						options={[
 							{ value: "ok", label: "OK", icon: IconCircleCheck },
 							{ value: "error", label: "Error", icon: IconForbid },
@@ -165,6 +166,7 @@ export function EvalsTab() {
 						onChange={setSourceFilter}
 						allLabel="Any check"
 						icon={IconListCheck}
+						className="min-w-0 px-2.5"
 						options={[
 							{ value: "code", label: "Code", icon: IconFileCode },
 							{ value: "llm", label: "LLM judge", icon: IconSparkles },
@@ -175,6 +177,7 @@ export function EvalsTab() {
 						onChange={setLevelFilter}
 						allLabel="Any level"
 						icon={IconStack2}
+						className="min-w-0 px-2.5"
 						options={[
 							{ value: "trace", label: "Traces", icon: IconAffiliate },
 							{ value: "span", label: "Spans", icon: IconStack2 },
