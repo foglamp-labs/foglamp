@@ -180,29 +180,46 @@ export const OVERVIEW_SERIES: OverviewPoint[] = OV_BUCKETS.map((bucket, i) => {
 	return { bucket, requests, errors, p50, p95, p99, tokens, cost };
 });
 
-// Per-model cost over time (m0 gpt-5.6-sol / m1 claude-fable-5 / m2 gemini-3.5-flash),
-// derived from the overview cost so the lines and the "Models" breakdown agree.
+// Per-model cost over time (m0 gpt-5.6-sol / m1 claude-fable-5 / m2
+// gemini-3.5-flash / m3 glm-5 / m4 minimax-m2.5), derived from the overview
+// cost so the bars and the "Models" breakdown agree.
 export type OverviewCostPoint = {
 	bucket: string;
 	m0: number;
 	m1: number;
 	m2: number;
+	m3: number;
+	m4: number;
+};
+
+// Sine-hash noise in [0,1): stable per (bucket, seed) so renders never shift,
+// but jagged enough to read as real traffic instead of a smooth formula.
+const costNoise = (i: number, seed: number) => {
+	const x = Math.sin(i * 127.1 + seed * 311.7) * 43758.5453;
+	return x - Math.floor(x);
 };
 
 export const OVERVIEW_COST_SERIES: OverviewCostPoint[] = OVERVIEW_SERIES.map(
 	(r, i) => {
-		const jt = jitter(i, 3313, 11);
+		// Rare per-model bursts (a batch job, a retry storm) on top of the noise.
+		const spike = (s: number) =>
+			costNoise(i, s + 9) > 0.88 ? 1.4 + costNoise(i, s + 17) * 0.6 : 1;
+		const part = (share: number, s: number) =>
+			+(r.cost * share * (0.55 + 0.9 * costNoise(i, s)) * spike(s)).toFixed(3);
 		return {
 			bucket: r.bucket,
-			m0: +(r.cost * (0.5 + 0.08 * jt)).toFixed(3),
-			m1: +(r.cost * (0.32 + 0.05 * (1 - jt))).toFixed(3),
-			m2: +(r.cost * (0.12 + 0.03 * jt)).toFixed(3),
+			m0: part(0.42, 1),
+			m1: part(0.3, 2),
+			m2: part(0.13, 3),
+			m3: part(0.09, 4),
+			m4: part(0.06, 5),
 		};
 	},
 );
 
-// Vendor brand accents (OpenAI / Anthropic / Google) reused by the cost chart
-// and its legend; the "Models" breakdown renders the real ModelLogo per row.
+// Vendor brand accents (OpenAI / Anthropic / Google / Zhipu / MiniMax) reused
+// by the cost chart and its legend; the "Models" breakdown renders the real
+// ModelLogo per row.
 export const OVERVIEW_COST_CONFIG = {
 	m0: { label: "gpt-5.6-sol", colors: { light: ["#10a37f"], dark: ["#10a37f"] } },
 	m1: {
@@ -212,6 +229,11 @@ export const OVERVIEW_COST_CONFIG = {
 	m2: {
 		label: "gemini-3.5-flash",
 		colors: { light: ["#1ba1e3"], dark: ["#1ba1e3"] },
+	},
+	m3: { label: "glm-5", colors: { light: ["#9CA3AF"], dark: ["#9CA3AF"] } },
+	m4: {
+		label: "minimax-m2.5",
+		colors: { light: ["#E2167E"], dark: ["#E2167E"] },
 	},
 } satisfies ChartConfig;
 
@@ -223,6 +245,8 @@ export const OVERVIEW_COST_ITEMS: {
 	{ key: "m0", label: "gpt-5.6-sol", color: "#10a37f" },
 	{ key: "m1", label: "claude-fable-5", color: "#d97757" },
 	{ key: "m2", label: "gemini-3.5-flash", color: "#1ba1e3" },
+	{ key: "m3", label: "glm-5", color: "#9CA3AF" },
+	{ key: "m4", label: "minimax-m2.5", color: "#E2167E" },
 ];
 
 // Ranked Models / Agents / Workflows breakdown rows for the three overview list
@@ -263,6 +287,20 @@ export const OVERVIEW_BREAKDOWN: {
 			fraction: 0.089,
 			metrics: "4.5k req · 4.5M tok",
 			color: "#1ba1e3",
+		},
+		{
+			name: "glm-5",
+			cost: 38.2,
+			fraction: 0.075,
+			metrics: "2.1k req · 3.8M tok",
+			color: "#9CA3AF",
+		},
+		{
+			name: "minimax-m2.5",
+			cost: 21.9,
+			fraction: 0.043,
+			metrics: "1.3k req · 1.6M tok",
+			color: "#E2167E",
 		},
 	],
 	agents: [
