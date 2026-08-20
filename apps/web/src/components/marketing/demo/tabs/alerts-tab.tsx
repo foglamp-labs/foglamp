@@ -2,14 +2,16 @@
 
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@foglamp/ui/components/card";
 import { Switch } from "@foglamp/ui/components/switch";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@foglamp/ui/components/table";
+import { TooltipProvider } from "@foglamp/ui/components/tooltip";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
 	IconAlertTriangle,
@@ -24,6 +26,16 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 
+import {
+	ClearFiltersButton,
+	PaginationFooter,
+	SearchInput,
+	SortableHead,
+	ToggleChip,
+	Toolbar,
+	sortRows,
+	useTableSort,
+} from "@/components/app/data-table";
 import { formatDuration } from "@/lib/format";
 
 import { DemoListHeader } from "../demo-chrome";
@@ -60,10 +72,27 @@ const METRIC_META: Record<
 	eval_pass_rate: { icon: IconCircleCheck, label: "Eval pass rate" },
 };
 
+type AlertSortKey = "name" | "window";
+
 export function AlertsTab() {
+	const [search, setSearch] = useState("");
+	const [firingOnly, setFiringOnly] = useState(false);
+	const [pageSize, setPageSize] = useState(25);
 	const [enabledById, setEnabledById] = useState<Record<string, boolean>>(() =>
 		Object.fromEntries(ALERTS.map((a) => [a.id, a.enabled])),
 	);
+	const { sort, toggle } = useTableSort<AlertSortKey>();
+
+	const q = search.trim().toLowerCase();
+	const filtered = ALERTS.filter(
+		(a) =>
+			(!q || a.name.toLowerCase().includes(q)) &&
+			(!firingOnly || a.status === "firing"),
+	);
+	const rows = sortRows<AlertRow, AlertSortKey>(filtered, sort, {
+		name: (a) => a.name,
+		window: (a) => a.windowSeconds,
+	});
 
 	return (
 		<>
@@ -77,81 +106,145 @@ export function AlertsTab() {
 					</Button>
 				}
 			/>
-			<div className="grid gap-4 md:grid-cols-2 px-8">
-				{ALERTS.map((r) => {
-					const enabled = enabledById[r.id];
-					const status = STATUS_META[r.status];
-					const StatusIcon = status.icon;
-					const metric = METRIC_META[r.metric];
-					const MetricIcon = metric.icon;
-					return (
-						<Card
-							key={r.id}
-							className={cn(
-								"transition-opacity",
-								r.status === "firing" &&
-									"shadow-[inset_0_0_0_1px_rgba(244,63,94,0.3),0_2px_10px_-4px_rgba(244,63,94,0.4)]",
-								!enabled && "opacity-60",
-							)}
-						>
-							<CardHeader>
-								<div className="flex items-center gap-2.5">
-									<span
-										className={cn(
-											"grid size-7 shrink-0 place-items-center rounded-md squircle:rounded-xl corner-squircle p-0.5",
-											status.chip,
-										)}
+			<div className="flex flex-col gap-4">
+				<Toolbar>
+					<SearchInput
+						value={search}
+						onChange={setSearch}
+						placeholder="Search alerts…"
+					/>
+					<ToggleChip
+						active={firingOnly}
+						onClick={() => setFiringOnly((v) => !v)}
+					>
+						<IconAlertTriangle className="size-3.5" />
+						Firing only
+					</ToggleChip>
+					<ClearFiltersButton
+						show={!!(search || firingOnly)}
+						onClick={() => {
+							setSearch("");
+							setFiringOnly(false);
+						}}
+					/>
+				</Toolbar>
+
+				<div className="flex flex-col -mt-2">
+					<TooltipProvider delay={150}>
+						<Table className="table-fixed min-w-[56rem]">
+							<TableHeader>
+								<TableRow>
+									<SortableHead sortKey="name" sort={sort} onSort={toggle}>
+										Alert
+									</SortableHead>
+									<TableHead className="w-44">Metric</TableHead>
+									<TableHead className="w-36">Condition</TableHead>
+									<SortableHead
+										sortKey="window"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-28"
 									>
-										{r.status === "firing" ? (
-											<span className="relative grid place-items-center">
-												<span className="absolute size-4 animate-ping rounded-full bg-rose-500/40" />
-												<StatusIcon className="relative size-4" />
-											</span>
-										) : (
-											<StatusIcon className="size-4" />
-										)}
-									</span>
-									<CardTitle className="truncate">{r.name}</CardTitle>
-									<Badge variant={status.variant} className="ml-auto shrink-0">
-										{r.status}
-									</Badge>
-								</div>
-								<CardDescription className="flex flex-wrap items-center gap-1.5">
-									<Badge variant="secondary">
-										<MetricIcon />
-										{metric.label}
-									</Badge>
-									<span className="tabular-nums text-foreground">
-										{COMPARISON_SYMBOLS[r.comparison]} {r.threshold}
-									</span>
-									<span>·</span>
-									<span className="tabular-nums">
-										{formatDuration(r.windowSeconds * 1000)}
-									</span>
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="flex items-center justify-between">
-								<label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-									<Switch
-										checked={enabled}
-										size="sm"
-										onCheckedChange={(checked) =>
-											setEnabledById((prev) => ({ ...prev, [r.id]: checked }))
-										}
-									/>
-									{enabled ? "Enabled" : "Paused"}
-								</label>
-								<Button
-									size="icon-sm"
-									variant="ghost-destructive"
-									className="size-7"
-								>
-									<IconTrashFilled />
-								</Button>
-							</CardContent>
-						</Card>
-					);
-				})}
+										Window
+									</SortableHead>
+									<TableHead className="w-28 text-right">Status</TableHead>
+									<TableHead className="w-24" />
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{rows.map((r) => {
+									const enabled = enabledById[r.id];
+									const status = STATUS_META[r.status];
+									const StatusIcon = status.icon;
+									const metric = METRIC_META[r.metric];
+									const MetricIcon = metric.icon;
+									return (
+										<TableRow
+											key={r.id}
+											className={cn(
+												r.status === "firing" &&
+													"shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
+												!enabled && "opacity-60",
+											)}
+										>
+											<TableCell>
+												<div className="flex min-w-0 items-center gap-2.5">
+													<span
+														className={cn(
+															"grid size-6 shrink-0 place-items-center rounded-md squircle:rounded-lg corner-squircle",
+															status.chip,
+														)}
+													>
+														{r.status === "firing" ? (
+															<span className="relative grid place-items-center">
+																<span className="absolute size-3.5 animate-ping rounded-full bg-rose-500/40" />
+																<StatusIcon className="relative size-3.5" />
+															</span>
+														) : (
+															<StatusIcon className="size-3.5" />
+														)}
+													</span>
+													<span className="truncate font-medium">{r.name}</span>
+												</div>
+											</TableCell>
+											<TableCell>
+												<Badge variant="secondary" className="min-w-0 max-w-full">
+													<MetricIcon />
+													<span className="min-w-0 truncate">
+														{metric.label}
+													</span>
+												</Badge>
+											</TableCell>
+											<TableCell className="tabular-nums">
+												{COMPARISON_SYMBOLS[r.comparison]} {r.threshold}
+											</TableCell>
+											<TableCell className="text-right tabular-nums text-muted-foreground">
+												{formatDuration(r.windowSeconds * 1000)}
+											</TableCell>
+											<TableCell align="right">
+												<Badge variant={status.variant}>{r.status}</Badge>
+											</TableCell>
+											<TableCell align="center">
+												<div className="flex items-center justify-center gap-2">
+													<Switch
+														size="sm"
+														checked={enabled}
+														onCheckedChange={(checked) =>
+															setEnabledById((prev) => ({
+																...prev,
+																[r.id]: checked,
+															}))
+														}
+													/>
+													<Button
+														size="icon-sm"
+														variant="ghost-destructive"
+														className="size-7"
+													>
+														<IconTrashFilled />
+													</Button>
+												</div>
+											</TableCell>
+										</TableRow>
+									);
+								})}
+							</TableBody>
+						</Table>
+					</TooltipProvider>
+
+					{rows.length > 0 && (
+						<PaginationFooter
+							page={0}
+							pageSize={pageSize}
+							total={rows.length}
+							shown={rows.length}
+							noun={["alert", "alerts"]}
+							onPageChange={() => {}}
+							onPageSizeChange={setPageSize}
+						/>
+					)}
+				</div>
 			</div>
 		</>
 	);
