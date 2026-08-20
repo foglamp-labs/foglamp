@@ -177,12 +177,13 @@ function TokenSplitBar({
 
 const USAGE = { input: 3180, cached: 1240, output: 1095 };
 const COST_BY_CATEGORY: StripSegment[] = [
-	{ label: "Input", value: 0.0157, color: "#F97316" },
-	{ label: "Output", value: 0.0261, color: "#0090FD" },
+	{ label: "Input", value: 0.0184, color: "#F97316" },
+	{ label: "Cached input", value: 0.0031, color: "#FDBA74" },
+	{ label: "Output", value: 0.0203, color: "#0090FD" },
 ];
 const COST_BY_MODEL: StripSegment[] = [
-	{ label: "gpt-5.6-sol", value: 0.0286, color: "#10a37f" },
-	{ label: "gemini-3.5-flash", value: 0.0132, color: "#1ba1e3" },
+	{ label: "gpt-5.6-sol", value: 0.0339, color: "#10a37f" },
+	{ label: "gemini-3.5-flash", value: 0.0079, color: "#1ba1e3" },
 ];
 // Wall-clock split of the waterfall: model calls, tool execution, idle gaps.
 const TIME_PARTS: StripSegment[] = [
@@ -344,7 +345,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 									<Field label="Cost" value={formatCost(row.costValue)} />
 									<Field
 										label="Tokens"
-										className="col-span-2 border-t border-border/40 pt-4"
+										className="-mx-5 col-span-2 border-t border-border/40 px-5 pt-4"
 										value={
 											<span className="flex flex-col gap-2">
 												{formatTokens(row.tokens)}

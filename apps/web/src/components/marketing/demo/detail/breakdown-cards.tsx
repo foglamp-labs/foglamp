@@ -30,26 +30,34 @@ import { cn } from "@foglamp/ui/lib/utils";
 
 import { AGENT_SERIES } from "../mock-data";
 
-// Same category set + colors as the real CostBreakdownCard (only the ones
-// with non-zero totals render there; the demo mirrors that active set).
+// Same colors as the real CostBreakdownCard; the cache dimensions are left
+// out so the chart stays legible at demo size.
 const CATEGORIES = [
-	{ key: "input", label: "Input", color: "#F97316", share: 0.36 },
-	{ key: "cacheRead", label: "Cached input", color: "#FDBA74", share: 0.14 },
-	{ key: "cacheWrite", label: "Cache write", color: "#C2410C", share: 0.06 },
-	{ key: "output", label: "Output", color: "#0090FD", share: 0.34 },
-	{ key: "reasoning", label: "Reasoning", color: "#93C5FD", share: 0.1 },
+	{ key: "input", label: "Input", color: "#F97316", share: 0.44 },
+	{ key: "output", label: "Output", color: "#0090FD", share: 0.42 },
+	{ key: "reasoning", label: "Reasoning", color: "#93C5FD", share: 0.14 },
 ] as const;
 
 const costConfig: ChartConfig = Object.fromEntries(
 	CATEGORIES.map((c) => [c.key, { label: c.label, colors: themed(c.color) }]),
 );
 
+// Deterministic per-bucket jitter (stable across renders, unlike Math.random).
+const costNoise = (i: number, seed: number) => {
+	const x = Math.sin(i * 113.9 + seed * 271.3) * 43758.5453;
+	return x - Math.floor(x);
+};
+
 // Per-bucket spend split by price dimension, derived from the span volume so
-// the bars track the same daily wave as the other charts.
-const COST_DATA = AGENT_SERIES.map((r) => {
+// the bars track the same daily wave as the other charts, with each dimension
+// wobbling around its share so the stacks don't look computed.
+const COST_DATA = AGENT_SERIES.map((r, i) => {
 	const total = r.spans * 0.00102;
 	const row: Record<string, string | number> = { bucket: r.bucket };
-	for (const c of CATEGORIES) row[c.key] = total * c.share;
+	CATEGORIES.forEach((c, ci) => {
+		const wobble = 0.55 + 0.9 * costNoise(i, ci + 3);
+		row[c.key] = total * c.share * wobble;
+	});
 	return row;
 });
 
