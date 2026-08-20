@@ -242,7 +242,7 @@ export function OverviewTab() {
 			<DemoListHeader href="/overview" title="Overview" withRange />
 
 			{/* KPIs */}
-			<section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8">
+			<section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8 mt-2">
 				<StatCard
 					icon={IconCirclesFilled}
 					iconClassName="text-blue-500 dark:text-blue-500"
