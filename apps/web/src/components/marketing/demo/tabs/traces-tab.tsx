@@ -420,7 +420,7 @@ export function TracesTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-24"
+										className="w-28 pr-6"
 									>
 										When
 									</SortableHead>
@@ -581,7 +581,7 @@ export function TracesTab() {
 										>
 											{formatCostFixed(t.costValue, 6)}
 										</HeatCell>
-										<TableCell className="text-right text-muted-foreground">
+										<TableCell className="text-right text-muted-foreground pr-6">
 											{t.when}
 										</TableCell>
 									</TableRow>
