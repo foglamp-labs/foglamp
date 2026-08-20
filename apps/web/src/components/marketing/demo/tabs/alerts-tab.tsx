@@ -162,11 +162,7 @@ export function AlertsTab() {
 									return (
 										<TableRow
 											key={r.id}
-											className={cn(
-												r.status === "firing" &&
-													"shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
-												!enabled && "opacity-60",
-											)}
+											className={cn(!enabled && "opacity-60")}
 										>
 											<TableCell>
 												<div className="flex min-w-0 items-center gap-2.5">
@@ -186,6 +182,14 @@ export function AlertsTab() {
 														)}
 													</span>
 													<span className="truncate font-medium">{r.name}</span>
+													{r.status === "firing" && (
+														<span
+															title="Firing"
+															className="flex shrink-0 items-center font-sans text-sm text-red-600 dark:text-red-400"
+														>
+															<IconAlertTriangle className="size-3.5 fill-current/20" />
+														</span>
+													)}
 												</div>
 											</TableCell>
 											<TableCell>
