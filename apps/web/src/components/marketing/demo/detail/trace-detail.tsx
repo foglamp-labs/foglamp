@@ -18,7 +18,7 @@ import {
 	IconAffiliate,
 	IconChevronDown,
 	IconChevronUp,
-	IconRoute,
+	IconMessage2Filled,
 	IconSitemapFilled,
 } from "@tabler/icons-react";
 import { useState } from "react";
@@ -177,13 +177,12 @@ function TokenSplitBar({
 
 const USAGE = { input: 3180, cached: 1240, output: 1095 };
 const COST_BY_CATEGORY: StripSegment[] = [
-	{ label: "Input", value: 0.0184, color: "#F97316" },
-	{ label: "Cached input", value: 0.0031, color: "#FDBA74" },
-	{ label: "Output", value: 0.0203, color: "#0090FD" },
+	{ label: "Input", value: 0.0157, color: "#F97316" },
+	{ label: "Output", value: 0.0261, color: "#0090FD" },
 ];
 const COST_BY_MODEL: StripSegment[] = [
-	{ label: "gpt-5.6-sol", value: 0.0339, color: "#10a37f" },
-	{ label: "gemini-3.5-flash", value: 0.0079, color: "#1ba1e3" },
+	{ label: "gpt-5.6-sol", value: 0.0286, color: "#10a37f" },
+	{ label: "gemini-3.5-flash", value: 0.0132, color: "#1ba1e3" },
 ];
 // Wall-clock split of the waterfall: model calls, tool execution, idle gaps.
 const TIME_PARTS: StripSegment[] = [
@@ -229,8 +228,8 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 				)}
 				{row.sessionId && (
 					<DemoContextChip
-						icon={IconRoute}
-						iconClassName="text-primary"
+						icon={IconMessage2Filled}
+						iconClassName="text-sky-500"
 						label={row.sessionId}
 						onClick={() => openDetail({ type: "session", id: row.sessionId! })}
 					/>
@@ -360,7 +359,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 								</div>
 
 								{/* One section for the spend, viewable by category or model. */}
-								<div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5 pt-0">
+								<div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
 									<div className="flex items-start justify-between gap-2">
 										<div className="flex min-w-0 flex-col gap-1">
 											<span className="text-xs text-muted-foreground">
@@ -403,7 +402,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 									/>
 								</div>
 
-								<div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5 pt-0">
+								<div className="flex flex-col gap-3 border-b border-border/40 py-5 px-5">
 									<div className="flex min-w-0 flex-col gap-1">
 										<span className="text-xs text-muted-foreground">
 											Time distribution
@@ -421,7 +420,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 
 								{/* Root input/output — the conversation, readable without
 								    hunting down the waterfall. */}
-								<div className="flex flex-col gap-3 border-b border-border/40 px-5 py-5 pt-0">
+								<div className="flex flex-col gap-3 border-b border-border/40 px-5 py-5">
 									<span className="text-xs text-muted-foreground">Input</span>
 									{TRACE_MESSAGES.filter((m) => m.role !== "assistant").map(
 										(m, i) => (
@@ -434,7 +433,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 										),
 									)}
 								</div>
-								<div className="flex flex-col gap-3 px-5 pt-0">
+								<div className="flex flex-col gap-3 px-5 pt-5">
 									<span className="text-xs text-muted-foreground">Output</span>
 									{TRACE_MESSAGES.filter((m) => m.role === "assistant").map(
 										(m, i) => (
