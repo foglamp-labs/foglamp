@@ -37,6 +37,12 @@ const EDGE_STROKE =
 const HEAD_H = 56;
 const CHIP_ROW_H = 24;
 
+/** A camera target: frame these nodes (by label) and/or groups (by label). */
+export interface MapZoomTarget {
+  labels?: string[];
+  groups?: string[];
+}
+
 type Transform = { x: number; y: number; k: number };
 type GraphNode = FoldedNode & SizedNode;
 const clamp = (v: number, lo: number, hi: number) =>
@@ -225,6 +231,7 @@ export function FlowMap({
   workflowGroups,
   focusGroups,
   focusLabels,
+  zoomTo,
 }: {
   graph: ScanData["graph"];
   focusKinds: NodeKind[] | null;
@@ -265,8 +272,16 @@ export function FlowMap({
    * match, like `focusGroups`. Composes with the other filters; null = off.
    */
   focusLabels?: string[] | null;
+  /**
+   * Pan/zoom the viewport to frame the named nodes/groups (setup review page,
+   * clicking a decision row). Same case-insensitive matching as the focus
+   * props. Every new object animates the camera once — pass a fresh object per
+   * click so re-clicking a row re-centers it.
+   */
+  zoomTo?: MapZoomTarget | null;
 }) {
   const folded = useMemo(() => foldGraph(graph), [graph]);
+  const reduceMotion = useReducedMotion() ?? false;
 
   // ELK layout is async — render nothing until it resolves (the entrance
   // animation then plays from a clean slate). Nodes are sized by degree so
@@ -286,15 +301,19 @@ export function FlowMap({
         height: nodeHeight(n),
       })
     );
-    layoutGraph(sized, folded.edges, { compact: embedded, direction }).then(
-      (l) => {
-        if (!cancelled) setLayout(l);
-      }
-    );
+    layoutGraph(sized, folded.edges, {
+      compact: embedded,
+      direction,
+      horizontalGroups: workflowGroups,
+    }).then((l) => {
+      if (!cancelled) setLayout(l);
+    });
     return () => {
       cancelled = true;
     };
-  }, [folded, direction]);
+    // Depend on the group names' CONTENT, not the array identity — callers
+    // often rebuild the array per render, and relayout is expensive.
+  }, [folded, direction, (workflowGroups ?? []).join(" ")]);
 
   // Entrance choreography: things appear along the flow direction.
   const delayAt = (x: number, y = 0) =>
@@ -527,6 +546,92 @@ export function FlowMap({
     applyTransform();
   }, [layout, embedded, frame, padding?.left, padding?.right]);
 
+  // ─── Camera flights (click-to-focus) ────────────────────────────────────────
+  // A short eased tween of the imperative transform. Any user gesture (drag,
+  // wheel) cancels the flight and takes over mid-air.
+  const flight = useRef<number | null>(null);
+  function cancelFlight() {
+    if (flight.current !== null) {
+      cancelAnimationFrame(flight.current);
+      flight.current = null;
+    }
+  }
+  function flyTo(target: Transform) {
+    cancelFlight();
+    if (reduceMotion) {
+      tRef.current = target;
+      applyTransform();
+      return;
+    }
+    const from = { ...tRef.current };
+    const start = performance.now();
+    const DURATION = 550;
+    const ease = (t: number) =>
+      t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+    const step = (now: number) => {
+      const p = Math.min(1, (now - start) / DURATION);
+      const e = ease(p);
+      tRef.current = {
+        x: from.x + (target.x - from.x) * e,
+        y: from.y + (target.y - from.y) * e,
+        k: from.k + (target.k - from.k) * e,
+      };
+      applyTransform();
+      flight.current = p < 1 ? requestAnimationFrame(step) : null;
+    };
+    flight.current = requestAnimationFrame(step);
+  }
+  useEffect(() => cancelFlight, []);
+
+  // Frame the requested nodes/groups: union their boxes, then center that box
+  // in the same clear area the initial fit uses. Never zooms IN past 1 —
+  // framing one small node at k=3 would be disorienting, not helpful.
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!zoomTo || !layout || embedded || !el) return;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    const add = (x: number, y: number, w: number, h: number) => {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w);
+      maxY = Math.max(maxY, y + h);
+    };
+    const groups = new Set((zoomTo.groups ?? []).map((s) => s.toLowerCase()));
+    const labels = new Set((zoomTo.labels ?? []).map((s) => s.toLowerCase()));
+    for (const g of layout.groups)
+      if (groups.has(g.label.toLowerCase())) add(g.x, g.y, g.width, g.height);
+    for (const n of layout.nodes) {
+      const hit =
+        labels.has(n.label.toLowerCase()) ||
+        n.embeds.some((em) => labels.has(em.label.toLowerCase())) ||
+        // Nodes inside a targeted group travel with it even when the group
+        // box match already covered them — harmless — but this also catches
+        // grouped nodes when the layout folded the group away.
+        (n.group ? groups.has(n.group.toLowerCase()) : false);
+      if (hit) add(n.x, n.y, n.width, n.height);
+    }
+    if (minX === Infinity) return; // nothing matched — stay put
+    const padL = frame ? 24 : (padding?.left ?? 432);
+    const padR = frame ? 24 : (padding?.right ?? 48);
+    const padY = frame ? 24 : 56;
+    const availW = Math.max(200, el.clientWidth - padL - padR);
+    const availH = Math.max(200, el.clientHeight - padY * 2);
+    const MARGIN = 48; // breathing room so the target isn't edge-to-edge
+    const w = maxX - minX + MARGIN * 2;
+    const h = maxY - minY + MARGIN * 2;
+    const k = clamp(Math.min(availW / w, availH / h), 0.3, 1);
+    flyTo({
+      k,
+      x: padL + (availW - (maxX - minX) * k) / 2 - minX * k,
+      y: padY + (availH - (maxY - minY) * k) / 2 - minY * k,
+    });
+    // flyTo/padding are stable enough; the flight should re-run per zoomTo
+    // object (a fresh object per click re-centers the same row).
+  }, [zoomTo, layout]);
+
   // Wheel zoom (and trackpad pinch, which arrives as ctrlKey+wheel). Native
   // listener so we can preventDefault (React's onWheel is passive).
   useEffect(() => {
@@ -534,6 +639,7 @@ export function FlowMap({
     if (!el || embedded) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      cancelFlight();
       const prev = tRef.current;
       if (e.ctrlKey) {
         // Trackpad pinch arrives as ctrlKey+wheel — the only gesture that zooms.
@@ -563,6 +669,7 @@ export function FlowMap({
   }, [embedded]);
 
   function onPointerDown(e: React.PointerEvent) {
+    cancelFlight();
     (e.target as Element).setPointerCapture?.(e.pointerId);
     drag.current = {
       px: e.clientX,
@@ -631,11 +738,25 @@ export function FlowMap({
               transform: `translate(${tNow.x}px, ${tNow.y}px) scale(${tNow.k})`,
             }}
           >
-            {/* group containers — labeled vertical stacks */}
+            {/* group containers — labeled stacks (workflows flow horizontal) */}
             {layout.groups.map((g) => {
               const isWorkflow = workflowLabels.has(g.label.toLowerCase());
+              // Any active focus (kind, group, label hover, or a trace) dims a
+              // group — box, icon, and name — unless one of its member nodes
+              // survives the filter. Tied to the members rather than the group
+              // label so an agent-focus dims the workflows it isn't part of.
+              const anyFilter =
+                kindActive !== null ||
+                groupActive !== null ||
+                labelActive !== null ||
+                trace !== null;
               const groupDimmed =
-                groupFocus !== null && !groupFocus.has(g.label.toLowerCase());
+                anyFilter &&
+                !folded.nodes.some(
+                  (n) =>
+                    n.group?.toLowerCase() === g.label.toLowerCase() &&
+                    nodeActive(n.id)
+                );
               return (
                 <motion.div
                   key={g.id}

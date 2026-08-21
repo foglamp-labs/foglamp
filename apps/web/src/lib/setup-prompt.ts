@@ -139,7 +139,7 @@ ${SCAN_SHAPE}
 
 ${SCAN_RULES}
 
-## 4. Upload, show the link, and WAIT
+## 4. Upload, open the review page, and WAIT
 Tell the user plainly what you're about to send: "This uploads a structured
 summary of your architecture and what I plan to instrument — names, file
 references and counts, no code or secrets." Then:
@@ -156,9 +156,18 @@ print it, and never put it in a URL.)
 The response is { "id", "reviewUrl", "status", "expiresAt" }. Make sure
 .foglamp/ is gitignored. On a 422, read \`details\`, fix .foglamp/plan.json, retry.
 
-Give the user the reviewUrl and tell them exactly this: "Open this to review what
-I found. I'll wait here — approve it and I'll pick up automatically. You don't
-need to message me again."
+Open the reviewUrl in the user's browser yourself — best-effort, never fail
+the run over it:
+
+  URL=$(jq -r .reviewUrl .foglamp/plan.lock.json)
+  open "$URL" 2>/dev/null || xdg-open "$URL" 2>/dev/null || start "$URL" 2>/dev/null || true
+
+(\`open\` is macOS, \`xdg-open\` Linux, \`start\` Windows. Headless/SSH: nothing
+opens — the link you show next covers it.)
+
+Then show the user the reviewUrl and tell them exactly this: "I opened the
+review page in your browser (link above if it didn't open). Approve it and I'll
+pick up automatically — you don't need to message me again."
 
 Then run this as ONE bash command and let it block. Do not poll by hand, do not
 ask the user to tell you when they're done:

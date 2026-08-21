@@ -4,9 +4,9 @@ import type {
   DetectedPlan,
   PlanStatus,
 } from "@foglamp/contracts/instrumentation";
-import { startTransition, useCallback, useState } from "react";
+import { startTransition, useCallback, useMemo, useState } from "react";
 
-import { FlowMap } from "@/components/scan/flow-map";
+import { FlowMap, type MapZoomTarget } from "@/components/scan/flow-map";
 
 import { DecisionList } from "./decision-list";
 import { SetupSummary } from "./setup-summary";
@@ -52,7 +52,22 @@ export function SetupBoard({
   const setFocus = useCallback((focus: SetupFocus) => {
     startTransition(() => setFocusState(focus));
   }, []);
+  // Clicking a row flies the map to its subject. A fresh object per click on
+  // purpose: re-clicking the same row after panning away re-centers it.
+  const [zoom, setZoom] = useState<MapZoomTarget | null>(null);
+  const selectFocus = useCallback((focus: NonNullable<SetupFocus>) => {
+    setZoom(
+      focus.type === "agent"
+        ? { labels: [focus.name] }
+        : { groups: [focus.name] }
+    );
+  }, []);
   const { workflows } = plan.decisions;
+  // Stable identity — FlowMap relayouts when the group-name CONTENT changes.
+  const workflowNames = useMemo(
+    () => workflows.map((w) => w.name),
+    [workflows]
+  );
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-neutral-100 text-foreground dark:bg-background">
@@ -69,7 +84,7 @@ export function SetupBoard({
           onReject={onReject}
           approving={approving}
         />
-        <DecisionList plan={plan} onFocus={setFocus} />
+        <DecisionList plan={plan} onFocus={setFocus} onSelect={selectFocus} />
       </div>
 
       <FlowMap
@@ -77,8 +92,9 @@ export function SetupBoard({
         focusKinds={null}
         focusLabels={focus?.type === "agent" ? [focus.name] : null}
         focusGroups={focus?.type === "workflow" ? [focus.name] : null}
-        workflowGroups={workflows.map((w) => w.name)}
+        workflowGroups={workflowNames}
         padding={MAP_PADDING}
+        zoomTo={zoom}
       />
     </div>
   );
