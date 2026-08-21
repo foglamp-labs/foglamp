@@ -15,7 +15,7 @@ import {
   IconUserFilled,
   IconUsers,
 } from "@tabler/icons-react";
-import { type ComponentType, useState } from "react";
+import { type ComponentType, memo, useState } from "react";
 
 import type { SetupFocus } from "./setup-board";
 
@@ -145,7 +145,10 @@ function Section({
   );
 }
 
-export function DecisionList({
+// Memoized: hover-driven focus renders in the parent shouldn't re-render the
+// list that's being hovered (its props are stable — the plan object and a
+// useCallback'd onFocus).
+export const DecisionList = memo(function DecisionList({
   plan,
   onFocus,
 }: {
@@ -225,4 +228,4 @@ export function DecisionList({
       </CardContent>
     </Card>
   );
-}
+});

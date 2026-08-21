@@ -4,7 +4,7 @@ import type {
   DetectedPlan,
   PlanStatus,
 } from "@foglamp/contracts/instrumentation";
-import { useState } from "react";
+import { startTransition, useCallback, useState } from "react";
 
 import { FlowMap } from "@/components/scan/flow-map";
 
@@ -44,7 +44,14 @@ export function SetupBoard({
   onReject: () => void;
   approving: boolean;
 }) {
-  const [focus, setFocus] = useState<SetupFocus>(null);
+  const [focus, setFocusState] = useState<SetupFocus>(null);
+  // Spotlighting re-renders the whole map, and as a blocking update every
+  // mouseenter janked the cursor. As a transition the row's own hover feedback
+  // stays instant, and React can abandon a stale spotlight render when the
+  // pointer sweeps across several rows.
+  const setFocus = useCallback((focus: SetupFocus) => {
+    startTransition(() => setFocusState(focus));
+  }, []);
   const { workflows } = plan.decisions;
 
   return (
