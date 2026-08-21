@@ -149,3 +149,13 @@
 		animation: none;
 	}
 }
+
+/* Start each agent's BorderBeam at a random point in its spin cycle. The
+   library starts every beam's `beam-spin` animation at phase 0 on mount, so
+   agents revolve in lockstep; a per-node negative delay (set inline as
+   --beam-phase) scatters them. Two values: first for beam-spin, second keeps
+   the fade-in animation undelayed. */
+.agent-beam [data-beam][data-active],
+.agent-beam[data-beam][data-active] {
+	animation-delay: var(--beam-phase, 0s), 0s;
+}
