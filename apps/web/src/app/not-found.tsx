@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
 import Link from "next/link";
 
 import { DOCS_ORIGIN } from "@/lib/links";
@@ -42,7 +42,7 @@ export default function NotFound() {
 							</a>
 						) : (
 							<Link
-								href={l.href as "/"}
+								href={l.href as Route}
 								className="text-sm font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground"
 							>
 								{l.label}
