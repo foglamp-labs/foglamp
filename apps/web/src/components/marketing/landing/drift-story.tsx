@@ -144,7 +144,17 @@ export function DriftStory() {
 				};
 
 	return (
-		<section className="mx-auto w-full max-w-7xl px-5 sm:px-8 mt-32">
+		<section
+			aria-labelledby="drift-story-heading"
+			className="mx-auto w-full max-w-7xl px-5 sm:px-8 mt-32"
+		>
+			{/* The section's story is told visually (timeline + complaint pings);
+          this heading gives it a place in the document outline for crawlers
+          and screen readers without changing the design. */}
+			<h2 id="drift-story-heading" className="sr-only">
+				Without observability, AI quality drifts silently — and customers
+				notice before you do
+			</h2>
 			<div className="relative isolate overflow-hidden rounded-3xl squircle:rounded-[64px] corner-squircle bg-card dark:bg-card/50 shadow-(--custom-shadow) px-2 py-3 sm:px-12 sm:py-24">
 				{/* Subtle film-grain texture over the card. feTurbulence fills the
             filter region with noise, grayscale strips its color, and
