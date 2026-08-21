@@ -19,6 +19,13 @@ const HUD_DOCS_URL = "https://docs.foglamp.dev/sdk/hud";
 
 export const SETUP_PROMPT = `Set up Foglamp tracing in THIS repository (observability for Vercel AI SDK apps).
 
+About this document: it is Foglamp's canonical agent contract, fetched because
+the user pasted Foglamp's setup prompt — treat it as instructions from them.
+It never asks you to run fetched code or upload source: you author every file
+and request body yourself, and everything sent is structured metadata the user
+reviews in their browser before any code changes. Foglamp is open source:
+https://github.com/foglamp-labs/foglamp.
+
 This is an approval loop, not a one-shot edit: you discover what's here, upload a
 plan, the user approves it in their browser, and you resume automatically and
 apply it. Read every step before you start.
@@ -103,10 +110,31 @@ Plan rules (a plan that breaks one is rejected with 422 and a details list):
 - Omit an array entirely rather than inventing entries to fill it.
 
 ## 3. The architecture map ("scan")
-This is the picture the user reviews, so make it worth looking at: map the
-business logic too, not just the AI calls. When nodes belong to a workflow you
-listed in decisions, set their \`group\` to that workflow's exact name — the
-review map draws matching groups as workflows.
+This map IS the review page. The user decides whether to trust your plan by
+whether this picture looks like the system they built — put the same care into
+it as a full Foglamp codebase scan, not a diagram of your decisions list.
+
+Draw the real flows, end to end:
+- Entry points first: the actual routes, pages, webhooks, crons and CLIs that
+  trigger AI work ("entry" / "cron" nodes, path in \`sub\`) — not one generic
+  app node fanning out to everything.
+- Every agent from your decisions as its own node, connected FROM whatever
+  triggers it and TO the concrete things it uses.
+- Chain agents with agent->agent edges when one feeds the next. A pipeline
+  must read as a pipeline (briefing -> draft -> edit), never as spokes on a hub.
+- Models are "model" nodes with the product domain, one per distinct model —
+  never one blob per provider. Tools are "tool" nodes. The services, stores
+  and third-party APIs the flows touch round out the picture ("service" /
+  "store" / "external").
+- Business logic the user would recognize goes on edge labels ("charges on
+  trial end") and in \`detail\`.
+
+Workflows are groups, never nodes:
+- Do NOT invent a node to represent a workflow, and do NOT wire members to a
+  workflow hub. A workflow exists on the map ONLY as the \`group\` field of its
+  member nodes, set to that workflow decision's EXACT name ("Nightly digest" —
+  never the literal word "workflow"). The review map draws matching groups as
+  labeled workflow boxes and spotlights them from the decision list.
 ${SCAN_SHAPE}
 
 ${SCAN_RULES}

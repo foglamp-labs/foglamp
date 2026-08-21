@@ -121,7 +121,12 @@ export function OnboardingPanel() {
                   onClick={copy}
                   aria-label="Copy prompt"
                 >
-                  <CopyIcon copied={copied} />
+                  <CopyIcon
+                    copied={copied}
+                    // Inverted greens: the default Button's chip flips its bg
+                    // against the theme.
+                    checkClassName="text-green-400 dark:text-green-600"
+                  />
                   Copy the prompt
                 </Button>
               ) : (

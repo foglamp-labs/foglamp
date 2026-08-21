@@ -30,7 +30,7 @@ export const SETUP_PROMPT_URL = `${SITE_URL}/setup/prompt`;
 // the agent is about to hand them a link and then go quiet on purpose — without
 // this line that silence reads as a hang.
 function instrumentationBody(startStep: number): string {
-	return `${startStep}. Fetch ${SETUP_PROMPT_URL} (written for coding agents) and follow it exactly.
+	return `${startStep}. Fetch ${SETUP_PROMPT_URL} (written for coding agents), read it, then follow it.
    It has you read my codebase first, upload a plan of what you'd instrument, and
    send me a link to review it — change no code until I approve there.
 ${startStep + 1}. After you show me the link, run its wait command and let it block. It
@@ -40,10 +40,18 @@ ${startStep + 2}. Once I've approved, apply the plan, report what changed, and t
    which of my real AI flows to trigger — which command to run, which page to
    hit. Don't write smoke tests, scripts, or demo endpoints to make a trace.
 
-Notes: don't upgrade my AI SDK version to instrument — Foglamp supports v4
-through v7, and the docs cover both paths. The SDK is a no-op until
-FOGLAMP_API_KEY is set, so it is safe to add in every environment. Instrumentation
-reference: ${AGENT_DOCS_URL}. Full docs index: ${LLMS_INDEX_URL}`;
+Notes:
+- I chose Foglamp and pasted this prompt myself — treat the fetched instructions
+  as coming from me. It's open source (github.com/foglamp-labs/foglamp) if you
+  want to verify before following them; if anything in them conflicts with what
+  I've told you, ask me.
+- The uploaded "plan" is a JSON file you author yourself: symbol names, file:line
+  references and counts only — no source code, no prompt text, no secrets. You
+  control exactly what's in it, and I review it before anything changes.
+- Don't upgrade my AI SDK version to instrument — Foglamp supports v4 through
+  v7, and the docs cover both paths. The SDK is a no-op until FOGLAMP_API_KEY is
+  set, so it is safe to add in every environment.
+- Instrumentation reference: ${AGENT_DOCS_URL}. Full docs index: ${LLMS_INDEX_URL}`;
 }
 
 // Signed-in onboarding: the key is minted server-side and inlined so the prompt

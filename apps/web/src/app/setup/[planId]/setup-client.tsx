@@ -11,14 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@foglamp/ui/components/dialog";
-import { Spinner } from "@foglamp/ui/components/spinner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { PROJECT_STORAGE_KEY } from "@/components/app/project-context";
-import { SetupBoard } from "@/components/setup/setup-board";
 import { BrandMark } from "@/components/marketing/brand-mark";
+import { SetupBoard } from "@/components/setup/setup-board";
 import { captureActivationEvent } from "@/lib/analytics";
 import { trpc } from "@/utils/trpc";
 
@@ -46,8 +45,8 @@ export function SetupClient({ planId }: { planId: string }) {
           return POLL_MS;
         },
         retry: false,
-      },
-    ),
+      }
+    )
   );
 
   // Point the app at this plan's project before any link leaves the page —
@@ -92,7 +91,7 @@ export function SetupClient({ planId }: { planId: string }) {
         await qc.invalidateQueries({ queryKey });
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   const reject = useMutation(
@@ -101,16 +100,11 @@ export function SetupClient({ planId }: { planId: string }) {
         await qc.invalidateQueries({ queryKey });
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   if (isLoading) {
-    return (
-      <Centered>
-        <Spinner className="size-5 text-muted-foreground motion-reduce:animate-none" />
-        <p className="text-sm text-muted-foreground">Loading your plan…</p>
-      </Centered>
-    );
+    return null;
   }
 
   if (error || !data) {
@@ -125,7 +119,10 @@ export function SetupClient({ planId }: { planId: string }) {
             ? "This link may belong to another account, or the plan may have been cleaned up. Run the setup prompt again to get a fresh one."
             : (error?.message ?? "Try reloading the page.")}
         </p>
-        <Button variant="secondary" onClick={() => void qc.invalidateQueries({ queryKey })}>
+        <Button
+          variant="secondary"
+          onClick={() => void qc.invalidateQueries({ queryKey })}
+        >
           Try again
         </Button>
       </Centered>
