@@ -17,6 +17,7 @@ import { pruneApiKeyCache, resolveApiKey } from "./apiKey";
 import { WriteBuffer } from "./buffer";
 import { getProjectPricing, pruneCustomPricing } from "./customPricing";
 import { evlog, type AppEnv } from "./evlog";
+import { errorResponse, notFoundResponse } from "./httpErrors";
 import { checkOrgQuota, pruneOrgLimits } from "./orgLimits";
 import { checkRateLimit, pruneRateLimits } from "./rateLimit";
 import { buildCustomerRows, buildSpanRows } from "./transform";
@@ -202,6 +203,11 @@ app.post("/v1/traces", (c) =>
 );
 
 app.get("/", (c) => c.text("foglamp ingest"));
+
+// Agent-friendly fallbacks: JSON (not plain text) for unmatched routes and
+// uncaught errors, with a machine-readable code and a where-to-look hint.
+app.notFound(notFoundResponse);
+app.onError(errorResponse);
 
 // --- Graceful shutdown: flush the volatile buffer before exiting ----------
 let shuttingDown = false;

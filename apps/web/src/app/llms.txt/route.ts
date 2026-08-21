@@ -32,9 +32,17 @@ const BODY = `# Foglamp
 - [Alerts](${SITE_URL}/features/alerts): threshold rules on cost, latency, and error rate.
 - [SDK](${SITE_URL}/features/sdk): two lines instrument every generateText / streamText call.
 
-## Reference
-- [API reference (OpenAPI)](${DOCS_ORIGIN}/api-reference/openapi.json): machine-readable API specification.
-- [Source code](${GITHUB_URL}): GitHub repository (Apache 2.0).
+## Foglamp developer resources
+- [Foglamp API reference](${DOCS_ORIGIN}/api-reference/introduction): the ingest API, authentication, and error shapes.
+- [Foglamp OpenAPI spec](${DOCS_ORIGIN}/api-reference/openapi.json): machine-readable API specification (also at ${SITE_URL}/openapi.json).
+- [Foglamp changelog](${DOCS_ORIGIN}/changelog): what shipped, release by release.
+- [Foglamp source code](${GITHUB_URL}): GitHub repository (Apache 2.0, self-hostable).
+
+## Notes for agents
+- Every marketing page on ${SITE_URL} is also served as markdown: request it
+  with \`Accept: text/markdown\`, or append \`.md\` to the path (e.g.
+  ${SITE_URL}/pricing.md).
+- Nonexistent paths return a real 404 with a markdown body pointing back here.
 `;
 
 export function GET() {

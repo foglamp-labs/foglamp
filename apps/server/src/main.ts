@@ -20,6 +20,7 @@ import { cors } from "hono/cors";
 
 import { requireApiKey } from "./apiKeyAuth";
 import { evlog, type AppEnv } from "./evlog";
+import { errorResponse, notFoundResponse } from "./httpErrors";
 import {
   handleFoggy,
   handleFoggyThreadGet,
@@ -171,6 +172,11 @@ app.post("/instrumentation-plans/:id/failed", requireApiKey, handlePlanFailed);
 app.get("/", (c) => {
   return c.text("OK");
 });
+
+// Agent-friendly fallbacks: JSON (not plain text) for unmatched routes and
+// uncaught errors, with a machine-readable code and a where-to-look hint.
+app.notFound(notFoundResponse);
+app.onError(errorResponse);
 
 // Alert evaluator: sweep enabled rules on an interval, transition state, and
 // email on fired/resolved. apps/server is the long-running tier that owns it.
