@@ -73,7 +73,9 @@ export function CopyScanPromptButton({ className }: { className?: string }) {
 				<CopyIcon
 					copied={copied}
 					className="size-4 mb-px"
-					checkClassName="size-4 mb-px"
+					// Inverted greens: the default Button's chip flips its bg against
+					// the theme.
+					checkClassName="size-4 mb-px text-green-400 dark:text-green-600"
 				/>
 				Copy scan prompt
 			</Button>
