@@ -16,13 +16,9 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
 	IconAffiliate,
 	IconAlertTriangle,
-	IconBoltFilled,
 	IconCircleCheck,
-	IconCircleCheckFilled,
-	IconCoinFilled,
 	IconFileCode,
 	IconForbid,
-	IconGaugeFilled,
 	IconKey,
 	IconListCheck,
 	IconPlus,
@@ -44,8 +40,7 @@ import {
 	useTableSort,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
-import { StatCard } from "@/components/app/page-parts";
-import { formatCost, formatCount, formatPercent } from "@/lib/format";
+import { formatCost, formatPercent } from "@/lib/format";
 
 import { DemoListHeader, DemoRange } from "../demo-chrome";
 import { useDemo } from "../demo-context";
@@ -86,12 +81,6 @@ export function EvalsTab() {
 		spend: (e) => e.spend,
 	});
 
-	const totalSpend = EVALS.reduce((sum, e) => sum + e.spend, 0);
-	const avgScore =
-		EVALS.reduce((sum, e) => sum + e.avgScore, 0) / EVALS.length;
-	const avgPassRate =
-		EVALS.reduce((sum, e) => sum + e.passRate, 0) / EVALS.length;
-
 	return (
 		<>
 			<DemoListHeader
@@ -104,47 +93,8 @@ export function EvalsTab() {
 					</Button>
 				}
 			/>
-			<div className="flex flex-col gap-4">
-				<section className="grid grid-cols-2 gap-4 md:grid-cols-4 px-5.5">
-					<StatCard
-						icon={IconGaugeFilled}
-						iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
-						size="sm"
-						label="Evals"
-						value={visible.length}
-						formatValue={formatCount}
-					/>
-					<StatCard
-						icon={IconBoltFilled}
-						iconClassName="text-orange-500 dark:text-orange-500"
-						size="sm"
-						label="Avg score"
-						value={avgScore}
-						formatValue={(n) => n.toFixed(2)}
-						delta={{ pct: 0.022, dir: "up" }}
-					/>
-					<StatCard
-						icon={IconCircleCheckFilled}
-						iconClassName="text-emerald-500 dark:text-emerald-500"
-						size="sm"
-						label="Avg pass rate"
-						value={avgPassRate}
-						formatValue={formatPercent}
-						delta={{ pct: 0.012, dir: "up" }}
-					/>
-					<StatCard
-						icon={IconCoinFilled}
-						iconClassName="text-yellow-400 dark:text-yellow-500"
-						size="sm"
-						label="Total spend"
-						value={totalSpend}
-						formatValue={(n) => formatCost(n, 4)}
-						delta={{ pct: 0.084, dir: "up" }}
-						deltaInverted
-					/>
-				</section>
-
-				<Toolbar className="px-5.5">
+			<div className="flex flex-col gap-4 mt-1">
+				<Toolbar>
 					<SearchInput
 						value={search}
 						onChange={setSearch}

@@ -41,7 +41,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@foglamp/ui/components/select";
-import { Skeleton } from "@foglamp/ui/components/skeleton";
 import { Switch } from "@foglamp/ui/components/switch";
 import {
 	Table,
@@ -57,10 +56,7 @@ import {
 	type Icon,
 	IconAffiliate,
 	IconAlertTriangle,
-	IconBoltFilled,
 	IconCircleCheck,
-	IconCircleCheckFilled,
-	IconCoinFilled,
 	IconFileCode,
 	IconForbid,
 	IconGaugeFilled,
@@ -101,18 +97,12 @@ import {
 	NoProject,
 	PageHeader,
 	ScrollFade,
-	StatCard,
 	TableRowsSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
-import {
-	formatCost,
-	formatCount,
-	formatDelta,
-	formatPercent,
-} from "@/lib/format";
+import { formatCost, formatPercent } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { EvalsHeader } from "./header";
 
@@ -265,25 +255,6 @@ export function EvalsClient() {
 		// Keep the table populated while a range change refetches.
 		placeholderData: (prev) => prev,
 	});
-	// Same eval set over the immediately-preceding window, so the stat cards can
-	// show period-over-period deltas. Eval filters are config-based (window
-	// invariant), so we match prev metrics back to the current rows by id.
-	const prevWindow = useMemo(() => {
-		const span = range.to.getTime() - range.from.getTime();
-		return {
-			from: new Date(range.from.getTime() - span).toISOString(),
-			to: range.from.toISOString(),
-		};
-	}, [range]);
-	const prevEvals = useQuery({
-		...trpc.evals.list.queryOptions({
-			projectId: projectId!,
-			from: prevWindow.from,
-			to: prevWindow.to,
-		}),
-		enabled: !!projectId,
-		placeholderData: (prev) => prev,
-	});
 	const presets = useQuery(trpc.evals.presets.queryOptions());
 	const providerKeys = useQuery({
 		...trpc.providerKeys.list.queryOptions({ projectId: projectId! }),
@@ -382,66 +353,11 @@ export function EvalsClient() {
 		});
 	}, [searched, statusFilter, sourceFilter, levelFilter, stateFilter, sort]);
 
-	// Spend percentile thresholds across the filtered list (heatmap), plus the
-	// windowed stat-strip totals (avg score / avg pass rate / spend).
+	// Spend percentile thresholds across the filtered list (heatmap).
 	const spendThresholds = useMemo(
 		() => costThresholds(visible.map((r) => r.cost)),
 		[visible],
 	);
-	// Stat-strip totals track the filtered/searched list (`visible`), so the cards
-	// always reflect whatever the toolbar is currently showing.
-	const totals = useMemo(() => {
-		let passed = 0;
-		let cost = 0;
-		let passable = 0;
-		let scoreSum = 0;
-		let scorable = 0;
-		for (const r of visible) {
-			cost += r.cost;
-			if (r.passRate != null) {
-				passed += r.passRate * r.scoreCount;
-				passable += r.scoreCount;
-			}
-			if (r.avgScore != null) {
-				scoreSum += r.avgScore * r.scoreCount;
-				scorable += r.scoreCount;
-			}
-		}
-		return {
-			cost,
-			passRate: passable > 0 ? passed / passable : null,
-			avgScore: scorable > 0 ? scoreSum / scorable : null,
-		};
-	}, [visible]);
-
-	// Prev-window totals over the *same* visible evals (matched by id), weighted
-	// identically to `totals` so the deltas are apples-to-apples.
-	const prevTotals = useMemo(() => {
-		const prevById = new Map((prevEvals.data ?? []).map((r) => [r.id, r]));
-		let passed = 0;
-		let cost = 0;
-		let passable = 0;
-		let scoreSum = 0;
-		let scorable = 0;
-		for (const v of visible) {
-			const r = prevById.get(v.id);
-			if (!r) continue;
-			cost += r.cost;
-			if (r.passRate != null) {
-				passed += r.passRate * r.scoreCount;
-				passable += r.scoreCount;
-			}
-			if (r.avgScore != null) {
-				scoreSum += r.avgScore * r.scoreCount;
-				scorable += r.scoreCount;
-			}
-		}
-		return {
-			cost,
-			passRate: passable > 0 ? passed / passable : null,
-			avgScore: scorable > 0 ? scoreSum / scorable : null,
-		};
-	}, [visible, prevEvals.data]);
 
 	if (!projectId) {
 		return (
@@ -845,51 +761,11 @@ export function EvalsClient() {
 					</motion.div>
 				</DialogContent>
 			</Dialog>
-			{/* Stat cards, toolbar and table chrome always render — even for an
-			    empty result — so the filters stay reachable. The empty states swap
-			    in for the table only; the body rows wait on the query (skeleton
-			    rows below), and stat values show a blob until the numbers exist. */}
-			<div className={cn("flex flex-col gap-4", entrance && "page-fade-in")}>
-				<section className="grid grid-cols-2 gap-4 md:grid-cols-4 px-5.5">
-					<StatCard
-						icon={IconGaugeFilled}
-						iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
-						size="sm"
-						label="Evals"
-						value={evals.isLoading ? STAT_LOADING : visible.length}
-						formatValue={formatCount}
-					/>
-					<StatCard
-						icon={IconBoltFilled}
-						iconClassName="text-orange-500 dark:text-orange-500"
-						size="sm"
-						label="Avg score"
-						value={evals.isLoading ? STAT_LOADING : (totals.avgScore ?? "—")}
-						formatValue={(n) => n.toFixed(2)}
-						delta={formatDelta(totals.avgScore, prevTotals.avgScore)}
-					/>
-					<StatCard
-						icon={IconCircleCheckFilled}
-						iconClassName="text-emerald-500 dark:text-emerald-500"
-						size="sm"
-						label="Avg pass rate"
-						value={evals.isLoading ? STAT_LOADING : (totals.passRate ?? "—")}
-						formatValue={formatPercent}
-						delta={formatDelta(totals.passRate, prevTotals.passRate)}
-					/>
-					<StatCard
-						icon={IconCoinFilled}
-						iconClassName="text-yellow-400 dark:text-yellow-500"
-						size="sm"
-						label="Total spend"
-						value={evals.isLoading ? STAT_LOADING : (totals.cost ?? "—")}
-						formatValue={(n) => formatCost(n, 4)}
-						delta={formatDelta(totals.cost, prevTotals.cost)}
-						deltaInverted
-					/>
-				</section>
-
-				<Toolbar className="px-5.5">
+			{/* Toolbar and table chrome always render — even for an empty result —
+			    so the filters stay reachable. The empty states swap in for the
+			    table only; the body rows wait on the query (skeleton rows below). */}
+			<div className={cn("flex flex-col gap-4 mt-1", entrance && "page-fade-in")}>
+				<Toolbar>
 					<SearchInput
 						value={search}
 						onChange={setSearch}
@@ -1214,7 +1090,6 @@ function clean(obj: Record<string, string>): Record<string, string> {
 }
 
 // Placeholder blob for stat-card values while the query is in flight.
-const STAT_LOADING = <Skeleton className="h-5 w-12" />;
 
 // Skeleton column spec for the loading body rows (see TableRowsSkeleton).
 const SKELETON_COLS = [
