@@ -8,12 +8,10 @@ import { Card, CardContent } from "@foglamp/ui/components/card";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconGhostFilled,
-  IconMessages,
-  IconMessagesFilled,
+  IconMessage2Filled,
   type IconProps,
   IconSitemapFilled,
   IconUserFilled,
-  IconUsers,
 } from "@tabler/icons-react";
 import { type ComponentType, memo, useState } from "react";
 
@@ -62,11 +60,14 @@ interface Entry {
 function Row({
   entry,
   onFocus,
+  onSelect,
 }: {
   entry: Entry;
   onFocus?: (focus: SetupFocus) => void;
+  onSelect?: (focus: NonNullable<SetupFocus>) => void;
 }) {
   const hoverable = entry.focus !== undefined && onFocus !== undefined;
+  const clickable = entry.focus !== undefined && onSelect !== undefined;
   return (
     <li
       className={cn(
@@ -74,10 +75,13 @@ function Row({
         // The row is the legend now: hovering it spotlights its subject on
         // the map, so give it a whisper of hover feedback of its own.
         hoverable &&
-          "-mx-3 rounded-md px-3 py-1.5 hover:bg-muted/60 select-none"
+          "-mx-3 rounded-md px-3 py-1.5 hover:bg-muted/60 select-none",
+        clickable && "cursor-pointer"
       )}
       onMouseEnter={hoverable ? () => onFocus(entry.focus ?? null) : undefined}
       onMouseLeave={hoverable ? () => onFocus(null) : undefined}
+      // Clicking flies the map to the row's subject (the hover only dims).
+      onClick={clickable ? () => onSelect(entry.focus!) : undefined}
     >
       <div className="flex items-baseline justify-between gap-3">
         <span className="truncate text-[13px]">{entry.name}</span>
@@ -106,6 +110,7 @@ function Section({
   iconClassName,
   entries,
   onFocus,
+  onSelect,
 }: {
   label: string;
   Icon: ComponentType<IconProps>;
@@ -113,6 +118,7 @@ function Section({
   iconClassName: string;
   entries: Entry[];
   onFocus?: (focus: SetupFocus) => void;
+  onSelect?: (focus: NonNullable<SetupFocus>) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   if (entries.length === 0) return null;
@@ -129,7 +135,7 @@ function Section({
       </h2>
       <ul className="flex list-none flex-col gap-0.5">
         {shown.map((e) => (
-          <Row key={e.key} entry={e} onFocus={onFocus} />
+          <Row key={e.key} entry={e} onFocus={onFocus} onSelect={onSelect} />
         ))}
       </ul>
       {hidden > 0 ? (
@@ -151,9 +157,12 @@ function Section({
 export const DecisionList = memo(function DecisionList({
   plan,
   onFocus,
+  onSelect,
 }: {
   plan: DetectedPlan;
   onFocus?: (focus: SetupFocus) => void;
+  /** Click-to-focus: fly the map to the row's subject. */
+  onSelect?: (focus: NonNullable<SetupFocus>) => void;
 }) {
   const { agents, workflows, sessions, customer } = plan.decisions;
 
@@ -167,6 +176,7 @@ export const DecisionList = memo(function DecisionList({
           Icon={IconGhostFilled}
           iconClassName="text-orange-500"
           onFocus={onFocus}
+          onSelect={onSelect}
           entries={agents.map((a) => ({
             key: a.id,
             name: a.name,
@@ -182,6 +192,7 @@ export const DecisionList = memo(function DecisionList({
           Icon={IconSitemapFilled}
           iconClassName="text-emerald-500"
           onFocus={onFocus}
+          onSelect={onSelect}
           entries={workflows.map((w) => ({
             key: w.id,
             name: w.name,
@@ -195,7 +206,7 @@ export const DecisionList = memo(function DecisionList({
 
         <Section
           label="Conversations"
-          Icon={IconMessagesFilled}
+          Icon={IconMessage2Filled}
           iconClassName="text-sky-500"
           entries={sessions.map((s) => ({
             key: s.id,

@@ -2,7 +2,10 @@
 // orthogonal edge routing. Grouped nodes (same `group`) are laid out as a
 // VERTICAL stack in an isolated pass, then the root pass arranges those stacks
 // and the ungrouped nodes LEFT-TO-RIGHT — so deep pipelines fold into labeled
-// columns instead of sprawling one-node-per-layer across the screen.
+// columns instead of sprawling one-node-per-layer across the screen. Groups
+// named in `horizontalGroups` (workflows on the setup review page) flow
+// LEFT-TO-RIGHT inside their box instead: a workflow is a pipeline, and a
+// pipeline reads left to right like the rest of the map.
 // Cross-group edges attach to the group container (deduped), which keeps the
 // macro story readable. Same input → same coordinates. Async (elkjs).
 
@@ -115,6 +118,12 @@ export async function layoutGraph<T extends SizedNode>(
 		compact?: boolean;
 		/** Flow direction — RIGHT (default) or DOWN (portrait embeds). */
 		direction?: "RIGHT" | "DOWN";
+		/**
+		 * Group labels (case-insensitive) laid out LEFT-TO-RIGHT inside their box
+		 * instead of the default vertical stack — workflow pipelines read better
+		 * horizontal.
+		 */
+		horizontalGroups?: string[];
 	} = {},
 ): Promise<Layout<T>> {
 	const elk = await getElk();
@@ -134,7 +143,12 @@ export async function layoutGraph<T extends SizedNode>(
 	const groupIdOf = (name: string) => `group:${groupNames.indexOf(name)}`;
 	const groupOfNode = (id: string) => nodeById.get(id)?.group;
 
-	// ── Pass A: each group in isolation, top-to-bottom ─────────────────────────
+	const horizontalNames = new Set(
+		(opts.horizontalGroups ?? []).map((n) => n.toLowerCase()),
+	);
+
+	// ── Pass A: each group in isolation (top-to-bottom, or left-to-right for
+	//    horizontal groups) ─────────────────────────────────────────────────────
 	const groupLayouts = new Map<
 		string,
 		{
@@ -155,13 +169,14 @@ export async function layoutGraph<T extends SizedNode>(
 			.map((e, i) => ({ e, i }))
 			.filter(({ e }) => memberIds.has(e.from) && memberIds.has(e.to));
 
+		const horizontal = horizontalNames.has(name.toLowerCase());
 		const input: ElkNode = {
 			id: "root",
 			layoutOptions: {
 				"elk.algorithm": "layered",
-				"elk.direction": "DOWN",
+				"elk.direction": horizontal ? "RIGHT" : "DOWN",
 				"elk.edgeRouting": "ORTHOGONAL",
-				"elk.layered.spacing.nodeNodeBetweenLayers": "30",
+				"elk.layered.spacing.nodeNodeBetweenLayers": horizontal ? "40" : "30",
 				"elk.spacing.nodeNode": "18",
 				"elk.spacing.edgeNode": "14",
 				"elk.edgeLabels.inline": "true",
