@@ -13,13 +13,6 @@ import {
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@foglamp/ui/components/card";
-import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
@@ -37,6 +30,14 @@ import {
 	SelectValue,
 } from "@foglamp/ui/components/select";
 import { Switch } from "@foglamp/ui/components/switch";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@foglamp/ui/components/table";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
 	IconAlertTriangle,
@@ -58,6 +59,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ComponentType, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import {
+	ClearFiltersButton,
+	PaginationFooter,
+	SearchInput,
+	SortableHead,
+	ToggleChip,
+	Toolbar,
+	sortRows,
+	useTableSort,
+} from "@/components/app/data-table";
 import {
 	useDelayedLoading,
 	useEntranceOnce,
@@ -232,6 +243,11 @@ export function AlertsClient() {
 	const qc = useQueryClient();
 
 	const [open, setOpen] = useState(false);
+	const [search, setSearch] = useState("");
+	const [firingOnly, setFiringOnly] = useState(false);
+	const [page, setPage] = useState(0);
+	const [pageSize, setPageSize] = useState(25);
+	const { sort, toggle } = useTableSort<"name" | "window">();
 	const [form, setForm] = useState(DEFAULT_FORM);
 	const [errors, setErrors] = useState<
 		Partial<Record<"name" | "evalId" | "threshold" | "email", string>>
@@ -307,6 +323,24 @@ export function AlertsClient() {
 	}
 
 	const rows = alerts.data ?? [];
+
+	const q = search.trim().toLowerCase();
+	const filtered = rows.filter(
+		(r) =>
+			(!q || r.name.toLowerCase().includes(q)) &&
+			(!firingOnly || r.status === "firing"),
+	);
+	const sorted = sortRows(filtered, sort, {
+		name: (a) => a.name,
+		window: (a) => a.windowSeconds,
+	});
+	// Clamp instead of resetting on filter change so the page state never has
+	// to be synchronized with the filters.
+	const safePage = Math.min(
+		page,
+		Math.max(0, Math.ceil(sorted.length / pageSize) - 1),
+	);
+	const paged = sorted.slice(safePage * pageSize, safePage * pageSize + pageSize);
 
 	// Clear a field's error as soon as the user edits it, so stale messages
 	// don't linger while they're fixing the problem.
@@ -556,13 +590,7 @@ export function AlertsClient() {
 				</DialogContent>
 			</Dialog>
 
-			{alerts.isLoading ? (
-				showSkeleton ? (
-					<div className={cn(entrance && "page-fade-in", "px-8")}>
-						<TableSkeleton />
-					</div>
-				) : null
-			) : rows.length === 0 ? (
+			{noAlerts ? (
 				<div className="mt-2 px-8">
 					<EmptyState
 						icon={IconAlertTriangleFilled}
@@ -577,103 +605,186 @@ export function AlertsClient() {
 					</EmptyState>
 				</div>
 			) : (
-				<div
-					className={cn(
-						"grid gap-4 md:grid-cols-2 px-8",
-						entrance && !skeletonShown && "page-fade-in",
+				<div className="flex flex-col gap-4 mt-1">
+					<Toolbar>
+						<SearchInput
+							value={search}
+							onChange={setSearch}
+							placeholder="Search alerts…"
+						/>
+						<ToggleChip
+							active={firingOnly}
+							onClick={() => setFiringOnly((v) => !v)}
+						>
+							<IconAlertTriangle className="size-3.5" />
+							Firing only
+						</ToggleChip>
+						<ClearFiltersButton
+							show={!!(search || firingOnly)}
+							onClick={() => {
+								setSearch("");
+								setFiringOnly(false);
+							}}
+						/>
+					</Toolbar>
+
+					{alerts.isLoading ? (
+						showSkeleton ? (
+							<div className={cn(entrance && "page-fade-in", "px-8")}>
+								<TableSkeleton />
+							</div>
+						) : null
+					) : sorted.length === 0 ? (
+						<div className="mt-2 px-8">
+							<EmptyState
+								icon={IconAlertTriangleFilled}
+								title="No matching alerts"
+								description="Try a different search or clearing filters."
+							/>
+						</div>
+					) : (
+						<div
+							className={cn(
+								"flex flex-col -mt-2",
+								entrance && !skeletonShown && "page-fade-in",
+							)}
+						>
+							<Table className="table-fixed min-w-[56rem]">
+								<TableHeader>
+									<TableRow>
+										<SortableHead sortKey="name" sort={sort} onSort={toggle}>
+											Alert
+										</SortableHead>
+										<TableHead className="w-44">Metric</TableHead>
+										<TableHead className="w-36">Condition</TableHead>
+										<SortableHead
+											sortKey="window"
+											sort={sort}
+											onSort={toggle}
+											align="right"
+											className="w-28"
+										>
+											Window
+										</SortableHead>
+										<TableHead className="w-28 text-right">Status</TableHead>
+										<TableHead className="w-24" />
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{paged.map((r) => {
+										const metric = METRIC_BY_VALUE[r.metric as Metric];
+										const MetricIcon = metric?.icon;
+										const status = STATUS_META[r.status] ?? DEFAULT_STATUS_META;
+										const StatusIcon = status.icon;
+										const firing = r.status === "firing";
+										return (
+											<TableRow
+												key={r.id}
+												className={cn(
+													// Dim paused rules so the active set reads first.
+													!r.enabled && "opacity-60",
+												)}
+											>
+												<TableCell>
+													<div className="flex min-w-0 items-center gap-2.5">
+														<span
+															className={cn(
+																"grid size-6 shrink-0 place-items-center rounded-md squircle:rounded-lg corner-squircle",
+																status.variant === "rose" &&
+																	"bg-rose-100 text-rose-500 dark:bg-rose-950",
+																status.variant === "emerald" &&
+																	"bg-emerald-100 text-emerald-500 dark:bg-emerald-950",
+																status.variant === "secondary" &&
+																	"bg-muted text-muted-foreground",
+															)}
+														>
+															{firing ? (
+																<span className="relative grid place-items-center">
+																	<span className="absolute size-3.5 animate-ping rounded-full bg-rose-500/40" />
+																	<StatusIcon className="relative size-3.5" />
+																</span>
+															) : (
+																<StatusIcon className="size-3.5" />
+															)}
+														</span>
+														<span className="truncate font-medium">
+															{r.name}
+														</span>
+														{firing && (
+															<span
+																title="Firing"
+																className="flex shrink-0 items-center font-sans text-sm text-red-600 dark:text-red-400"
+															>
+																<IconAlertTriangle className="size-3.5 fill-current/20" />
+															</span>
+														)}
+													</div>
+												</TableCell>
+												<TableCell>
+													<Badge
+														variant="secondary"
+														className="min-w-0 max-w-full"
+													>
+														{MetricIcon && <MetricIcon />}
+														<span className="min-w-0 truncate">
+															{metric?.label ?? r.metric}
+														</span>
+													</Badge>
+												</TableCell>
+												<TableCell className="tabular-nums">
+													{COMPARISON_SYMBOLS[r.comparison as Comparison] ??
+														r.comparison}{" "}
+													{r.threshold ?? "—"}
+												</TableCell>
+												<TableCell className="text-right tabular-nums text-muted-foreground">
+													{formatDuration(r.windowSeconds * 1000)}
+												</TableCell>
+												<TableCell align="right">
+													<Badge variant={status.variant}>{r.status}</Badge>
+												</TableCell>
+												<TableCell align="center">
+													<div className="flex items-center justify-center gap-2">
+														<Switch
+															size="sm"
+															checked={r.enabled}
+															// Lock only the rule being toggled.
+															disabled={
+																update.isPending &&
+																update.variables?.ruleId === r.id
+															}
+															onCheckedChange={(checked) =>
+																update.mutate({ ruleId: r.id, enabled: checked })
+															}
+														/>
+														<Button
+															size="icon-sm"
+															variant="ghost-destructive"
+															className="size-7"
+															onClick={() =>
+																setDeleteTarget({ id: r.id, name: r.name })
+															}
+														>
+															<IconTrashFilled />
+														</Button>
+													</div>
+												</TableCell>
+											</TableRow>
+										);
+									})}
+								</TableBody>
+							</Table>
+
+							<PaginationFooter
+								page={safePage}
+								pageSize={pageSize}
+								total={sorted.length}
+								shown={paged.length}
+								noun={["alert", "alerts"]}
+								onPageChange={setPage}
+								onPageSizeChange={setPageSize}
+							/>
+						</div>
 					)}
-				>
-					{rows.map((r) => {
-						const metric = METRIC_BY_VALUE[r.metric as Metric];
-						const MetricIcon = metric?.icon;
-						const status = STATUS_META[r.status] ?? DEFAULT_STATUS_META;
-						const StatusIcon = status.icon;
-						const firing = r.status === "firing";
-						return (
-							<Card
-								key={r.id}
-								className={cn(
-									"transition-opacity",
-									// Rose ring + soft glow when a rule is actively firing.
-									firing &&
-										"shadow-[inset_0_0_0_1px_rgba(244,63,94,0.3),0_2px_10px_-4px_rgba(244,63,94,0.4)]",
-									// Dim paused rules so the active set reads first.
-									!r.enabled && "opacity-60",
-								)}
-							>
-								<CardHeader>
-									<div className="flex items-center gap-2.5">
-										<span
-											className={cn(
-												"grid size-7 shrink-0 place-items-center rounded-md squircle:rounded-xl corner-squircle p-0.5",
-												status.variant === "rose" &&
-													"bg-rose-100 text-rose-500 dark:bg-rose-950",
-												status.variant === "emerald" &&
-													"bg-emerald-100 text-emerald-500 dark:bg-emerald-950",
-												status.variant === "secondary" &&
-													"bg-muted text-muted-foreground",
-											)}
-										>
-											{firing ? (
-												<span className="relative grid place-items-center">
-													<span className="absolute size-4 animate-ping rounded-full bg-rose-500/40" />
-													<StatusIcon className="relative size-4" />
-												</span>
-											) : (
-												<StatusIcon className="size-4" />
-											)}
-										</span>
-										<CardTitle className="truncate">{r.name}</CardTitle>
-										<Badge
-											variant={status.variant}
-											className="ml-auto shrink-0"
-										>
-											{r.status}
-										</Badge>
-									</div>
-									<CardDescription className="flex flex-wrap items-center gap-1.5">
-										<Badge variant="secondary">
-											{MetricIcon && <MetricIcon />}
-											{metric?.label ?? r.metric}
-										</Badge>
-										<span className="tabular-nums text-foreground">
-											{COMPARISON_SYMBOLS[r.comparison as Comparison] ??
-												r.comparison}{" "}
-											{r.threshold ?? "—"}
-										</span>
-										<span>·</span>
-										<span className="tabular-nums">
-											{formatDuration(r.windowSeconds * 1000)}
-										</span>
-									</CardDescription>
-								</CardHeader>
-								<CardContent className="flex items-center justify-between">
-									<label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-										<Switch
-											checked={r.enabled}
-											size="sm"
-											// Lock only the rule being toggled.
-											disabled={
-												update.isPending && update.variables?.ruleId === r.id
-											}
-											onCheckedChange={(checked) =>
-												update.mutate({ ruleId: r.id, enabled: checked })
-											}
-										/>
-										{r.enabled ? "Enabled" : "Paused"}
-									</label>
-									<Button
-										size="icon-sm"
-										variant="ghost-destructive"
-										className="size-7"
-										onClick={() => setDeleteTarget({ id: r.id, name: r.name })}
-									>
-										<IconTrashFilled />
-									</Button>
-								</CardContent>
-							</Card>
-						);
-					})}
 				</div>
 			)}
 			<AlertDialog

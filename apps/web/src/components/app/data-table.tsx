@@ -269,12 +269,18 @@ const FilterGroupContext = createContext<{
 
 /** A horizontal bar of filter controls, sitting above a table. Wraps on narrow
  * widths. Also coordinates its FilterSelects' open state (see FilterGroupContext). */
-export function Toolbar({ children }: { children: React.ReactNode }) {
+export function Toolbar({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   const [openId, setOpenId] = useState<string | null>(null);
   const group = useMemo(() => ({ openId, setOpenId }), [openId]);
   return (
     <FilterGroupContext.Provider value={group}>
-      <div className="flex flex-wrap items-center gap-2 pl-7 pr-9">
+      <div className={cn("flex flex-wrap items-center gap-2 pl-7 pr-9", className)}>
         {children}
       </div>
     </FilterGroupContext.Provider>

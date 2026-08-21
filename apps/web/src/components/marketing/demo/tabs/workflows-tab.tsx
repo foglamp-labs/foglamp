@@ -1,90 +1,205 @@
 "use client";
 
-import { Badge } from "@foglamp/ui/components/badge";
 import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@foglamp/ui/components/card";
-import { cn } from "@foglamp/ui/lib/utils";
+	Table,
+	TableBody,
+	TableCell,
+	TableHeader,
+	TableRow,
+} from "@foglamp/ui/components/table";
+import { TooltipProvider } from "@foglamp/ui/components/tooltip";
 import { IconAlertTriangle, IconSitemap } from "@tabler/icons-react";
-
-import { HEAT_SHADES, percentileBucket } from "@/components/app/heat-cell";
-import { navItem } from "@/components/app/nav";
-import { PageHeader } from "@/components/app/page-parts";
-import { Stat } from "@/components/app/stat";
+import { useState } from "react";
 
 import {
-	DemoRangePill,
-	DemoSearch,
-	DemoToggle,
-	DemoToolbar,
-} from "../demo-chrome";
-import { useDemo } from "../demo-context";
-import { WORKFLOWS, quintiles } from "../mock-data";
+	ClearFiltersButton,
+	PaginationFooter,
+	SearchInput,
+	SortableHead,
+	ToggleChip,
+	Toolbar,
+	sortRows,
+	useTableSort,
+} from "@/components/app/data-table";
+import { HeatCell } from "@/components/app/heat-cell";
+import { formatCost, formatCount, formatTokens } from "@/lib/format";
 
-// Cost quintiles across the listed workflows drive the per-card heat shade.
+import { DemoListHeader, DemoRange } from "../demo-chrome";
+import { useDemo } from "../demo-context";
+import { WORKFLOWS, type WorkflowRow, quintiles } from "../mock-data";
+
 const COST_QUANTILES = quintiles(WORKFLOWS.map((w) => w.costValue));
+
+type WorkflowSortKey =
+	| "name"
+	| "runs"
+	| "traces"
+	| "tokens"
+	| "cost"
+	| "lastRun";
 
 export function WorkflowsTab() {
 	const { openDetail } = useDemo();
 
+	const [search, setSearch] = useState("");
+	const [errorsOnly, setErrorsOnly] = useState(false);
+	const [pageSize, setPageSize] = useState(25);
+	const { sort, toggle } = useTableSort<WorkflowSortKey>();
+
+	const q = search.trim().toLowerCase();
+	const filtered = WORKFLOWS.filter(
+		(w) =>
+			(!q || w.name.toLowerCase().includes(q)) &&
+			(!errorsOnly || w.errors > 0),
+	);
+	const rows = sortRows<WorkflowRow, WorkflowSortKey>(filtered, sort, {
+		name: (w) => w.name,
+		runs: (w) => w.runs,
+		traces: (w) => w.traces,
+		tokens: (w) => w.tokens,
+		cost: (w) => w.costValue,
+		lastRun: (w) => -WORKFLOWS.indexOf(w),
+	});
+
 	return (
 		<>
-			<PageHeader
-				title="Workflows"
-				description="Grouped runs by workflow."
-				icon={navItem("/workflows")?.icon}
-				iconClassName={navItem("/workflows")?.iconClassName}
-			/>
+			<DemoListHeader href="/workflows" title="Workflows" />
+			<div className="flex flex-col gap-4 mt-1">
+				<Toolbar>
+					<SearchInput
+						value={search}
+						onChange={setSearch}
+						placeholder="Search workflows…"
+					/>
+					<ToggleChip
+						active={errorsOnly}
+						onClick={() => setErrorsOnly((v) => !v)}
+					>
+						<IconAlertTriangle className="size-3.5" />
+						Errors only
+					</ToggleChip>
+					<ClearFiltersButton
+						show={!!(search || errorsOnly)}
+						onClick={() => {
+							setSearch("");
+							setErrorsOnly(false);
+						}}
+					/>
+					<div className="ml-auto flex items-center gap-3">
+						<DemoRange />
+					</div>
+				</Toolbar>
 
-			<DemoToolbar>
-				<DemoSearch placeholder="Search workflows…" />
-				<DemoToggle icon={IconAlertTriangle} label="Errors only" />
-				<div className="ml-auto">
-					<DemoRangePill />
+				<div className="flex flex-col -mt-2">
+					<TooltipProvider delay={150}>
+						<Table className="table-fixed min-w-5xl">
+							<TableHeader>
+								<TableRow>
+									<SortableHead sortKey="name" sort={sort} onSort={toggle}>
+										Workflow
+									</SortableHead>
+									<SortableHead
+										sortKey="runs"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-32"
+									>
+										Runs
+									</SortableHead>
+									<SortableHead
+										sortKey="traces"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-36"
+									>
+										Traces
+									</SortableHead>
+									<SortableHead
+										sortKey="tokens"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-36"
+									>
+										Tokens
+									</SortableHead>
+									<SortableHead
+										sortKey="cost"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-40"
+									>
+										Cost
+									</SortableHead>
+									<SortableHead
+										sortKey="lastRun"
+										sort={sort}
+										onSort={toggle}
+										align="right"
+										className="w-40"
+									>
+										Last run
+									</SortableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{rows.map((w) => (
+									<TableRow
+										key={w.name}
+										interactive
+										onClick={() => openDetail({ type: "workflow", id: w.name })}
+									>
+										<TableCell className="h-12">
+											<div className="flex min-w-0 items-center gap-2">
+												<IconSitemap className="size-4 shrink-0 text-emerald-500" />
+												<span className="truncate font-medium">{w.name}</span>
+												{w.errors > 0 && (
+													<span
+														title={`${w.errors} ${w.errors === 1 ? "error" : "errors"}`}
+														className="flex shrink-0 items-center ml-1 gap-1 font-sans text-sm text-red-600 dark:text-red-400"
+													>
+														<IconAlertTriangle className="size-3.5 fill-current/20" />
+														{formatCount(w.errors)}
+													</span>
+												)}
+											</div>
+										</TableCell>
+										<TableCell align="right" className="tabular-nums">
+											{formatCount(w.runs)}
+										</TableCell>
+										<TableCell align="right" className="tabular-nums">
+											{formatCount(w.traces)}
+										</TableCell>
+										<TableCell align="right" className="tabular-nums">
+											{formatTokens(w.tokens)}
+										</TableCell>
+										<HeatCell value={w.costValue} thresholds={COST_QUANTILES} bold>
+											{formatCost(w.costValue, 4)}
+										</HeatCell>
+										<TableCell align="right" className="text-muted-foreground">
+											{w.lastRun}
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</TooltipProvider>
+
+					{rows.length > 0 && (
+						<PaginationFooter
+							page={0}
+							pageSize={pageSize}
+							total={rows.length}
+							shown={rows.length}
+							noun={["workflow", "workflows"]}
+							onPageChange={() => {}}
+							onPageSizeChange={setPageSize}
+						/>
+					)}
 				</div>
-			</DemoToolbar>
-
-			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-				{WORKFLOWS.map((w) => {
-					const bucket = percentileBucket(w.costValue, COST_QUANTILES);
-					return (
-						<Card
-							key={w.name}
-							size="sm"
-							className="cursor-pointer transition-colors hover:bg-accent/80 dark:hover:bg-accent/40"
-							onClick={() => openDetail({ type: "workflow", id: w.name })}
-						>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									<IconSitemap className="size-4 shrink-0 text-emerald-500" />
-									<span className="truncate">{w.name}</span>
-									{w.errors > 0 && (
-										<Badge variant="rose" className="ml-auto shrink-0">
-											<IconAlertTriangle className="size-3" />
-											{w.errors}
-										</Badge>
-									)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="grid grid-cols-2 gap-y-3 text-sm">
-								<Stat label="Runs" value={w.runs} />
-								<Stat label="Last run" value={w.lastRun} />
-								<Stat label="Tokens" value={w.tokens} />
-								<Stat
-									label="Cost"
-									value={w.cost}
-									emphasis
-									valueClassName={
-										(bucket != null && HEAT_SHADES[bucket]) || undefined
-									}
-								/>
-							</CardContent>
-						</Card>
-					);
-				})}
 			</div>
 		</>
 	);

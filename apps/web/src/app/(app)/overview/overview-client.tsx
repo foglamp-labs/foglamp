@@ -764,13 +764,13 @@ export function OverviewClient() {
         showSkeleton ? (
           <StatCardsSkeleton
             count={4}
-            className={cn(entrance && "page-fade-in", "px-8")}
+            className={cn(entrance && "page-fade-in", "px-8 mt-2")}
           />
         ) : null
       ) : (
         <section
           className={cn(
-            "grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8",
+            "grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8 mt-2",
             entrance && !skeletonShown && "page-fade-in"
           )}
         >
