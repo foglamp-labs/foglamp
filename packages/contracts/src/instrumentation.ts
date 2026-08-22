@@ -23,7 +23,7 @@
 
 import { z } from "zod";
 
-import { ScanData } from "./scan";
+import { type GraphNode, ScanData } from "./scan";
 
 /** Schema version for the plan payloads, independent of ScanData's version. */
 export const PLAN_VERSION = 1;
@@ -536,6 +536,63 @@ export function validateAppliedReport(
   const res = AppliedReport.safeParse(input);
   if (res.success) return { ok: true, data: res.data };
   return { ok: false, errors: flatten(res.error.issues) };
+}
+
+// ---------------------------------------------------------------------------
+// Graph audit — degenerate-map detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Structural sanity checks on the architecture map, beyond what the schema can
+ * express. A graph that is just the decisions list re-drawn — all agent nodes,
+ * barely any wiring, no models or stores — defeats the review page: the user
+ * can't judge a plan against a picture that isn't their system. These lines
+ * join the 422 `details` on upload, so the agent self-corrects and retries.
+ *
+ * Thresholds are deliberately loose: a tiny repo with two agents and a route
+ * passes untouched. Only maps that are BOTH sizable and degenerate fail.
+ */
+export function auditPlanGraph(plan: DetectedPlan): string[] {
+  const { nodes, edges } = plan.scan.graph;
+  const errors: string[] = [];
+  const ofKind = (kind: GraphNode["kind"]) =>
+    nodes.filter((n) => n.kind === kind);
+
+  if (plan.calls.length > 0 && ofKind("model").length === 0) {
+    errors.push(
+      "scan.graph: no model nodes — add one model node per distinct model the calls use, wired from the agents that call it",
+    );
+  }
+
+  const agents = ofKind("agent");
+  if (nodes.length >= 8 && agents.length / nodes.length > 0.8) {
+    errors.push(
+      `scan.graph: ${agents.length} of ${nodes.length} nodes are agents — this is the decisions list re-drawn, not the architecture; add the models, services, stores and third-party APIs the flows touch`,
+    );
+  }
+
+  if (nodes.length >= 6 && edges.length * 2 < nodes.length) {
+    errors.push(
+      `scan.graph: only ${edges.length} edges for ${nodes.length} nodes — most of the map floats unconnected; wire each flow end to end, entry through model`,
+    );
+  }
+
+  if (nodes.length >= 6) {
+    const connected = new Set(edges.flatMap((e) => [e.from, e.to]));
+    const stranded = agents.filter((n) => !connected.has(n.id));
+    if (agents.length >= 3 && stranded.length * 2 > agents.length) {
+      errors.push(
+        `scan.graph: ${stranded.length} of ${agents.length} agent nodes have no edges at all — connect each agent FROM what triggers it and TO what it uses`,
+      );
+    }
+    if (ofKind("entry").length === 0 && ofKind("cron").length === 0) {
+      errors.push(
+        "scan.graph: no entry or cron nodes — add the real routes, pages, webhooks or scheduled jobs that trigger the AI work",
+      );
+    }
+  }
+
+  return errors;
 }
 
 // ---------------------------------------------------------------------------

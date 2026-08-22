@@ -135,6 +135,18 @@ Workflows are groups, never nodes:
   member nodes, set to that workflow decision's EXACT name ("Nightly digest" —
   never the literal word "workflow"). The review map draws matching groups as
   labeled workflow boxes and spotlights them from the decision list.
+
+Before you write the plan file, AUDIT your map against this checklist. The
+server runs the same checks and rejects a failing upload with 422:
+- [ ] At least one "model" node, one per distinct model the calls use.
+- [ ] Not just agents: the services, stores and third-party APIs the flows
+      touch are on the map. A map that is >80% agent nodes is rejected.
+- [ ] Entry points are concrete routes / pages / webhooks / crons — at least
+      one "entry" or "cron" node, and never a single generic hub.
+- [ ] Every agent node has edges: FROM its trigger, TO what it uses. A map
+      with fewer edges than half its nodes is rejected.
+- [ ] Trace one real request end to end (entry -> agent -> model/tool -> store)
+      and check the map shows that path. If it doesn't, redo the map.
 ${SCAN_SHAPE}
 
 ${SCAN_RULES}
