@@ -82,6 +82,8 @@ interface Entry {
   key: string;
   name: string;
   detail?: string;
+  /** Tint for the detail line, when it should echo the section's color. */
+  detailClassName?: string;
   sourceRef?: string;
   rationale: string;
   confidence: Confidence;
@@ -249,7 +251,12 @@ function Row({
       ) : (
         <>
           {entry.detail ? (
-            <p className="text-[11px] line-clamp-2 text-muted-foreground">
+            <p
+              className={cn(
+                "text-[11px] line-clamp-2 text-muted-foreground",
+                entry.detailClassName
+              )}
+            >
               {entry.detail}
             </p>
           ) : null}
@@ -383,6 +390,9 @@ export const DecisionList = memo(function DecisionList({
               // One-off is the unremarkable case — only a real agent loop
               // earns a label.
               detail: oneOff ? undefined : "Agent loop",
+              // Same orange as the section's ghost icon — the label IS the
+              // map vocabulary.
+              detailClassName: "text-orange-500",
               sourceRef: a.sourceRef,
               rationale: a.rationale,
               confidence: a.confidence,
