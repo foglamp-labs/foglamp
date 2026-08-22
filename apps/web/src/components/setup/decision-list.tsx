@@ -82,8 +82,8 @@ interface Entry {
   key: string;
   name: string;
   detail?: string;
-  /** Tint for the detail line, when it should echo the section's color. */
-  detailClassName?: string;
+  /** Small tinted label sitting beside the name (e.g. "Agent loop"). */
+  tag?: { text: string; className?: string };
   sourceRef?: string;
   rationale: string;
   confidence: Confidence;
@@ -210,6 +210,16 @@ function Row({
       <div className="flex items-center justify-between gap-3">
         <span className="flex min-w-0 items-baseline gap-1.5">
           <span className="truncate text-[13px]">{entry.name}</span>
+          {entry.tag ? (
+            <span
+              className={cn(
+                "shrink-0 text-[10px] font-medium",
+                entry.tag.className
+              )}
+            >
+              {entry.tag.text}
+            </span>
+          ) : null}
           {entry.edited ? (
             <span
               className="shrink-0 text-[9px] font-medium text-sky-600 dark:text-sky-400"
@@ -251,12 +261,7 @@ function Row({
       ) : (
         <>
           {entry.detail ? (
-            <p
-              className={cn(
-                "text-[11px] line-clamp-2 text-muted-foreground",
-                entry.detailClassName
-              )}
-            >
+            <p className="text-[11px] line-clamp-2 text-muted-foreground">
               {entry.detail}
             </p>
           ) : null}
@@ -389,10 +394,11 @@ export const DecisionList = memo(function DecisionList({
               focus: { type: "agent" as const, name: a.name },
               // One-off is the unremarkable case — only a real agent loop
               // earns a label.
-              detail: oneOff ? undefined : "Agent loop",
               // Same orange as the section's ghost icon — the label IS the
               // map vocabulary.
-              detailClassName: "text-orange-500 mt-0.5",
+              tag: oneOff
+                ? undefined
+                : { text: "Agent loop", className: "text-orange-500" },
               sourceRef: a.sourceRef,
               rationale: a.rationale,
               confidence: a.confidence,
