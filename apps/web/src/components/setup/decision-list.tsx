@@ -306,10 +306,10 @@ function Section({
 
   return (
     <section className="mt-5 px-1 first:mt-1">
-      <h2 className="mb-3 ml-px flex items-center gap-2 text-[13px] text-muted-foreground">
+      <h2 className="mb-3 ml-px flex items-center gap-2 text-[13px] text-muted-foreground w-full">
         <Icon className={cn("size-3.5 mb-px", iconClassName)} />
-        <span className="leading-none font-medium text-foreground">
-          {label} <span className="opacity-50">{entries.length}</span>
+        <span className="leading-none font-medium text-foreground w-full">
+          {label} <span className="opacity-50 ml-auto">{entries.length}</span>
         </span>
       </h2>
       <ul className="flex list-none flex-col gap-0.5">

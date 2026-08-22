@@ -5,7 +5,14 @@ import type {
   PlanEdits,
   PlanStatus,
 } from "@foglamp/contracts/instrumentation";
-import { startTransition, useCallback, useMemo, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { FlowMap, type MapZoomTarget } from "@/components/scan/flow-map";
 
@@ -67,13 +74,26 @@ export function SetupBoard({
   approving: boolean;
 }) {
   const [focus, setFocusState] = useState<SetupFocus>(null);
-  // Spotlighting re-renders the whole map, and as a blocking update every
-  // mouseenter janked the cursor. As a transition the row's own hover feedback
-  // stays instant, and React can abandon a stale spotlight render when the
-  // pointer sweeps across several rows.
+  // Spotlighting re-renders the whole map, so hover commits are debounced:
+  // scrolling (or sweeping the pointer down) the list fires mouseenter on
+  // every row it passes, and rendering the map once per row is what made the
+  // list feel laggy. Only the row the cursor actually RESTS on gets a render
+  // — consecutive calls coalesce to the last one. The commit itself is still
+  // a transition, so React can abandon it if a newer focus lands mid-render.
+  const focusTimer = useRef<number | null>(null);
   const setFocus = useCallback((focus: SetupFocus) => {
-    startTransition(() => setFocusState(focus));
+    if (focusTimer.current !== null) window.clearTimeout(focusTimer.current);
+    focusTimer.current = window.setTimeout(() => {
+      focusTimer.current = null;
+      startTransition(() => setFocusState(focus));
+    }, 90);
   }, []);
+  useEffect(
+    () => () => {
+      if (focusTimer.current !== null) window.clearTimeout(focusTimer.current);
+    },
+    []
+  );
   // Clicking a row flies the map to its subject. A fresh object per click on
   // purpose: re-clicking the same row after panning away re-centers it.
   const [zoom, setZoom] = useState<MapZoomTarget | null>(null);
