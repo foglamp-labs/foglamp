@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   applyPlanEdits,
+  auditPlanGraph,
   canTransition,
   isPending,
   isTerminalStatus,
@@ -256,6 +257,92 @@ describe("summarizePlan", () => {
       sessions: 0,
       calls: 1,
     });
+  });
+});
+
+describe("auditPlanGraph", () => {
+  // Build a plan around an arbitrary graph; decisions/calls come from the
+  // shared fixture (1 call), which is what makes the model-node check apply.
+  const withGraph = (
+    nodes: { id: string; label: string; kind: string }[],
+    edges: { from: string; to: string }[],
+  ) => {
+    const res = validateDetectedPlan(plan({ scan: { ...scan, graph: { nodes, edges } } }));
+    if (!res.ok) throw new Error(res.errors.join("; "));
+    return res.data;
+  };
+  const agents = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `a${i}`,
+      label: `Agent ${i}`,
+      kind: "agent",
+    }));
+
+  test("passes a small honest map", () => {
+    const p = withGraph(
+      [
+        { id: "e", label: "POST /api/chat", kind: "entry" },
+        { id: "a0", label: "Support agent", kind: "agent" },
+        { id: "m", label: "GPT-4o", kind: "model" },
+      ],
+      [
+        { from: "e", to: "a0" },
+        { from: "a0", to: "m" },
+      ],
+    );
+    expect(auditPlanGraph(p)).toEqual([]);
+  });
+
+  test("stays lenient below the size thresholds", () => {
+    // Tiny map: no entry node and no edges, but it does name the model.
+    const p = withGraph(
+      [
+        { id: "a0", label: "Classifier", kind: "agent" },
+        { id: "m", label: "GPT-4o-mini", kind: "model" },
+      ],
+      [],
+    );
+    expect(auditPlanGraph(p)).toEqual([]);
+  });
+
+  test("rejects a map with calls but no model nodes", () => {
+    const p = withGraph(agents(1), []);
+    expect(auditPlanGraph(p).join()).toContain("no model nodes");
+  });
+
+  test("rejects the decisions-list-re-drawn shape", () => {
+    // 9 agents + 1 model: 90% agents, sparse, no entries, stranded — the
+    // exact degenerate map that motivated the audit fires every check.
+    const p = withGraph(
+      [...agents(9), { id: "m", label: "GPT-4o", kind: "model" }],
+      [],
+    );
+    const errors = auditPlanGraph(p).join();
+    expect(errors).toContain("nodes are agents");
+    expect(errors).toContain("floats unconnected");
+    expect(errors).toContain("no edges at all");
+    expect(errors).toContain("no entry or cron nodes");
+  });
+
+  test("passes a well-wired map of the same size", () => {
+    // Same 10 subjects drawn honestly: entry, chained agents, shared model.
+    const nodes = [
+      { id: "e", label: "POST /api/run", kind: "entry" },
+      ...agents(4),
+      { id: "s", label: "Billing service", kind: "service" },
+      { id: "db", label: "Postgres", kind: "store" },
+      { id: "m", label: "GPT-4o", kind: "model" },
+    ];
+    const edges = [
+      { from: "e", to: "a0" },
+      { from: "a0", to: "a1" },
+      { from: "a1", to: "a2" },
+      { from: "a2", to: "a3" },
+      { from: "a3", to: "m" },
+      { from: "a0", to: "s" },
+      { from: "s", to: "db" },
+    ];
+    expect(auditPlanGraph(withGraph(nodes, edges))).toEqual([]);
   });
 });
 

@@ -2,6 +2,7 @@ import { captureActivationEvent } from "@foglamp/analytics";
 import { listTraces } from "@foglamp/clickhouse";
 import {
   applyPlanEdits,
+  auditPlanGraph,
   canTransition,
   type Decisions,
   type FailureStage,
@@ -78,6 +79,11 @@ export async function createPlan(
 ): Promise<PlanCreateOutcome> {
   const parsed = validateDetectedPlan(input.detected);
   if (!parsed.ok) return { ok: false, errors: parsed.errors };
+
+  // Schema-valid but degenerate maps (all agent nodes, no wiring) are bounced
+  // too — the 422 details tell the agent exactly what the picture is missing.
+  const audit = auditPlanGraph(parsed.data);
+  if (audit.length > 0) return { ok: false, errors: audit };
 
   const expiresAt = new Date(Date.now() + PLAN_TTL_HOURS * 3_600_000);
   const rows = await db
