@@ -129,7 +129,7 @@ function RowEditor({
 }) {
   return (
     <div
-      className="mt-1.5 flex flex-col gap-2 rounded-lg bg-muted/60 p-2.5"
+      className="mt-1.5 flex flex-col gap-2"
       // Clicks inside the editor must not fly the map or toggle the row.
       onClick={(e) => e.stopPropagation()}
     >
@@ -213,7 +213,7 @@ function Row({
           {entry.tag ? (
             <span
               className={cn(
-                "shrink-0 text-[10px] font-medium",
+                "shrink-0 text-[11px] font-medium",
                 entry.tag.className
               )}
             >
@@ -222,10 +222,10 @@ function Row({
           ) : null}
           {entry.edited ? (
             <span
-              className="shrink-0 text-[9px] font-medium text-sky-600 dark:text-sky-400"
+              className="shrink-0 text-[11px] font-medium text-sky-600 dark:text-sky-400"
               title="Changed from what was detected"
             >
-              edited
+              Edited
             </span>
           ) : null}
         </span>
@@ -306,10 +306,11 @@ function Section({
 
   return (
     <section className="mt-5 px-1 first:mt-1">
-      <h2 className="mb-3 ml-px flex items-center gap-2 text-[13px] text-muted-foreground w-full">
+      <h2 className="mb-3 ml-px flex items-center gap-2 text-[13px] text-muted-foreground">
         <Icon className={cn("size-3.5 mb-px", iconClassName)} />
-        <span className="leading-none font-medium text-foreground w-full">
-          {label} <span className="opacity-50 ml-auto">{entries.length}</span>
+        <span className="leading-none font-medium text-foreground">
+          {label}{" "}
+          <span className="opacity-50 ml-1 tabular-nums">{entries.length}</span>
         </span>
       </h2>
       <ul className="flex list-none flex-col gap-0.5">
