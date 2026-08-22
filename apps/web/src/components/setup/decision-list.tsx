@@ -12,6 +12,7 @@ import {
   IconGhostFilled,
   IconMessage2Filled,
   IconPencil,
+  IconPencilFilled,
   type IconProps,
   IconSitemapFilled,
   IconUserFilled,
@@ -130,7 +131,9 @@ function RowEditor({
       // Clicks inside the editor must not fly the map or toggle the row.
       onClick={(e) => e.stopPropagation()}
     >
-      {entry.fields?.map((f) => <FieldInput key={f.key} field={f} />)}
+      {entry.fields?.map((f) => (
+        <FieldInput key={f.key} field={f} />
+      ))}
       {entry.flag ? (
         <label className="flex cursor-pointer items-center gap-2 py-0.5 text-[11px]">
           <Checkbox
@@ -202,7 +205,7 @@ function Row({
       // Clicking flies the map to the row's subject (the hover only dims).
       onClick={clickable ? () => onSelect(entry.focus!) : undefined}
     >
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <span className="flex min-w-0 items-baseline gap-1.5">
           <span className="truncate text-[13px]">{entry.name}</span>
           {entry.edited ? (
@@ -225,14 +228,14 @@ function Row({
                 setEditing((v) => !v);
               }}
               className={cn(
-                "cursor-pointer text-muted-foreground/40 hover:text-foreground",
+                "cursor-pointer text-muted-foreground hover:text-foreground",
                 // Reveal on row hover; stay visible while the editor is open.
                 !editing &&
                   "opacity-0 transition-opacity group-hover/row:opacity-100",
                 editing && "text-foreground"
               )}
             >
-              <IconPencil className="size-3.5" />
+              <IconPencilFilled className="size-3.5" />
             </button>
           ) : null}
         </span>
@@ -377,7 +380,9 @@ export const DecisionList = memo(function DecisionList({
               // The map draws the DETECTED graph — renaming the decision must
               // not break the row's spotlight, so focus keeps the found name.
               focus: { type: "agent" as const, name: a.name },
-              detail: oneOff ? "One-off trace" : undefined,
+              // One-off is the unremarkable case — only a real agent loop
+              // earns a label.
+              detail: oneOff ? undefined : "Agent loop",
               sourceRef: a.sourceRef,
               rationale: a.rationale,
               confidence: a.confidence,
@@ -392,7 +397,12 @@ export const DecisionList = memo(function DecisionList({
                   detected: a.name,
                   maxLength: 48,
                   commit: (name: string | undefined) =>
-                    onEdit({ kind: "agent", id: a.id, name, oneOff: o?.oneOff }),
+                    onEdit({
+                      kind: "agent",
+                      id: a.id,
+                      name,
+                      oneOff: o?.oneOff,
+                    }),
                 },
               ],
               flag: {
@@ -400,7 +410,12 @@ export const DecisionList = memo(function DecisionList({
                 value: oneOff,
                 detected: a.oneOff ?? false,
                 commit: (flag: boolean | undefined) =>
-                  onEdit({ kind: "agent", id: a.id, name: o?.name, oneOff: flag }),
+                  onEdit({
+                    kind: "agent",
+                    id: a.id,
+                    name: o?.name,
+                    oneOff: flag,
+                  }),
               },
             };
           })}
