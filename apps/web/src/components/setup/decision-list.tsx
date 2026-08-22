@@ -392,7 +392,7 @@ export const DecisionList = memo(function DecisionList({
               detail: oneOff ? undefined : "Agent loop",
               // Same orange as the section's ghost icon — the label IS the
               // map vocabulary.
-              detailClassName: "text-orange-500",
+              detailClassName: "text-orange-500 mt-0.5",
               sourceRef: a.sourceRef,
               rationale: a.rationale,
               confidence: a.confidence,
