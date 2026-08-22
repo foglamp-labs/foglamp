@@ -46,6 +46,9 @@ export const instrumentationPlansRouter = router({
           expiresAt: plan.expiresAt,
         }),
         detected: plan.detected,
+        // The decisions that were actually agreed to (detected + user edits).
+        // Post-approval surfaces render these, not the detected originals.
+        approved: plan.approved,
         applied: plan.applied,
         failureStage: plan.failureStage,
         expiresAt: plan.expiresAt,

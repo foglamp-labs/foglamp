@@ -133,8 +133,12 @@ export function SetupClient({ planId }: { planId: string }) {
     <>
       <SetupBoard
         plan={data.detected}
+        approved={data.approved}
+        applied={data.applied}
         status={data.status}
         firstTraceId={data.firstTraceId}
+        spanCount={data.spanCount}
+        secondsToFirstTrace={data.secondsToFirstTrace}
         failureStage={data.failureStage}
         onApprove={(edits) => approve.mutate({ planId, edits })}
         onReject={() => reject.mutate({ planId })}

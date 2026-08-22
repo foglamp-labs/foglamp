@@ -2,7 +2,7 @@
 
 import type {
   Confidence,
-  DetectedPlan,
+  Decisions,
 } from "@foglamp/contracts/instrumentation";
 import { Card, CardContent } from "@foglamp/ui/components/card";
 import { Input } from "@foglamp/ui/components/input";
@@ -356,14 +356,15 @@ function isEdited<T>(override: T | undefined, detected: T): boolean {
 // list that's being hovered. Edit commits DO re-render it (the `edits` prop
 // changes), which is the point.
 export const DecisionList = memo(function DecisionList({
-  plan,
+  decisions,
   edits,
   editable,
   onEdit,
   onFocus,
   onSelect,
 }: {
-  plan: DetectedPlan;
+  /** What to render: detected pre-approval, the approved merge after. */
+  decisions: Decisions;
   edits: EditsState;
   /** Rows accept changes only while the plan is awaiting approval. */
   editable: boolean;
@@ -372,7 +373,7 @@ export const DecisionList = memo(function DecisionList({
   /** Click-to-focus: fly the map to the row's subject. */
   onSelect?: (focus: NonNullable<SetupFocus>) => void;
 }) {
-  const { agents, workflows, sessions, customer } = plan.decisions;
+  const { agents, workflows, sessions, customer } = decisions;
   const customerOn = eff(edits.customer?.recommended, customer.recommended);
   const customerIdSource = eff(edits.customer?.idSource, customer.idSource);
 
