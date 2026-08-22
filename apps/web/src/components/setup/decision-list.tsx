@@ -148,7 +148,9 @@ function RowEditor({
         </label>
       ) : null}
       {entry.fields?.map((f) => (
-        <FieldInput key={f.key} field={f} />
+        // Keyed by the committed value: the inputs are uncontrolled, so a
+        // Reset (or any outside change) must remount them to show it.
+        <FieldInput key={`${f.key}:${f.value}`} field={f} />
       ))}
       <div className="flex items-center justify-end gap-3">
         {entry.edited ? (
@@ -253,7 +255,9 @@ function Row({
           ) : null}
         </span>
       </div>
-      {editing ? (
+      {/* `canEdit` too: if the plan stops being editable while a form is
+          open (approved from another tab, expired), the form must go. */}
+      {editing && canEdit ? (
         <RowEditor
           entry={entry}
           onDone={() => setEditing(false)}
