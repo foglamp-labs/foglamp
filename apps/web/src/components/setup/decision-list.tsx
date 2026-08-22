@@ -1,9 +1,6 @@
 "use client";
 
-import type {
-  Confidence,
-  DetectedPlan,
-} from "@foglamp/contracts/instrumentation";
+import type { Confidence, Decisions } from "@foglamp/contracts/instrumentation";
 import { Card, CardContent } from "@foglamp/ui/components/card";
 import { Input } from "@foglamp/ui/components/input";
 import { Switch } from "@foglamp/ui/components/switch";
@@ -40,16 +37,13 @@ function ConfidenceDot({ level }: { level: Confidence }) {
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center gap-1 text-[10px]",
+        "size-1.5 rounded-full bg-current mt-0.5",
         level === "medium"
           ? "text-amber-600 dark:text-amber-400"
           : "text-muted-foreground"
       )}
       title={`${level} confidence`}
-    >
-      <span className="size-1.5 rounded-full bg-current" />
-      {level}
-    </span>
+    />
   );
 }
 
@@ -211,7 +205,7 @@ function Row({
       onClick={clickable ? () => onSelect(entry.focus!) : undefined}
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="flex min-w-0 items-baseline gap-1.5">
+        <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-[13px]">{entry.name}</span>
           {entry.tag ? (
             <span
@@ -223,6 +217,7 @@ function Row({
               {entry.tag.text}
             </span>
           ) : null}
+          <ConfidenceDot level={entry.confidence} />
           {entry.edited ? (
             <span
               className="shrink-0 text-[11px] font-medium text-sky-600 dark:text-sky-400"
@@ -233,7 +228,6 @@ function Row({
           ) : null}
         </span>
         <span className="flex shrink-0 items-center gap-2">
-          <ConfidenceDot level={entry.confidence} />
           {canEdit ? (
             <button
               type="button"
@@ -356,14 +350,15 @@ function isEdited<T>(override: T | undefined, detected: T): boolean {
 // list that's being hovered. Edit commits DO re-render it (the `edits` prop
 // changes), which is the point.
 export const DecisionList = memo(function DecisionList({
-  plan,
+  decisions,
   edits,
   editable,
   onEdit,
   onFocus,
   onSelect,
 }: {
-  plan: DetectedPlan;
+  /** What to render: detected pre-approval, the approved merge after. */
+  decisions: Decisions;
   edits: EditsState;
   /** Rows accept changes only while the plan is awaiting approval. */
   editable: boolean;
@@ -372,7 +367,7 @@ export const DecisionList = memo(function DecisionList({
   /** Click-to-focus: fly the map to the row's subject. */
   onSelect?: (focus: NonNullable<SetupFocus>) => void;
 }) {
-  const { agents, workflows, sessions, customer } = plan.decisions;
+  const { agents, workflows, sessions, customer } = decisions;
   const customerOn = eff(edits.customer?.recommended, customer.recommended);
   const customerIdSource = eff(edits.customer?.idSource, customer.idSource);
 

@@ -1,6 +1,8 @@
 "use client";
 
 import type {
+  AppliedReport,
+  Decisions,
   DetectedPlan,
   PlanEdits,
   PlanStatus,
@@ -18,6 +20,7 @@ import { FlowMap, type MapZoomTarget } from "@/components/scan/flow-map";
 
 import { DecisionList, type EditPatch } from "./decision-list";
 import { SetupSummary } from "./setup-summary";
+import { VerificationReport } from "./verification-report";
 
 // Hovering a decision row spotlights its subject on the map: a single agent
 // by node label, a single workflow by group label.
@@ -58,20 +61,37 @@ const MAP_PADDING = { left: 452, right: 48 };
 
 export function SetupBoard({
   plan,
+  approved,
+  applied,
   status,
   firstTraceId,
+  spanCount,
+  secondsToFirstTrace,
   failureStage,
   onApprove,
   onReject,
   approving,
+  shareSlug,
+  onShare,
+  sharing,
 }: {
   plan: DetectedPlan;
+  /** The decisions actually agreed to (detected + edits), once approved. */
+  approved?: Decisions | null;
+  /** The agent's after-report, once the plan has been applied. */
+  applied?: AppliedReport | null;
   status: PlanStatus;
   firstTraceId?: string | null;
+  spanCount?: number | null;
+  secondsToFirstTrace?: number | null;
   failureStage?: string | null;
   onApprove: (edits: PlanEdits | undefined) => void;
   onReject: () => void;
   approving: boolean;
+  /** The public /scan slug once this plan's map has been shared. */
+  shareSlug?: string | null;
+  onShare?: () => void;
+  sharing?: boolean;
 }) {
   const [focus, setFocusState] = useState<SetupFocus>(null);
   // Spotlighting re-renders the whole map, so hover commits are debounced:
@@ -156,14 +176,20 @@ export function SetupBoard({
     return { agents, workflows, sessions, customer: edits.customer };
   }, [edits]);
 
-  const { workflows } = plan.decisions;
+  // Post-approval the source of truth flips: the list shows what was agreed
+  // to (detected + edits), not the raw detection.
+  const decisions = approved ?? plan.decisions;
   // Stable identity — FlowMap relayouts when the group-name CONTENT changes.
-  // Detected names on purpose: renaming a workflow decision doesn't rename
-  // the graph's group labels.
-  const workflowNames = useMemo(
-    () => workflows.map((w) => w.name),
-    [workflows]
-  );
+  // Union of detected and approved names: the before-graph carries detected
+  // group labels, the agent's after-graph carries the (possibly renamed)
+  // approved ones, and matching is by name.
+  const workflowNames = useMemo(() => {
+    const names = new Set(plan.decisions.workflows.map((w) => w.name));
+    for (const w of approved?.workflows ?? []) names.add(w.name);
+    return [...names];
+  }, [plan, approved]);
+  // Once the agent reports back, the map shows the instrumented architecture.
+  const graph = applied?.scan.graph ?? plan.scan.graph;
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-neutral-100 text-foreground dark:bg-background">
@@ -180,8 +206,20 @@ export function SetupBoard({
           onReject={onReject}
           approving={approving}
         />
+        {applied ? (
+          <VerificationReport
+            before={plan.scan}
+            report={applied}
+            verified={status === "verified"}
+            spanCount={spanCount}
+            secondsToFirstTrace={secondsToFirstTrace}
+            shareSlug={shareSlug}
+            onShare={onShare}
+            sharing={sharing}
+          />
+        ) : null}
         <DecisionList
-          plan={plan}
+          decisions={decisions}
           edits={edits}
           editable={status === "awaiting_approval"}
           onEdit={applyEdit}
@@ -191,7 +229,7 @@ export function SetupBoard({
       </div>
 
       <FlowMap
-        graph={plan.scan.graph}
+        graph={graph}
         focusKinds={null}
         focusLabels={focus?.type === "agent" ? [focus.name] : null}
         focusGroups={focus?.type === "workflow" ? [focus.name] : null}
