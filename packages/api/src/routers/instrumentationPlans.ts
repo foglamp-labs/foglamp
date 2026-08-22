@@ -10,6 +10,7 @@ import {
   rejectPlan,
   verifyFirstTrace,
 } from "../services/instrumentationPlans";
+import { claimScan, createOrUpdateScan } from "../services/scans";
 
 // The browser half of the onboarding approval loop. The agent half is a set of
 // API-key-authed REST routes in apps/server/src/instrumentation.ts — the two
@@ -94,6 +95,60 @@ export const instrumentationPlansRouter = router({
         });
       }
       return { status: res.row.status };
+    }),
+
+  /**
+   * The explicit, opt-in public share (Stage 3, part 2). Publishes the agent's
+   * after-scan — already a validated, sanitized `ScanData`, the exact contract
+   * the anonymous /scan lead magnet uses, so nothing beyond structured
+   * metadata can leave — as a public scan page. Re-sharing with the editToken
+   * from a previous share updates the same slug instead of minting a new URL.
+   */
+  share: protectedProcedure
+    .input(
+      z.object({
+        planId: z.string().min(1).max(64),
+        editToken: z.string().min(1).max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const plan = await getPlanForUser(
+        ctx.db,
+        ctx.session.user.id,
+        input.planId
+      );
+      if (!plan) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Plan not found" });
+      }
+      if (!plan.applied) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "There's nothing to share until your agent applies the plan",
+        });
+      }
+      const outcome = await createOrUpdateScan(ctx.db, {
+        data: plan.applied.scan,
+        editToken: input.editToken,
+      });
+      if (!outcome.ok) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `This map can't be shared: ${outcome.errors.join("; ")}`,
+        });
+      }
+      // Claim it for the sharer right away: a map published from a signed-in
+      // setup shouldn't self-destruct on the anonymous 90-day TTL. Best-effort
+      // — the share itself already succeeded.
+      await claimScan(ctx.db, {
+        slug: outcome.result.slug,
+        editToken: outcome.result.editToken,
+        userId: ctx.session.user.id,
+      });
+      return {
+        slug: outcome.result.slug,
+        editToken: outcome.result.editToken,
+        updated: outcome.result.updated,
+      };
     }),
 
   reject: protectedProcedure

@@ -28,6 +28,32 @@ import { trpc } from "@/utils/trpc";
 /** How often to re-read the plan while it can still change. */
 const POLL_MS = 2_000;
 
+/**
+ * Where a plan's public-share credentials live in localStorage. Keeping the
+ * editToken client-side (keyed by plan) is what makes "Share" idempotent: a
+ * re-share updates the same /scan slug instead of minting a new URL.
+ */
+const shareStorageKey = (planId: string) => `foglamp.setup.share.${planId}`;
+
+interface StoredShare {
+  slug: string;
+  editToken: string;
+}
+
+function readStoredShare(planId: string): StoredShare | null {
+  try {
+    const raw = localStorage.getItem(shareStorageKey(planId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredShare>;
+    if (typeof parsed.slug !== "string" || typeof parsed.editToken !== "string") {
+      return null;
+    }
+    return { slug: parsed.slug, editToken: parsed.editToken };
+  } catch {
+    return null;
+  }
+}
+
 export function SetupClient({ planId }: { planId: string }) {
   const qc = useQueryClient();
   const queryKey = trpc.instrumentationPlans.get.queryKey({ planId });
@@ -94,6 +120,41 @@ export function SetupClient({ planId }: { planId: string }) {
     })
   );
 
+  // The opt-in public share of the instrumented map. Deliberately not part of
+  // the plan row: the credentials are the same anonymous-scan editToken the
+  // /scan lead magnet uses, held only in this browser.
+  const [share, setShare] = useState<StoredShare | null>(null);
+  useEffect(() => {
+    setShare(readStoredShare(planId));
+  }, [planId]);
+
+  const shareMap = useMutation(
+    trpc.instrumentationPlans.share.mutationOptions({
+      onSuccess: (res) => {
+        captureActivationEvent("instrumentation_map_shared", {
+          updated: res.updated,
+        });
+        const stored = { slug: res.slug, editToken: res.editToken };
+        setShare(stored);
+        try {
+          localStorage.setItem(
+            shareStorageKey(planId),
+            JSON.stringify(stored)
+          );
+        } catch {
+          // Storage disabled — the share still worked, a re-share just mints
+          // a fresh URL instead of updating this one.
+        }
+        const url = `${window.location.origin}/scan/${res.slug}`;
+        void navigator.clipboard
+          .writeText(url)
+          .then(() => toast.success("Public map link copied"))
+          .catch(() => toast.success("Public map published"));
+      },
+      onError: (e) => toast.error(e.message),
+    })
+  );
+
   const reject = useMutation(
     trpc.instrumentationPlans.reject.mutationOptions({
       onSuccess: async () => {
@@ -143,6 +204,11 @@ export function SetupClient({ planId }: { planId: string }) {
         onApprove={(edits) => approve.mutate({ planId, edits })}
         onReject={() => reject.mutate({ planId })}
         approving={approve.isPending || reject.isPending}
+        shareSlug={share?.slug ?? null}
+        onShare={() =>
+          shareMap.mutate({ planId, editToken: share?.editToken })
+        }
+        sharing={shareMap.isPending}
       />
       <Dialog open={approvedOpen} onOpenChange={setApprovedOpen}>
         <DialogContent className="sm:max-w-sm">

@@ -2,6 +2,7 @@
 
 import type { AppliedReport } from "@foglamp/contracts/instrumentation";
 import type { ScanData } from "@foglamp/contracts/scan";
+import { Button } from "@foglamp/ui/components/button";
 import { Card, CardContent } from "@foglamp/ui/components/card";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
@@ -12,6 +13,7 @@ import {
   IconFileDiffFilled,
   IconMinus,
   IconPlusFilled,
+  IconWorldShare,
 } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 
@@ -85,6 +87,9 @@ export function VerificationReport({
   verified,
   spanCount,
   secondsToFirstTrace,
+  shareSlug,
+  onShare,
+  sharing,
 }: {
   /** The scan the plan was approved against — the "before" of the diff. */
   before: ScanData;
@@ -92,6 +97,10 @@ export function VerificationReport({
   verified: boolean;
   spanCount?: number | null;
   secondsToFirstTrace?: number | null;
+  /** Public /scan slug once shared; the footer flips from ask to link. */
+  shareSlug?: string | null;
+  onShare?: () => void;
+  sharing?: boolean;
 }) {
   const diff = useMemo(() => diffScans(report.scan, before), [report, before]);
   const instrumented = report.calls.filter((c) => c.instrumented).length;
@@ -223,6 +232,47 @@ export function VerificationReport({
           </Section>
         ) : null}
       </CardContent>
+
+      {onShare ? (
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t px-5 py-3">
+          {shareSlug ? (
+            <>
+              <a
+                href={`/scan/${encodeURIComponent(shareSlug)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium hover:underline"
+              >
+                <IconWorldShare className="size-3.5 flex-none text-muted-foreground" />
+                <span className="truncate">View your public map</span>
+              </a>
+              <button
+                type="button"
+                onClick={onShare}
+                disabled={sharing}
+                className="shrink-0 cursor-pointer text-[11px] font-medium text-muted-foreground/60 hover:text-foreground disabled:cursor-default"
+              >
+                {sharing ? "Updating…" : "Update"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Share a public, read-only map — structure only, never code.
+              </p>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="shrink-0"
+                onClick={onShare}
+                disabled={sharing}
+              >
+                {sharing ? "Sharing…" : "Share"}
+              </Button>
+            </>
+          )}
+        </div>
+      ) : null}
     </Card>
   );
 }
