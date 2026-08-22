@@ -5,8 +5,8 @@ import type {
   DetectedPlan,
 } from "@foglamp/contracts/instrumentation";
 import { Card, CardContent } from "@foglamp/ui/components/card";
-import { Checkbox } from "@foglamp/ui/components/checkbox";
 import { Input } from "@foglamp/ui/components/input";
+import { Switch } from "@foglamp/ui/components/switch";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconGhostFilled,
@@ -133,12 +133,11 @@ function RowEditor({
       // Clicks inside the editor must not fly the map or toggle the row.
       onClick={(e) => e.stopPropagation()}
     >
-      {entry.fields?.map((f) => (
-        <FieldInput key={f.key} field={f} />
-      ))}
       {entry.flag ? (
-        <label className="flex cursor-pointer items-center gap-2 py-0.5 text-[11px]">
-          <Checkbox
+        <label className="flex cursor-pointer items-center justify-between gap-2 py-0.5 text-[11px]">
+          {entry.flag.label}
+          <Switch
+            size="sm"
             checked={entry.flag.value}
             onCheckedChange={(checked) =>
               entry.flag!.commit(
@@ -146,9 +145,11 @@ function RowEditor({
               )
             }
           />
-          {entry.flag.label}
         </label>
       ) : null}
+      {entry.fields?.map((f) => (
+        <FieldInput key={f.key} field={f} />
+      ))}
       <div className="flex items-center justify-end gap-3">
         {entry.edited ? (
           <button
