@@ -136,7 +136,7 @@ export function SetupClient({ planId }: { planId: string }) {
         status={data.status}
         firstTraceId={data.firstTraceId}
         failureStage={data.failureStage}
-        onApprove={() => approve.mutate({ planId })}
+        onApprove={(edits) => approve.mutate({ planId, edits })}
         onReject={() => reject.mutate({ planId })}
         approving={approve.isPending || reject.isPending}
       />
