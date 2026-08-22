@@ -1,9 +1,11 @@
 import { captureActivationEvent } from "@foglamp/analytics";
 import { listTraces } from "@foglamp/clickhouse";
 import {
+  applyPlanEdits,
   canTransition,
   type Decisions,
   type FailureStage,
+  type PlanEdits,
   type PlanStatus,
   summarizePlan,
   validateAppliedReport,
@@ -199,12 +201,20 @@ async function transition(
   return { ok: false, reason: "illegal" };
 }
 
-/** The user approved the plan. Idempotent. */
+export type ApproveOutcome =
+  | TransitionOutcome
+  | { ok: false; reason: "invalid"; errors: string[] };
+
+/**
+ * The user approved the plan, optionally with edits (renames, source tweaks —
+ * see PlanEdits). Idempotent; edits only land on the transition that wins.
+ */
 export async function approvePlan(
   db: Db,
   userId: string,
   planId: string,
-): Promise<TransitionOutcome> {
+  edits?: PlanEdits,
+): Promise<ApproveOutcome> {
   const plan = await getPlanForUser(db, userId, planId);
   if (!plan) return { ok: false, reason: "not_found" };
   // Past the deadline the waiting agent has already given up, so an approval
@@ -212,10 +222,18 @@ export async function approvePlan(
   // that nothing will ever pick up.
   if (effectiveStatus(plan) === "expired") return { ok: false, reason: "illegal" };
 
-  // Stage 1's review UI is read-only, so the approved decisions are the
-  // detected ones. Snapshotting them now means a Stage 2 edit — or a later
-  // contract change — can never retroactively alter what was agreed to.
-  const approved: Decisions = plan.detected.decisions;
+  // The approved decisions are the detected ones with the user's edits merged
+  // on top, server-side — the browser can rename and re-source, never invent
+  // call sites or rewrite the evidence. Snapshotting the merge now means a
+  // later contract change can never retroactively alter what was agreed to.
+  let approved: Decisions = plan.detected.decisions;
+  let editedCount = 0;
+  if (edits) {
+    const merged = applyPlanEdits(plan.detected.decisions, edits);
+    if (!merged.ok) return { ok: false, reason: "invalid", errors: merged.errors };
+    approved = merged.decisions;
+    editedCount = merged.editedCount;
+  }
 
   const res = await transition(db, {
     planId,
@@ -232,7 +250,14 @@ export async function approvePlan(
     void capture("instrumentation_plan_approved", owner, {
       project_id: plan.projectId,
       seconds_to_approval: secondsBetween(plan.createdAt, new Date()),
+      edited_decisions: editedCount,
     });
+    if (editedCount > 0) {
+      void capture("instrumentation_plan_edited", owner, {
+        project_id: plan.projectId,
+        edited_decisions: editedCount,
+      });
+    }
   }
   return res;
 }

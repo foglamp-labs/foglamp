@@ -1,3 +1,4 @@
+import { PlanEdits } from "@foglamp/contracts/instrumentation";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -59,10 +60,28 @@ export const instrumentationPlansRouter = router({
     }),
 
   approve: protectedProcedure
-    .input(z.object({ planId: z.string().min(1).max(64) }))
+    // `edits` is the Stage 2 review surface: renames and source tweaks, merged
+    // onto the DETECTED decisions server-side (see applyPlanEdits).
+    .input(
+      z.object({
+        planId: z.string().min(1).max(64),
+        edits: PlanEdits.optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      const res = await approvePlan(ctx.db, ctx.session.user.id, input.planId);
+      const res = await approvePlan(
+        ctx.db,
+        ctx.session.user.id,
+        input.planId,
+        input.edits
+      );
       if (!res.ok) {
+        if (res.reason === "invalid") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `These edits can't be applied: ${res.errors.join("; ")}`,
+          });
+        }
         throw new TRPCError({
           code: res.reason === "not_found" ? "NOT_FOUND" : "CONFLICT",
           message:

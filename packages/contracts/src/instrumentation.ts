@@ -312,6 +312,164 @@ export const ApprovedPlan = z
 export type ApprovedPlan = z.infer<typeof ApprovedPlan>;
 
 // ---------------------------------------------------------------------------
+// PlanEdits — what the review UI may change before approving (Stage 2)
+// ---------------------------------------------------------------------------
+//
+// The browser never sends a whole Decisions object: it sends a small patch
+// keyed by decision id, and the server applies it onto the DETECTED decisions.
+// That keeps callIds, sourceRefs, rationales and confidences server-
+// authoritative — an edited approval can rename things and adjust sources,
+// never invent call sites or rewrite the evidence.
+
+const AgentEdit = z
+  .object({
+    id: z.string().min(1).max(64),
+    name: StaticName.optional(),
+    oneOff: z.boolean().optional(),
+  })
+  .strict();
+
+const WorkflowEdit = z
+  .object({
+    id: z.string().min(1).max(64),
+    name: StaticName.optional(),
+    runIdSource: ValueSource.optional(),
+  })
+  .strict();
+
+const SessionEdit = z
+  .object({
+    id: z.string().min(1).max(64),
+    label: z.string().min(1).max(48).optional(),
+    sessionIdSource: ValueSource.optional(),
+  })
+  .strict();
+
+const CustomerEdit = z
+  .object({
+    recommended: z.boolean().optional(),
+    idSource: ValueSource.optional(),
+  })
+  .strict();
+
+export const PlanEdits = z
+  .object({
+    agents: z.array(AgentEdit).max(40).default([]),
+    workflows: z.array(WorkflowEdit).max(20).default([]),
+    sessions: z.array(SessionEdit).max(20).default([]),
+    customer: CustomerEdit.optional(),
+  })
+  .strict();
+export type PlanEdits = z.infer<typeof PlanEdits>;
+
+export type ApplyEditsResult =
+  | {
+      ok: true;
+      decisions: Decisions;
+      /** Decisions that actually changed — 0 means the edits were all no-ops. */
+      editedCount: number;
+    }
+  | { ok: false; errors: string[] };
+
+/** Trimmed value, or undefined when the edit is absent or trims to nothing —
+ *  an all-whitespace input falls back to the detected value instead of
+ *  producing an empty name. */
+function cleaned(value: string | undefined): string | undefined {
+  const t = value?.trim();
+  return t ? t : undefined;
+}
+
+/**
+ * Apply user edits onto the detected decisions, producing what the agent will
+ * receive. Pure. Unknown ids are errors (the UI can only edit what was
+ * detected); the merged result is re-validated through `Decisions`, so caps
+ * and the customer `recommended → idSource` invariant hold no matter what the
+ * browser sent.
+ */
+export function applyPlanEdits(
+  detected: Decisions,
+  edits: PlanEdits,
+): ApplyEditsResult {
+  const errors: string[] = [];
+  let editedCount = 0;
+
+  function mergeList<
+    T extends { id: string },
+    E extends { id: string },
+  >(
+    kind: string,
+    list: T[],
+    patches: E[],
+    apply: (item: T, patch: E) => T,
+  ): T[] {
+    const byId = new Map(list.map((d) => [d.id, d] as const));
+    for (const patch of patches) {
+      const cur = byId.get(patch.id);
+      if (!cur) {
+        errors.push(`decisions.${kind}: unknown id "${patch.id}"`);
+        continue;
+      }
+      const next = apply(cur, patch);
+      if (JSON.stringify(next) !== JSON.stringify(cur)) {
+        editedCount += 1;
+        byId.set(patch.id, next);
+      }
+    }
+    return list.map((d) => byId.get(d.id)!);
+  }
+
+  const agents = mergeList(
+    "agents",
+    detected.agents,
+    edits.agents,
+    (a, e) => ({
+      ...a,
+      name: cleaned(e.name) ?? a.name,
+      oneOff: e.oneOff ?? a.oneOff,
+    }),
+  );
+  const workflows = mergeList(
+    "workflows",
+    detected.workflows,
+    edits.workflows,
+    (w, e) => ({
+      ...w,
+      name: cleaned(e.name) ?? w.name,
+      runIdSource: cleaned(e.runIdSource) ?? w.runIdSource,
+    }),
+  );
+  const sessions = mergeList(
+    "sessions",
+    detected.sessions,
+    edits.sessions,
+    (s, e) => ({
+      ...s,
+      label: cleaned(e.label) ?? s.label,
+      sessionIdSource: cleaned(e.sessionIdSource) ?? s.sessionIdSource,
+    }),
+  );
+
+  let customer = detected.customer;
+  if (edits.customer) {
+    const next = {
+      ...customer,
+      recommended: edits.customer.recommended ?? customer.recommended,
+      idSource: cleaned(edits.customer.idSource) ?? customer.idSource,
+    };
+    if (JSON.stringify(next) !== JSON.stringify(customer)) {
+      editedCount += 1;
+      customer = next;
+    }
+  }
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  const parsed = Decisions.safeParse({ agents, workflows, sessions, customer });
+  if (!parsed.success) return { ok: false, errors: flatten(parsed.error.issues) };
+  return { ok: true, decisions: parsed.data, editedCount };
+}
+
+// ---------------------------------------------------------------------------
 // AppliedReport — what the agent uploads after editing the repo
 // ---------------------------------------------------------------------------
 

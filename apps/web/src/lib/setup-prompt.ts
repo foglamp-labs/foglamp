@@ -189,7 +189,8 @@ ask the user to tell you when they're done:
 Each request is held open server-side for up to ~9 seconds, so this costs almost
 nothing and returns within a second of the user clicking. What it prints:
 - \`approved\` or \`applying\` — go to step 5. The response carries \`decisions\`
-  (the approved plan), \`sdk\` and \`hasReactUi\`; use those, not your local copy.
+  (the approved plan), \`sdk\` and \`hasReactUi\`; use those, not your local copy —
+  the user may have renamed things or changed id sources on the review page.
 - \`rejected\` — stop. Change nothing. Tell the user their repo is untouched.
 - \`expired\` — the plan timed out. Start again at step 1.
 - nothing at all — the 7-minute bound was hit. Run the exact same command again.

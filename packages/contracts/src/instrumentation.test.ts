@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  applyPlanEdits,
   canTransition,
   isPending,
   isTerminalStatus,
   PLAN_STATUSES,
   PLAN_VERSION,
+  PlanEdits,
   summarizePlan,
   TERMINAL_STATUSES,
   validateAppliedReport,
@@ -254,5 +256,156 @@ describe("summarizePlan", () => {
       sessions: 0,
       calls: 1,
     });
+  });
+});
+
+describe("applyPlanEdits", () => {
+  // Detected decisions with one of everything editable.
+  const detected = () => {
+    const res = validateDetectedPlan(
+      plan({
+        calls: [
+          { id: "c1", fn: "streamText", sourceRef: "src/agents/support.ts:42" },
+          { id: "c2", fn: "generateText", sourceRef: "src/jobs/digest.ts:10" },
+        ],
+        decisions: {
+          agents: [
+            {
+              id: "a1",
+              name: "support",
+              callIds: ["c1"],
+              confidence: "high" as const,
+              sourceRef: "src/agents/support.ts:42",
+              rationale: "A named streamText loop behind the support route.",
+            },
+          ],
+          workflows: [
+            {
+              id: "w1",
+              name: "Nightly digest",
+              callIds: ["c2"],
+              runIdSource: "the cron invocation id",
+              confidence: "medium" as const,
+              sourceRef: "src/jobs/digest.ts:10",
+              rationale: "A multi-step cron pipeline.",
+            },
+          ],
+          sessions: [
+            {
+              id: "s1",
+              label: "Support chat",
+              callIds: ["c1"],
+              sessionIdSource: "the thread id on the request",
+              confidence: "high" as const,
+              sourceRef: "src/agents/support.ts:42",
+              rationale: "A real back-and-forth thread.",
+            },
+          ],
+          customer: {
+            recommended: false,
+            confidence: "medium" as const,
+            rationale: "Tenancy unclear.",
+          },
+        },
+      }),
+    );
+    if (!res.ok) throw new Error(res.errors.join("; "));
+    return res.data.decisions;
+  };
+  const edits = (over: Record<string, unknown> = {}) =>
+    PlanEdits.parse(over);
+
+  test("no edits is a clean pass-through", () => {
+    const res = applyPlanEdits(detected(), edits());
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.editedCount).toBe(0);
+    expect(res.decisions).toEqual(detected());
+  });
+
+  test("renames apply; evidence fields survive untouched", () => {
+    const res = applyPlanEdits(
+      detected(),
+      edits({
+        agents: [{ id: "a1", name: "Support copilot", oneOff: true }],
+        workflows: [{ id: "w1", runIdSource: "the queue job id" }],
+      }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.editedCount).toBe(2);
+    const agent = res.decisions.agents[0]!;
+    expect(agent.name).toBe("Support copilot");
+    expect(agent.oneOff).toBe(true);
+    expect(agent.callIds).toEqual(["c1"]);
+    expect(agent.rationale).toContain("streamText loop");
+    expect(res.decisions.workflows[0]!.runIdSource).toBe("the queue job id");
+    expect(res.decisions.workflows[0]!.name).toBe("Nightly digest");
+  });
+
+  test("a no-op edit (same values) counts nothing as edited", () => {
+    const res = applyPlanEdits(
+      detected(),
+      edits({ agents: [{ id: "a1", name: "support" }] }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.editedCount).toBe(0);
+  });
+
+  test("whitespace-only names fall back to the detected value", () => {
+    const res = applyPlanEdits(
+      detected(),
+      edits({ agents: [{ id: "a1", name: "   " }] }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.decisions.agents[0]!.name).toBe("support");
+    expect(res.editedCount).toBe(0);
+  });
+
+  test("unknown ids are rejected — you can only edit what was detected", () => {
+    const res = applyPlanEdits(
+      detected(),
+      edits({ agents: [{ id: "ghost", name: "Nope" }] }),
+    );
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.errors.join()).toContain('unknown id "ghost"');
+  });
+
+  test("enabling customer attribution requires an id source", () => {
+    const bare = applyPlanEdits(
+      detected(),
+      edits({ customer: { recommended: true } }),
+    );
+    expect(bare.ok).toBe(false);
+    if (!bare.ok) expect(bare.errors.join()).toContain("idSource");
+
+    const withSource = applyPlanEdits(
+      detected(),
+      edits({
+        customer: { recommended: true, idSource: "the org id on the session" },
+      }),
+    );
+    expect(withSource.ok).toBe(true);
+    if (!withSource.ok) return;
+    expect(withSource.editedCount).toBe(1);
+    expect(withSource.decisions.customer.recommended).toBe(true);
+  });
+
+  test("session label and id-source edits apply", () => {
+    const res = applyPlanEdits(
+      detected(),
+      edits({
+        sessions: [
+          { id: "s1", label: "Helpdesk", sessionIdSource: "the chat id" },
+        ],
+      }),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.decisions.sessions[0]!.label).toBe("Helpdesk");
+    expect(res.decisions.sessions[0]!.sessionIdSource).toBe("the chat id");
   });
 });

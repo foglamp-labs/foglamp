@@ -11,6 +11,9 @@ export type ActivationEvent =
   // that flips a null timestamp, so reloads and repeated polls can't duplicate.
   | "instrumentation_plan_created"
   | "instrumentation_plan_approved"
+  // Fired alongside _approved when the user changed decisions before
+  // approving — the signal that the editable review earns its keep.
+  | "instrumentation_plan_edited"
   | "instrumentation_agent_resumed"
   | "instrumentation_changes_applied"
   | "instrumentation_waiting_for_trace"
