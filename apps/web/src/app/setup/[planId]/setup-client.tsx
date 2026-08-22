@@ -45,7 +45,10 @@ function readStoredShare(planId: string): StoredShare | null {
     const raw = localStorage.getItem(shareStorageKey(planId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<StoredShare>;
-    if (typeof parsed.slug !== "string" || typeof parsed.editToken !== "string") {
+    if (
+      typeof parsed.slug !== "string" ||
+      typeof parsed.editToken !== "string"
+    ) {
       return null;
     }
     return { slug: parsed.slug, editToken: parsed.editToken };
@@ -137,10 +140,7 @@ export function SetupClient({ planId }: { planId: string }) {
         const stored = { slug: res.slug, editToken: res.editToken };
         setShare(stored);
         try {
-          localStorage.setItem(
-            shareStorageKey(planId),
-            JSON.stringify(stored)
-          );
+          localStorage.setItem(shareStorageKey(planId), JSON.stringify(stored));
         } catch {
           // Storage disabled — the share still worked, a re-share just mints
           // a fresh URL instead of updating this one.
@@ -205,19 +205,16 @@ export function SetupClient({ planId }: { planId: string }) {
         onReject={() => reject.mutate({ planId })}
         approving={approve.isPending || reject.isPending}
         shareSlug={share?.slug ?? null}
-        onShare={() =>
-          shareMap.mutate({ planId, editToken: share?.editToken })
-        }
+        onShare={() => shareMap.mutate({ planId, editToken: share?.editToken })}
         sharing={shareMap.isPending}
       />
       <Dialog open={approvedOpen} onOpenChange={setApprovedOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Approved — you're done here</DialogTitle>
+            <DialogTitle>Approved</DialogTitle>
             <DialogDescription>
               Your coding agent picked the plan up and is implementing the
-              instrumentation on its own. You can close this tab — or keep it
-              open to watch your first trace land.
+              instrumentation.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
