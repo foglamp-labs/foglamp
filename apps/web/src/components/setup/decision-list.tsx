@@ -3,6 +3,7 @@
 import type { Confidence, Decisions } from "@foglamp/contracts/instrumentation";
 import { Card, CardContent } from "@foglamp/ui/components/card";
 import { Input } from "@foglamp/ui/components/input";
+import { Textarea } from "@foglamp/ui/components/textarea";
 import { Switch } from "@foglamp/ui/components/switch";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
@@ -61,6 +62,8 @@ interface EditField {
   value: string;
   detected: string;
   maxLength: number;
+  /** Prose fields ("…comes from") render as a growing textarea, not an input. */
+  multiline?: boolean;
   commit: (value: string | undefined) => void;
 }
 
@@ -92,22 +95,42 @@ interface Entry {
 // Committing on blur/Enter (not per keystroke) keeps the full-viewport map
 // from re-rendering while the user types.
 function FieldInput({ field }: { field: EditField }) {
+  const commit = (raw: string) => {
+    // The sources are one-line prose; the textarea is for wrapping, not
+    // paragraphs, so newlines collapse to spaces.
+    const v = raw.replace(/\s+/g, " ").trim();
+    field.commit(v === "" || v === field.detected ? undefined : v);
+  };
   return (
     <label className="flex flex-col gap-1">
       <span className="text-[10px] text-muted-foreground">{field.label}</span>
-      <Input
-        defaultValue={field.value}
-        maxLength={field.maxLength}
-        placeholder={field.detected}
-        className="h-7 rounded-lg px-2 text-[12px] md:text-[12px]"
-        onBlur={(e) => {
-          const v = e.currentTarget.value.trim();
-          field.commit(v === "" || v === field.detected ? undefined : v);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-        }}
-      />
+      {field.multiline ? (
+        <Textarea
+          defaultValue={field.value}
+          maxLength={field.maxLength}
+          placeholder={field.detected}
+          rows={2}
+          className="min-h-7 rounded-lg px-2 py-1.5 text-[12px] leading-snug md:text-[12px]"
+          onBlur={(e) => commit(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.currentTarget.blur();
+            }
+          }}
+        />
+      ) : (
+        <Input
+          defaultValue={field.value}
+          maxLength={field.maxLength}
+          placeholder={field.detected}
+          className="h-7 rounded-lg px-2 text-[12px] md:text-[12px]"
+          onBlur={(e) => commit(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+        />
+      )}
     </label>
   );
 }
@@ -480,6 +503,7 @@ export const DecisionList = memo(function DecisionList({
                   value: runIdSource,
                   detected: w.runIdSource,
                   maxLength: 160,
+                  multiline: true,
                   commit: (src: string | undefined) =>
                     onEdit({
                       kind: "workflow",
@@ -533,6 +557,7 @@ export const DecisionList = memo(function DecisionList({
                   value: sessionIdSource,
                   detected: s.sessionIdSource,
                   maxLength: 160,
+                  multiline: true,
                   commit: (src: string | undefined) =>
                     onEdit({
                       kind: "session",
@@ -576,6 +601,7 @@ export const DecisionList = memo(function DecisionList({
                   value: customerIdSource ?? "",
                   detected: customer.idSource ?? "",
                   maxLength: 160,
+                  multiline: true,
                   commit: (src: string | undefined) =>
                     onEdit({
                       kind: "customer",
