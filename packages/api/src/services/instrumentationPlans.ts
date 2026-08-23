@@ -278,12 +278,23 @@ export async function rejectPlan(
 ): Promise<TransitionOutcome> {
   const plan = await getPlanForUser(db, userId, planId);
   if (!plan) return { ok: false, reason: "not_found" };
-  return transition(db, {
+  const res = await transition(db, {
     planId,
     from: ["awaiting_approval"],
     to: "rejected",
     set: { rejectedAt: new Date() },
   });
+  if (res.ok && res.changed) {
+    // A rejection is the funnel's most interesting drop-off — without this
+    // event a user who said "no" is indistinguishable from one who never
+    // opened the tab.
+    const owner = await ownerOfOrg(db, plan.orgId);
+    void capture("instrumentation_plan_rejected", owner, {
+      project_id: plan.projectId,
+      seconds_to_rejection: secondsBetween(plan.createdAt, new Date()),
+    });
+  }
+  return res;
 }
 
 /**
@@ -478,10 +489,26 @@ export async function expireStalePlans(db: Db): Promise<number> {
         lt(instrumentationPlan.expiresAt, new Date()),
       ),
     )
-    .returning({ id: instrumentationPlan.id, projectId: instrumentationPlan.projectId });
+    .returning({
+      id: instrumentationPlan.id,
+      projectId: instrumentationPlan.projectId,
+      orgId: instrumentationPlan.orgId,
+    });
 
+  // Attribute each expiry to its org owner like every other funnel event —
+  // `capture` drops events with no distinctId, so passing null here would
+  // (and historically did) silently erase expiries from the funnel. One
+  // owner lookup per org, not per row.
+  const owners = new Map<string, string | null>();
   for (const row of expired) {
-    void capture("instrumentation_plan_expired", null, { project_id: row.projectId });
+    let owner = owners.get(row.orgId);
+    if (owner === undefined) {
+      owner = await ownerOfOrg(db, row.orgId);
+      owners.set(row.orgId, owner);
+    }
+    void capture("instrumentation_plan_expired", owner, {
+      project_id: row.projectId,
+    });
   }
   return expired.length;
 }

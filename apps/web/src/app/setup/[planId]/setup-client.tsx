@@ -102,7 +102,7 @@ export function SetupClient({ planId }: { planId: string }) {
   const approve = useMutation(
     trpc.instrumentationPlans.approve.mutationOptions({
       onSuccess: async () => {
-        captureActivationEvent("instrumentation_plan_approved");
+        captureActivationEvent("instrumentation_plan_approve_clicked");
         window.close();
         // Only reached when the browser refused to close the tab. The delay
         // keeps the dialog from flashing during an honored close.
