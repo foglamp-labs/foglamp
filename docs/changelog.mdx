@@ -8,20 +8,20 @@ description: "What's new in Foglamp."
 ## Updates
 
 **Alerts as a list.** The [Alerts](/dashboard/alerts) page swaps its card grid
-for the standard list-table used across the dashboard: search, a firing-only
+for the standard list table used across the dashboard: search, a firing-only
 chip, sortable name and window columns, status badges (with a pinging
 indicator for alerts currently firing), per-row enable/disable and delete,
 and a pagination footer. Finding and managing alerts now works the same way
-as it does on Traces, Sessions, Agents, and Workflows.
+as on Traces, Sessions, Agents, and Workflows.
 
 **Tighter Evals page.** The stat-card strip at the top of
-[Evals](/dashboard/evals) is retired — the toolbar is the first row now, so
+[Evals](/dashboard/evals) is retired. The toolbar is the first row now, so
 you land straight on your evals. Rows that errored or are missing a judge
 key use the same inline red triangle you already know from
-[Agents](/dashboard/agents), replacing the rose accent inset.
+[Agents](/dashboard/agents).
 
 **Overview breathing room.** A little extra space between the
-[Overview](/dashboard/overview) header and the first KPI row so the page
+[Overview](/dashboard/overview) header and the first KPI row, so the page
 opens less cramped.
 
 </Update>
@@ -42,31 +42,31 @@ into the span's name and details.
 
 ## Updates
 
-**Accurate trace structure — SDK 0.9.0.** The waterfall now reflects what
+**Accurate trace structure (SDK 0.9.0).** The waterfall now reflects what
 actually happened in a run. Three changes, all in the SDK collectors:
 
-- **Tool spans nest under their step.** A tool execution is now recorded as a
+- **Tool spans nest under their step.** A tool call is now recorded as a
   child of the LLM step that requested it (matched by tool-call id), on both
-  the v7 collector and the v4–v6 `foglamp/wrap` adapter. Indentation in the
-  [trace waterfall](/dashboard/traces) is now real structure, not decoration.
+  the v7 collector and the v4 to v6 `foglamp/wrap` adapter. Indentation in
+  the [trace waterfall](/dashboard/traces) is now real structure, not
+  decoration.
 - **LLM steps measure generation only.** A step span ends when the model
-  finishes generating — at the measured model-call end on v7, or where its
+  finishes generating: at the measured model-call end on v7, or where its
   first tool starts otherwise. Tool time lives entirely in the step's tool
   child spans, so step duration means "time spent in the model" consistently
   across streaming, non-streaming, and both SDK majors.
-- **Fixed 0ms / inflated step durations.** Non-streaming multi-step calls
-  (`generateText` via wrap) that fired tools **in parallel** could collapse a
+- **Fixed 0ms and inflated step durations.** Non-streaming multi-step calls
+  (`generateText` via wrap) that fired tools in parallel could collapse a
   step to 0ms and absorb its time into the next one. Per-step tool
-  attribution replaces the old one-window-per-step reconstruction, so every
-  step now carries its real duration.
+  attribution fixes this, so every step now carries its real duration.
 
-Upgrade the `foglamp` package to **0.9.0** to get the corrected shape — traces
+Upgrade the `foglamp` package to **0.9.0** to get the corrected shape. Traces
 from older SDK versions keep flowing and render as before (flat tool rows).
 No ingest changes or migrations required; self-hosters can deploy in any
 order.
 
 **Waterfall cleanup.** The span-type filter chips introduced on August 7 are
-retired — with tools now nested under their steps, hiding a type mid-tree
+retired. With tools now nested under their steps, hiding a type mid-tree
 created more confusion than focus. Subtree collapse and the repeated-siblings
 fold (`×N`) remain the way to tame long traces.
 
@@ -80,21 +80,21 @@ fold (`×N`) remain the way to tame long traces.
 [Traces](/dashboard/traces) now have inline typeahead, so picking a model,
 agent, workflow, or customer from a large list is a keystroke instead of a
 scroll. A new **Metadata** filter lets you narrow by any `key = value` you've
-tagged, with a free-text fallback when a key has too many values to enumerate.
-Pin a metadata key as its own column, and every filter, sort, and pinned
-column is reflected in the URL — copy the link and a teammate lands on the
-same view.
+tagged, with a free-text fallback when a key has too many values to list.
+You can pin a metadata key as its own column, and every filter, sort, and
+pinned column is reflected in the URL: copy the link and a teammate lands on
+the same view.
 
-**Trace detail upgrades.** The trace detail page now leads with a
-**time composition** strip that breaks a run into model, tools, other, and
-idle time at a glance, and surfaces a **low rate-limit headroom** banner when
-a provider is close to your TPM/RPM ceiling. Token and request counters sit
-next to the cost breakdown, and a **workflow run** chip jumps straight to the
+**Trace detail upgrades.** The trace detail page now leads with a time
+composition strip that breaks a run into model, tools, other, and idle time
+at a glance, and shows a low rate-limit headroom banner when a provider is
+close to your TPM/RPM ceiling. Token and request counters sit next to the
+cost breakdown, and a workflow run chip jumps straight to the
 [workflow run](/dashboard/workflows) the trace belongs to.
 
 **Waterfall filtering and collapse.** The waterfall now has span-type filter
 chips (model, tool, other) to focus on the spans you care about, and any
-subtree can be collapsed — the collapsed row shows a hidden-count indicator
+subtree can be collapsed. The collapsed row shows how many spans are hidden,
 so long tool loops stay readable.
 
 </Update>
@@ -103,11 +103,11 @@ so long tool loops stay readable.
 
 ## Updates
 
-- Faster tab switching in the dashboard. Recently-visited routes across
+- Faster tab switching in the dashboard. Recently visited routes across
   [Traces](/dashboard/traces), [Sessions](/dashboard/sessions),
   [Agents](/dashboard/agents), [Workflows](/dashboard/workflows), and the
   [Overview](/dashboard/overview) now swap in on a single paint instead of
-  bouncing through a loading skeleton. Page data still revalidates in the
+  bouncing through a loading skeleton. Page data still refreshes in the
   background so numbers stay fresh.
 
 </Update>
@@ -118,7 +118,7 @@ so long tool loops stay readable.
 
 - Tightened the page titles and social descriptions on
   [foglamp.dev/scan](https://foglamp.dev/scan) and individual scan posters so
-  shared links unfurl with clearer, more concise copy on socials and in search
+  shared links unfurl with clearer, shorter copy on socials and in search
   results.
 
 </Update>
@@ -128,7 +128,7 @@ so long tool loops stay readable.
 ## Updates
 
 - The [foglamp.dev/scan](https://foglamp.dev/scan) landing page is now
-  streamlined to a hero and CTA — the "One prompt, from repo to map" story
+  streamlined to a hero and CTA. The "One prompt, from repo to map" story
   section has been retired so you can go from arriving to scanning faster.
 - The scan hero map now scales responsively on narrower viewports, so the
   preview no longer spills off a laptop screen and the surrounding layout
@@ -142,11 +142,11 @@ so long tool loops stay readable.
 
 **Foglamp Scan.** Point a coding agent at any repo and get a shareable,
 unlisted `foglamp.dev/scan/<slug>` page that maps how the codebase works and
-uses AI — triggers, agents, models, tools, and stores laid out on an
-ELK-routed flow map with a scored **personality** card for the project. The
-page unfurls on socials with an OG image of the actual map, and the prompt is
-one copy-and-paste from [foglamp.dev/scan](https://foglamp.dev/scan). Anonymous,
-no account required; posters expire after 90 days.
+uses AI: triggers, agents, models, tools, and stores laid out on a flow map,
+with a scored personality card for the project. The page unfurls on socials
+with an image of the actual map, and the prompt is one copy-and-paste from
+[foglamp.dev/scan](https://foglamp.dev/scan). Anonymous, no account required;
+posters expire after 90 days.
 
 ## Updates
 
@@ -158,17 +158,17 @@ no account required; posters expire after 90 days.
   smooth interaction on large graphs, and deep pipelines open height-fit on
   the start of the flow.
 - Inter is now self-hosted from the canonical `rsms/inter` v4.1 build across
-  the marketing site — restoring the `opsz` optical-size axis and OpenType
-  character variants that Google Fonts strips.
+  the marketing site, restoring the optical-size axis and OpenType character
+  variants that Google Fonts strips.
 
 ## Bug fixes
 
-- Fixed a 500 on `/scan/<slug>` pages under Vercel's serverless runtime caused
-  by an `elkjs` module-interop shape mismatch — the layout engine is now
+- Fixed a 500 on `/scan/<slug>` pages under Vercel's serverless runtime
+  caused by an `elkjs` module-interop mismatch. The layout engine is now
   lazy-loaded and probes every export shape.
-- Fixed the OG image route occasionally 500ing on cold starts by caching and
-  retrying font loads.
-- Contained the marketing footer's film-grain filter to the footer box so
+- Fixed the OG image route occasionally returning a 500 on cold starts by
+  caching and retrying font loads.
+- Contained the marketing footer's film-grain effect to the footer box so
   noise no longer bleeds above the top border, and softened the cube field on
   the landing page.
 
@@ -179,21 +179,22 @@ no account required; posters expire after 90 days.
 ## Updates
 
 **Customer on traces.** The [Traces](/dashboard/traces) table now shows a
-customer chip (avatar + name) next to the session/agent/workflow columns, and
-the trace detail page surfaces a matching customer badge — so you can spot
-which end-customer a run belongs to without leaving the trace. Powered by the
-[customer field](/concepts/data-model#customer) you set on the SDK call.
+customer chip (avatar and name) next to the session, agent, and workflow
+columns, and the trace detail page shows a matching customer badge, so you
+can spot which customer a run belongs to without leaving the trace. Powered
+by the [customer field](/concepts/data-model#customer) you set on the SDK
+call.
 
 **"Not identified" on the Overview Customers card.** The
 [Overview](/dashboard/overview) Customers card now includes a muted **Not
-identified** row that buckets unattributed spend, so calls without a `customer`
-tag are visible instead of disappearing. Avatars across the customers UI also
+identified** row for unattributed spend, so calls without a `customer` tag
+are visible instead of disappearing. Avatars across the customers UI also
 pick up a filled glyph for better contrast.
 
 ## Bug fixes
 
-- Shortened the **Clear filters** button on list-page filter bars to **Clear**,
-  so it stops wrapping in narrow toolbars.
+- Shortened the **Clear filters** button on list-page filter bars to
+  **Clear**, so it stops wrapping in narrow toolbars.
 
 </Update>
 
@@ -201,26 +202,28 @@ pick up a filled glyph for better contrast.
 
 ## New features
 
-**AI SDK v7 — stable.** The `foglamp()` collector now tracks AI SDK v7 stable
-(`ai@7.0.0`). No code changes needed on your side; the telemetry-integrations
-API is unchanged from the v7 beta.
+**AI SDK v7 stable.** The `foglamp()` collector now tracks AI SDK v7 stable
+(`ai@7.0.0`). No code changes needed on your side; the telemetry API is
+unchanged from the v7 beta.
 
-**First-class `aborted` status.** A stream that's cancelled before it finishes
-(via AI SDK v7's `onAbort` — a caller cancellation, an `AbortSignal`, or a
-timeout) is now recorded with a dedicated **`aborted`** status instead of being
-swept later as an error. It renders amber across the [traces](/dashboard/traces)
-view and is **excluded from error rate** — a cancelled run isn't a failure. The
-steps that finished before the abort keep their own status.
+**First-class `aborted` status.** A stream that's cancelled before it
+finishes (via AI SDK v7's `onAbort`: a caller cancellation, an `AbortSignal`,
+or a timeout) is now recorded with a dedicated **`aborted`** status instead
+of being swept later as an error. It renders amber across the
+[traces](/dashboard/traces) view and is excluded from the error rate, since a
+cancelled run isn't a failure. The steps that finished before the abort keep
+their own status.
 
 **Automatic nested-trace context.** On the v7 collector, a model call made
-inside a tool's `execute` now inherits the parent call's workflow / session /
-customer / metadata automatically, so sub-agents land in the same workflow run
-with no `fog.run()` plumbing. See the [SDK
-overview](/sdk/overview#nested-calls-inside-tools).
+inside a tool's `execute` now inherits the parent call's workflow, session,
+customer, and metadata automatically, so sub-agents land in the same workflow
+run with no `fog.run()` plumbing. See the
+[SDK overview](/sdk/overview#nested-calls-inside-tools).
 
-Self-hosters: run ClickHouse migrations before relying on aborted rollups (a new
-`aborted_count` column is added to the trace, workflow-run, and per-minute
-summaries); ingest accepts the `aborted` status after the contract upgrade.
+Self-hosters: run ClickHouse migrations before relying on aborted rollups (a
+new `aborted_count` column is added to the trace, workflow-run, and
+per-minute summaries); ingest accepts the `aborted` status after the contract
+upgrade.
 
 </Update>
 
@@ -229,12 +232,11 @@ summaries); ingest accepts the `aborted` status after the contract upgrade.
 ## New features
 
 **Live HUD overlay.** Drop `<FoglampHUD />` from `foglamp/hud` into any
-client component and pair it with `foglamp({ hud: true })` on the server
-to watch your agents run live — steps, tool calls, tokens, and cost
-streaming on top of your app as you develop, rendered in the Foglamp
-aesthetic. It's dev/localhost only, needs no API key, and adds nothing
-to your production bundle (the broker is code-split and lazy-loaded).
-The whole thing is two lines. See [Live HUD](/sdk/hud).
+client component and pair it with `foglamp({ hud: true })` on the server to
+watch your agents run live: steps, tool calls, tokens, and cost streaming on
+top of your app as you develop. It's for local development only, needs no API
+key, and adds nothing to your production bundle. The whole thing is two
+lines. See [Live HUD](/sdk/hud).
 
 </Update>
 
@@ -244,10 +246,10 @@ The whole thing is two lines. See [Live HUD](/sdk/hud).
 
 **Per-customer cost attribution.** Tag a call with a `customer`
 (`fog.integration({ customer: { id, name?, imageUrl? } })`) to attribute its
-spend to the end-customer it serves. A new **Customers** card on the
+spend to the customer it serves. A new **Customers** card on the
 [Overview](/dashboard/overview) ranks your top customers by cost, with their
-avatar and name. Foggy can answer per-customer cost questions too. Only `id` is
-required and the field is fully optional — see the
+avatar and name. Foggy can answer per-customer cost questions too. Only `id`
+is required and the field is fully optional. See the
 [data model](/concepts/data-model#customer).
 
 Self-hosters: deploy ingest before upgrading the SDK, since older ingest
@@ -260,30 +262,28 @@ rollup tables).
 
 ## New features
 
-**`npx foglamp login` CLI.** Authenticate from your terminal with the
-new device-authorization flow: run `npx foglamp login`, approve the
-code in your browser, and Foglamp mints an API key and writes
-`FOGLAMP_API_KEY` to your `.env`. Zero runtime dependencies — Node 18+
-built-ins only — so it drops cleanly into agent-driven setups. See the
-[Quickstart](/quickstart).
+**`npx foglamp login` CLI.** Authenticate from your terminal with the new
+device-authorization flow: run `npx foglamp login`, approve the code in your
+browser, and Foglamp creates an API key and writes `FOGLAMP_API_KEY` to your
+`.env`. Zero runtime dependencies (Node 18+ built-ins only), so it drops
+cleanly into agent-driven setups. See the [Quickstart](/quickstart).
 
-**Animated API key reveal.** Newly created API keys now roll from the
-name you gave them into the real value on reveal, so it's obvious which
-key just appeared. The keys table also has pinned column widths and
-shows **Last used** before **Created**. See
+**Animated API key reveal.** Newly created API keys now roll from the name
+you gave them into the real value on reveal, so it's obvious which key just
+appeared. The keys table also has pinned column widths and shows **Last
+used** before **Created**. See
 [Projects, keys & billing](/dashboard/account).
 
 ## Updates
 
-**Dark-mode polish across the dashboard.** Refined shadows, borders,
-and hover states on cards, dialogs, and tables for better contrast and
-less visual noise in dark mode.
+**Dark-mode polish across the dashboard.** Refined shadows, borders, and
+hover states on cards, dialogs, and tables for better contrast and less
+visual noise in dark mode.
 
 ## Bug fixes
 
-- Foggy's hidden composer now blurs when the panel closes, so
-  keystrokes stop landing in it and the `F` shortcut reopens the panel
-  reliably.
+- Foggy's hidden composer now blurs when the panel closes, so keystrokes
+  stop landing in it and the `F` shortcut reopens the panel reliably.
 - Product analytics no longer load in local and preview environments.
 
 </Update>
@@ -294,34 +294,33 @@ less visual noise in dark mode.
 
 **Model vs. tool latency split.** LLM steps now record the pure
 provider-call time (`modelCallMs`) separately from client-side tool
-execution. The span still covers the whole step — the waterfall adds a
-sky **model** segment (tool time is the remainder), and the span
-inspector shows the split. Captured on AI SDK v7; v4–v6 (wrap) and
-non-reasoning paths simply omit it — no estimates.
+execution. The span still covers the whole step; the waterfall adds a sky
+**model** segment (tool time is the remainder), and the span inspector shows
+the split. Captured on AI SDK v7. The v4 to v6 (wrap) and non-reasoning
+paths simply omit it, with no estimates.
 
-**Grounding sources.** RAG/grounding citations a model reports
+**Grounding sources.** RAG and grounding citations a model reports
 (`StepResult.sources`) are captured per step and listed in the span
 inspector. Recorded only when output capture is on.
 
-**Model-drift fingerprint & safety ratings.** The OpenAI-style
-`system_fingerprint` is captured as a queryable column (spot a silent
-weight change across otherwise-identical calls), alongside provider
-safety ratings. No logprobs are captured.
+**Model-drift fingerprint and safety ratings.** The OpenAI-style
+`system_fingerprint` is captured as a queryable column (spot a silent weight
+change across otherwise identical calls), alongside provider safety ratings.
+No logprobs are captured.
 
-**Rate-limit headroom.** Provider rate-limit response headers
-(OpenAI `x-ratelimit-*`, Anthropic `anthropic-ratelimit-*`) are
-normalized into a cross-provider set — requests/tokens remaining, limit,
-and time-to-reset — so "you're at 90% of your TPM" becomes queryable.
-Only rate-limit headers are read; no other headers are stored.
+**Rate-limit headroom.** Provider rate-limit response headers (OpenAI
+`x-ratelimit-*`, Anthropic `anthropic-ratelimit-*`) are normalized into a
+cross-provider set: requests and tokens remaining, the limit, and time to
+reset. "You're at 90% of your TPM" becomes queryable. Only rate-limit
+headers are read; no other headers are stored.
 
 The provider signals above (sources, fingerprint, safety, rate-limit) are
-captured for **text and object generation alike** — `generateText`,
-`streamText`, `generateObject`, `streamObject` — and flow through the
-`ToolLoopAgent`/`Experimental_Agent` wrappers too. The model-vs-tool
+captured for text and object generation alike (`generateText`, `streamText`,
+`generateObject`, `streamObject`) and flow through the
+`ToolLoopAgent`/`Experimental_Agent` wrappers too. The model vs. tool
 latency split is the one exception: it needs the AI SDK v7 model-call
-lifecycle, so it lands on v7 text/agent steps and is absent on the object
-path (which calls the provider directly, with no separable model window)
-and on v4–v6 — never estimated.
+lifecycle, so it lands on v7 text and agent steps and is absent on the
+object path and on v4 to v6. It is never estimated.
 
 Self-hosters: deploy ingest before upgrading the SDK, since older ingest
 rejects the new span fields.
@@ -333,90 +332,86 @@ rejects the new span fields.
 ## New features
 
 **Reasoning (extended thinking) capture.** Both SDK collectors now record
-reasoning stream chunks: per-step thinking duration plus an intra-stream
-reasoning-token curve, sampled exactly like text chunks. The trace waterfall
-shows a violet **thinking** segment on reasoning steps, and the span
-inspector's TTFT splits into thinking time + time to first visible text.
-Models that don't reason (or SDK majors that don't report reasoning tokens)
-send nothing — no estimates. Self-hosters: deploy ingest before upgrading the
-SDK, since older ingest rejects the new span fields.
+reasoning stream chunks: per-step thinking duration plus a reasoning-token
+curve, sampled exactly like text chunks. The trace waterfall shows a violet
+**thinking** segment on reasoning steps, and the span inspector's
+time-to-first-token splits into thinking time plus time to first visible
+text. Models that don't reason (or SDK majors that don't report reasoning
+tokens) send nothing, with no estimates. Self-hosters: deploy ingest before
+upgrading the SDK, since older ingest rejects the new span fields.
 
 **Agent cost breakdown donut.** The agent page now shows where an agent's
-spend goes — prompt, completion, reasoning, cache read/write, requests,
-images, and web search — summed per pricing dimension over the selected
+spend goes (prompt, completion, reasoning, cache read/write, requests,
+images, and web search), summed per pricing dimension over the selected
 range. See [Agents](/dashboard/agents).
 
 **Ambient trace context with `fog.run()`.** Wrap any call with
-`fog.run(context, fn)` and every traced call inside picks up the
-workflow, session, and metadata automatically — no parameter
-threading, singletons stay singletons. See the [SDK overview](/sdk/overview).
+`fog.run(context, fn)` and every traced call inside picks up the workflow,
+session, and metadata automatically. No parameter passing, and singletons
+stay singletons. See the [SDK overview](/sdk/overview).
 
 **Typed `with()` context binding and agent-class wrapping.** `fog.with(ctx)`
 now returns wrapped functions typed exactly like the originals, and
 `foglamp/wrap` ships drop-in wrappers for `ToolLoopAgent` and
 `Experimental_Agent` with per-call tool attribution. See
-[AI SDK v4–v6 (wrap)](/sdk/wrap).
+[AI SDK v4 to v6 (wrap)](/sdk/wrap).
 
-**Forgot-password and account recovery.** A new password-reset flow,
-plus a redesigned accept-invitation page with explicit accept/decline
-and a wrong-account recovery path.
+**Forgot-password and account recovery.** A new password-reset flow, plus a
+redesigned accept-invitation page with explicit accept/decline and a
+wrong-account recovery path.
 
 **Shareable list views.** Search, filter, sort, and pagination on
 [Traces](/dashboard/traces), [Sessions](/dashboard/sessions),
-[Agents](/dashboard/agents), and [Workflows](/dashboard/workflows)
-are now reflected in the URL — copy the link and a teammate lands on
-the same view.
+[Agents](/dashboard/agents), and [Workflows](/dashboard/workflows) are now
+reflected in the URL. Copy the link and a teammate lands on the same view.
 
-**Profile picture in the sidebar.** Google sign-in users now see their
-photo in the sidebar; email/password users keep the initials avatar.
+**Profile picture in the sidebar.** Google sign-in users now see their photo
+in the sidebar; email and password users keep the initials avatar.
 
 ## Updates
 
 **Confirmation dialogs for destructive actions.** Deleting a project,
-provider key, pricing override, invitation, or access grant now
-prompts before it commits — project deletes require type-to-confirm.
+provider key, pricing override, invitation, or access grant now asks for
+confirmation first. Project deletes require typing the name to confirm.
 
-**Louder SDK auth failures.** The transport now warns once on a 401
-or 403 from ingest, even without debug mode, so a bad API key can't
-silently drop every trace.
+**Louder SDK auth failures.** The transport now warns once on a 401 or 403
+from ingest, even without debug mode, so a bad API key can't silently drop
+every trace.
 
-**Vercel `waitUntil` without the peer dependency.** The SDK reads the
-Vercel runtime context directly, so serverless flushing works without
-adding `@vercel/functions` to your project.
+**Vercel `waitUntil` without the peer dependency.** The SDK reads the Vercel
+runtime context directly, so serverless flushing works without adding
+`@vercel/functions` to your project.
 
-**Eval scores on a 0–1 scale.** Numeric judges now score on a
-normalized 0.00–1.00 scale (was 1–5), with an **Avg score** stat card
-on the [Evals](/dashboard/evals) page that reflects active filters.
+**Eval scores on a 0 to 1 scale.** Numeric judges now score on a normalized
+0.00 to 1.00 scale (previously 1 to 5), with an **Avg score** stat card on
+the [Evals](/dashboard/evals) page that reflects active filters.
 
-**Deleted active project no longer strands the app.** Deleting the
-currently selected project now falls back to another project instead
-of leaving the dashboard blank.
+**Deleted active project no longer strands the app.** Deleting the currently
+selected project now falls back to another project instead of leaving the
+dashboard blank.
 
-**Newly created projects stay selected.** Creating a project now
-keeps it as the active project instead of reverting to the first one
-in the list.
+**Newly created projects stay selected.** Creating a project now keeps it as
+the active project instead of switching back to the first one in the list.
 
-**Onboarding key stability.** The onboarding panel no longer revokes
-prior keys you may have already pasted into your code — the minted
-key is cached and reused while valid.
+**Onboarding key stability.** The onboarding panel no longer revokes earlier
+keys you may have already pasted into your code. The created key is cached
+and reused while valid.
 
 ## Bug fixes
 
-- Bedrock model IDs and dash-versioned Anthropic IDs
-  (e.g. `claude-haiku-4-5`) now resolve to pricing instead of recording
-  null cost.
-- Hardened model-ID normalization for `-fast` Anthropic variants,
-  3.x IDs, and additional Bedrock creators (OpenAI, Qwen, Luma,
-  Stability, TwelveLabs, DeepSeek R1).
-- Fixed a 500 in the usage-by-day query caused by a column alias
-  collision.
+- Bedrock model IDs and dash-versioned Anthropic IDs (e.g.
+  `claude-haiku-4-5`) now resolve to pricing instead of recording null cost.
+- Hardened model-ID normalization for `-fast` Anthropic variants, 3.x IDs,
+  and more Bedrock creators (OpenAI, Qwen, Luma, Stability, TwelveLabs,
+  DeepSeek R1).
+- Fixed a 500 in the usage-by-day query caused by a column alias collision.
 - Trace inspector card shadow is now visible in light mode.
 - Brightened the default button hover state in dark mode.
-- Invitation flow now survives sign-in: unauthenticated users bounce
-  through login and return to the invitation, and zero-org dashboards
-  list pending invitations with an **Accept** button.
-- Disabled form controls while mutations are pending to prevent
-  duplicate submissions.
+- Invitation flow now survives sign-in: unauthenticated users bounce through
+  login and return to the invitation, and zero-org dashboards list pending
+  invitations with an **Accept** button.
+- Disabled form controls while changes are saving, to prevent duplicate
+  submissions.
 - Removed loading flashes on the billing plan and encryption banner.
 - Stale project-scoped detail routes now redirect on project switch.
 - Escape closes the Foggy panel.
@@ -427,36 +422,37 @@ key is cached and reused while valid.
 
 ## New features
 
-**Sessions view.** Follow a single conversation or user thread end to end. Set
-a `sessionId` on your calls and Foglamp groups every turn — across workflows
-and agents — under one session. See [Sessions](/dashboard/sessions).
+**Sessions view.** Follow a single conversation or user thread end to end.
+Set a `sessionId` on your calls and Foglamp groups every turn, across
+workflows and agents, under one session. See [Sessions](/dashboard/sessions).
 
-**AI SDK v4–v6 support via `foglamp/wrap`.** A new wrap adapter instruments
-older AI SDK versions without requiring an upgrade to v7. Drop-in replacement
-for `generateText`, `streamText`, `generateObject`, and `streamObject` — same
-traces, same ingest endpoint. See [AI SDK v4–v6 (wrap)](/sdk/wrap).
+**AI SDK v4 to v6 support via `foglamp/wrap`.** A new wrap adapter
+instruments older AI SDK versions without requiring an upgrade to v7.
+Drop-in replacement for `generateText`, `streamText`, `generateObject`, and
+`streamObject`, producing the same traces to the same ingest endpoint. See
+[AI SDK v4 to v6 (wrap)](/sdk/wrap).
 
 **Web-search usage in traces.** Provider-reported web-search calls are now
 captured alongside token usage and cost, so search-heavy agents are billed
 and analyzed accurately.
 
-**Compile-time workflow safety.** The SDK now enforces that `workflowName`
-and `workflowRunId` are passed together at the type level — invalid
+**Compile-time workflow safety.** The SDK now enforces at the type level
+that `workflowName` and `workflowRunId` are passed together. Invalid
 combinations fail at build time rather than producing orphaned spans.
 
-**Better dashboard navigation.** Breadcrumb back-nav, card/table view
-toggles, and column filtering + sorting are available across list pages —
+**Better dashboard navigation.** Breadcrumb back navigation, card/table view
+toggles, and column filtering and sorting are available across list pages,
 including [Traces](/dashboard/traces), [Workflows](/dashboard/workflows),
 and [Agents](/dashboard/agents).
 
-**Editable project name & URL.** Change a project's name and URL from
-**Org settings → General** without recreating it — the URL drives the favicon
+**Editable project name and URL.** Change a project's name and URL from
+**Org settings → General** without recreating it. The URL drives the favicon
 shown in the project switcher. See
 [Projects, keys & billing](/dashboard/account).
 
 **Eval judge model picker.** Choosing a judge model when creating an
 [eval](/dashboard/evals) now uses an icon dropdown so providers and models
-are easier to identify at a glance.
+are easier to tell apart at a glance.
 
 **Copy-paste instrumentation in empty states.** Empty Agents and Workflows
 pages now show ready-to-run snippets so new projects can ship their first
@@ -465,7 +461,7 @@ trace without leaving the dashboard.
 ## Updates
 
 **Syntax-highlighted code blocks.** Code blocks across the dashboard are now
-rendered with Shiki and follow the app theme — `github-light` in light mode
+rendered with Shiki and follow the app theme: `github-light` in light mode
 and `vesper` in dark mode.
 
 ## Bug fixes
