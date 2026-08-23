@@ -1,62 +1,61 @@
 ---
 title: Introduction
-description: "The missing observability layer for the Vercel AI SDK."
+description: "Observability for apps built with the Vercel AI SDK."
 ---
 
-Foglamp gives you unified observability for agents built on the
-[Vercel AI SDK](https://ai-sdk.dev) — cost, latency, token usage, distributed
-traces, and full prompt/response logs — with two lines of code.
+Foglamp shows you what your AI app is doing: cost, speed, token usage, full
+traces, and prompt/response logs. It works with agents built on the
+[Vercel AI SDK](https://ai-sdk.dev) and takes two lines of code to set up.
 
-It is **TypeScript-only** and works with every major version of the
-[Vercel AI SDK](https://ai-sdk.dev) — v4, v5, v6, and v7. You instrument your
-app with `foglamp`, and traces stream to a backend you can run yourself or use
-as a hosted service.
+Foglamp is TypeScript-only and supports AI SDK v4, v5, v6, and v7. You add the
+`foglamp` package to your app, and traces are sent to a backend you can run
+yourself or use as a hosted service.
 
 <Note>
-  Foglamp meets the AI SDK where it is. On the stable **v4, v5, and v6** lines
-  it wraps the module with [`foglamp/wrap`](/sdk/wrap); on **v7 (beta)** it uses
-  the native telemetry-integrations API. Same traces, same backend — the
-  [Quickstart](/quickstart) helps you pick your path.
+  On AI SDK v4, v5, and v6, Foglamp wraps the `ai` module with
+  [`foglamp/wrap`](/sdk/wrap). On v7 (beta), it uses the SDK's built-in
+  telemetry API. Both produce the same traces. The [Quickstart](/quickstart)
+  helps you pick.
 </Note>
 
 ## Why Foglamp
 
-Generative apps fail in ways traditional APM never had to model: a single user
-action fans out into multiple model calls, tool executions, and retries, each
-with its own cost and latency. Foglamp is built around that shape.
+One user action in an AI app can trigger several model calls, tool calls, and
+retries, each with its own cost and speed. Regular monitoring tools were not
+built for that. Foglamp is.
 
 <CardGroup cols={2}>
-  <Card title="Cost at ingest" icon="dollar-sign">
-    Every span is priced as it arrives, broken down by input, output, reasoning,
-    and cached tokens. Unknown models surface as `—`, never a misleading `$0`.
+  <Card title="Cost tracking" icon="dollar-sign">
+    Every span is priced as it arrives, split by input, output, reasoning, and
+    cached tokens. If a model has no known price, you see a dash, never a wrong
+    $0.
   </Card>
-  <Card title="Distributed traces" icon="diagram-project">
-    One top-level `generateText`/`streamText` call is a trace; its steps and tool
-    calls are spans. Group them into agents, workflows, and runs.
+  <Card title="Traces" icon="diagram-project">
+    Each `generateText` or `streamText` call becomes a trace, with its steps and
+    tool calls as spans. Group them into agents, workflows, and runs.
   </Card>
-  <Card title="Latency & TTFT" icon="gauge">
-    p50/p95/p99 latency and time-to-first-token, read straight from the SDK's
-    own performance metrics rather than guessed.
+  <Card title="Latency" icon="gauge">
+    p50/p95/p99 latency and time to first token, read from the SDK's own
+    metrics.
   </Card>
   <Card title="Self-host or hosted" icon="server">
-    Run the whole stack with `docker compose up`, or point the SDK at a managed
-    endpoint. Same code either way.
+    Run the whole stack with `docker compose up`, or point the SDK at the
+    hosted service. The code is the same either way.
   </Card>
 </CardGroup>
 
-## How it fits together
+## How it works
 
 ```
 your app ──foglamp──▶ ingest API ──▶ ClickHouse ──▶ dashboard
 ```
 
-- **SDK** — instruments your AI SDK calls, batching spans and flushing them
-  fire-and-forget. Silent no-op when no API key is set; never throws, never adds
-  latency to your model calls.
-- **Ingest API** — authenticates the API key, prices each span, and writes to
-  ClickHouse.
-- **Dashboard** — traces, workflows, agents, sessions, cost-over-time, evals,
-  and alerts. See the [dashboard tour](/dashboard/overview).
+- **SDK** sits in your app, collects spans, and sends them in batches. If no
+  API key is set it does nothing at all. It never throws and never slows down
+  your model calls.
+- **Ingest API** checks your API key, prices each span, and stores it.
+- **Dashboard** shows traces, workflows, agents, sessions, cost, evals, and
+  alerts. See the [dashboard tour](/dashboard/overview).
 
 ## Next steps
 
@@ -65,18 +64,18 @@ your app ──foglamp──▶ ingest API ──▶ ClickHouse ──▶ dashbo
     Install the SDK and see your first trace in minutes.
   </Card>
   <Card title="Data model" icon="sitemap" href="/concepts/data-model">
-    Understand traces, spans, workflows, runs, and sessions.
+    Learn what traces, spans, workflows, runs, and sessions are.
   </Card>
   <Card title="SDK reference" icon="code" href="/sdk/overview">
-    Every configuration option and integration method.
+    Every option and integration method.
   </Card>
   <Card title="Dashboard tour" icon="chart-line" href="/dashboard/overview">
     Traces, workflows, agents, sessions, evals, cost, and alerts.
   </Card>
   <Card title="Self-hosting" icon="docker" href="/self-hosting/overview">
-    Run the full stack on your own infrastructure.
+    Run the full stack on your own servers.
   </Card>
   <Card title="Troubleshooting" icon="bug" href="/troubleshooting">
-    Not seeing traces? The usual causes and fixes.
+    Not seeing traces? Common causes and fixes.
   </Card>
 </CardGroup>

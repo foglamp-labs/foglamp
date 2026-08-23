@@ -3,9 +3,9 @@ title: Configuration
 description: "Every option accepted by foglamp()."
 ---
 
-`foglamp(config?)` accepts the following options. Every field is optional, and
-the same options apply to the v4–v6 entry point — `wrap(ai, config)` takes them
-all, plus a wrap-time `context` (see [wrap](/sdk/wrap)).
+`foglamp(config?)` accepts the options below. Every field is optional. The v4
+to v6 entry point takes the same options: `wrap(ai, config)` accepts them all,
+plus a `context` for defaults (see [wrap](/sdk/wrap)).
 
 ```ts
 const fog = foglamp({
@@ -26,32 +26,32 @@ const fog = foglamp({
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `apiKey` | string | `FOGLAMP_API_KEY` | Your `fl_…` key. Unset → collector disabled. |
-| `endpoint` | string | `https://ingest.foglamp.dev/ingest` | Ingest URL. Set when self-hosting. |
-| `flushIntervalMs` | number | `5000` | How often the batch is flushed in long-running runtimes. |
-| `maxBatchTraces` | number | `50` | Flush early once this many traces are buffered. |
-| `maxBatchSpans` | number | `500` | Flush early once this many spans are buffered. |
-| `maxQueuedSpans` | number | `5000` | Hard cap on spans buffered in memory (e.g. when ingest is unreachable). Past it, the oldest traces are dropped and `onError` fires. |
-| `maxTraceAgeMs` | number | `600_000` | Traces still open after this (10 min) are finalized as `abandoned` (an error) on the next call, so a crashed generation can't leak its spans. A *cleanly* cancelled stream is different — AI SDK v7's `onAbort` finalizes it promptly with the first-class [`aborted` status](/dashboard/traces) instead of waiting for this timeout. |
-| `maxPayloadChars` | number | `100_000` | Per-field cap for `input`/`output`; longer values are truncated. |
-| `recordInputs` | boolean | `true` | Capture prompt/input text. |
-| `recordOutputs` | boolean | `true` | Capture completion/output text. |
-| `waitUntil` | function | — | Serverless flush hook. Auto-detected on Vercel, Lambda, and edge; pass `ctx.waitUntil` on Cloudflare Workers. See [Runtimes](/sdk/runtimes). |
+| `apiKey` | string | `FOGLAMP_API_KEY` | Your `fl_...` key. If unset, the collector is off. |
+| `endpoint` | string | `https://ingest.foglamp.dev/ingest` | Where to send data. Set this when self-hosting. |
+| `flushIntervalMs` | number | `5000` | How often batches are sent on long-running servers. |
+| `maxBatchTraces` | number | `50` | Send early once this many traces are buffered. |
+| `maxBatchSpans` | number | `500` | Send early once this many spans are buffered. |
+| `maxQueuedSpans` | number | `5000` | Max spans held in memory (for example when ingest is unreachable). Past it, the oldest traces are dropped and `onError` fires. |
+| `maxTraceAgeMs` | number | `600_000` | A trace still open after this long (10 minutes) is closed as `abandoned` and counted as an error, so a crashed generation can't leak spans. A cleanly cancelled stream is handled right away instead, via the [`aborted` status](/dashboard/traces). |
+| `maxPayloadChars` | number | `100_000` | Max length for each `input`/`output` field. Longer values are cut off. |
+| `recordInputs` | boolean | `true` | Capture prompt text. |
+| `recordOutputs` | boolean | `true` | Capture response text. |
+| `waitUntil` | function | none | Serverless flush hook. Detected automatically on Vercel and Lambda; pass `ctx.waitUntil` on Cloudflare Workers. See [Runtimes](/sdk/runtimes). |
 | `fetch` | function | global `fetch` | Custom fetch implementation. |
-| `debug` | boolean | `false` | Log batching/flush activity. |
-| `onError` | function | — | Called on transport/serialization errors instead of throwing. |
+| `debug` | boolean | `false` | Log batching and flush activity. |
+| `onError` | function | none | Called on transport or serialization errors instead of throwing. |
 
 <Warning>
-  The ingest contract caps any single `input` or `output` field at **1,000,000
-  characters**. `maxPayloadChars` (default 100,000) truncates earlier so payloads
-  stay small — raise it only if you need fuller logs and can afford the bytes. A
-  value above 1,000,000 is silently clamped to the contract cap.
+  The ingest API caps any single `input` or `output` field at 1,000,000
+  characters. `maxPayloadChars` (default 100,000) cuts off earlier to keep
+  payloads small. Raise it only if you need fuller logs. Values above 1,000,000
+  are clamped to that cap.
 </Warning>
 
-## Privacy: dropping prompt/response text
+## Privacy: keeping text out
 
-To record traces, costs, and latency without ever sending prompt or completion
-text, disable capture:
+To record traces, cost, and timing without ever sending prompt or response
+text, turn capture off:
 
 ```ts
 const fog = foglamp({
@@ -60,14 +60,14 @@ const fog = foglamp({
 });
 ```
 
-Token usage and cost are still computed — they come from the provider's usage
-report, not from the text.
+Token counts and cost still work. They come from the provider's usage report,
+not from the text.
 
 ## Error handling
 
-The collector never throws into your application path. Transport or
-serialization failures are routed to `onError` (if provided) or swallowed.
-Enable `debug` to trace batching and flush behavior during development.
+The collector never throws into your app. Failures go to `onError` if you
+provide one, and are otherwise ignored. Turn on `debug` to watch batching and
+flushing during development.
 
 ```ts
 const fog = foglamp({

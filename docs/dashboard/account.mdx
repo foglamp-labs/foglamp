@@ -4,53 +4,55 @@ description: "API keys, team roles, plans, and usage quotas."
 ---
 
 Everything is scoped to a **project** inside an **organization**. Switch
-projects from the dropdown at the top of the sidebar; org-wide settings live
-under the **Configs** section of the nav.
+projects from the dropdown at the top of the sidebar; organization-wide
+settings live under **Configs** in the nav.
 
 ## Signing in
 
-The dashboard signs in with email + password by default; magic-link email and
-Google OAuth are optional (see [Configuration](/self-hosting/configuration)).
-Forgot your password? Use **Forgot password?** on the login screen to get a
-reset link by email, then set a new one — the link is valid for one hour.
+The dashboard signs in with email and password by default. Magic-link email and
+Google sign-in are optional (see
+[Configuration](/self-hosting/configuration)). Forgot your password? Use
+**Forgot password?** on the login screen to get a reset link by email; the link
+works for one hour.
 
 <Note>
-  Password-reset and magic-link emails require [email](/self-hosting/configuration)
-  to be configured (`RESEND_API_KEY`). On a self-hosted instance without it,
-  password login still works but reset links can't be sent.
+  Password-reset and magic-link emails require
+  [email](/self-hosting/configuration) to be set up (`RESEND_API_KEY`). On a
+  self-hosted instance without it, password login still works but reset links
+  can't be sent.
 </Note>
 
 ## API keys
 
 Each project has its own ingest keys. On the **API Keys** page you can:
 
-- **Create** a key (admins/owners only). The full `fl_…` value is shown **once**
-  in a modal — copy it then. Only a SHA-256 hash is stored, so it can never be
-  retrieved again; only the `fl_…` prefix is displayed thereafter.
-- **Revoke** a key. Revocation takes effect immediately — the
+- **Create** a key (admins and owners only). The full `fl_...` value is shown
+  once, in a modal. Copy it then: only a hash is stored, so it can never be
+  shown again. After that, only the prefix is displayed.
+- **Revoke** a key. This takes effect immediately; the
   [ingest API](/api-reference/introduction) rejects it on the next request.
 
 Point the SDK at a key with `FOGLAMP_API_KEY` (see the
 [Quickstart](/quickstart)).
 
-## Team & roles
+## Team and roles
 
 The **Organization** settings cover members, invitations, and projects. There
 are three roles:
 
 | Role | Can do |
 | --- | --- |
-| **Owner** | Everything, including deleting the org. |
+| **Owner** | Everything, including deleting the organization. |
 | **Admin** | Manage projects, API keys, members, and billing. |
 | **Member** | Read project data. |
 
-Invite teammates by email with a role; manage or revoke pending invitations from
-the same screen.
+Invite teammates by email with a role, and manage or revoke pending
+invitations from the same screen.
 
-## Plans & billing
+## Plans and billing
 
-The **Billing** tab shows your current plan (free, pro, enterprise, or — on
-self-hosted instances with billing disabled — unmetered) and lets owners/admins
+The **Billing** tab shows your current plan (free, pro, enterprise, or
+unmetered on self-hosted instances with billing off) and lets owners and admins
 upgrade or open the billing portal.
 
 ## Usage
@@ -58,15 +60,15 @@ upgrade or open the billing portal.
 The **Usage** tab shows your consumption against plan limits for the current
 period:
 
-- **Spans this period** — the metered quota, with the reset date.
-- **Projects**, **Alerts**, and **Evals** — counts against their limits.
+- **Spans this period**: the metered quota, with the reset date.
+- **Projects**, **Alerts**, and **Evals**: counts against their limits.
 
-A bar turns red as it approaches its limit. When the span quota is nearly
-exhausted, an app-wide banner appears (amber at 90%, red at 100%).
+A bar turns red as it nears its limit. When the span quota is nearly used up,
+an app-wide banner appears (amber at 90%, red at 100%).
 
 <Warning>
-  Once the monthly span quota is exceeded, the ingest API rejects new spans with
-  a `429` (a billing condition, distinct from rate limiting — see
-  [Two kinds of 429](/api-reference/introduction#two-kinds-of-429)). Upgrade the
-  plan or wait for the period to reset to resume ingesting.
+  Once the monthly span quota is used up, the ingest API rejects new spans with
+  a `429`. This is a billing condition, not rate limiting (see
+  [Two kinds of 429](/api-reference/introduction#two-kinds-of-429)). Upgrade
+  the plan or wait for the period to reset.
 </Warning>

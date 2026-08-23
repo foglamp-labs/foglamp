@@ -1,24 +1,18 @@
 ---
 title: Quickstart
-description: "Instrument a Vercel AI SDK app and see your first trace."
+description: "Add Foglamp to a Vercel AI SDK app and see your first trace."
 ---
 
-## Requirements
+## What you need
 
-Foglamp works with **every major version of the Vercel AI SDK** — v4, v5, v6,
-and v7 (beta). You pick an instrumentation path by the version your app runs;
-both produce identical traces to the same backend.
-
-- `ai` installed — any of v4, v5, v6, or v7
-- A Foglamp API key (`fl_…`) — created in the dashboard, or printed by the
-  seed script when [self-hosting](/self-hosting/overview)
-- An ingest endpoint URL — `https://ingest.foglamp.dev/ingest` for hosted, or
-  your own when self-hosting
+- The `ai` package installed (v4, v5, v6, or v7)
+- A Foglamp API key (starts with `fl_`), created in the dashboard or printed by
+  the seed script when [self-hosting](/self-hosting/overview)
 
 <Info>
-  Not sure which version you're on? Run `npm ls ai` (or check the `ai` entry in
-  `package.json`). The two paths share the same trace context, configuration,
-  and flushing — only the call wiring differs.
+  Not sure which AI SDK version you have? Run `npm ls ai` or check
+  `package.json`. There are two setup paths, one for v4 to v6 and one for v7.
+  Both produce the same traces.
 </Info>
 
 ## 1. Install
@@ -45,31 +39,29 @@ yarn add foglamp
 
 ## 2. Configure
 
-Set your key and endpoint in the environment:
+Set your key in the environment:
 
 ```bash .env
 FOGLAMP_API_KEY=fl_your_key_here
-# Hosted default is used if unset. When self-hosting, point at your ingest API:
+# Only needed when self-hosting. The hosted service is the default.
 FOGLAMP_INGEST_URL=http://localhost:4000/ingest
 ```
 
 <Info>
-  If `FOGLAMP_API_KEY` is not set, the SDK is a silent no-op — your app runs
-  exactly as before, with no spans recorded and nothing thrown. This makes it
-  safe to leave instrumentation in place across every environment.
+  If `FOGLAMP_API_KEY` is not set, Foglamp does nothing: no traces are sent and
+  nothing breaks. This makes it safe to keep the code in place in every
+  environment.
 </Info>
 
-## 3. Instrument
+## 3. Add it to your code
 
-How you attach Foglamp depends on your AI SDK version. Both paths capture the
-same traces — model steps, tool calls, tokens, cost, latency — and send them to
-the same endpoint. Pick the tab for the version your app runs.
+Pick the tab for your AI SDK version.
 
 <Tabs>
-  <Tab title="AI SDK v4–v6">
-    Wrap the `ai` module once with `wrap()` from `foglamp/wrap`, then bind a
-    trace context with `fog.with(...)`. The returned functions have the AI SDK's
-    own, fully-typed signatures — use them exactly as before.
+  <Tab title="AI SDK v4 to v6">
+    Wrap the `ai` module once with `wrap()`, then use `fog.with(...)` to name
+    your calls. The functions you get back have the AI SDK's own types, so you
+    use them exactly as before.
 
     ```ts
     import * as ai from "ai";
@@ -78,7 +70,6 @@ the same endpoint. Pick the tab for the version your app runs.
 
     const fog = wrap(ai);
 
-    // Bind a context; get the AI SDK's own signatures back, fully typed.
     const { generateText } = fog.with({ agentName: "summarizer" });
 
     const { text } = await generateText({
@@ -87,16 +78,14 @@ the same endpoint. Pick the tab for the version your app runs.
     });
     ```
 
-    `wrap()` also returns drop-in `ToolLoopAgent` / `Experimental_Agent`
-    classes, and `fog.run(context, fn)` sets run/session context ambiently with
-    no parameter threading. See [AI SDK v4–v6 (wrap)](/sdk/wrap) for the full
-    surface.
+    `wrap()` also covers the AI SDK's agent classes, and `fog.run(context, fn)`
+    lets you set context for a whole block of code at once. See
+    [AI SDK v4 to v6 (wrap)](/sdk/wrap) for details.
   </Tab>
   <Tab title="AI SDK v7 (beta)">
-    Attach the integration to individual `generateText`/`streamText` calls
-    through v7's `telemetry.integrations` array. Every call needs a `traceName`
-    **or** an `agentName`; `workflowName` and `workflowRunId` are passed
-    together.
+    Pass the integration into each call's `telemetry.integrations` array. Every
+    call needs a `traceName` or an `agentName`. If you use `workflowName`, pass
+    `workflowRunId` with it.
 
     ```ts
     import { foglamp } from "foglamp";
@@ -105,7 +94,7 @@ the same endpoint. Pick the tab for the version your app runs.
 
     const fog = foglamp();
 
-    // One run of a workflow — reuse this id across every call in the run.
+    // One run of a workflow. Reuse this id for every call in the run.
     const runId = crypto.randomUUID();
 
     const result = await generateText({
@@ -122,36 +111,38 @@ the same endpoint. Pick the tab for the version your app runs.
       },
     });
 
-    // Or, for a one-off call that isn't an agent, just name it:
+    // For a one-off call that isn't an agent, just name it:
     // fog.integration({ traceName: "summarize-deploy" })
     ```
 
-    To instrument every call without touching call sites, register once with
-    `registerTelemetry(foglamp())` — see the [SDK overview](/sdk/overview).
+    To trace every call without editing each one, register once with
+    `registerTelemetry(foglamp())`. See the [SDK overview](/sdk/overview).
   </Tab>
 </Tabs>
 
 ## 4. Flush
 
-In long-running servers (Node, Bun) the SDK flushes on an interval
-automatically. In serverless runtimes you must ensure the batch is sent before
-the function returns — see [Runtimes & flushing](/sdk/runtimes).
+On long-running servers (Node, Bun), Foglamp sends data automatically on a
+timer. In serverless functions, make sure the data is sent before the function
+returns:
 
 ```ts
 await fog.flush();
 ```
 
-## 5. See it in the dashboard
+See [Runtimes and flushing](/sdk/runtimes) for what each platform needs.
 
-Run your app, then open the dashboard. Your call appears under **Traces**, with
-its spans, token usage, computed cost, and latency. Group related calls with a
-shared `workflowRunId` to see them on the **Workflows** timeline.
+## 5. Look at the dashboard
+
+Run your app, then open the dashboard. Your call shows up under **Traces** with
+its spans, tokens, cost, and timing. Calls that share a `workflowRunId` appear
+together on the **Workflows** page.
 
 <CardGroup cols={2}>
   <Card title="SDK reference" icon="code" href="/sdk/overview">
-    All configuration options and integration fields.
+    All options and integration fields.
   </Card>
   <Card title="Data model" icon="sitemap" href="/concepts/data-model">
-    How traces, spans, workflows, and runs relate.
+    How traces, spans, workflows, and runs fit together.
   </Card>
 </CardGroup>

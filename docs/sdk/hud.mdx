@@ -1,28 +1,26 @@
 ---
 title: Live HUD
-description: "Stream agent execution live onto your app in two lines — foglamp/hud."
+description: "Watch your agent run live on top of your app with foglamp/hud."
 ---
 
-The **HUD** is a floating, dev-only overlay that streams your agent's execution
-live — steps, tool calls, tokens, and cost — on top of your running app. It's the
-same telemetry Foglamp already collects, surfaced locally as you develop, so you
-watch the tool cascade unfold (including a tool flashing red and recovering)
-without leaving your app.
+The HUD is a floating overlay for development. It streams your agent's
+execution live on top of your running app: steps, tool calls, tokens, and cost.
+It uses the same telemetry Foglamp already collects, so you watch your tools
+run (and fail, and recover) without leaving your app.
 
 <Note>
-  The HUD reuses your existing instrumentation — it does **not** need an API key.
-  With `hud: true` and no `apiKey`, traces stream to the overlay but aren't sent
-  to ingest. Already have a key? Both happen at once.
+  The HUD does not need an API key. With `hud: true` and no `apiKey`, traces
+  stream to the overlay but aren't sent to the backend. If you have a key, both
+  happen at once.
 </Note>
 
-## Requirements
+## What you need
 
-- A **React** app (the overlay is a React component). No other dependencies —
-  the pill↔panel morph runs on a tiny vendored spring, so there's **nothing to
-  install beyond `foglamp`**.
-- A server on a **Node runtime** — the overlay connects to a localhost
-  Server-Sent-Events broker that `foglamp({ hud: true })` starts in-process.
-  Not edge, not serverless (see [Caveats](#caveats)).
+- A React app (the overlay is a React component). Nothing to install beyond
+  `foglamp`.
+- A server running on Node. The overlay connects to a small localhost event
+  server that `foglamp({ hud: true })` starts inside your process. It does not
+  work on edge or serverless (see [Caveats](#caveats)).
 
 ## 1. Install
 
@@ -50,8 +48,7 @@ yarn add foglamp
 
 ## 2. Turn the HUD on (server)
 
-Pass `hud: true` where you create the collector. This starts the in-process
-localhost broker.
+Pass `hud: true` where you create the collector:
 
 ```ts
 import { foglamp } from "foglamp";
@@ -59,15 +56,14 @@ import { foglamp } from "foglamp";
 const fog = foglamp({ hud: true });
 ```
 
-That's the **first line**. Everything else — `fog.integration(...)` on your
-`generateText` / `streamText` calls — is unchanged; the HUD rides the telemetry
-you already emit.
+That's the first line. Everything else, like `fog.integration(...)` on your
+calls, stays the same. The HUD uses the telemetry you already send.
 
 ## 3. Drop in the overlay (client)
 
-Render `<FoglampHUD />` once near the root of your client app — e.g. your root
-layout or `App`. It mounts into a Shadow DOM (its styles can't collide with
-yours) and is inert unless the local broker is running, so it's safe to leave in.
+Render `<FoglampHUD />` once near the root of your client app, for example in
+your root layout. Its styles are isolated from yours, and it does nothing
+unless the local event server is running, so it's safe to leave in.
 
 ```tsx
 import { FoglampHUD } from "foglamp/hud";
@@ -82,39 +78,38 @@ export default function RootLayout({ children }) {
 }
 ```
 
-That's the **second line**. Run your app, trigger an AI flow, and watch it stream.
+That's the second line. Run your app, trigger an AI flow, and watch it stream.
 
 ## `<FoglampHUD />` props
 
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `port` | number | `8517` | Broker port. **Must match** `foglamp({ hudPort })` if you changed it. |
-| `url` | string | — | Full SSE endpoint (absolute URL or same-origin path like `/hud/events`). Overrides `port` / the `127.0.0.1` default — for reaching the broker through a proxy on the page's own origin (e.g. a hosted demo). |
-| `defaultOpen` | boolean | `false` | Start expanded instead of as the collapsed pill. |
-| `theme` | `"light" \| "dark" \| "system"` | `"system"` | Color theme. `"system"` follows your app's `.dark` class / OS. |
-| `redact` | boolean | `false` | Mask prompt / response / tool payloads on screen. Turn on before recording or screen-sharing. |
+| `port` | number | `8517` | Event server port. Must match `foglamp({ hudPort })` if you changed it. |
+| `url` | string | none | Full event endpoint (absolute URL or same-origin path like `/hud/events`). Overrides `port`. Useful when reaching the server through a proxy. |
+| `defaultOpen` | boolean | `false` | Start expanded instead of as a collapsed pill. |
+| `theme` | `"light" \| "dark" \| "system"` | `"system"` | Color theme. `"system"` follows your app's `.dark` class or the OS. |
+| `redact` | boolean | `false` | Hide prompt, response, and tool payloads on screen. Turn on before recording or screen sharing. |
 
 ## Server options
 
-Two fields on `foglamp(config)` control the broker — see
+Two fields on `foglamp(config)` control the event server. See
 [Configuration](/sdk/configuration) for the full table.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `hud` | boolean | `false` | Start the local HUD broker. Can also be enabled via `FOGLAMP_HUD=1`. |
-| `hudPort` | number | `8517` | Port for the in-process SSE broker. Also `FOGLAMP_HUD_PORT`. |
+| `hud` | boolean | `false` | Start the local HUD event server. Can also be set with `FOGLAMP_HUD=1`. |
+| `hudPort` | number | `8517` | Port for the event server. Also `FOGLAMP_HUD_PORT`. |
 
 <Note>
-  The client `port` and the server `hudPort` must agree. If you run more than one
-  HUD-enabled process locally (e.g. a dashboard plus a worker), give each its own
-  port and point its `<FoglampHUD port={…} />` at it.
+  The client `port` and the server `hudPort` must match. If you run more than
+  one HUD-enabled process locally, give each its own port and point its
+  `<FoglampHUD port={…} />` at it.
 </Note>
 
 ## Recording a demo
 
-Set `redact` before you record or screen-share — it masks every prompt,
-completion, and tool payload while keeping the timing, token, and cost view
-intact.
+Set `redact` before you record or screen share. It hides every prompt,
+response, and tool payload while keeping the timing, token, and cost view:
 
 ```tsx
 <FoglampHUD redact />
@@ -123,20 +118,21 @@ intact.
 ## Caveats
 
 <Warning>
-  The HUD is **dev / localhost only.** `hud: true` is ignored in production, on
-  edge, and on serverless runtimes — the in-process broker needs a long-lived
-  Node process. Your normal ingest path is unaffected; only the overlay is gated.
+  The HUD is for local development only. `hud: true` is ignored in production
+  and on edge or serverless runtimes, because the event server needs a
+  long-lived Node process. Your normal telemetry is unaffected; only the
+  overlay is turned off.
 </Warning>
 
-- **Node runtime, not edge.** The broker is a localhost `node:http` SSE server.
-  On Next.js, the route/handler that constructs `foglamp({ hud: true })` must run
-  on the Node runtime (the default) — not `export const runtime = "edge"`.
-- **No production cost.** The HUD's server code (broker + live pricing) is
-  code-split and lazy-loaded; it never enters your edge/browser bundle. The core
-  `foglamp` entry stays React-free and HTTP-free.
-- **Safe to commit.** `<FoglampHUD />` does nothing unless a broker is running,
-  so leaving both lines in is harmless — but gate `hud: true` to dev if you want
-  to be explicit:
+- **Node runtime, not edge.** On Next.js, the route or handler that creates
+  `foglamp({ hud: true })` must run on the Node runtime (the default), not
+  `export const runtime = "edge"`.
+- **No production cost.** The HUD's server code is loaded lazily and never
+  enters your edge or browser bundle. The core `foglamp` entry stays free of
+  React and HTTP code.
+- **Safe to commit.** `<FoglampHUD />` does nothing unless the event server is
+  running, so leaving both lines in is harmless. To be explicit, gate it to
+  dev:
 
   ```ts
   const fog = foglamp({ hud: process.env.NODE_ENV !== "production" });

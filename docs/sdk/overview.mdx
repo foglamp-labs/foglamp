@@ -3,23 +3,22 @@ title: SDK overview
 description: "The foglamp() collector and its integration methods."
 ---
 
-The `foglamp` package has **two entry points**, one per AI SDK generation. Both
-batch spans and flush them to your ingest endpoint, and both share the same
-trace-context fields, `fog.run()`, [configuration](/sdk/configuration), and
-[flushing](/sdk/runtimes) — they differ only in how they attach to your calls.
+The `foglamp` package has two entry points, one per AI SDK generation. Both
+batch spans and send them to your ingest endpoint, and both share the same
+context fields, configuration, and flushing. They only differ in how they
+attach to your calls.
 
 <CardGroup cols={2}>
-  <Card title="wrap() — AI SDK v4–v6" icon="package" href="/sdk/wrap">
-    Wraps the `ai` module for the stable v4, v5, and v6 lines.
+  <Card title="wrap() for AI SDK v4 to v6" icon="package" href="/sdk/wrap">
+    Wraps the `ai` module. Use this on v4, v5, and v6.
   </Card>
-  <Card title="foglamp() — AI SDK v7" icon="bolt" href="#foglampconfig">
-    The native telemetry-integrations collector. Documented below.
+  <Card title="foglamp() for AI SDK v7" icon="bolt" href="#foglampconfig">
+    Uses v7's built-in telemetry API. Documented below.
   </Card>
 </CardGroup>
 
-This page documents the v7 `foglamp()` collector; the v4–v6 `wrap()` API has its
-own [reference](/sdk/wrap). `foglamp()` returns a **collector** that batches
-spans and produces telemetry integrations you attach to AI SDK v7 calls.
+This page covers the v7 `foglamp()` collector. The v4 to v6 `wrap()` API has
+its own [page](/sdk/wrap).
 
 ```ts
 import { foglamp } from "foglamp";
@@ -28,18 +27,16 @@ const fog = foglamp();
 ```
 
 <Note>
-  Whichever entry point you use, the SDK carries a single small runtime
-  dependency (`uuidv7`) and never forces a particular version of `zod` on your
-  project — the wire types are a hand-written, zod-free mirror of the contract,
-  so `ai` is the only required peer dependency
+  The SDK has one small runtime dependency (`uuidv7`) and does not require any
+  particular version of `zod`. Its only required peer dependency is `ai`
   (`ai@^4 || ^5 || ^6 || ^7.0.0-beta.1`).
 </Note>
 
 ## `foglamp(config?)`
 
-Creates a collector. All configuration is optional; sensible defaults apply and
-missing credentials disable the collector silently. See
-[Configuration](/sdk/configuration) for the full option table.
+Creates a collector. All options are optional; if there is no API key, the
+collector silently does nothing. See [Configuration](/sdk/configuration) for
+the full option table.
 
 ```ts
 const fog = foglamp({
@@ -49,18 +46,15 @@ const fog = foglamp({
 });
 ```
 
-If `apiKey` is unset (and not in the environment), the collector is **disabled**:
-integrations become no-ops, nothing is sent, and nothing is thrown.
-
 ## Collector methods
 
 ### `fog.integration(context)`
 
 Returns a telemetry integration to pass into a call's
-`telemetry.integrations` array (AI SDK v7 also accepts the legacy
-`experimental_telemetry` alias). The context — a **required** argument —
-labels every span the call produces; calling it without a `traceName` or
-`agentName` throws immediately (at setup, not inside the call).
+`telemetry.integrations` array (v7 also accepts the older
+`experimental_telemetry` name). The context labels every span the call
+produces. It must include a `traceName` or an `agentName`; if it has neither,
+`integration()` throws right away.
 
 ```ts
 fog.integration({
@@ -72,31 +66,32 @@ fog.integration({
   metadata: { environment: "production", region: "us-east-1" },
 });
 
-// A one-off call that isn't an agent — name it instead:
+// A one-off call that isn't an agent: name it instead.
 fog.integration({ traceName: "classify-email" });
 ```
 
 | Context field | Type | Notes |
 | --- | --- | --- |
-| `traceName` | string | label for a one-off call; required if `agentName` is absent |
-| `agentName` | string | the actor responsible for the call; required if `traceName` is absent |
-| `workflowName` | string | the named process; pass with `workflowRunId` |
-| `workflowRunId` | string | groups traces into one run; pass with `workflowName` |
-| `sessionId` | string | ties traces to one conversation |
-| `customer` | `{ id: string; name?: string; imageUrl?: string }` | the end-customer this call serves; powers per-customer cost. Only `id` is required |
-| `metadata` | `Record<string, string \| number \| boolean>` | free-form labels; values are coerced to strings on the wire |
+| `traceName` | string | Label for a one-off call. Required if `agentName` is absent. |
+| `agentName` | string | The agent making the call. Required if `traceName` is absent. |
+| `workflowName` | string | The named process. Pass with `workflowRunId`. |
+| `workflowRunId` | string | Groups traces into one run. Pass with `workflowName`. |
+| `sessionId` | string | Ties traces to one conversation. |
+| `customer` | `{ id: string; name?: string; imageUrl?: string }` | The customer this call serves. Powers per-customer cost. Only `id` is required. |
+| `metadata` | `Record<string, string \| number \| boolean>` | Free-form labels. Values are stored as strings. |
 
 <Note>
-  `traceName` **or** `agentName` is required (both is fine — the display label is
-  `traceName ?? agentName`). `workflowName` and `workflowRunId` must be passed
-  together. Both rules are enforced at compile time and rechecked at ingest.
+  Two rules, checked at compile time and again at ingest: every call needs a
+  `traceName` or an `agentName` (both is fine; the display label is
+  `traceName ?? agentName`), and `workflowName` and `workflowRunId` must be
+  passed together.
 </Note>
 
 ### `fog.flush()`
 
-Sends any buffered spans immediately and resolves when the request completes.
-Call this before a serverless function returns. Safe to call when the
-collector is disabled (resolves immediately).
+Sends any buffered spans right away and resolves when done. Call this before a
+serverless function returns. Safe to call when the collector is disabled; it
+resolves immediately.
 
 ```ts
 await fog.flush();
@@ -104,9 +99,8 @@ await fog.flush();
 
 ### `fog.shutdown()`
 
-Stops the flush timer and drains everything, including traces enqueued while a
-flush was already in flight. Use on graceful process shutdown in long-running
-servers.
+Stops the flush timer and sends everything left, including traces added while a
+send was already in progress. Use this when a long-running server shuts down.
 
 ```ts
 process.on("SIGTERM", async () => {
@@ -115,35 +109,31 @@ process.on("SIGTERM", async () => {
 ```
 
 <Note>
-  **`flush()` vs `shutdown()`** — `flush()` is a per-request drain: the
-  background timer keeps running and the collector stays usable. `shutdown()`
-  is terminal: it stops the timer and loops until the queue is truly empty.
-  Use `flush()` at the end of a serverless handler; use `shutdown()` exactly
-  once when the process exits — calling only `flush()` there can strand traces
-  enqueued mid-flush.
+  `flush()` keeps the collector running; use it at the end of a serverless
+  handler. `shutdown()` is final; use it once when the process exits. Calling
+  only `flush()` at exit can leave behind traces that were added mid-send.
 </Note>
 
-## Registration paths
+## Two ways to register
 
 <CardGroup cols={2}>
-  <Card title="Per-call" icon="crosshairs">
-    Pass `fog.integration(...)` into a single call's telemetry. Fully typed, and
-    wins over any global registration.
+  <Card title="Per call" icon="crosshairs">
+    Pass `fog.integration(...)` into one call's telemetry. Fully typed, and
+    takes priority over global registration.
   </Card>
   <Card title="Global" icon="globe">
-    `registerTelemetry(foglamp())` instruments every call. Reads `functionId`
-    as `agentName` and reserved keys from `telemetry.metadata`.
+    `registerTelemetry(foglamp())` traces every call. It reads `functionId` as
+    the `agentName` and known keys from `telemetry.metadata`.
   </Card>
 </CardGroup>
 
 ## Nested calls inside tools
 
-When a tool's `execute` function makes its own AI SDK call (a model call inside a
-tool — e.g. a sub-agent), the v7 collector **automatically propagates the parent
-call's grouping context** (`workflowName`, `workflowRunId`, `sessionId`,
-`customer`, `metadata`) into that nested call. So the inner call lands in the
-same workflow run as the outer one with no plumbing — you don't have to thread a
-`fog.run()` through your tool bodies.
+When a tool's `execute` function makes its own AI SDK call (for example a
+sub-agent), the v7 collector automatically passes the parent call's grouping
+context (`workflowName`, `workflowRunId`, `sessionId`, `customer`, `metadata`)
+into that nested call. The inner call lands in the same workflow run with no
+extra code.
 
 ```ts
 const fog = foglamp();
@@ -156,21 +146,20 @@ await generateText({
       fog.integration({
         agentName: "planner",
         workflowName: "deep-research",
-        workflowRunId: run.id,        // ← the nested call inherits this…
+        workflowRunId: run.id,        // the nested call inherits this
       }),
     ],
   },
 });
-// …so the sub-agent's trace joins workflow run `run.id` automatically.
+// The sub-agent's trace joins workflow run `run.id` automatically.
 ```
 
-Only **grouping** context propagates — the inner call's **identity**
-(`agentName` / `traceName`) is not inherited, so a nested call keeps its own
-name. The nested call is still its own trace (a sibling in the run), not a child
-span of the tool. A more specific inner `fog.run()` or `fog.integration()` still
-wins. This is a v7-collector feature; on v4–v6 use [`fog.run()`](/sdk/wrap) to
-share context across nested calls.
+Only grouping context is inherited. The inner call keeps its own name
+(`agentName` / `traceName`), and it is its own trace in the run, not a child
+span of the tool. A more specific inner `fog.run()` or `fog.integration()`
+still wins. This only works on the v7 collector; on v4 to v6 use
+[`fog.run()`](/sdk/wrap) to share context across nested calls.
 
-Next: tune batching and capture in [Configuration](/sdk/configuration), and make
-sure spans actually leave serverless functions in
-[Runtimes & flushing](/sdk/runtimes).
+Next: tune batching and text capture in [Configuration](/sdk/configuration),
+and make sure spans leave serverless functions in
+[Runtimes and flushing](/sdk/runtimes).

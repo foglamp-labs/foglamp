@@ -3,33 +3,33 @@ title: Cost & pricing
 description: "How Foglamp prices spans."
 ---
 
-Foglamp prices every span **at ingest**, the moment it arrives, from the token
-dimensions the provider reported. Cost is never recomputed downstream, so what
-you see in a trace is what was charged when it landed.
+Foglamp prices every span the moment it arrives, using the token counts the
+provider reported. Cost is never recomputed later, so what you see in a trace
+is what was calculated when it landed.
 
 ## How pricing works
 
-Each [usage dimension](/concepts/data-model#usage) is priced independently
+Each [usage dimension](/concepts/data-model#usage) is priced on its own
 against a model price table sourced from
-[OpenRouter](https://openrouter.ai/api/v1/models), refreshed every 24 hours. The
-dimensions priced are prompt, completion, request, image, web-search, internal
+[OpenRouter](https://openrouter.ai/api/v1/models) and refreshed every 24 hours.
+The priced dimensions are prompt, completion, request, image, web search,
 reasoning, cache-read, and cache-write tokens.
 
-The span detail panel shows a **pricing source** so you can see where each
-cost came from.
+The span detail panel shows a **pricing source** so you can see where each cost
+came from.
 
 <Note>
-  A model Foglamp can't find a price for is labelled **`(unknown)`** in cost
-  breakdowns — never silently treated as `$0`. The Overview KPI's "% priced"
-  tells you what fraction of LLM spans were priced; a low number usually means
-  you're running a model OpenRouter doesn't list yet.
+  A model Foglamp can't find a price for shows as **`(unknown)`** in cost
+  breakdowns, never as `$0`. The Overview's "% priced" number tells you what
+  share of LLM spans got a price; a low number usually means you're running a
+  model OpenRouter doesn't list yet.
 </Note>
 
 ## Where cost shows up
 
-- **[Overview](/dashboard/overview)** — total cost, cost-over-time (stacked by
-  model), and per-model / per-agent cost tables.
-- **[Traces](/dashboard/traces)** — per-span cost and pricing source.
-- **[Agents](/dashboard/agents)** and **[Workflows](/dashboard/workflows)** —
-  cost rolled up by actor and by run.
-- **[Alerts](/dashboard/alerts)** — alert on `cost` over a window.
+- **[Overview](/dashboard/overview)**: total cost, cost over time stacked by
+  model, and per-model and per-agent cost tables.
+- **[Traces](/dashboard/traces)**: per-span cost and pricing source.
+- **[Agents](/dashboard/agents)** and **[Workflows](/dashboard/workflows)**:
+  cost totals per agent and per run.
+- **[Alerts](/dashboard/alerts)**: alert on `cost` over a time window.

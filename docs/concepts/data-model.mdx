@@ -3,42 +3,43 @@ title: Data model
 description: "Traces, spans, workflows, runs, agents, sessions, and customers."
 ---
 
-Foglamp's model maps directly onto how the Vercel AI SDK executes. Five
+Foglamp's model maps directly onto how the Vercel AI SDK runs. A handful of
 concepts cover everything you see in the dashboard.
 
 ## Trace
 
-A **trace** is one top-level model call — a single `generateText`, `streamText`,
-`generateObject`, or `streamObject` invocation. It carries the call's identity
-(name, agent, workflow, run, session), free-form metadata, and a list of spans.
+A **trace** is one top-level model call: a single `generateText`,
+`streamText`, `generateObject`, or `streamObject` invocation. It carries the
+call's identity (name, agent, workflow, run, session), free-form metadata, and
+a list of spans.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `traceId` | string | 1–128 chars, unique per call |
-| `traceName` | string? | up to 256 chars — required if `agentName` is absent |
+| `traceId` | string | 1-128 chars, unique per call |
+| `traceName` | string? | up to 256 chars; required if `agentName` is absent |
 | `agentName` | string? | up to 256 chars |
 | `workflowName` | string? | up to 256 chars |
-| `workflowRunId` | string? | up to 128 chars — groups traces into one run |
+| `workflowRunId` | string? | up to 128 chars; groups traces into one run |
 | `sessionId` | string? | up to 128 chars |
-| `customer` | object? | `{ id, name?, imageUrl? }` — the end-customer served (see [Customer](#customer)) |
-| `metadata` | map? | string → string |
-| `spans` | span[] | 1–2000 spans |
+| `customer` | object? | `{ id, name?, imageUrl? }`, the customer served (see [Customer](#customer)) |
+| `metadata` | map? | string to string |
+| `spans` | span[] | 1-2000 spans |
 
 <Note>
-  Two rules are enforced at compile time (SDK) and at ingest:
-  - Every trace must set **`traceName` or `agentName`** (both is fine — see [Trace name](#trace-name)).
-  - **`workflowName` and `workflowRunId` go together** — pass both or neither.
+  Two rules are checked in the SDK and again at ingest:
+  - Every trace must set `traceName` or `agentName` (both is fine, see [Trace name](#trace-name)).
+  - `workflowName` and `workflowRunId` go together. Pass both or neither.
 </Note>
 
 ## Span
 
-A **span** is a unit of work inside a trace — a model step, a tool call, an
-embedding, or anything else. Spans carry timing, status, model identity, token
-usage, and optional input/output.
+A **span** is a unit of work inside a trace: a model step, a tool call, or
+anything else. Spans carry timing, status, model identity, token usage, and
+optional input/output text.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `spanId` | string | 1–128 chars |
+| `spanId` | string | 1-128 chars |
 | `parentSpanId` | string? | builds the waterfall |
 | `spanType` | enum | `agent`, `llm`, `tool`, `embedding`, `other` |
 | `name` | string | up to 512 chars |
@@ -47,15 +48,15 @@ usage, and optional input/output.
 | `errorMessage` | string? | up to 8192 chars |
 | `provider` | string? | e.g. `openai` |
 | `modelId` | string? | e.g. `gpt-4o` |
-| `usage` | object? | token dimensions, see below |
+| `usage` | object? | token counts, see below |
 | `ttftMs` | number? | time to first token (may be fractional) |
 | `input` / `output` | string? | up to 1,000,000 chars each |
-| `metadata` | map? | string → string |
+| `metadata` | map? | string to string |
 
 ### Usage
 
-Every usage dimension is an optional non-negative integer. Each is priced
-independently at ingest.
+Every usage field is an optional non-negative integer. Each is priced on its
+own at ingest.
 
 | Field | Meaning |
 | --- | --- |
@@ -69,53 +70,51 @@ independently at ingest.
 | `webSearchCount` | web search calls |
 | `requestCount` | provider requests |
 
-## Workflow & run
+## Workflow and run
 
-A **workflow** is a named, repeatable process (e.g. `deploy-digest`). A
+A **workflow** is a named, repeatable process (for example `deploy-digest`). A
 **workflow run** is one execution of it, identified by `workflowRunId`. Every
 trace sharing a `workflowRunId` belongs to the same run, and the dashboard
-stitches them into a single timeline.
+shows them as a single timeline.
 
 ## Trace name
 
 A **trace name** (`traceName`) is the call's human label. Use it for a one-off
-call that isn't an agent — `fog.integration({ traceName: "classify-email" })` —
-so it's identifiable and groupable in the dashboard instead of landing in an
-unnamed bucket.
+call that isn't an agent, like
+`fog.integration({ traceName: "classify-email" })`, so the call is easy to find
+and group in the dashboard.
 
-The effective label a trace displays as is `traceName ?? agentName`: if you set
-only `agentName`, that's the label; if you set both, the call is attributed to
-the agent and shows the `traceName`. Every trace must set one of the two.
+The label a trace displays is `traceName ?? agentName`. If you set only
+`agentName`, that's the label. If you set both, the call belongs to the agent
+and shows the `traceName`. Every trace must set at least one of the two.
 
 ## Agent
 
 An **agent** is a named actor (`agentName`) responsible for a call. Agents give
-you per-agent rollups — cost, latency, error rate — across every trace they
-produced, independent of which workflow they ran in.
+you per-agent totals for cost, latency, and errors across every trace they
+produced, no matter which workflow they ran in.
 
 ## Session
 
-A **session** (`sessionId`) ties together traces that belong to one
-conversation or user interaction, cutting across workflows and agents. Use it to
-follow a single end-user thread end to end.
+A **session** (`sessionId`) groups the traces that belong to one conversation
+or user interaction, across workflows and agents. Use it to follow a single
+user thread end to end.
 
 ## Customer
 
-A **customer** (`customer`) is the end-customer a call serves — the tenant or
-user *your* app is acting on behalf of. It rolls cost up per customer (the
-**Customers** card on the [Overview](/dashboard/overview)), so it's the building
-block for usage-based pricing on top of Foglamp.
+A **customer** (`customer`) is the person or company your app is serving with a
+call, such as a tenant or end user. It rolls cost up per customer (the
+**Customers** card on the [Overview](/dashboard/overview)), which is the
+building block for usage-based pricing on top of Foglamp.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `id` | string | **required** — 1–128 chars, the stable grouping key. Unlike names, this is a high-cardinality identifier (one per customer), so a dynamic id is correct here |
-| `name` | string? | up to 256 chars — display label; the latest value seen wins |
-| `imageUrl` | string? | up to 2048 chars — avatar URL; falls back to a generated icon |
+| `id` | string | **required**, 1-128 chars, the stable grouping key. Unlike names, this is meant to be dynamic: one id per customer |
+| `name` | string? | up to 256 chars, display label; the latest value seen wins |
+| `imageUrl` | string? | up to 2048 chars, avatar URL; falls back to a generated icon |
 
-`name` and `imageUrl` are display-only and may change over time (Foglamp keeps
-the latest). Only `id` is denormalized onto spans for attribution; the name and
-image live in a small dimension table. `customer` is optional and purely
-additive — omitting it changes nothing.
+`name` and `imageUrl` are display-only and can change over time (Foglamp keeps
+the latest). `customer` is optional; leaving it out changes nothing.
 
 ## How it streams
 
@@ -126,15 +125,13 @@ generateText() ─────────────▶ trace
   └─ step (model call) ──────▶ llm span
 ```
 
-The SDK opens a span per step and tool execution, reads the SDK's own
-performance metrics for TTFT, and closes the trace when the call ends.
+The SDK opens a span per step and tool call, reads the AI SDK's own performance
+metrics for time to first token, and closes the trace when the call ends.
 
 <Note>
-  **Embeddings aren't captured yet.** The wire contract reserves an `embedding`
-  span type, but neither SDK path emits one today. Both paths instrument
-  `generateText`, `streamText`, `generateObject`, and `streamObject` (plus the
-  `ToolLoopAgent`/`Experimental_Agent` classes); `embed`/`embedMany` and `rerank`
-  are not yet traced. Instrumenting an `embed` call today produces a trace with a
-  root span but no token usage or cost. Embedding capture is planned — until
-  then, treat the `embedding` span type as reserved.
+  **Embeddings aren't captured yet.** Both SDK paths trace `generateText`,
+  `streamText`, `generateObject`, and `streamObject`, plus the agent classes.
+  `embed`, `embedMany`, and `rerank` are not traced yet: an `embed` call today
+  produces a trace with a root span but no token usage or cost. The `embedding`
+  span type is reserved for when this lands.
 </Note>

@@ -3,29 +3,29 @@ title: Workflows
 description: "Group multi-call processes into runs and inspect them as a flow."
 ---
 
-A **workflow** is a named, repeatable process (e.g. `deploy-digest`); a
+A **workflow** is a named, repeatable process (for example `deploy-digest`). A
 **workflow run** is one execution of it. Tag your calls with a `workflowName`
-and a shared `workflowRunId` and Foglamp stitches them into a single run — see the
-[data model](/concepts/data-model).
+and a shared `workflowRunId`, and Foglamp groups them into a single run. See
+the [data model](/concepts/data-model).
 
 <Note>
-  `workflowName` and `workflowRunId` are passed together — both or neither.
-  Reuse the same `workflowRunId` (a job id, request id, …) across every call in
-  one execution. Traces with no workflow land in an **Ungrouped** bucket.
+  `workflowName` and `workflowRunId` go together: pass both or neither. Reuse
+  the same `workflowRunId` (a job id, request id, and so on) across every call
+  in one execution. Traces with no workflow land in an **Ungrouped** bucket.
 </Note>
 
 ## Workflows list
 
 A card per workflow over the selected range, each showing run count, trace
-count, tokens, cost, last-run time, and an error badge when any run failed. A
-toggle switches between this card view and a compact table.
+count, tokens, cost, last run time, and an error badge when any run failed. A
+toggle switches between cards and a compact table.
 
 ## Workflow detail
 
 Opening a workflow shows two things:
 
-- **Run flow** — a graph of the selected run, one node per trace, coloured by
-  status and labelled with name, start time, and duration. Click a node to open
+- **Run flow**: a graph of the selected run, one node per trace, colored by
+  status and labeled with name, start time, and duration. Click a node to open
   that [trace](/dashboard/traces).
-- **Runs table** — every run of the workflow with its trace count, duration,
+- **Runs table**: every run of the workflow with its trace count, duration,
   cost, and timestamp. Click a row to load it into the flow graph above.

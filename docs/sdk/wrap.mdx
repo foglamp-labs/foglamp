@@ -1,25 +1,24 @@
 ---
-title: AI SDK v4–v6 (wrap)
+title: AI SDK v4 to v6 (wrap)
 description: "Instrument older AI SDK versions by wrapping the module."
 ---
 
-The `foglamp()` collector relies on the telemetry-integrations API introduced in
-**AI SDK v7** (`registerTelemetry` / `telemetry: { integrations }`). If you're on
-**AI SDK v4, v5, or v6**, use the `foglamp/wrap` entry point instead: it wraps the
-AI SDK functions and produces the **same traces** to the same ingest endpoint.
+The `foglamp()` collector needs the telemetry API introduced in AI SDK v7. On
+v4, v5, or v6, use the `foglamp/wrap` entry point instead. It wraps the AI SDK
+functions and produces the same traces to the same endpoint.
 
 ```ts
 import * as ai from "ai";
 import { wrap } from "foglamp/wrap";
 
 const fog = wrap(ai, {
-  context: { agentName: "support" }, // default trace context for every call
+  context: { agentName: "support" }, // default context for every call
 });
 
-// Bind a context and get the AI SDK's own signatures back, fully typed.
+// Bind a context and get the AI SDK's own functions back, fully typed.
 const { generateText } = fog.with({ agentName: "summarizer" });
 
-// Use exactly like the AI SDK — traces are captured automatically.
+// Use exactly like the AI SDK. Traces are captured automatically.
 const { text } = await generateText({
   model: openai("gpt-4o"),
   prompt: "Summarize this ticket.",
@@ -27,7 +26,7 @@ const { text } = await generateText({
 ```
 
 <Note>
-  `wrap()` supports **AI SDK v4 and later**. On **v7**, prefer the native
+  `wrap()` supports AI SDK v4 and later. On v7, prefer the native
   [`foglamp()`](/sdk/overview) collector. The package declares
   `ai@^4 || ^5 || ^6 || ^7.0.0-beta.1` as a peer dependency.
 </Note>
@@ -36,40 +35,36 @@ const { text } = await generateText({
 
 Each wrapped call becomes one trace, with the same shape as the v7 path:
 
-- **`generateText` / `streamText`** — a root span plus one `llm` span per step and
-  one `tool` span per tool execution.
-- **`generateObject` / `streamObject`** — a root span plus a single `llm` span.
-- **`ToolLoopAgent` / `Experimental_Agent`** — `wrap()` also returns wrapped,
-  drop-in versions of the module's agent classes. `agent.generate()` /
-  `agent.stream()` produce the same trace shape as `generateText` /
-  `streamText`, including exact tool timing. If the agent has an `id` and no
-  `agentName` was set, the `id` becomes the trace's `agentName`.
-- **Tool timing is exact.** `wrap()` times each tool's `execute` directly, so tool
-  spans carry a real measured duration (not an estimate).
-- **Streaming throughput.** For `streamText`, foglamp observes the stream via the
-  call's `onChunk` callback to record time-to-first-token and the intra-stream
-  token curve that powers tokens/sec and replay — **without** consuming or
-  altering your stream.
-- **Provider signals.** Every `llm` span — text, object, and agent steps alike —
-  carries the provider signals it reports: grounding `sources` (output-gated),
-  the OpenAI-style `system_fingerprint`, safety ratings, and normalized
-  rate-limit headroom. The model-vs-tool latency split is v7-only; `wrap`
-  measures exact tool timing but never a separable model-call window, so it
-  omits `modelCallMs` rather than estimate it.
+- **`generateText` / `streamText`**: a root span, one `llm` span per step, and
+  one `tool` span per tool call.
+- **`generateObject` / `streamObject`**: a root span plus one `llm` span.
+- **Agent classes**: `wrap()` also returns wrapped, drop-in versions of
+  `ToolLoopAgent` and `Experimental_Agent`. `agent.generate()` and
+  `agent.stream()` are traced like `generateText` and `streamText`. If the
+  agent has an `id` and no `agentName` was set, the `id` is used as the
+  `agentName`.
+- **Exact tool timing**: `wrap()` times each tool's `execute` directly, so tool
+  spans have a real measured duration.
+- **Streaming stats**: for `streamText`, Foglamp watches the stream through the
+  call's `onChunk` callback to record time to first token and the token curve
+  behind tokens/sec and replay. It never consumes or changes your stream.
+- **Provider signals**: every `llm` span carries what the provider reports,
+  such as grounding sources, the OpenAI-style `system_fingerprint`, safety
+  ratings, and rate-limit headroom. One difference from v7: `wrap` measures
+  exact tool time but cannot separate out the model-only window, so it omits
+  `modelCallMs` rather than guess.
 
 ## Per-call context
 
-Contexts layer, later layers winning per field: `wrap(ai, { context })` sets
-the default, `fog.run(context, fn)` sets the ambient run context,
-`fog.with(context)` binds on top of both, and a call-time `foglamp` option
-wins over all three. `metadata` maps merge across layers (inner keys win)
-instead of replacing each other.
+Contexts stack in layers, and later layers win per field: `wrap(ai, { context })`
+sets the default, `fog.run(context, fn)` sets context for a block of code,
+`fog.with(context)` binds on top of both, and a call-time `foglamp` option wins
+over all three. `metadata` maps merge across layers, with inner keys winning.
 
-**`fog.run()` is the no-plumbing path for run-scoped context** — workflow run
-ids, session ids, request metadata. It stores the context for the duration of
-the callback (via `AsyncLocalStorage`), so every wrapped call inside — however
-deeply nested — picks it up with **zero signature changes**: no parameters to
-thread through intermediate functions, and module-level singleton agents stay
+**`fog.run()` sets context for everything inside a callback.** Use it for
+things scoped to one run: workflow run ids, session ids, request metadata. Every
+wrapped call inside the callback picks up the context, no matter how deeply
+nested, with no parameters to pass around. Module-level singleton agents stay
 singletons.
 
 ```ts
@@ -77,43 +72,41 @@ singletons.
 const { ToolLoopAgent } = fog.with({ agentName: "brand-analysis" });
 const brandAnalysisAgent = new ToolLoopAgent({ model, tools, output });
 
-// request handler: dynamic run context, set at the boundary
+// request handler: run context, set at the boundary
 await fog.run(
   { workflowName: "brand-onboarding", workflowRunId: brandId, metadata: { brandId } },
-  () => runOnboarding(brand) // every wrapped call inside is attributed, however deep
+  () => runOnboarding(brand) // every wrapped call inside is attributed
 );
 ```
 
-Nested `run()`s merge inner-over-outer. Works on Node, Bun, Deno, and
-Vercel/Cloudflare edge runtimes (anywhere `node:async_hooks` exists). The v7
+Nested `run()` calls merge, inner over outer. Works on Node, Bun, Deno, and
+Vercel or Cloudflare edge runtimes (anywhere `node:async_hooks` exists). The v7
 collector has the same method: `fog.run()` layers under `fog.integration()`.
 
 <Note>
-  On the v7 `foglamp()` collector, a model call made inside a tool's `execute`
-  inherits the parent call's workflow/session context automatically (see [SDK
-  overview](/sdk/overview#nested-calls-inside-tools)). The `wrap` path has no
-  such hook, so on v4–v6 `fog.run()` is the way to share context across a tool
+  On the v7 collector, a model call made inside a tool's `execute` inherits the
+  parent call's workflow and session context automatically (see the
+  [SDK overview](/sdk/overview#nested-calls-inside-tools)). The `wrap` path has
+  no such hook, so on v4 to v6 use `fog.run()` to share context with a tool
   that calls back into the model.
 </Note>
 
-**`with()` is the TypeScript-first path** — it returns the wrapped functions
-and agent classes typed *exactly* as the AI SDK's originals, so generics,
-`Output.object` result types, and tool typings all survive. No type shims or
-casts needed:
+**`fog.with()` keeps your types.** It returns the wrapped functions and agent
+classes typed exactly like the AI SDK's originals, so generics, `Output.object`
+result types, and tool typings all survive:
 
 ```ts
 const { generateText, ToolLoopAgent } = fog.with({
   agentName: "retriever",
   workflowName: "support-ticket",
   workflowRunId: ticket.id,
-  customer: { id: account.id, name: account.name }, // optional — per-customer cost
+  customer: { id: account.id, name: account.name }, // optional, per-customer cost
 });
 ```
 
-The `foglamp` call option also works on any wrapped call and is stripped before
-the args reach the AI SDK. Calls that pass it lose the AI SDK's generic result
-types (TypeScript can't thread generics through the widened signature), so
-prefer `with()` when you need the typed result:
+You can also pass a `foglamp` option on any wrapped call; it is removed before
+the arguments reach the AI SDK. Calls that use it lose the AI SDK's generic
+result types, so prefer `with()` when you need the typed result:
 
 ```ts
 await fog.generateText({
@@ -127,16 +120,16 @@ await fog.generateText({
 });
 ```
 
-The context fields are identical to [`fog.integration(context)`](/sdk/overview):
-`traceName`, `agentName`, `workflowName` + `workflowRunId`, `sessionId`, and
-`metadata`.
+The context fields are the same as
+[`fog.integration(context)`](/sdk/overview): `traceName`, `agentName`,
+`workflowName` + `workflowRunId`, `sessionId`, and `metadata`.
 
 ## Agent classes
 
 When the module exports `ToolLoopAgent` (v6/v7) or `Experimental_Agent` (v5),
-`wrap()` returns wrapped versions with the same constructor and methods —
-**instrument them in place; there is no need to rewrite agent code to
-`generateText`**:
+`wrap()` returns wrapped versions with the same constructor and methods.
+Instrument them in place; there is no need to rewrite agent code to
+`generateText`:
 
 ```ts
 const { ToolLoopAgent } = fog.with({ agentName: "research" });
@@ -149,29 +142,25 @@ const agent = new ToolLoopAgent({
 await agent.generate({ prompt }); // traced: root + llm steps + tool spans
 ```
 
-Your settings-level `onStepFinish` / `onFinish` callbacks still run; foglamp
-composes with them. One gap: agent streams expose no `onChunk`, so
-`agent.stream()` traces carry no time-to-first-token or token-curve samples
-(plain `streamText` does).
+Your `onStepFinish` and `onFinish` callbacks still run; Foglamp composes with
+them. One gap: agent streams expose no `onChunk`, so `agent.stream()` traces
+have no time to first token or token-curve samples (plain `streamText` does).
 
 ## Your callbacks are preserved
 
-If you pass `onChunk`, `onStepFinish`, `onFinish`, or `onError` to a wrapped call,
-foglamp **composes** with them — your callback always runs; foglamp's telemetry
-runs alongside and never throws into your app.
+If you pass `onChunk`, `onStepFinish`, `onFinish`, or `onError` to a wrapped
+call, your callback always runs. Foglamp's telemetry runs alongside it and
+never throws into your app.
 
 ## Flushing
 
-`wrap()` returns `flush()` and `shutdown()` alongside the wrapped functions —
-use them exactly as you would on the collector (see
-[Runtimes & flushing](/sdk/runtimes)). Serverless platforms are detected
-automatically (the `VERCEL` / `AWS_LAMBDA_FUNCTION_NAME` env vars, or a
-`waitUntil` you pass): the transport switches to per-call flushing, and on
-Vercel it keeps the invocation alive by reading `waitUntil` straight from the
-runtime's request context — nothing to install or wire. On other serverless
-platforms pass `waitUntil` in the config (e.g.
-Cloudflare's `ctx.waitUntil`) or `await fog.flush()` before the handler
-returns.
+`wrap()` returns `flush()` and `shutdown()` alongside the wrapped functions.
+Use them exactly as on the collector (see
+[Runtimes and flushing](/sdk/runtimes)). Serverless platforms are detected
+automatically, and on Vercel the invocation is kept alive with `waitUntil` from
+the runtime's request context, with nothing to install. On other serverless
+platforms pass `waitUntil` in the config (for example Cloudflare's
+`ctx.waitUntil`) or `await fog.flush()` before the handler returns.
 
 ```ts
 const fog = wrap(ai, { context: { agentName: "support" } });
@@ -183,12 +172,13 @@ await fog.flush();
 
 `wrap(ai, options)` accepts every [configuration](/sdk/configuration) field the
 collector does (`apiKey`, `endpoint`, `recordInputs`, `recordOutputs`,
-`maxPayloadChars`, `waitUntil`, …), plus `context` for the wrap-time default.
+`maxPayloadChars`, `waitUntil`, and so on), plus `context` for the default
+context.
 
-## Limitations vs. v7
+## Limits compared to v7
 
-- A **client-side tool** (one with no `execute` function — your app runs it) can't
-  be timed directly, so its activity is attributed at step boundaries rather than
-  with an exact duration. Tools with an `execute` are timed precisely.
+- A client-side tool (one with no `execute` function, run by your app) can't be
+  timed directly, so its time is attributed at step boundaries rather than as
+  an exact duration. Tools with an `execute` are timed precisely.
 - `wrap()` instruments a module you pass in; there is no global
-  `registerTelemetry` equivalent on v4–v6.
+  `registerTelemetry` on v4 to v6.

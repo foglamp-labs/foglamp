@@ -1,38 +1,35 @@
 ---
 title: Agents
-description: "Per-agent rollups — cost, latency, errors — across every run."
+description: "Per-agent totals for cost, latency, and errors across every run."
 ---
 
 An **agent** is a named actor responsible for a call (`agentName`). The
-**Agents** view rolls every trace up by agent, independent of which workflow it
-ran in, so you can answer "how is my `retriever` behaving overall?"
+**Agents** view rolls every trace up by agent, no matter which workflow it ran
+in, so you can answer "how is my `retriever` doing overall?"
 
-Set `agentName` on a call's [integration](/sdk/overview) to populate this view.
+Set `agentName` on a call's [integration](/sdk/overview) to fill this view.
 
 ## Agents list
 
-A card per agent over the selected range: span count (and the LLM-span subset),
-tokens, p95 latency, and cost, with an error badge when any of its spans failed.
-A toggle switches between this card view and a compact table.
+A card per agent over the selected range: span count (with the LLM-span
+subset), tokens, p95 latency, and cost, with an error badge when any of its
+spans failed. A toggle switches between cards and a compact table.
 
 ## Agent detail
 
 Opening an agent shows:
 
-- **Stat cards** — spans, error rate, p95 latency, and total cost.
-- **Spans & errors** and **Latency** — per-bucket trend charts (spans with
-  errored spans overlaid; p50 / p95 / p99 latency) over the selected range.
-- **Cost breakdown** — a donut of cost per pricing dimension across the agent's
-  priced spans.
-- **Trace flow** — a graph of the agent's most recent trace's steps and tool
-  calls (model logos for LLM steps, tool icons for tools). Click through to the
-  full [trace](/dashboard/traces).
-- **Recent traces** — the agent's latest runs with spans, tokens, duration, and
-  cost; click a row to open the trace.
+- **Stat cards**: spans, error rate, p95 latency, and total cost.
+- **Spans & errors** and **Latency**: trend charts over the selected range.
+- **Cost breakdown**: a donut of cost per pricing dimension.
+- **Trace flow**: a graph of the agent's most recent trace, with its steps and
+  tool calls. Click through to the full [trace](/dashboard/traces).
+- **Recent traces**: the agent's latest runs with spans, tokens, duration, and
+  cost. Click a row to open the trace.
 
 <Tip>
-  Agents and workflows are orthogonal. An agent rollup spans every workflow it
-  participated in; a [workflow](/dashboard/workflows) groups whichever agents
-  ran together in one process. Use both `agentName` and `workflowName` to get
-  both lenses.
+  Agents and workflows are independent views. An agent's totals cover every
+  workflow it took part in; a [workflow](/dashboard/workflows) groups whichever
+  agents ran together in one process. Set both `agentName` and `workflowName`
+  to get both views.
 </Tip>

@@ -3,23 +3,23 @@ title: Alerts
 description: "Threshold rules on cost, latency, errors, and eval scores."
 ---
 
-**Alerts** are threshold rules evaluated continuously against a rolling window
-of your traffic. When a metric breaches its threshold the rule starts
-**firing** and sends an email; when it recovers it returns to **ok** and sends a
-resolve email. A rule that stays firing re-notifies on a cooldown.
+**Alerts** are threshold rules checked continuously against a rolling window of
+your traffic. When a metric crosses its threshold, the rule starts **firing**
+and sends an email. When it recovers, the rule returns to **ok** and sends a
+resolve email. A rule that keeps firing re-notifies on a cooldown.
 
-## Anatomy of a rule
+## Parts of a rule
 
 | Field | Description |
 | --- | --- |
-| **Name** | A label for the rule (1–200 chars). |
-| **Metric** | What to measure — see the table below. |
+| **Name** | A label for the rule (1-200 chars). |
+| **Metric** | What to measure. See the table below. |
 | **Condition** | Comparison operator: `>`, `≥`, `<`, `≤`. |
 | **Threshold** | The number the metric is compared against. |
-| **Window** | The rolling lookback: 5 min, 15 min, 1 hour, or 24 hours. |
-| **Filters** | Optional — narrow to a `modelId` and/or `agentName`. |
+| **Window** | The rolling lookback: 5 minutes, 15 minutes, 1 hour, or 24 hours. |
+| **Filters** | Optional. Narrow to a `modelId` and/or `agentName`. |
 | **Notify** | An email address to notify. |
-| **Enabled** | Toggle the rule on/off without deleting it. |
+| **Enabled** | Turn the rule on or off without deleting it. |
 
 ## Metrics
 
@@ -27,42 +27,44 @@ resolve email. A rule that stays firing re-notifies on a cooldown.
 | --- | --- |
 | `cost` | Total cost (USD) over the window. |
 | `latency_p50` / `latency_p95` / `latency_p99` | Step-latency quantiles (ms). |
-| `ttft_p95` | Time-to-first-token, p95 (ms). |
-| `error_rate` | Fraction of spans that errored (0–1). |
+| `ttft_p95` | Time to first token, p95 (ms). |
+| `error_rate` | Share of spans that errored (0-1). |
 | `token_usage` | Total tokens over the window. |
 | `request_count` | Span count over the window. |
 | `eval_avg_score` | Average score for a chosen [eval](/dashboard/evals). |
-| `eval_pass_rate` | Pass ratio (0–1) for a chosen eval. |
+| `eval_pass_rate` | Pass ratio (0-1) for a chosen eval. |
 
 <Note>
-  The two `eval_*` metrics require selecting a specific eval — the rule scores
-  against that eval's results rather than raw span metrics.
+  The two `eval_*` metrics require picking a specific eval. The rule then
+  checks that eval's results rather than raw span metrics.
 </Note>
 
-## How evaluation works
+## How checking works
 
-A background evaluator sweeps every enabled rule on an interval
-(`ALERT_EVAL_INTERVAL_MS`, default 60s). For each rule it queries the metric
-over the window and compares it to the threshold:
+A background job sweeps every enabled rule on an interval
+(`ALERT_EVAL_INTERVAL_MS`, default 60 seconds). For each rule it computes the
+metric over the window and compares it to the threshold:
 
-- **ok → firing** — threshold breached. Records a `fired` event (with the
-  observed value and threshold) and emails the channel.
-- **firing → ok** — metric recovered. Records a `resolved` event and emails.
-- **still firing** — re-notifies at most once per `ALERT_RENOTIFY_MS`
-  (default 1 hour) so you aren't paged every minute.
+- **ok to firing**: threshold crossed. Records a `fired` event with the
+  observed value and threshold, and sends an email.
+- **firing to ok**: metric recovered. Records a `resolved` event and sends an
+  email.
+- **still firing**: re-notifies at most once per `ALERT_RENOTIFY_MS` (default
+  1 hour), so you aren't emailed every minute.
 
-Each transition is stored as an alert event, giving every rule an auditable
-history of when it fired and resolved.
+Each transition is stored as an alert event, so every rule has a history of
+when it fired and resolved.
 
 <Warning>
-  Alert emails require email to be configured on the deployment
-  (`RESEND_API_KEY`). Without it, rules still evaluate and change state, but no
-  notifications are sent. See [self-hosting configuration](/self-hosting/configuration#email-optional).
+  Alert emails require email to be set up on the deployment
+  (`RESEND_API_KEY`). Without it, rules still run and change state, but no
+  emails are sent. See
+  [self-hosting configuration](/self-hosting/configuration#email-optional).
 </Warning>
 
 ## List view
 
 The Alerts page lists every rule with its metric, condition, threshold, window,
-current status (an **ok** or **firing** badge), and an inline enable switch.
-Plans cap how many rules an org can create; the [Usage](/dashboard/account#usage)
-panel shows your current count against the limit.
+current status (an **ok** or **firing** badge), and an on/off switch. Plans cap
+how many rules an organization can create; the
+[Usage](/dashboard/account#usage) panel shows your count against the limit.

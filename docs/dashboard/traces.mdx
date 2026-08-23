@@ -1,87 +1,85 @@
 ---
 title: Traces
-description: "Inspect a single run — waterfall, span detail, scores, and replay."
+description: "Inspect a single run: waterfall, span detail, scores, and replay."
 ---
 
-A **trace** is one top-level `generateText` / `streamText` call. The **Traces**
-view lists them; opening one shows the full execution as a waterfall you can
-inspect span by span and replay in real time.
+A **trace** is one top-level `generateText` or `streamText` call. The
+**Traces** view lists them. Opening one shows the full execution as a waterfall
+you can inspect span by span and replay in real time.
 
-See the [data model](/concepts/data-model) for how traces and spans are defined.
+See the [data model](/concepts/data-model) for how traces and spans are
+defined.
 
 ## Traces list
 
-A paginated table (newest first) over the selected date range. Columns: trace
+A paginated table, newest first, over the selected date range. Columns: trace
 id, name (`traceName`, falling back to `agentName`, else **Untitled trace**),
-span count, tokens, duration, cost, and when it ran. Errored traces carry a red
-badge; cleanly **aborted** traces (see below) carry an amber one. Click a row to
+span count, tokens, duration, cost, and when it ran. Errored traces get a red
+badge; cleanly **aborted** traces (see below) get an amber one. Click a row to
 open the trace.
 
 ## Waterfall
 
-Each span is a row, indented by its parent (`parentSpanId`) so nested tool calls
-and steps sit under their parent. Span types are colour-coded:
+Each span is a row, indented under its parent, so nested tool calls and steps
+sit under the call that made them. Span types are color-coded:
 
-| Type | Colour | Meaning |
+| Type | Color | Meaning |
 | --- | --- | --- |
-| `agent` | amber | the root span — the whole call |
+| `agent` | amber | the root span, the whole call |
 | `llm` | violet | one model step |
-| `tool` | blue | one tool execution |
+| `tool` | blue | one tool call |
 | `other` | grey | anything else |
 
-The bar's offset and width are proportional to when the span started and how
-long it ran, so you can see serial vs. overlapping work at a glance.
+Each bar's position and width match when the span started and how long it ran,
+so you can see at a glance what ran in sequence and what overlapped.
 
-A span's **status** also tints its bar and badge: errored spans are red, and
-**aborted** spans are amber. An aborted span is a stream that was cancelled
-before it finished (AI SDK v7's `onAbort` — a caller cancellation, an
-`AbortSignal`, or a timeout). It's a first-class status, kept separate from
-errors: aborts are **excluded from error rate**, since a cancelled run isn't a
-failure. The steps that completed before the abort keep their own status. (This
-is distinct from an `abandoned` trace — one that never finished and is swept by
-[`maxTraceAgeMs`](/sdk/configuration) — which is recorded as an error.)
+A span's status also tints its bar and badge: errors are red, and **aborted**
+spans are amber. An aborted span is a stream that was cancelled before it
+finished (a caller cancellation, an `AbortSignal`, or a timeout, via AI SDK
+v7's `onAbort`). Aborts are not counted in the error rate, since a cancelled
+run isn't a failure, and the steps that finished before the abort keep their
+own status. This is different from an `abandoned` trace, one that never
+finished and was closed by [`maxTraceAgeMs`](/sdk/configuration), which does
+count as an error.
 
 ## Span detail
 
-Click any span to open the inspector panel beside the waterfall. For a single
-span it shows, as applicable:
+Click any span to open the inspector panel next to the waterfall. Depending on
+the span, it shows:
 
-- **Timing** — start time, duration, and TTFT (time to first token). On
-  reasoning models the TTFT splits into thinking time plus the time to first
-  visible text.
-- **Model** — provider and model id.
-- **Tokens & cost** — input/output tokens, computed cost, the **pricing source**
-  that produced it (resolved price vs. a custom rule), and a per-dimension
-  **cost breakdown** (prompt, completion, cache read/write, reasoning, image,
-  web search, request) when more than one dimension applies.
-- **Model call** — on v7 spans, the model-only wall-clock with the remaining
-  tool time called out (`durationMs − modelCallMs`).
-- **Throughput** — for streaming LLM spans, a tokens/second headline.
-- **Provider signals** — when captured: normalized rate-limit headroom, the
-  model build fingerprint, safety ratings, and grounding **sources**.
-- **Tools available** — the catalog of tools the model was offered for the call.
-- **Payloads** — the captured `input` and `output`, pretty-printed (JSON is
-  syntax-highlighted) in a scrollable block (subject to
+- **Timing**: start time, duration, and time to first token. On reasoning
+  models, that splits into thinking time plus time to first visible text.
+- **Model**: provider and model id.
+- **Tokens & cost**: input/output tokens, computed cost, the pricing source
+  behind it, and a cost breakdown per dimension (prompt, completion, cache
+  read/write, reasoning, image, web search, request) when more than one
+  applies.
+- **Model call**: on v7 spans, how much time was the model itself versus tools.
+- **Throughput**: for streaming spans, a tokens-per-second number.
+- **Provider signals**: when captured, rate-limit headroom, the model build
+  fingerprint, safety ratings, and grounding sources.
+- **Tools available**: the tools the model was offered for the call.
+- **Payloads**: the captured `input` and `output`, pretty-printed, in a
+  scrollable block (subject to
   [`recordInputs`/`recordOutputs`](/sdk/configuration)).
-- **Metadata & errors** — any span metadata and the error message, if the span
+- **Metadata & errors**: any span metadata, and the error message if the span
   failed.
 
-Selecting the **whole trace** (rather than a single span) swaps the inspector
-for a run-level rollup: duration, cost, tokens, span and LLM-call counts, and
-errors.
+Selecting the whole trace instead of a single span shows a summary: duration,
+cost, tokens, span and LLM-call counts, and errors.
 
 ## Scores
 
-If a trace or span has been scored by an [eval](/dashboard/evals), its scores
-appear in the inspector under **Evals** — one row per result, tinted green for
-pass and red for fail (or showing the numeric score), with the judge's reason
-shown inline and a link through to that run on the eval page.
+If an [eval](/dashboard/evals) has scored a trace or span, the scores appear in
+the inspector under **Evals**: one row per result, green for pass and red for
+fail (or the numeric score), with the judge's reason inline and a link to that
+run on the eval page.
 
 ## Replay
 
-The waterfall doubles as a **replay** surface: press play to watch the trace
-reconstruct on its real timeline, switch between 1× / 2× / 4× speed, and drag
-the ruler to seek. A faint throughput backdrop and a `peak … tok/s` readout ride
-behind the bars, and the TTFT moment is marked on each LLM bar. Replay is powered
-by the intra-stream token samples the SDK records — no extra instrumentation
-needed. Opening a trace with `?replay=1` auto-plays it.
+The waterfall can also replay the trace: press play to watch it rebuild on its
+real timeline, switch between 1x / 2x / 4x speed, and drag the ruler to seek.
+A throughput backdrop and a peak tokens-per-second readout sit behind the bars,
+and the first-token moment is marked on each LLM bar. Replay uses the token
+samples the SDK already records, so it needs no extra setup. Opening a trace
+with `?replay=1` plays it automatically.

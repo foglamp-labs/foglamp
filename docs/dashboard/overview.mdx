@@ -1,49 +1,48 @@
 ---
 title: Overview
-description: "The dashboard home — KPIs, trends, and per-model/agent/workflow/customer breakdowns."
+description: "The dashboard home: key numbers, trends, and breakdowns."
 ---
 
-The **Overview** is the dashboard home: a single screen that answers "what is my
-AI app doing right now, and how does it compare to before?" Every number
-respects the [date-range picker](#date-range) at the top of the page, and each
-KPI shows a delta against the immediately preceding window of equal length.
+The **Overview** is the dashboard home. One screen answers "what is my AI app
+doing right now, and how does it compare to before?" Every number respects the
+[date-range picker](#date-range) at the top of the page, and each card shows
+the change compared to the previous window of the same length.
 
 ## KPI cards
 
 | Card | What it shows |
 | --- | --- |
-| **Total cost** | Summed cost for the window, with a `~$/mo` extrapolation and the share of LLM spans that received a price (`% priced`). |
-| **Error rate** | Errored spans ÷ total spans. |
+| **Total cost** | Cost for the window, an estimated monthly rate, and the share of LLM spans that got a price. |
+| **Error rate** | Errored spans divided by total spans. |
 | **Eval pass rate** | Pass/fail ratio across scored traffic, with the number of checks scored (see [Evals](/dashboard/evals)). |
-| **Latency p95** | p95 step latency, with p50 and TTFT p95 underneath. |
+| **Latency p95** | p95 step latency, with p50 and time-to-first-token p95 underneath. |
 | **Requests** | Span count, with the LLM-span subset. |
-| **Tokens** | Total tokens, broken into input/output. |
+| **Tokens** | Total tokens, split into input and output. |
 
-Deltas for cost, error rate, and latency are **inverted** — red means the number
-went up (worse), green means it went down.
+For cost, error rate, and latency, the change colors are flipped: red means the
+number went up (worse), green means it went down.
 
 ## Trend charts
 
-- **Cost over time** — a stacked line chart of cost per minute, split by model.
-  The top five models get their own series; the rest roll into **Other**.
-- **Requests & errors** — spans per minute with errors overlaid.
-- **Latency** — p50 / p95 / p99 per minute.
-- **By model** — a table of requests, tokens, p95 latency, and cost per model.
-- **By agent** — the same, grouped by `agentName`.
-- **By workflow** — the same, grouped by `workflowName` (traces with no workflow
-  roll into **Ungrouped**).
-- **By customer** — cost, requests, and errors grouped by `customer` (the
-  end-customer a call serves), with the customer's avatar and name. Only traces
-  that set a `customer` appear here.
+- **Cost over time**: a stacked line chart of cost per minute, split by model.
+  The top five models get their own line; the rest are grouped as **Other**.
+- **Requests & errors**: spans per minute with errors overlaid.
+- **Latency**: p50 / p95 / p99 per minute.
+- **By model**: a table of requests, tokens, p95 latency, and cost per model.
+- **By agent**: the same, grouped by `agentName`.
+- **By workflow**: the same, grouped by `workflowName`. Traces with no workflow
+  show as **Ungrouped**.
+- **By customer**: cost, requests, and errors grouped by `customer`, with the
+  customer's avatar and name. Only traces that set a `customer` appear here.
 
 <Note>
-  Models Foglamp can't price are labelled `(unknown)` in the breakdowns rather
-  than shown as `$0` — a missing price is never silently treated as free. Add a
-  rule on the [Pricing](/dashboard/cost) page to price them.
+  Models Foglamp can't price show as `(unknown)` rather than `$0`. A missing
+  price is never treated as free. You can add a rule on the
+  [Pricing](/dashboard/cost) page to price them.
 </Note>
 
 ## Date range
 
-The range picker drives every view. Presets: last hour, last 24 hours (default),
-7 / 30 / 90 days, today, this month, last month — plus a custom two-month
+The range picker drives every view. Presets: last hour, last 24 hours (the
+default), 7 / 30 / 90 days, today, this month, last month, plus a custom
 calendar. Future dates are disabled.

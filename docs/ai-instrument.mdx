@@ -4,40 +4,41 @@ description: "Instructions for a coding agent to add Foglamp tracing to an app."
 ---
 
 <Note>
-  This page is written for an **AI coding agent** (Claude Code, Cursor, …) asked
-  to add Foglamp tracing to a codebase. If you're a human, the
+  This page is written for an AI coding agent (Claude Code, Cursor, and so on)
+  asked to add Foglamp tracing to a codebase. If you're a human, the
   [Quickstart](/quickstart) is friendlier.
 </Note>
 
 You are instrumenting a **Vercel AI SDK** app so its runs appear in Foglamp.
-Foglamp captures model/tool/step boundaries from the AI SDK and renders them as
-traces (with cost, tokens, latency). Make the **smallest safe change** that gets
-one real run flowing, then enrich.
+Foglamp captures model, tool, and step boundaries from the AI SDK and renders
+them as traces with cost, tokens, and latency. Make the smallest safe change
+that gets one real run flowing, then enrich.
 
 ## Rules
 
 - **Check the AI SDK version first and pick the matching path** (step 2):
-  `wrap()` from `foglamp/wrap` on **AI SDK v4–v6**, or `fog.integration(...)` on
-  **v7**. Both capture identical traces — never upgrade the app's AI SDK just to
-  instrument it. Steps 3–5 below (mapping, flush, verify) apply to both paths.
+  `wrap()` from `foglamp/wrap` on AI SDK v4 to v6, or `fog.integration(...)`
+  on v7. Both capture identical traces. Never upgrade the app's AI SDK just to
+  instrument it. Steps 3 to 5 apply to both paths.
 - **Never refactor working AI code to instrument it.** `wrap()` covers
-  `generateText`/`streamText`/`generateObject`/`streamObject` **and the
-  `ToolLoopAgent` / `Experimental_Agent` classes** — wrap in place; do not
+  `generateText`, `streamText`, `generateObject`, `streamObject`, and the
+  `ToolLoopAgent` / `Experimental_Agent` classes. Wrap in place; do not
   rewrite agent classes into `generateText` calls or restructure pipelines.
-- Prefer the installed package's types/README over memory. Don't invent SDK APIs
-  or hand-wire ingest endpoints — only use `foglamp`'s public API below.
-- The SDK is a **silent no-op without `FOGLAMP_API_KEY`** — safe to add in every
+- Prefer the installed package's types and README over memory. Don't invent
+  SDK APIs or hand-wire ingest endpoints; only use `foglamp`'s public API
+  below.
+- The SDK does nothing without `FOGLAMP_API_KEY`, so it's safe to add in every
   environment. Nothing throws and no spans are sent until the key is set.
 - **Names are static string literals.** `agentName`, `workflowName`, and
-  `traceName` must be written as literal strings in the source — never template
+  `traceName` must be written as literal strings in the source, never template
   literals, concatenation, or variables. Anything dynamic (a slug, URL, id,
   date) goes in `metadata`, `workflowRunId`, or `sessionId` instead. See
   [the mapping rules](#3-map-the-codebase-to-foglamps-model).
-- Instrument **one real entry point first**, verify a trace appears, then expand.
+- Instrument one real entry point first, verify a trace appears, then expand.
 
-## 1. Install & configure
+## 1. Install and configure
 
-Install `foglamp` with the repo's own package manager (check the lockfile —
+Install `foglamp` with the repo's own package manager (check the lockfile;
 don't introduce a second one):
 
 ```bash
@@ -50,20 +51,18 @@ FOGLAMP_API_KEY=fl_your_key_here
 # FOGLAMP_INGEST_URL=http://localhost:4000/ingest
 ```
 
-## 2. Wire up Foglamp — pick the path for the installed version
+## 2. Wire up Foglamp for the installed version
 
-**Check the installed `ai` version first** (read the lockfile / `package.json`),
-then follow the matching path. Both capture identical traces; only the wiring
-differs, and steps 3–5 apply to both. Every traced call needs a `traceName`
-**or** an `agentName`.
+Check the installed `ai` version first (read the lockfile or `package.json`),
+then follow the matching path. Every traced call needs a `traceName` or an
+`agentName`.
 
-### AI SDK v4, v5, or v6 — `wrap()`
+### AI SDK v4, v5, or v6: `wrap()`
 
-Wrap the `ai` module once, then bind a context with `fog.with(...)`; the
-returned functions keep the AI SDK's own, fully-typed signatures. `wrap()` also
-covers `generateObject`/`streamObject` and the `ToolLoopAgent` /
-`Experimental_Agent` classes — instrument them in place; do not rewrite agent
-code into `generateText` calls.
+Wrap the `ai` module once, then bind a context with `fog.with(...)`. The
+returned functions keep the AI SDK's own, fully typed signatures. `wrap()` also
+covers `generateObject`, `streamObject`, and the agent classes; instrument them
+in place.
 
 ```ts
 import * as ai from "ai";
@@ -75,10 +74,10 @@ const { generateText } = fog.with({ agentName: "summarizer" });
 await generateText({ model, prompt }); // traced automatically
 ```
 
-See [AI SDK v4–v6 (wrap)](/sdk/wrap) for `fog.run(...)` (ambient context) and
-the per-call `foglamp: {...}` option.
+See [AI SDK v4 to v6 (wrap)](/sdk/wrap) for `fog.run(...)` (ambient context)
+and the per-call `foglamp: {...}` option.
 
-### AI SDK v7 — `fog.integration()`
+### AI SDK v7: `fog.integration()`
 
 Attach the integration to each `generateText` / `streamText` call via the
 `telemetry` option.
@@ -106,34 +105,33 @@ are before writing any context. The full context surface:
 
 | Property | What it is | Good values |
 | --- | --- | --- |
-| `agentName` | The named, reusable LLM behavior responsible for the call | Stable, low-cardinality identifiers from the code's own vocabulary: `"support-triage"`, `"summarizer"`. Never per-request values. |
-| `workflowName` + `workflowRunId` | A named multi-step process, and one execution of it | `workflowName` stable like an agent name (`"ticket-pipeline"`); `workflowRunId` an id the app already has for this execution — request id, job id, ticket id. |
+| `agentName` | The named, reusable LLM behavior responsible for the call | Stable, low-cardinality names from the code's own vocabulary: `"support-triage"`, `"summarizer"`. Never per-request values. |
+| `workflowName` + `workflowRunId` | A named multi-step process, and one execution of it | `workflowName` stable like an agent name (`"ticket-pipeline"`); `workflowRunId` an id the app already has for this execution: a request id, job id, ticket id. |
 | `traceName` | Human label for a one-off call that isn't an agent | The call's purpose: `"classify-email"`. |
-| `sessionId` | Ties traces in one conversation or user thread together, across workflows and agents | The app's existing chat/conversation/thread id. Conversations only — a batch/cron/pipeline run id is a `workflowRunId`, not a session. |
-| `customer` *(optional)* | The end-customer this call serves, for per-customer cost. `{ id, name?, imageUrl? }` | Only set it if the app serves distinct end-customers/tenants. `id` is a **dynamic, high-cardinality** identifier (the customer's id) — the one place an id belongs in a first-class field rather than `metadata`. `name`/`imageUrl` are optional display fields. |
+| `sessionId` | Groups traces in one conversation or user thread, across workflows and agents | The app's existing chat, conversation, or thread id. Conversations only; a batch, cron, or pipeline run id is a `workflowRunId`, not a session. |
+| `customer` *(optional)* | The end customer this call serves, for per-customer cost. `{ id, name?, imageUrl? }` | Only set it if the app serves distinct customers or tenants. `id` is dynamic and high-cardinality (the customer's id); this is the one place such an id belongs in a first-class field rather than `metadata`. |
 | `metadata` | Everything else, as string key/values | `userId`, tenant, environment, prompt version, A/B variant. |
 
-Rules the SDK enforces (at the type level and at ingest):
+Rules the SDK enforces, at the type level and at ingest:
 
-- Every call needs **`traceName` or `agentName`** (both is fine — the trace is
-  attributed to the agent and displays the `traceName`).
-- **`workflowName` and `workflowRunId` go together** — one without the other is
-  an error. Calls sharing a `workflowRunId` are stitched into one run on the
-  Workflows timeline, so the id must be shared by every call in the run but
-  unique per execution.
+- Every call needs `traceName` or `agentName` (both is fine; the trace belongs
+  to the agent and displays the `traceName`).
+- `workflowName` and `workflowRunId` go together; one without the other is an
+  error. Calls sharing a `workflowRunId` are stitched into one run, so the id
+  must be shared by every call in the run and unique per execution.
 
 How to decide, concretely:
 
 - **Find the agents.** A class, module, or function that owns a system prompt
-  and is invoked from more than one place is an agent → `agentName`. Name it
-  after what the code calls it.
+  and is invoked from more than one place is an agent: give it an `agentName`
+  taken from what the code calls it.
 - **Find the pipelines.** A request handler or job that makes several model
-  calls (or calls several agents) before producing its result is a workflow →
-  same `workflowName` + `workflowRunId` on *every* call in it, including calls
-  made by nested agents. **Use `fog.run(context, fn)` at the handler/job entry
-  point** — it sets the context ambiently for everything inside (however
-  deeply nested), so you don't thread a trace parameter through every function
-  signature between the handler and the AI calls:
+  calls (or calls several agents) before producing its result is a workflow:
+  put the same `workflowName` + `workflowRunId` on every call in it, including
+  calls made by nested agents. Use `fog.run(context, fn)` at the handler or
+  job entry point. It sets the context for everything inside, however deeply
+  nested, so you don't pass a trace parameter through every function
+  signature:
 
   ```ts
   await fog.run(
@@ -142,31 +140,32 @@ How to decide, concretely:
   );
   ```
 
-  On **AI SDK v7**, calls a tool makes back into the model inherit the parent
-  call's workflow/session context automatically (see [SDK
-  overview](/sdk/overview#nested-calls-inside-tools)) — so `fog.run()` is mainly
-  for the *entry point* and for the v4–v6 [`wrap`](/sdk/wrap) path.
-- **Find the threads.** If the app has conversations (a chat, a support thread),
-  pass its id as `sessionId` on every call serving that thread. A session is a
-  **conversation** — a thread where a user goes back and forth. If no human is
+  On AI SDK v7, calls a tool makes back into the model inherit the parent
+  call's workflow and session context automatically (see the
+  [SDK overview](/sdk/overview#nested-calls-inside-tools)), so `fog.run()` is
+  mainly for the entry point and for the v4 to v6 [`wrap`](/sdk/wrap) path.
+- **Find the threads.** If the app has conversations (a chat, a support
+  thread), pass its id as `sessionId` on every call serving that thread. A
+  session is a conversation where a user goes back and forth. If no human is
   conversing, there is no session: a batch run, cron job, pipeline execution,
-  billing period, or engagement cycle is **not** a session, even though its id
+  billing period, or engagement cycle is not a session, even though its id
   would technically group traces. Group executions with
-  `workflowName`+`workflowRunId` and put longer-lived business ids
-  (campaign, cycle, tenant) in `metadata`. When in doubt, omit `sessionId` —
+  `workflowName` + `workflowRunId` and put longer-lived business ids
+  (campaign, cycle, tenant) in `metadata`. When in doubt, omit `sessionId`;
   it is optional.
 - **Don't overload the names.** High-cardinality values (user ids, slugs,
   URLs, dates, ticket numbers) belong in `workflowRunId`, `sessionId`, or
-  `metadata` — never in `agentName`/`workflowName`/`traceName`, which should
-  each have a small, stable set of values. The mechanical check: every name
-  must be a **string literal** at the call site. If you catch yourself writing
-  a template literal or passing a variable, the dynamic part is metadata:
+  `metadata`, never in `agentName`, `workflowName`, or `traceName`, which
+  should each have a small, stable set of values. The mechanical check: every
+  name must be a string literal at the call site. If you catch yourself
+  writing a template literal or passing a variable, the dynamic part is
+  metadata:
 
   ```ts
-  // ❌ Wrong — every page produces a distinct "agent", ruining grouping
+  // ❌ Wrong: every page produces a distinct "agent", ruining grouping
   fog.integration({ agentName: `writeQa(${site}/${slug})` });
 
-  // ✅ Right — one agent, the page identified in metadata
+  // ✅ Right: one agent, the page identified in metadata
   fog.integration({ agentName: "writeQa", metadata: { site, page: slug } });
   ```
 
@@ -180,57 +179,55 @@ fog.integration({
 });
 ```
 
-The context fields are identical on both paths. On **v4–v6** the same object
+The context fields are identical on both paths. On v4 to v6 the same object
 goes into `fog.with({...})`, a per-call `foglamp: {...}` key, or
-`fog.run({...}, fn)` for run-scoped context — see [wrap](/sdk/wrap).
+`fog.run({...}, fn)` for run-scoped context; see [wrap](/sdk/wrap).
 
 ## 4. Flush in serverless
 
-Long-running servers (Node, Bun) flush on an interval automatically. Serverless
-is **auto-detected** (`VERCEL` / `AWS_LAMBDA_FUNCTION_NAME` env vars) and
-switches to per-call flushing — so check what the deployment target needs
-before adding flush plumbing:
+Long-running servers (Node, Bun) flush on a timer automatically. Serverless is
+detected automatically (the `VERCEL` / `AWS_LAMBDA_FUNCTION_NAME` env vars) and
+switches to per-call flushing, so check what the deployment target needs before
+adding flush plumbing:
 
-- **Vercel**: nothing to do — foglamp reads `waitUntil` from the runtime's
-  request context automatically (no `@vercel/functions` dependency needed) to
-  keep the invocation alive while the batch sends.
+- **Vercel**: nothing to do. Foglamp reads `waitUntil` from the runtime's
+  request context automatically (no `@vercel/functions` dependency needed).
 - **Cloudflare Workers / other serverless**: pass `waitUntil` in the config
-  (`foglamp({ waitUntil: ctx.waitUntil })`), or `await fog.flush()` before each
-  handler returns.
+  (`foglamp({ waitUntil: ctx.waitUntil })`), or `await fog.flush()` before
+  each handler returns.
 
-## 5. Optional — live HUD (dev only)
+## 5. Optional: live HUD (dev only)
 
-If the app has a **React UI** and a local dev server, offer to wire up the live
+If the app has a React UI and a local dev server, offer to wire up the live
 HUD: a dev-only floating overlay that streams runs (steps, tool calls, tokens,
-cost) on top of the app as the user develops — a great first-run "wow". It needs
-**no API key** and is a no-op in production / on edge / serverless, so it's safe
-to leave in. Two lines:
+cost) on top of the app as the user develops. It needs no API key and does
+nothing in production or on edge/serverless, so it's safe to leave in. Two
+lines:
 
 - **Server**: pass `hud: true` to the existing `foglamp({ ... })` call.
 - **Client**: render `<FoglampHUD />` from `foglamp/hud` once near the root of
-  the client app (e.g. the root layout).
+  the client app (for example the root layout).
 
 ```tsx
 import { FoglampHUD } from "foglamp/hud";
-// …near the app root, e.g. in the root layout:
+// near the app root, e.g. in the root layout:
 <FoglampHUD />
 ```
 
-The route/handler that constructs `foglamp({ hud: true })` must run on the
-**Node runtime** (not edge). It needs nothing beyond `foglamp` + React. Skip
-this step entirely if there's no React frontend. Full reference:
-[Live HUD](/sdk/hud).
+The route or handler that creates `foglamp({ hud: true })` must run on the
+Node runtime, not edge. Skip this step entirely if there's no React frontend.
+Full reference: [Live HUD](/sdk/hud).
 
 ## 6. Hand off
 
-A trace only exists once a real model call runs — and that's the user's job,
+A trace only exists once a real model call runs, and that's the user's job,
 not yours. **Do not write smoke tests, test scripts, demo endpoints, or
-synthetic "first trace" calls** — they add code the user has to delete and
-burn real model tokens. Once the build/typecheck passes, finish by telling the
-user **exactly how to trigger their own instrumented flows** — which command to
-run, which page to hit, which job to kick off — so they can run the app and
-watch the first traces appear in the dashboard (Overview / Traces) — and stream
-live in the HUD, if they enabled it.
+synthetic "first trace" calls**; they add code the user has to delete and burn
+real model tokens. Once the build and typecheck pass, finish by telling the
+user exactly how to trigger their own instrumented flows: which command to
+run, which page to hit, which job to kick off. Then they can run the app and
+watch the first traces appear in the dashboard (Overview / Traces), and stream
+live in the HUD if they enabled it.
 
 See the [SDK reference](/sdk/overview) and [data model](/concepts/data-model)
 for every option.

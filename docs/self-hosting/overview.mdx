@@ -3,9 +3,9 @@ title: Self-hosting
 description: "Run the full Foglamp stack on your own infrastructure."
 ---
 
-Foglamp is built to run anywhere Docker runs. The same code powers the hosted
-service and your self-hosted deployment — there is no separate "community
-edition" with features stripped out.
+Foglamp runs anywhere Docker runs. The same code powers the hosted service and
+your self-hosted deployment. There is no separate "community edition" with
+features removed.
 
 ## Architecture
 
@@ -32,28 +32,27 @@ edition" with features stripped out.
 
 | Service | Port | Role |
 | --- | --- | --- |
-| `apps/ingest` | 4000 | API-key-authed span intake; prices and writes spans. Scales independently. |
-| `apps/server` | 3000 | tRPC dashboard API, auth, and the alert evaluator cron. |
+| `apps/ingest` | 4000 | Receives spans from the SDK, checks API keys, prices and stores spans. Scales on its own. |
+| `apps/server` | 3000 | Dashboard API, auth, and the alert checker. |
 | `apps/web` | 3001 | Next.js dashboard UI. |
-| ClickHouse | 8123 | Span store and materialized rollups. |
-| Postgres | 5432 | Orgs, projects, API keys, alerts. |
+| ClickHouse | 8123 | Span store and rollups. |
+| Postgres | 5432 | Organizations, projects, API keys, alerts. |
 
-There is no external queue — the ingest write buffer is in-memory and flushes
-to ClickHouse on an interval and on graceful shutdown, and eval scoring jobs
-queue in Postgres. Redis is optional: when `REDIS_URL` is set, ingest rate
-limiting is shared across replicas; unset, each instance limits in memory
-(fine for a single replica). The default compose includes a Redis service.
+There is no external queue. The ingest write buffer is in memory and flushes to
+ClickHouse on an interval and on shutdown, and eval scoring jobs queue in
+Postgres. Redis is optional: with `REDIS_URL` set, rate limiting is shared
+across ingest replicas; without it, each instance limits on its own, which is
+fine for a single replica. The default compose file includes Redis.
 
 <Note>
-  Which ports reach the host depends on the compose files in play. The base
-  `docker-compose.yml` keeps ClickHouse's **8123 internal-only** — reachable from
-  the other services but not published on the host. A plain `docker compose up`
-  **also** loads `docker-compose.override.yml`, which publishes 8123 (plus
-  Postgres `5432` and Redis `6379`) to `localhost` for local development. For a
-  production self-host, run without the override —
-  `docker compose -f docker-compose.yml up --build` — and set
-  `CLICKHOUSE_PASSWORD` before the network is reachable; an open passwordless
-  ClickHouse leaks every span.
+  Which ports are reachable from the host depends on which compose files you
+  use. The base `docker-compose.yml` keeps ClickHouse's 8123 internal only. A
+  plain `docker compose up` also loads `docker-compose.override.yml`, which
+  publishes 8123, Postgres 5432, and Redis 6379 on `localhost` for local
+  development. For production, run without the override
+  (`docker compose -f docker-compose.yml up --build`) and set
+  `CLICKHOUSE_PASSWORD` before the network is reachable. An open ClickHouse
+  with no password exposes every span.
 </Note>
 
 ## Quickstart
@@ -64,20 +63,19 @@ cd foglamp
 docker compose up --build
 ```
 
-On boot the stack runs Drizzle migrations, applies the ClickHouse DDL, sets span
-retention, and runs the idempotent seed script (the one-shot `migrate` service).
-The seed prints an **admin login and an API key once** — copy them. If you missed
-them, search the `migrate` service logs for `Save these now`
+On boot the stack runs migrations, sets up ClickHouse, and runs the seed
+script. The seed prints an admin login and an API key **once**; copy them. If
+you missed them, search the `migrate` service logs for `Save these now`
 (`docker compose logs migrate`).
 
 <Note>
-  There are **no static default credentials**. If `ADMIN_EMAIL` / `ADMIN_PASSWORD`
-  are unset, the seed generates a random password and prints it a single time.
+  There are no default credentials. If `ADMIN_EMAIL` and `ADMIN_PASSWORD` are
+  unset, the seed generates a random password and prints it a single time.
 </Note>
 
 Then open the dashboard at `http://localhost:3001` and log in with the seeded
-email + password. Email (magic-link) and Google OAuth are optional — login works
-out of the box without them.
+email and password. Magic-link email and Google sign-in are optional; login
+works out of the box without them.
 
 ## Pointing the SDK at your deployment
 
@@ -90,15 +88,14 @@ FOGLAMP_INGEST_URL=http://your-host:4000/ingest
 
 ## Operations
 
-- **Retention** — span retention is plan-driven: each span is stamped with a
-  `retention_days` value at ingest (from the org's plan) and a per-row TTL
-  expires it automatically. Hosts running with billing off keep spans
-  effectively forever.
-- **Pricing** — model prices come from the OpenRouter models API, cached and
-  refreshed every 24h. For air-gapped hosts, supply a local JSON file with
-  `FOGLAMP_PRICING_FILE`.
-- **Email** — set `RESEND_API_KEY` to enable magic-link login and alert
-  notifications. Without it, the platform still works via password login.
+- **Retention**: how long spans are kept depends on the plan. Each span is
+  stamped with a `retention_days` value when it arrives, and expires on its
+  own after that. Hosts with billing off keep spans effectively forever.
+- **Pricing**: model prices come from the OpenRouter models API, cached and
+  refreshed every 24 hours. For air-gapped hosts, supply a local JSON file
+  with `FOGLAMP_PRICING_FILE`.
+- **Email**: set `RESEND_API_KEY` to enable magic-link login and alert emails.
+  Without it, everything else still works via password login.
 
 See [Configuration](/self-hosting/configuration) for the full environment
 variable reference.

@@ -4,67 +4,67 @@ description: "Score production traffic with code checks or LLM judges."
 ---
 
 **Evals** score your real traffic automatically. An eval is a rule that samples
-matching traces or spans after ingest and scores them — either with a fast,
+matching traces or spans after they arrive and scores them, either with a fast,
 deterministic **code check** or with an **LLM judge**. Scores show up on the
-[trace](/dashboard/traces#scores) they came from, roll into the
-[Overview](/dashboard/overview) pass-rate KPI, and can drive
+[trace](/dashboard/traces#scores) they came from, feed the
+[Overview](/dashboard/overview) pass-rate card, and can drive
 [alerts](/dashboard/alerts).
 
 ## Creating an eval
 
-Evals are created in a short wizard:
+A short wizard walks you through three steps:
 
-1. **Target — what to run on.** Choose the level: `trace` (score the whole run)
-   or `span` (score individual steps). Optionally filter by agent, trace name,
-   and — for span-level — span type and model.
-2. **Check — what to verify.** Pick a preset (below).
-3. **Score — how to score.** For LLM judges, pick a judge model; for
-   parameterized checks, set the parameter (a substring, pattern, or max
-   length). Set a **sample rate** (1%–100%) to control how much matching
-   traffic is scored.
+1. **Target: what to run on.** Choose `trace` (score the whole run) or `span`
+   (score individual steps). Optionally filter by agent, trace name, and for
+   spans, span type and model.
+2. **Check: what to verify.** Pick a preset (below).
+3. **Score: how to score.** For LLM judges, pick a judge model. For checks that
+   take a parameter, set it (a substring, pattern, or max length). Set a
+   **sample rate** (1% to 100%) to control how much matching traffic is
+   scored.
 
 ## Code checks
 
-Deterministic, free, and run with no external calls:
+Deterministic, free, and run without any external calls:
 
 | Preset | Checks |
 | --- | --- |
-| **No PII** | Output is free of emails, phone numbers, SSNs, cards, IPs. |
-| **No secret leak** | Output contains no API-key / token / private-key shapes. |
+| **No PII** | Output has no emails, phone numbers, SSNs, cards, or IPs. |
+| **No secret leak** | Output has no API-key, token, or private-key shapes. |
 | **Valid JSON** | Output parses as JSON. |
 | **No refusal** | Output isn't a refusal. |
 | **Non-empty** | Output isn't empty. |
 | **Max length** | Output is within a character budget. |
 | **Contains / Excludes text** | Output does (or doesn't) contain a substring. |
 | **Regex match** | Output matches a pattern. |
-| **Tool args valid** | (span-only) A tool call's input is a valid JSON object. |
+| **Tool args valid** | (spans only) A tool call's input is a valid JSON object. |
 
 ## LLM judges
 
-Judges send the input/output to a model that returns a normalized 0.00–1.00
-score or a pass/fail verdict with a reason. Presets cover relevance, helpfulness, coherence,
-conciseness, instruction-following, completeness, toxicity/safety, tool
-selection, and RAG-oriented checks (faithfulness, context relevance, correctness
-vs. a reference).
+Judges send the input and output to a model that returns a 0.00 to 1.00 score
+or a pass/fail verdict with a reason. Presets cover relevance, helpfulness,
+coherence, conciseness, instruction following, completeness, toxicity and
+safety, tool selection, and RAG checks (faithfulness, context relevance, and
+correctness against a reference).
 
 <Note>
-  LLM judges are **bring-your-own-key**. Add a provider key (below) before
-  creating one. An eval with no usable key shows the status **needs key** and
-  doesn't score until a key is added. The set of available judge models is
-  defined by the deployment.
+  LLM judges use your own provider keys. Add one (below) before creating a
+  judge eval. An eval with no usable key shows the status **needs key** and
+  doesn't score until a key is added. The available judge models depend on the
+  deployment.
 </Note>
 
 ## Provider keys
 
-The **Provider Keys** page stores the LLM-provider API keys your judges use,
-encrypted at rest and scoped per project. Keys are write-only — once saved, the
-value is never shown again; the page only indicates which providers are
-configured. Add or replace a key with **upsert**, or delete it.
+The **Provider Keys** page stores the LLM provider API keys your judges use,
+encrypted at rest and scoped per project. Keys are write-only: once saved, the
+value is never shown again, and the page only shows which providers are set up.
+Add or replace a key, or delete it.
 
 <Warning>
-  Provider-key encryption requires `FOGLAMP_SECRETS_KEY` (32+ chars) to be set
-  on the server. Without it, the page shows "Encryption not configured" and
-  judge evals can't run.
+  Provider-key encryption requires `FOGLAMP_SECRETS_KEY` (32+ chars) on the
+  server. Without it, the page shows "Encryption not configured" and judge
+  evals can't run.
 </Warning>
 
 ## Eval detail
@@ -72,4 +72,5 @@ configured. Add or replace a key with **upsert**, or delete it.
 Opening an eval shows its recent activity: scored count, average score, pass
 rate, and judge spend over the selected range, plus a table of recent scores
 (target, pass/fail or numeric score, the reason, and when). Each enabled eval
-also has a status — **ok**, **needs key**, or **error** — and an inline toggle.
+also has a status of **ok**, **needs key**, or **error**, and an inline on/off
+toggle.

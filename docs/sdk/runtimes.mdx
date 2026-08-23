@@ -3,29 +3,30 @@ title: Runtimes & flushing
 description: "Make sure spans leave the process in every runtime."
 ---
 
-Foglamp batches spans in memory and flushes them fire-and-forget. In a
-long-running server that is invisible; in serverless environments the process
-can freeze or terminate before a batch is sent. The rule:
+Foglamp batches spans in memory and sends them in the background. On a
+long-running server you never notice this. In serverless environments the
+process can freeze or stop before a batch is sent.
 
 <Note>
-  **Anything you don't flush before the runtime suspends is lost.** The buffer is
-  volatile by design — it never blocks your model calls.
+  Anything not flushed before the runtime suspends is lost. The buffer is
+  in-memory on purpose, so it never blocks your model calls.
 </Note>
 
-The collector auto-detects its runtime and picks a flush strategy. You can
-always override with `fog.flush()` or by passing a `waitUntil` hook.
+The collector detects its runtime and picks a flush strategy on its own. You
+can always override it with `fog.flush()` or by passing a `waitUntil` hook.
 
 <Note>
-  Flushing is identical on both entry points. The examples below use the v7
-  `foglamp()` collector, but a `wrap()` handle exposes the same `flush()` /
-  `shutdown()` methods, the same `waitUntil` config, and the same serverless
-  auto-detection — they apply verbatim on **AI SDK v4–v6**.
+  Flushing works the same on both entry points. The examples below use the v7
+  `foglamp()` collector, but a `wrap()` handle has the same `flush()` and
+  `shutdown()` methods, the same `waitUntil` option, and the same automatic
+  detection on AI SDK v4 to v6.
 </Note>
 
-## Long-running (Node, Bun)
+## Long-running servers (Node, Bun)
 
-Nothing to do. The collector flushes every `flushIntervalMs` (default 5s) and on
-early batch limits. For clean shutdown, drain the buffer on exit:
+Nothing to do. Batches are sent every `flushIntervalMs` (default 5 seconds) and
+earlier when batch limits are hit. For a clean shutdown, drain the buffer on
+exit:
 
 ```ts
 process.on("SIGTERM", () => fog.shutdown());
@@ -34,10 +35,9 @@ process.on("SIGINT", () => fog.shutdown());
 
 ## Vercel functions
 
-Nothing to do. The collector auto-detects Vercel and reads `waitUntil` from
-the runtime's request context — the same source `@vercel/functions` wraps — to
-keep the function alive until the flush completes. No extra dependency is
-needed. If detection ever doesn't fire, pass it explicitly:
+Nothing to do. Foglamp detects Vercel and reads `waitUntil` from the runtime's
+request context to keep the function alive until the send completes. No extra
+package needed. If detection ever fails, pass it yourself:
 
 ```ts
 import { waitUntil } from "@vercel/functions";
@@ -47,8 +47,7 @@ const fog = foglamp({ waitUntil });
 
 ## Cloudflare Workers
 
-Workers don't expose a global `waitUntil`; it lives on the request `ctx`. Thread
-it through so the flush survives the response:
+Workers keep `waitUntil` on the request `ctx`, so pass it in:
 
 ```ts
 export default {
@@ -70,9 +69,9 @@ export default {
 
 ## AWS Lambda
 
-Lambda freezes the execution environment the moment your handler returns, so a
-background flush may never run. **Await the flush before returning** — do not
-rely on `process.on("beforeExit")`, which won't fire.
+Lambda freezes the process the moment your handler returns, so a background
+send may never happen. Await the flush before returning. Do not rely on
+`process.on("beforeExit")`; it won't fire.
 
 ```ts
 export const handler = async (event) => {
@@ -84,8 +83,8 @@ export const handler = async (event) => {
 
 ## Manual flush anywhere
 
-`fog.flush()` works in every runtime and resolves when the request completes.
-It's safe to call when the collector is disabled (it resolves immediately), so
+`fog.flush()` works in every runtime and resolves when the send completes. It
+is safe to call when the collector is disabled (it resolves immediately), so
 you can leave it in unconditionally.
 
 ```ts

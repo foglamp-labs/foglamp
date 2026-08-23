@@ -3,32 +3,32 @@ title: Sessions
 description: "Follow one conversation or user thread end to end."
 ---
 
-A **session** ties together the traces that belong to one conversation or user
-interaction, cutting across workflows and agents. Set a `sessionId` on your
-calls — typically a chat/thread id — and Foglamp groups every turn under it.
+A **session** groups the traces that belong to one conversation or user
+interaction, across workflows and agents. Set a `sessionId` on your calls,
+typically a chat or thread id, and Foglamp groups every turn under it.
 
 <Note>
-  Only traces whose spans carry a `sessionId` appear here. If you don't set one,
-  the call is still recorded under [Traces](/dashboard/traces); it just won't be
-  grouped into a session.
+  Only traces with a `sessionId` appear here. If you don't set one, the call is
+  still recorded under [Traces](/dashboard/traces); it just isn't grouped into
+  a session.
 </Note>
 
 ## Sessions list
 
 A paginated table over the selected range: session id, the agent involved, turn
-count, tokens, cost, and last activity. Errored sessions carry a badge.
+count, tokens, cost, and last activity. Sessions with errors carry a badge.
 
 ## Session detail
 
 Opening a session shows stat cards (turns, tokens, duration, cost) and a
-**conversation timeline** — one block per turn, in order. Each turn renders:
+conversation timeline, one block per turn, in order. Each turn shows:
 
-- the **user message** (extracted from the turn's input), with a disclosure to
-  view the full raw input when it was truncated,
-- the **assistant output** for that turn,
-- a footer with the turn's cost, tokens, and duration,
-- a link to the underlying [trace](/dashboard/traces), plus a workflow badge and
-  error badge where relevant.
+- the user message, with a control to view the full raw input if it was cut
+  off,
+- the assistant's output for that turn,
+- the turn's cost, tokens, and duration,
+- a link to the underlying [trace](/dashboard/traces), plus workflow and error
+  badges where relevant.
 
-This makes a session read like the conversation it represents, while staying one
-click away from the full execution detail of any turn.
+A session reads like the conversation it represents, and the full execution
+detail of any turn is one click away.
