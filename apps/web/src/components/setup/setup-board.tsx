@@ -71,9 +71,6 @@ export function SetupBoard({
   onApprove,
   onReject,
   approving,
-  shareSlug,
-  onShare,
-  sharing,
 }: {
   plan: DetectedPlan;
   /** The decisions actually agreed to (detected + edits), once approved. */
@@ -88,10 +85,6 @@ export function SetupBoard({
   onApprove: (edits: PlanEdits | undefined) => void;
   onReject: () => void;
   approving: boolean;
-  /** The public /scan slug once this plan's map has been shared. */
-  shareSlug?: string | null;
-  onShare?: () => void;
-  sharing?: boolean;
 }) {
   const [focus, setFocusState] = useState<SetupFocus>(null);
   // Spotlighting re-renders the whole map, so hover commits are debounced:
@@ -196,7 +189,7 @@ export function SetupBoard({
       {/* The one column: what was found + approve, then why. The page never
           scrolls — the decisions card fills whatever height the summary
           leaves and scrolls inside itself. */}
-      <div className="absolute top-6 bottom-24 left-6 z-20 flex w-72 flex-col gap-4">
+      <div className="absolute top-6 bottom-6 left-6 z-20 flex w-72 flex-col gap-4">
         <SetupSummary
           plan={plan}
           status={status}
@@ -213,9 +206,6 @@ export function SetupBoard({
             verified={status === "verified"}
             spanCount={spanCount}
             secondsToFirstTrace={secondsToFirstTrace}
-            shareSlug={shareSlug}
-            onShare={onShare}
-            sharing={sharing}
           />
         ) : null}
         <DecisionList

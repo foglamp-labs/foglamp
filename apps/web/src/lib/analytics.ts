@@ -11,8 +11,7 @@ type ClientActivationEvent =
   // of the funnel is captured server-side (@foglamp/analytics), since it's
   // driven by the user's coding agent.
   | "instrumentation_plan_viewed"
-  | "instrumentation_plan_approved"
-  | "instrumentation_map_shared";
+  | "instrumentation_plan_approved";
 
 export function captureActivationEvent(
   event: ClientActivationEvent,

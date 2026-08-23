@@ -28,35 +28,6 @@ import { trpc } from "@/utils/trpc";
 /** How often to re-read the plan while it can still change. */
 const POLL_MS = 2_000;
 
-/**
- * Where a plan's public-share credentials live in localStorage. Keeping the
- * editToken client-side (keyed by plan) is what makes "Share" idempotent: a
- * re-share updates the same /scan slug instead of minting a new URL.
- */
-const shareStorageKey = (planId: string) => `foglamp.setup.share.${planId}`;
-
-interface StoredShare {
-  slug: string;
-  editToken: string;
-}
-
-function readStoredShare(planId: string): StoredShare | null {
-  try {
-    const raw = localStorage.getItem(shareStorageKey(planId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<StoredShare>;
-    if (
-      typeof parsed.slug !== "string" ||
-      typeof parsed.editToken !== "string"
-    ) {
-      return null;
-    }
-    return { slug: parsed.slug, editToken: parsed.editToken };
-  } catch {
-    return null;
-  }
-}
-
 export function SetupClient({ planId }: { planId: string }) {
   const qc = useQueryClient();
   const queryKey = trpc.instrumentationPlans.get.queryKey({ planId });
@@ -104,52 +75,24 @@ export function SetupClient({ planId }: { planId: string }) {
     });
   }, [data]);
 
-  // Browsers won't let a page close a tab it didn't open, so the next best
-  // thing to "approve closes the tab" is saying out loud that closing is safe:
-  // the agent is unblocked the moment the approval lands, not when this page
-  // is looked at.
+  // Approving is the end of the user's job here — the agent is unblocked the
+  // moment the approval lands, so the tab tries to close itself. Browsers only
+  // honor window.close() for tabs with no real history (which is exactly what
+  // the agent's `open <reviewUrl>` produces, on Chromium at least); when it's
+  // blocked the dialog says out loud that closing is safe.
   const [approvedOpen, setApprovedOpen] = useState(false);
 
   const approve = useMutation(
     trpc.instrumentationPlans.approve.mutationOptions({
       onSuccess: async () => {
         captureActivationEvent("instrumentation_plan_approved");
-        setApprovedOpen(true);
+        window.close();
+        // Only reached when the browser refused to close the tab. The delay
+        // keeps the dialog from flashing during an honored close.
+        window.setTimeout(() => setApprovedOpen(true), 400);
         // Refetch immediately: the agent resumes within a second or so, and the
         // page should be showing "applying" by the time the user looks up.
         await qc.invalidateQueries({ queryKey });
-      },
-      onError: (e) => toast.error(e.message),
-    })
-  );
-
-  // The opt-in public share of the instrumented map. Deliberately not part of
-  // the plan row: the credentials are the same anonymous-scan editToken the
-  // /scan lead magnet uses, held only in this browser.
-  const [share, setShare] = useState<StoredShare | null>(null);
-  useEffect(() => {
-    setShare(readStoredShare(planId));
-  }, [planId]);
-
-  const shareMap = useMutation(
-    trpc.instrumentationPlans.share.mutationOptions({
-      onSuccess: (res) => {
-        captureActivationEvent("instrumentation_map_shared", {
-          updated: res.updated,
-        });
-        const stored = { slug: res.slug, editToken: res.editToken };
-        setShare(stored);
-        try {
-          localStorage.setItem(shareStorageKey(planId), JSON.stringify(stored));
-        } catch {
-          // Storage disabled — the share still worked, a re-share just mints
-          // a fresh URL instead of updating this one.
-        }
-        const url = `${window.location.origin}/scan/${res.slug}`;
-        void navigator.clipboard
-          .writeText(url)
-          .then(() => toast.success("Public map link copied"))
-          .catch(() => toast.success("Public map published"));
       },
       onError: (e) => toast.error(e.message),
     })
@@ -204,9 +147,6 @@ export function SetupClient({ planId }: { planId: string }) {
         onApprove={(edits) => approve.mutate({ planId, edits })}
         onReject={() => reject.mutate({ planId })}
         approving={approve.isPending || reject.isPending}
-        shareSlug={share?.slug ?? null}
-        onShare={() => shareMap.mutate({ planId, editToken: share?.editToken })}
-        sharing={shareMap.isPending}
       />
       <Dialog open={approvedOpen} onOpenChange={setApprovedOpen}>
         <DialogContent className="sm:max-w-sm">
@@ -214,7 +154,7 @@ export function SetupClient({ planId }: { planId: string }) {
             <DialogTitle>Approved</DialogTitle>
             <DialogDescription>
               Your coding agent picked the plan up and is implementing the
-              instrumentation.
+              instrumentation. You can close this tab.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
