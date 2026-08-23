@@ -13,8 +13,8 @@
     "dark": "images/icon.png"
   },
   "logo": {
-    "light": "images/wordmark-light.png",
-    "dark": "images/workmark-dark.png"
+    "light": "/docs/images/Frame@2x(2).png",
+    "dark": "/docs/images/Frame@2x(1).png"
   },
   "navigation": {
     "tabs": [
@@ -100,12 +100,7 @@
     ]
   },
   "navbar": {
-    "links": [
-      {
-        "label": "GitHub",
-        "href": "https://github.com/foglamp-labs/foglamp"
-      }
-    ],
+    "links": [],
     "primary": {
       "type": "github",
       "href": "https://github.com/foglamp-labs/foglamp"
