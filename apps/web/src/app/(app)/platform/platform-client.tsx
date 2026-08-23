@@ -34,8 +34,11 @@ import {
 	IconBriefcaseFilled,
 	IconBuilding,
 	IconBuildingSkyscraper,
+	IconCircleCheckFilled,
 	IconCirclePlusFilled,
+	IconClipboardCheckFilled,
 	IconCoinFilled,
+	IconCode,
 	IconCreditCard,
 	IconCreditCardFilled,
 	IconEyeFilled,
@@ -80,6 +83,19 @@ function formatMrr(cents: number | null): string {
 
 function initials(value: string): string {
 	return value.slice(0, 2).toUpperCase();
+}
+
+function formatConversion(value: number, total: number): string {
+	if (total === 0) return "—";
+	return `${Math.round((value / total) * 100)}%`;
+}
+
+function formatPlainDate(value: string): string {
+	return new Date(`${value}T00:00:00`).toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	});
 }
 
 // Icon + accent per plan, so the Plans card reads like the Signup funnel.
@@ -346,6 +362,49 @@ export function PlatformClient() {
 		},
 	];
 	const funnelMax = Math.max(1, ...funnelSteps.map((s) => s.value));
+	const onboardingTotal = d.onboardingFunnel.created;
+	const onboardingSteps = [
+		{
+			label: "Plan created",
+			value: d.onboardingFunnel.created,
+			icon: IconCirclePlusFilled,
+			iconClassName: "text-sky-500",
+			barClassName: "bg-sky-500",
+		},
+		{
+			label: "Plan approved",
+			value: d.onboardingFunnel.approved,
+			icon: IconClipboardCheckFilled,
+			iconClassName: "text-emerald-500",
+			barClassName: "bg-emerald-500",
+		},
+		{
+			label: "Agent resumed",
+			value: d.onboardingFunnel.resumed,
+			icon: IconBoltFilled,
+			iconClassName: "text-amber-500",
+			barClassName: "bg-amber-500",
+		},
+		{
+			label: "Changes applied",
+			value: d.onboardingFunnel.applied,
+			icon: IconCode,
+			iconClassName: "text-violet-500",
+			barClassName: "bg-violet-500",
+		},
+		{
+			label: "Trace verified",
+			value: d.onboardingFunnel.verified,
+			icon: IconCircleCheckFilled,
+			iconClassName: "text-cyan-500",
+			barClassName: "bg-cyan-500",
+		},
+	];
+	const onboardingOutcomes = [
+		{ label: "Rejected", value: d.onboardingFunnel.rejected },
+		{ label: "Expired", value: d.onboardingFunnel.expired },
+		{ label: "Failed", value: d.onboardingFunnel.failed },
+	];
 	const planMax = Math.max(1, ...d.plans.map((p) => p.orgs));
 
 	return (
@@ -355,6 +414,78 @@ export function PlatformClient() {
 			<div className={cn(entrance && "page-fade-in")}>
 				<PageHeader title="Platform" />
 			</div>
+
+			<Card
+				className={cn(
+					"mx-8 overflow-hidden",
+					entrance && "page-fade-in",
+				)}
+			>
+				<CardHeader className="border-b border-border/60">
+					<div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+						<div>
+							<CardTitle>Onboarding activation</CardTitle>
+							<CardDescription className="mt-1">
+								Unique organizations since {formatPlainDate(d.onboardingFunnel.startedOn)}
+								 · ordered {d.onboardingFunnel.windowDays}-day window
+							</CardDescription>
+						</div>
+						<div className="flex items-baseline gap-2 sm:text-right">
+							<span className="text-3xl font-semibold tracking-tight tabular-nums">
+								{formatConversion(d.onboardingFunnel.verified, onboardingTotal)}
+							</span>
+							<span className="text-xs text-muted-foreground">verified</span>
+						</div>
+					</div>
+				</CardHeader>
+				<CardContent className="p-0">
+					<div className="grid grid-cols-2 lg:grid-cols-5">
+						{onboardingSteps.map((step, index) => (
+							<div
+								key={step.label}
+								className={cn(
+									"relative min-w-0 border-border/60 px-5 py-5",
+									index > 0 && "border-l",
+									index === onboardingSteps.length - 1 &&
+										"col-span-2 border-t lg:col-span-1 lg:border-t-0",
+								)}
+							>
+								<div className="mb-5 flex items-center justify-between gap-3">
+									<span className="flex min-w-0 items-center gap-2 text-sm">
+										<step.icon className={cn("size-4 shrink-0", step.iconClassName)} />
+										<span className="truncate">{step.label}</span>
+									</span>
+									<span className="text-xs tabular-nums text-muted-foreground">
+										{formatConversion(step.value, onboardingTotal)}
+									</span>
+								</div>
+								<div className="text-3xl font-semibold tracking-tight tabular-nums">
+									{formatExactCount(step.value)}
+								</div>
+								<div className="absolute inset-x-0 bottom-0 h-0.5 bg-muted">
+									<div
+										className={cn("h-full", step.barClassName)}
+										style={{
+											width: `${onboardingTotal === 0 ? 0 : Math.min(100, (step.value / onboardingTotal) * 100)}%`,
+										}}
+									/>
+								</div>
+							</div>
+						))}
+					</div>
+					<div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/60 bg-muted/20 px-5 py-3 text-xs">
+						<span className="text-muted-foreground">Terminal plans</span>
+						{onboardingOutcomes.map((outcome) => (
+							<span key={outcome.label} className="flex items-center gap-1.5">
+								<span>{outcome.label}</span>
+								<span className="font-medium tabular-nums">
+									{formatExactCount(outcome.value)}
+								</span>
+							</span>
+						))}
+					</div>
+				</CardContent>
+			</Card>
 
 			<div
 				className={cn(

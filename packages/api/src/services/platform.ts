@@ -7,6 +7,7 @@ import {
   queryRecentlyActiveOrgs,
 } from "@foglamp/clickhouse";
 import { user } from "@foglamp/db/schema/auth";
+import { instrumentationPlan } from "@foglamp/db/schema/instrumentationPlan";
 import { member, organization } from "@foglamp/db/schema/organization";
 import { project } from "@foglamp/db/schema/project";
 import { scan } from "@foglamp/db/schema/scan";
@@ -144,6 +145,13 @@ const TOP_ORGS_DISPLAY = 12;
 // to TOP_ORGS_DISPLAY so the two side-by-side panels are the same height.
 const RECENT_SIGNUPS_DISPLAY = 12;
 
+// The approval-loop onboarding flow launched on this date. Keep the operator
+// funnel on the same boundary and conversion window as the saved PostHog
+// insight so the two surfaces answer the same question.
+const ONBOARDING_FUNNEL_STARTED_AT = new Date("2026-08-17T00:00:00-03:00");
+const ONBOARDING_FUNNEL_STARTED_ON = "2026-08-17";
+const ONBOARDING_FUNNEL_WINDOW_DAYS = 14;
+
 /** Org lookup for the access-grant UI (name or slug, case-insensitive). */
 export async function searchOrgs(db: Db, query: string) {
   const pattern = `%${query}%`;
@@ -246,6 +254,7 @@ export async function getPlatformStats(db: Db, ch: Ch) {
       planRows,
       signupRows,
       recentSignupRows,
+      onboardingFunnelRows,
     ],
     usageByDay,
     errorsByDay,
@@ -293,6 +302,55 @@ export async function getPlatformStats(db: Db, ch: Ch) {
         .from(user)
         .orderBy(desc(user.createdAt))
         .limit(RECENT_SIGNUPS_DISPLAY),
+      // Count unique organizations through one ordered plan lifecycle. Each
+      // later step requires all timestamps before it on the same plan and must
+      // happen within 14 days of creation, matching the PostHog funnel without
+      // making this operator page depend on PostHog availability.
+      db
+        .select({
+          created: sql<number>`count(distinct ${instrumentationPlan.orgId}) filter (
+            where ${instrumentationPlan.createdAt} >= ${ONBOARDING_FUNNEL_STARTED_AT}
+          )`,
+          approved: sql<number>`count(distinct ${instrumentationPlan.orgId}) filter (
+            where ${instrumentationPlan.createdAt} >= ${ONBOARDING_FUNNEL_STARTED_AT}
+              and ${instrumentationPlan.approvedAt} is not null
+              and ${instrumentationPlan.approvedAt} <= ${instrumentationPlan.createdAt} + interval '14 days'
+          )`,
+          resumed: sql<number>`count(distinct ${instrumentationPlan.orgId}) filter (
+            where ${instrumentationPlan.createdAt} >= ${ONBOARDING_FUNNEL_STARTED_AT}
+              and ${instrumentationPlan.approvedAt} is not null
+              and ${instrumentationPlan.agentResumedAt} is not null
+              and ${instrumentationPlan.agentResumedAt} <= ${instrumentationPlan.createdAt} + interval '14 days'
+          )`,
+          applied: sql<number>`count(distinct ${instrumentationPlan.orgId}) filter (
+            where ${instrumentationPlan.createdAt} >= ${ONBOARDING_FUNNEL_STARTED_AT}
+              and ${instrumentationPlan.approvedAt} is not null
+              and ${instrumentationPlan.agentResumedAt} is not null
+              and ${instrumentationPlan.appliedAt} is not null
+              and ${instrumentationPlan.appliedAt} <= ${instrumentationPlan.createdAt} + interval '14 days'
+          )`,
+          verified: sql<number>`count(distinct ${instrumentationPlan.orgId}) filter (
+            where ${instrumentationPlan.createdAt} >= ${ONBOARDING_FUNNEL_STARTED_AT}
+              and ${instrumentationPlan.approvedAt} is not null
+              and ${instrumentationPlan.agentResumedAt} is not null
+              and ${instrumentationPlan.appliedAt} is not null
+              and ${instrumentationPlan.verifiedAt} is not null
+              and ${instrumentationPlan.verifiedAt} <= ${instrumentationPlan.createdAt} + interval '14 days'
+          )`,
+          rejected: sql<number>`count(*) filter (
+            where ${instrumentationPlan.createdAt} >= ${ONBOARDING_FUNNEL_STARTED_AT}
+              and ${instrumentationPlan.status} = 'rejected'
+          )`,
+          expired: sql<number>`count(*) filter (
+            where ${instrumentationPlan.createdAt} >= ${ONBOARDING_FUNNEL_STARTED_AT}
+              and ${instrumentationPlan.status} = 'expired'
+          )`,
+          failed: sql<number>`count(*) filter (
+            where ${instrumentationPlan.createdAt} >= ${ONBOARDING_FUNNEL_STARTED_AT}
+              and ${instrumentationPlan.status} = 'failed'
+          )`,
+        })
+        .from(instrumentationPlan),
     ]),
     queryPlatformUsageByDay(ch, ymd(since30d)),
     queryPlatformErrorsByDay(ch, ymd(since30d)),
@@ -398,6 +456,18 @@ export async function getPlatformStats(db: Db, ch: Ch) {
       orgsWithProjects: orgsWithProjectsRows[0]?.n ?? 0,
       orgsActive30d: activeOrgIds30d.length,
       paidOrgs,
+    },
+    onboardingFunnel: {
+      startedOn: ONBOARDING_FUNNEL_STARTED_ON,
+      windowDays: ONBOARDING_FUNNEL_WINDOW_DAYS,
+      created: Number(onboardingFunnelRows[0]?.created ?? 0),
+      approved: Number(onboardingFunnelRows[0]?.approved ?? 0),
+      resumed: Number(onboardingFunnelRows[0]?.resumed ?? 0),
+      applied: Number(onboardingFunnelRows[0]?.applied ?? 0),
+      verified: Number(onboardingFunnelRows[0]?.verified ?? 0),
+      rejected: Number(onboardingFunnelRows[0]?.rejected ?? 0),
+      expired: Number(onboardingFunnelRows[0]?.expired ?? 0),
+      failed: Number(onboardingFunnelRows[0]?.failed ?? 0),
     },
     spans: { last24h: spans24h, last30d: spans30d },
     scans: {
