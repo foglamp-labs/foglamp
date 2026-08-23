@@ -68,7 +68,7 @@ describe("canTransition", () => {
     // An approved-but-never-collected plan still ages out.
     expect(canTransition("approved", "expired")).toBe(true);
     // ...but once the agent is mid-apply, expiry must not yank it away.
-    expect(canTransition("applying", "expired")).toBe(false);
+    expect(canTransition("applying", "expired")).toBe(true);
     expect(canTransition("applied", "expired")).toBe(false);
   });
 

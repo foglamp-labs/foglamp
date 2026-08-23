@@ -28,6 +28,20 @@ import { trpc } from "@/utils/trpc";
 /** How often to re-read the plan while it can still change. */
 const POLL_MS = 2_000;
 
+/**
+ * Polling `applied` runs the first-trace probe (a ClickHouse query) on every
+ * tick, and "waiting for the user to trigger a flow" can last a long while —
+ * so that one state backs off instead of hammering: snappy for the first
+ * minute (the demo case: agent applies, user triggers immediately), then
+ * progressively lazier.
+ */
+function appliedPollMs(appliedAt: string | null | undefined): number {
+  const since = Date.now() - (appliedAt ? Date.parse(appliedAt) : Date.now());
+  if (since < 60_000) return POLL_MS;
+  if (since < 300_000) return 5_000;
+  return 10_000;
+}
+
 export function SetupClient({ planId }: { planId: string }) {
   const qc = useQueryClient();
   const queryKey = trpc.instrumentationPlans.get.queryKey({ planId });
@@ -42,6 +56,9 @@ export function SetupClient({ planId }: { planId: string }) {
         refetchInterval: (query) => {
           const status = query.state.data?.status;
           if (status && !isPlanPending(status)) return false;
+          if (status === "applied") {
+            return appliedPollMs(query.state.data?.appliedAt);
+          }
           return POLL_MS;
         },
         retry: false,
@@ -141,6 +158,8 @@ export function SetupClient({ planId }: { planId: string }) {
         applied={data.applied}
         status={data.status}
         firstTraceId={data.firstTraceId}
+        approvedAt={data.approvedAt}
+        agentResumedAt={data.agentResumedAt}
         spanCount={data.spanCount}
         secondsToFirstTrace={data.secondsToFirstTrace}
         failureStage={data.failureStage}

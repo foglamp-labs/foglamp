@@ -206,8 +206,11 @@ nothing and returns within a second of the user clicking. What it prints:
 - \`rejected\` — stop. Change nothing. Tell the user their repo is untouched.
 - \`expired\` — the plan timed out. Start again at step 1.
 - nothing at all — the 7-minute bound was hit. Run the exact same command again.
-  After about 30 minutes with no answer, stop and tell the user to approve the
-  link whenever they're ready and you'll continue then.
+  After about 30 minutes with no answer, stop and tell the user exactly this:
+  "Approve the review link whenever you're ready, then send me any message
+  (just 'continue' works) and I'll pick the plan up." When they come back, run
+  the same wait command again — it returns instantly once the plan is approved,
+  and everything continues from step 5 as if you'd never stopped.
 
 ## 5. Apply the approved plan
 Fetch ${AGENT_DOCS_URL} and follow it.

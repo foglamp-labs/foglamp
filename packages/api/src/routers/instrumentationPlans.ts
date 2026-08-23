@@ -54,6 +54,10 @@ export const instrumentationPlansRouter = router({
         expiresAt: plan.expiresAt,
         createdAt: plan.createdAt,
         approvedAt: plan.approvedAt,
+        // Null while `approved` means no agent has picked the plan up — the
+        // page uses that (plus elapsed time) to tell the user their agent
+        // probably stopped waiting.
+        agentResumedAt: plan.agentResumedAt,
         appliedAt: plan.appliedAt,
         firstTraceId: verification.firstTraceId,
         verifiedAt: verification.verifiedAt,
