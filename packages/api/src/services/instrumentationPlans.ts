@@ -39,17 +39,19 @@ import { requireProjectAccess } from "./access";
 /** Plans self-destruct if nobody acts on them. */
 const PLAN_TTL_HOURS = env.SETUP_PLAN_TTL_HOURS;
 
-/** Statuses the expiry sweep is allowed to reap (see canTransition). */
-const EXPIRABLE: PlanStatus[] = ["awaiting_approval", "approved"];
+/**
+ * Statuses the expiry sweep is allowed to reap (see canTransition). `applying`
+ * is here for the agent that died mid-apply — without it that plan would spin
+ * on the review page forever. `applied` is not: the code changes are real, the
+ * plan is just waiting on a trace, and that wait is legitimately unbounded.
+ */
+const EXPIRABLE: PlanStatus[] = ["awaiting_approval", "approved", "applying"];
 
 /**
  * How a plan reads right now. A plan past its deadline is expired the moment
  * anyone looks at it, not whenever the hourly sweep gets to it — otherwise an
  * agent could wait on a dead plan, and the review page would keep saying
  * "waiting for your coding agent" for up to an hour after it died.
- *
- * Only the reapable statuses are projected: once an agent is mid-apply the
- * deadline stops mattering, and the sweep won't touch it either.
  */
 export function effectiveStatus(plan: {
   status: PlanStatus;

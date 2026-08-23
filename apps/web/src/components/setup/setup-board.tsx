@@ -65,6 +65,8 @@ export function SetupBoard({
   applied,
   status,
   firstTraceId,
+  approvedAt,
+  agentResumedAt,
   spanCount,
   secondsToFirstTrace,
   failureStage,
@@ -79,6 +81,9 @@ export function SetupBoard({
   applied?: AppliedReport | null;
   status: PlanStatus;
   firstTraceId?: string | null;
+  /** ISO timestamps — tRPC serializes dates to strings on this app. */
+  approvedAt?: string | null;
+  agentResumedAt?: string | null;
   spanCount?: number | null;
   secondsToFirstTrace?: number | null;
   failureStage?: string | null;
@@ -169,6 +174,16 @@ export function SetupBoard({
     return { agents, workflows, sessions, customer: edits.customer };
   }, [edits]);
 
+  // The one edit that can make approval fail server-side: customer attribution
+  // switched on with no id source. Catch it here and disable Approve — the
+  // decision row already explains what's missing — instead of letting the
+  // click round-trip into a schema-speak error toast.
+  const customerOn =
+    edits.customer?.recommended ?? plan.decisions.customer.recommended;
+  const customerIdSource =
+    edits.customer?.idSource ?? plan.decisions.customer.idSource;
+  const approveBlocked = customerOn && !customerIdSource;
+
   // Post-approval the source of truth flips: the list shows what was agreed
   // to (detected + edits), not the raw detection.
   const decisions = approved ?? plan.decisions;
@@ -194,7 +209,10 @@ export function SetupBoard({
           plan={plan}
           status={status}
           firstTraceId={firstTraceId}
+          approvedAt={approvedAt}
+          agentResumedAt={agentResumedAt}
           failureStage={failureStage}
+          approveBlocked={approveBlocked}
           onApprove={() => onApprove(buildEdits())}
           onReject={onReject}
           approving={approving}

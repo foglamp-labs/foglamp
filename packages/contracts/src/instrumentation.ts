@@ -74,7 +74,11 @@ export const TERMINAL_STATUSES = ["verified", "rejected", "expired", "failed"] a
 const TRANSITIONS: Record<PlanStatus, readonly PlanStatus[]> = {
   awaiting_approval: ["approved", "rejected", "expired"],
   approved: ["applying", "expired", "failed"],
-  applying: ["applied", "failed"],
+  // `expired` here covers the agent that died mid-apply (crashed, laptop
+  // closed): without it the plan would sit in `applying` forever and the
+  // review page would spin until the end of time. The TTL is generous (24h),
+  // so a healthy apply — minutes — never gets close.
+  applying: ["applied", "expired", "failed"],
   applied: ["verified", "failed"],
   // Terminal — absorbing states.
   verified: [],
