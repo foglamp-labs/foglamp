@@ -18,6 +18,7 @@ export type ActivationEvent =
   | "instrumentation_changes_applied"
   | "instrumentation_waiting_for_trace"
   | "instrumentation_verified"
+  | "instrumentation_plan_rejected"
   | "instrumentation_plan_expired"
   | "instrumentation_plan_failed";
 

@@ -9,9 +9,12 @@ type ClientActivationEvent =
   | "trace_viewed"
   // The two moments of the approval loop that happen in the browser. The rest
   // of the funnel is captured server-side (@foglamp/analytics), since it's
-  // driven by the user's coding agent.
+  // driven by the user's coding agent. The click event is deliberately NOT
+  // named `instrumentation_plan_approved`: that name belongs to the server
+  // event attributed to the org owner, and when a non-owner teammate clicks,
+  // a same-named browser event on a different person would split the funnel.
   | "instrumentation_plan_viewed"
-  | "instrumentation_plan_approved";
+  | "instrumentation_plan_approve_clicked";
 
 export function captureActivationEvent(
   event: ClientActivationEvent,
