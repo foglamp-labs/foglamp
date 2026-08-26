@@ -421,15 +421,18 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
             </div>
           ) : null
         ) : scores.length === 0 ? (
-          <EmptyState
-            icon={IconGauge}
-            title="No scores yet"
-            description="Scores appear here as new matching traffic is sampled and scored."
+          <div
             className={cn(
-              entrance && !recentSkeletonShown && "page-fade-in",
-              "px-8"
+              "px-8",
+              entrance && !recentSkeletonShown && "page-fade-in"
             )}
-          />
+          >
+            <EmptyState
+              icon={IconGauge}
+              title="No scores yet"
+              description="Scores appear here as new matching traffic is sampled and scored."
+            />
+          </div>
         ) : (
           // Keep the footer flush with the table's last row, matching the
           // other paginated main tables.
