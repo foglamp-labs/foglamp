@@ -97,13 +97,20 @@ export function formatPercent(fraction: number | null | undefined): string {
 	return `${Math.round(fraction * 100)}%`;
 }
 
+function parseDateTime(value: string | Date): Date {
+	if (value instanceof Date) return value;
+
+	const normalized = value.replace(" ", "T");
+	const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized);
+	return new Date(hasTimezone ? normalized : `${normalized}Z`);
+}
+
 /** ClickHouse DateTime strings ('YYYY-MM-DD HH:MM:SS', UTC) or ISO → local. */
 export function formatDateTime(
 	value: string | Date | null | undefined,
 ): string {
 	if (!value) return "—";
-	const d =
-		value instanceof Date ? value : new Date(`${value.replace(" ", "T")}Z`);
+	const d = parseDateTime(value);
 	if (Number.isNaN(d.getTime())) return String(value);
 	return d.toLocaleString(undefined, {
 		month: "short",
@@ -120,8 +127,7 @@ export function formatRelative(
 	value: string | Date | null | undefined,
 ): string {
 	if (!value) return "—";
-	const d =
-		value instanceof Date ? value : new Date(`${value.replace(" ", "T")}Z`);
+	const d = parseDateTime(value);
 	const diff = Date.now() - d.getTime();
 	if (Number.isNaN(diff)) return String(value);
 	// Clamp clock skew: a server timestamp slightly ahead of the client must not

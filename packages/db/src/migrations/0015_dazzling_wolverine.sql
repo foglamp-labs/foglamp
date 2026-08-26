@@ -1,0 +1,1 @@
+ALTER TABLE "alert_rule" ADD COLUMN "automatic_name" boolean DEFAULT false NOT NULL;

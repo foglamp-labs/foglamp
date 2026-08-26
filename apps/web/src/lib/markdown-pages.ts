@@ -114,9 +114,9 @@ eval dataset required. Docs: ${DOCS_ORIGIN}/dashboard/evals`,
 	),
 	"/features/alerts": feature(
 		"Alerts",
-		"Threshold rules on cost, latency, and error rate.",
-		`Set threshold rules and get notified by email or Slack when cost, latency,
-or error rate crosses the line. Docs: ${DOCS_ORIGIN}/dashboard/alerts`,
+		"Threshold rules on cost, latency, error rate, and eval pass rate.",
+		`Set threshold rules, monitor their current value and history, and get
+notified by email or Slack when a metric crosses the line. Docs: ${DOCS_ORIGIN}/dashboard/alerts`,
 	),
 	"/features/agents": feature(
 		"Agents",

@@ -38,11 +38,11 @@ export default function AlertsPage() {
 				accentClassName={ACCENT}
 				eyebrow="Thresholds"
 				title="Rules on the metrics that matter."
-				description="Spend over $1k/day. p95 latency past 5 seconds. Error rate above 2%. Groundedness under 0.85. If you can chart it, you can alert on it."
+				description="Spend over $1k/day. p95 latency past 5 seconds. Error rate above 2%. Eval pass rate under 85%. Set the threshold and choose how much recent traffic to evaluate."
 				bullets={[
-					"Cost, latency, error rate, and eval-score rules",
+					"Cost, p95 latency, error rate, and eval pass-rate rules",
 					"Evaluated every minute on rolling windows",
-					"Scope alerts to an agent, model, or the whole project",
+					"Clear current values beside every condition",
 				]}
 				visual={
 					<FrameCard>
@@ -55,11 +55,11 @@ export default function AlertsPage() {
 			<FeatureSection
 				accentClassName={ACCENT}
 				eyebrow="Delivery"
-				title="Routed to where your team already is."
-				description="Alerts land in email and Slack the instant they fire, with a direct link to the traces behind the spike, so the on-call path goes straight from notification to root cause."
+				title="When it crosses the line, your team knows."
+				description="Foglamp sends alerts to email and Slack as soon as a rule fires, then records the recovery so the dashboard and notification history stay in sync."
 				bullets={[
 					"Email and Slack delivery",
-					"Deep link from an alert to the offending traces",
+					"Current values and recent alert history",
 					"Auto-resolves when the metric recovers",
 				]}
 				visualPosition="left"

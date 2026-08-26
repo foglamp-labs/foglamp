@@ -51,8 +51,8 @@ it, and what did it actually send the model?"* Foglamp fills that gap:
   `traceName` or an `agentName`; `workflowName` + `workflowRunId` and `sessionId`
   group calls further. All first-class, indexed fields. Everything else is
   free-form `metadata`.
-- **Alerts** — threshold rules on cost, latency, error rate, TTFT, tokens, or
-  request count, evaluated every minute, with email notifications.
+- **Alerts** — threshold rules on cost, p95 latency, error rate, or eval pass
+  rate, evaluated every minute, with email notifications and event history.
 
 Scope: **TypeScript + Vercel AI SDK v4–v7** — v7 via the native
 telemetry-integrations collector, v4/v5/v6 via the [`foglamp/wrap`](./docs/sdk/wrap.mdx)

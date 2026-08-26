@@ -1,6 +1,6 @@
 ---
 title: Alerts
-description: "Threshold rules on cost, latency, errors, and eval scores."
+description: "Threshold rules on cost, latency, errors, and eval pass rate."
 ---
 
 **Alerts** are threshold rules checked continuously against a rolling window of
@@ -12,12 +12,11 @@ resolve email. A rule that keeps firing re-notifies on a cooldown.
 
 | Field | Description |
 | --- | --- |
-| **Name** | A label for the rule (1-200 chars). |
+| **Name** | Generated from the condition when you create the rule, such as `Cost above $500`. You can customize it later. |
 | **Metric** | What to measure. See the table below. |
 | **Condition** | Comparison operator: `>`, `≥`, `<`, `≤`. |
 | **Threshold** | The number the metric is compared against. |
-| **Window** | The rolling lookback: 5 minutes, 15 minutes, 1 hour, or 24 hours. |
-| **Filters** | Optional. Narrow to a `modelId` and/or `agentName`. |
+| **Over the last** | How much recent traffic to include each time the rule is checked: 5 minutes, 15 minutes, 1 hour, or 24 hours. It is a rolling lookback, not a fixed calendar period. |
 | **Notify** | An email address to notify. |
 | **Enabled** | Turn the rule on or off without deleting it. |
 
@@ -25,18 +24,14 @@ resolve email. A rule that keeps firing re-notifies on a cooldown.
 
 | Metric | Meaning |
 | --- | --- |
-| `cost` | Total cost (USD) over the window. |
-| `latency_p50` / `latency_p95` / `latency_p99` | Step-latency quantiles (ms). |
-| `ttft_p95` | Time to first token, p95 (ms). |
-| `error_rate` | Share of spans that errored (0-1). |
-| `token_usage` | Total tokens over the window. |
-| `request_count` | Span count over the window. |
-| `eval_avg_score` | Average score for a chosen [eval](/dashboard/evals). |
-| `eval_pass_rate` | Pass ratio (0-1) for a chosen eval. |
+| `cost` | Total cost (USD) over the selected lookback. |
+| `latency_p95` | p95 step latency. Entered in milliseconds. |
+| `error_rate` | Share of spans that errored. Entered as a percentage. |
+| `eval_pass_rate` | Pass rate for a chosen [eval](/dashboard/evals). Entered as a percentage. |
 
 <Note>
-  The two `eval_*` metrics require picking a specific eval. The rule then
-  checks that eval's results rather than raw span metrics.
+  Existing rules that use a legacy metric continue to run and can still be
+  edited. New rules offer the four metrics above.
 </Note>
 
 ## How checking works
@@ -64,7 +59,9 @@ when it fired and resolved.
 
 ## List view
 
-The Alerts page lists every rule with its metric, condition, threshold, window,
-current status (an **ok** or **firing** badge), and an on/off switch. Plans cap
-how many rules an organization can create; the
+The Alerts page lists every rule with its metric, condition, current value,
+lookback, last evaluation, and most recent firing. A small red marker appears
+beside the name only while an enabled rule is firing. Select **Edit** to change
+the rule and review its recent fired and resolved history. Plans cap how many
+rules an organization can create; the
 [Usage](/dashboard/account#usage) panel shows your count against the limit.

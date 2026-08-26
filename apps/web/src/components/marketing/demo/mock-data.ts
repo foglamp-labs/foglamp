@@ -229,7 +229,10 @@ export const OVERVIEW_COST_SERIES: OverviewCostPoint[] = OVERVIEW_SERIES.map(
 // by the cost chart and its legend; the "Models" breakdown renders the real
 // ModelLogo per row.
 export const OVERVIEW_COST_CONFIG = {
-	m0: { label: "gpt-5.6-sol", colors: { light: ["#10a37f"], dark: ["#10a37f"] } },
+	m0: {
+		label: "gpt-5.6-sol",
+		colors: { light: ["#10a37f"], dark: ["#10a37f"] },
+	},
 	m1: {
 		label: "claude-fable-5",
 		colors: { light: ["#d97757"], dark: ["#d97757"] },
@@ -544,7 +547,8 @@ export const TRACE_ROWS: TraceRow[] = [
 	},
 	{
 		traceId: "tr_4c7d2e9f6a1b8c3e5d0a",
-		title: "Which accounts drove the Q3 revenue dip? Break it down by plan tier",
+		title:
+			"Which accounts drove the Q3 revenue dip? Break it down by plan tier",
 		model: "claude-fable-5",
 		agentName: "sql-analyst",
 		workflowName: null,
@@ -1517,14 +1521,11 @@ export type AlertRow = {
 	id: string;
 	name: string;
 	/** Real alert metric keys — drive the same icon/label lookup as the app. */
-	metric:
-		| "cost"
-		| "latency_p95"
-		| "error_rate"
-		| "eval_pass_rate"
-		| "token_usage";
+	metric: "cost" | "latency_p95" | "error_rate" | "eval_pass_rate";
 	comparison: "gt" | "gte" | "lt" | "lte";
-	threshold: string;
+	threshold: number;
+	currentValue: number;
+	lastFired: string | null;
 	windowSeconds: number;
 	status: "firing" | "ok";
 	enabled: boolean;
@@ -1533,40 +1534,48 @@ export type AlertRow = {
 export const ALERTS: AlertRow[] = [
 	{
 		id: "al_cost",
-		name: "Daily spend",
+		name: "Cost above $1,000",
 		metric: "cost",
 		comparison: "gt",
-		threshold: "1000",
+		threshold: 1000,
+		currentValue: 684.32,
+		lastFired: "4d ago",
 		windowSeconds: 86_400,
 		status: "ok",
 		enabled: true,
 	},
 	{
 		id: "al_err",
-		name: "Error-rate spike",
+		name: "Error rate above 2%",
 		metric: "error_rate",
 		comparison: "gt",
-		threshold: "0.02",
+		threshold: 0.02,
+		currentValue: 0.034,
+		lastFired: "12m ago",
 		windowSeconds: 300,
 		status: "firing",
 		enabled: true,
 	},
 	{
 		id: "al_lat",
-		name: "P95 latency",
+		name: "Latency p95 above 5s",
 		metric: "latency_p95",
 		comparison: "gt",
-		threshold: "5000",
+		threshold: 5000,
+		currentValue: 3840,
+		lastFired: "2d ago",
 		windowSeconds: 900,
 		status: "ok",
 		enabled: true,
 	},
 	{
 		id: "al_eval",
-		name: "Groundedness drop",
+		name: "Eval pass rate below 85%",
 		metric: "eval_pass_rate",
 		comparison: "lt",
-		threshold: "0.85",
+		threshold: 0.85,
+		currentValue: 0.92,
+		lastFired: null,
 		windowSeconds: 3600,
 		status: "ok",
 		enabled: false,

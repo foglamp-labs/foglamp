@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  ALERT_COMPARISONS,
+  CREATABLE_ALERT_METRICS,
+} from "@foglamp/contracts/alerts";
 
 import { protectedProcedure, router } from "../index";
 import {
@@ -9,19 +13,8 @@ import {
   updateAlert,
 } from "../services/alerts";
 
-const metricEnum = z.enum([
-  "cost",
-  "latency_p50",
-  "latency_p95",
-  "latency_p99",
-  "ttft_p95",
-  "error_rate",
-  "token_usage",
-  "request_count",
-  "eval_avg_score",
-  "eval_pass_rate",
-]);
-const comparisonEnum = z.enum(["gt", "gte", "lt", "lte"]);
+const metricEnum = z.enum(CREATABLE_ALERT_METRICS);
+const comparisonEnum = z.enum(ALERT_COMPARISONS);
 
 const filtersSchema = z
   .object({
@@ -47,7 +40,6 @@ export const alertsRouter = router({
     .input(
       z.object({
         projectId: z.string(),
-        name: z.string().min(1).max(200),
         metric: metricEnum,
         evalId: z.string().optional(),
         filters: filtersSchema,
@@ -69,8 +61,9 @@ export const alertsRouter = router({
       z.object({
         ruleId: z.string(),
         name: z.string().min(1).max(200).optional(),
+        automaticName: z.boolean().optional(),
         metric: metricEnum.optional(),
-        evalId: z.string().optional(),
+        evalId: z.string().nullable().optional(),
         filters: filtersSchema,
         windowSeconds: z.number().int().min(60).max(86_400).optional(),
         threshold: z.number().finite().nonnegative().optional(),

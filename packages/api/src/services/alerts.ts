@@ -1,6 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { getOrgPlan } from "@foglamp/billing";
 import {
+  generateAlertName,
+  type AlertComparison,
+  type AlertMetric,
+  type CreatableAlertMetric,
+} from "@foglamp/contracts/alerts";
+import {
   alertEvent,
   alertRule,
   alertState,
@@ -15,23 +21,9 @@ import type { Db } from "../types";
 import { requireProjectAccess } from "./access";
 import { requireEvalAccess } from "./evals";
 
-export type AlertMetric =
-  | "cost"
-  | "latency_p50"
-  | "latency_p95"
-  | "latency_p99"
-  | "ttft_p95"
-  | "error_rate"
-  | "token_usage"
-  | "request_count"
-  | "eval_avg_score"
-  | "eval_pass_rate";
-export type AlertComparison = "gt" | "gte" | "lt" | "lte";
-
 export type AlertRuleInput = {
   projectId: string;
-  name: string;
-  metric: AlertMetric;
+  metric: CreatableAlertMetric;
   evalId?: string;
   filters?: AlertFilters;
   windowSeconds: number;
@@ -41,9 +33,35 @@ export type AlertRuleInput = {
   channels: AlertChannel[];
 };
 
+export type AlertRuleUpdateInput = {
+  ruleId: string;
+  name?: string;
+  automaticName?: boolean;
+  metric?: CreatableAlertMetric;
+  evalId?: string | null;
+  filters?: AlertFilters;
+  windowSeconds?: number;
+  threshold?: number;
+  comparison?: AlertComparison;
+  enabled?: boolean;
+  channels?: AlertChannel[];
+};
+
+function validateThreshold(metric: AlertMetric, threshold: number) {
+  if (
+    (metric === "error_rate" || metric === "eval_pass_rate") &&
+    threshold > 1
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Rate thresholds must be between 0% and 100%",
+    });
+  }
+}
+
 async function requireRuleAccess(db: Db, userId: string, ruleId: string) {
   const rows = await db
-    .select({ id: alertRule.id, projectId: alertRule.projectId })
+    .select()
     .from(alertRule)
     .where(eq(alertRule.id, ruleId))
     .limit(1);
@@ -70,6 +88,7 @@ export async function listAlerts(db: Db, userId: string, projectId: string) {
   return rows.map(({ rule, state }) => ({
     id: rule.id,
     name: rule.name,
+    automaticName: rule.automaticName,
     metric: rule.metric,
     evalId: rule.evalId ?? null,
     filters: rule.filters ?? null,
@@ -86,12 +105,23 @@ export async function listAlerts(db: Db, userId: string, projectId: string) {
   }));
 }
 
-export async function createAlert(db: Db, userId: string, input: AlertRuleInput) {
+export async function createAlert(
+  db: Db,
+  userId: string,
+  input: AlertRuleInput,
+) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
+  validateThreshold(input.metric, input.threshold);
   // Eval-score alerts reference an eval — verify it's one the caller can access
   // AND that it lives in this alert's project. Otherwise the evaluator queries
   // ClickHouse with a mismatched (projectId, evalId) pair, finds no scores, and
   // the alert silently fires (or never fires) forever.
+  if (input.metric === "eval_pass_rate" && !input.evalId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Select an eval for an eval pass-rate alert",
+    });
+  }
   if (input.evalId) {
     const ev = await requireEvalAccess(db, userId, input.evalId);
     if (ev.projectId !== input.projectId) {
@@ -126,7 +156,8 @@ export async function createAlert(db: Db, userId: string, input: AlertRuleInput)
       .insert(alertRule)
       .values({
         projectId: input.projectId,
-        name: input.name,
+        name: generateAlertName(input),
+        automaticName: true,
         metric: input.metric,
         evalId: input.evalId,
         filters: input.filters,
@@ -148,11 +179,24 @@ export async function createAlert(db: Db, userId: string, input: AlertRuleInput)
 export async function updateAlert(
   db: Db,
   userId: string,
-  input: { ruleId: string } & Partial<Omit<AlertRuleInput, "projectId">>,
+  input: AlertRuleUpdateInput,
 ) {
   const rule = await requireRuleAccess(db, userId, input.ruleId);
-  if (input.evalId) {
-    const ev = await requireEvalAccess(db, userId, input.evalId);
+  const metric = (input.metric ?? rule.metric) as AlertMetric;
+  const evalId =
+    input.metric && input.metric !== "eval_pass_rate"
+      ? null
+      : input.evalId !== undefined
+        ? input.evalId
+        : rule.evalId;
+  if (metric === "eval_pass_rate" && !evalId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Select an eval for an eval pass-rate alert",
+    });
+  }
+  if (evalId) {
+    const ev = await requireEvalAccess(db, userId, evalId);
     if (ev.projectId !== rule.projectId) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -160,12 +204,27 @@ export async function updateAlert(
       });
     }
   }
+
+  // A supplied name is an explicit customization. Otherwise automatic rules
+  // keep following edits to their metric, comparison, or threshold.
+  const automaticName =
+    input.name !== undefined
+      ? false
+      : (input.automaticName ?? rule.automaticName);
+  const comparison = input.comparison ?? rule.comparison;
+  const threshold = input.threshold ?? Number(rule.threshold);
+  validateThreshold(metric, threshold);
+  const nextName = automaticName
+    ? generateAlertName({ metric, comparison, threshold })
+    : input.name;
+
   await db
     .update(alertRule)
     .set({
-      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(nextName !== undefined ? { name: nextName } : {}),
+      automaticName,
       ...(input.metric !== undefined ? { metric: input.metric } : {}),
-      ...(input.evalId !== undefined ? { evalId: input.evalId } : {}),
+      ...(evalId !== rule.evalId ? { evalId } : {}),
       ...(input.filters !== undefined ? { filters: input.filters } : {}),
       ...(input.windowSeconds !== undefined
         ? { windowSeconds: input.windowSeconds }

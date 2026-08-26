@@ -61,6 +61,10 @@ export const alertRule = pgTable(
       .notNull()
       .references(() => project.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    // Existing rules predate automatic names and remain custom. New rules set
+    // this true so condition edits can keep their generated label in sync until
+    // the user explicitly customizes it.
+    automaticName: boolean("automatic_name").default(false).notNull(),
     metric: alertMetric("metric").notNull(),
     // Set only for eval_avg_score / eval_pass_rate metrics; the alert then
     // reads that eval's score rollup instead of the span metrics rollup.
