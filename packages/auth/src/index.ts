@@ -5,6 +5,7 @@ import { createClickHouseClient, updateOrgRetention } from "@foglamp/clickhouse"
 import { createDb } from "@foglamp/db";
 import * as schema from "@foglamp/db/schema/index";
 import { invitation, member, organization } from "@foglamp/db/schema/organization";
+import { onboardingEmail } from "@foglamp/db/schema/onboardingEmail";
 import { project } from "@foglamp/db/schema/project";
 import { env, getTrustedAppOrigins } from "@foglamp/env/server";
 import { betterAuth, type BetterAuthPlugin } from "better-auth";
@@ -284,6 +285,17 @@ export function createAuth() {
                 name: "Default",
                 slug: "default",
               });
+              const signedUpAt = Date.now();
+              await db.insert(onboardingEmail).values(
+                ([1, 3, 7] as const).map((milestoneDays) => ({
+                  userId: user.id,
+                  orgId,
+                  milestoneDays,
+                  scheduledAt: new Date(
+                    signedUpAt + milestoneDays * 24 * 60 * 60 * 1000,
+                  ),
+                })),
+              );
               void captureActivationEvent({
                 event: "user_signed_up",
                 distinctId: user.id,

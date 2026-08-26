@@ -2,6 +2,18 @@ import { env } from "@foglamp/env/server";
 import { createLogger } from "evlog";
 import { Resend } from "resend";
 
+import {
+	GUSTAVO_CAL_URL,
+	personalGreeting,
+	renderOnboardingFollowUpEmail,
+	type OnboardingEmailMilestone,
+} from "./onboardingFollowUpEmail";
+
+export {
+	renderOnboardingFollowUpEmail,
+	type OnboardingEmailMilestone,
+} from "./onboardingFollowUpEmail";
+
 const DEFAULT_FROM = "Foglamp <onboarding@foglamp.dev>";
 
 const log = createLogger();
@@ -458,14 +470,6 @@ If you didn't request this email, you can safely ignore it.`;
 
 const WELCOME_FROM = "Gustavo from Foglamp <gustavo@foglamp.dev>";
 const WELCOME_REPLY_TO = "gustavo@foglamp.dev";
-const CAL_URL = "https://cal.com/gustavo-fior/30min";
-
-/** First name only — "Hey Gustavo!", not "Hey Gustavo Fior!". Falls back to a
- * nameless greeting rather than guessing a name out of the email local part. */
-function greeting(name?: string | null): string {
-	const first = (name ?? "").trim().split(/\s+/)[0] ?? "";
-	return first ? `Hey ${first}!` : "Hey!";
-}
 
 export async function sendWelcomeEmail({
 	to,
@@ -487,7 +491,7 @@ export async function sendWelcomeEmail({
 		replyTo: WELCOME_REPLY_TO,
 		to: [to],
 		subject: "Welcome to Foglamp",
-		text: `${greeting(name)}
+		text: `${personalGreeting(name)}
 
 I'm Gustavo, I build Foglamp.
 
@@ -497,7 +501,7 @@ The fastest way in is the prompt on your dashboard: paste it into your coding
 agent and it instruments your app for you.
 
 If you'd rather talk it through or have ideas for the project, grab 30 minutes with me:
-${CAL_URL}
+${GUSTAVO_CAL_URL}
 
 Either way, would be a pleasure to talk to you!
 
@@ -506,5 +510,44 @@ Gustavo`,
 
 	if (error) {
 		throw new Error(`Resend request failed: ${error.name} — ${error.message}`);
+	}
+}
+
+export async function sendOnboardingFollowUpEmail({
+	to,
+	name,
+	milestoneDays,
+	idempotencyKey,
+}: {
+	to: string;
+	name?: string | null;
+	milestoneDays: OnboardingEmailMilestone;
+	idempotencyKey: string;
+}) {
+	const apiKey = env.RESEND_API_KEY;
+
+	if (!apiKey) {
+		log.info("auth.onboarding_follow_up.skipped_no_api_key", {
+			to,
+			milestoneDays,
+		});
+		return;
+	}
+
+	const resend = new Resend(apiKey);
+	const email = renderOnboardingFollowUpEmail(milestoneDays, name);
+	const { error } = await resend.emails.send(
+		{
+			from: WELCOME_FROM,
+			replyTo: WELCOME_REPLY_TO,
+			to: [to],
+			subject: email.subject,
+			text: email.text,
+		},
+		{ idempotencyKey },
+	);
+
+	if (error) {
+		throw new Error(`Resend request failed: ${error.name}: ${error.message}`);
 	}
 }

@@ -2385,6 +2385,23 @@ export async function queryOrgSpanUsage(
 	return Number(result[0]?.total ?? 0);
 }
 
+/** Whether an org has ever ingested a span. The usage rollup has no retention
+ * TTL, so this remains true even after the underlying spans have expired. */
+export async function hasOrgSpanUsage(
+	client: ClickHouseClient,
+	orgId: string,
+): Promise<boolean> {
+	const result = await rows<{ active: number }>(
+		client,
+		`SELECT 1 AS active
+     FROM usage_by_org_day
+     WHERE org_id = {orgId:String}
+     LIMIT 1`,
+		{ orgId },
+	);
+	return result.length > 0;
+}
+
 /** Distinct org ids with any span usage since `from` (YYYY-MM-DD) — bounds the
  *  quota-warning sweep to orgs with recent traffic. */
 export async function queryRecentlyActiveOrgs(

@@ -9,3 +9,4 @@ export * from "./alert";
 export * from "./scan";
 export * from "./instrumentationPlan";
 export * from "./foggy";
+export * from "./onboardingEmail";

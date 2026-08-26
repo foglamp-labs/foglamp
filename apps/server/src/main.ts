@@ -1,6 +1,7 @@
 import { trpcServer } from "@hono/trpc-server";
 import { startAlertEvaluator } from "@foglamp/api/alertCron";
 import { startInstrumentationPlanExpiry } from "@foglamp/api/instrumentationCron";
+import { startOnboardingFollowUpSweep } from "@foglamp/api/onboardingFollowUpCron";
 import { startScanCleanup } from "@foglamp/api/scanCron";
 import { startQuotaWarnSweep } from "@foglamp/api/quotaCron";
 import { startScoringWorker } from "@foglamp/api/scoringCron";
@@ -193,6 +194,9 @@ const stopStorageWatchSweep = startStorageWatchSweep();
 const stopScanCleanup = startScanCleanup();
 // Instrumentation plan expiry: mark unapproved onboarding plans expired (hourly).
 const stopPlanExpiry = startInstrumentationPlanExpiry();
+// Personal onboarding notes: at days 1, 3, and 7, but only while the signup
+// workspace has never sent a span.
+const stopOnboardingFollowUps = startOnboardingFollowUpSweep();
 
 // Periodically shed stale in-memory rate-limit entries (foggy + scan).
 const pruneTimer = setInterval(() => {
@@ -216,6 +220,7 @@ async function shutdown(signal: string): Promise<void> {
       stopStorageWatchSweep(),
       stopScanCleanup(),
       stopPlanExpiry(),
+      stopOnboardingFollowUps(),
     ]);
     log.emit({ outcome: "shutdown", signal });
   } catch (err) {
