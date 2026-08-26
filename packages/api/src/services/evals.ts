@@ -25,7 +25,7 @@ import { requireProjectAccess } from "./access";
 
 export type EvalInput = {
   projectId: string;
-  name: string;
+  name?: string;
   presetId: string;
   targetLevel: "trace" | "span";
   filters?: EvalFilters;
@@ -37,7 +37,11 @@ export type EvalInput = {
 
 export async function requireEvalAccess(db: Db, userId: string, evalId: string) {
   const rows = await db
-    .select({ id: evalDefinition.id, projectId: evalDefinition.projectId })
+    .select({
+      id: evalDefinition.id,
+      projectId: evalDefinition.projectId,
+      presetId: evalDefinition.presetId,
+    })
     .from(evalDefinition)
     .where(eq(evalDefinition.id, evalId))
     .limit(1);
@@ -130,6 +134,17 @@ export async function listEvals(
   });
 }
 
+// Mirrors alerts: the name is derived from the definition (preset + target +
+// agent filter) so lists read uniformly. Users can rename after creation.
+function generateEvalName(preset: { name: string }, input: EvalInput) {
+  const parts = [
+    preset.name,
+    input.targetLevel === "span" ? "spans" : "traces",
+  ];
+  if (input.filters?.agentName) parts.push(input.filters.agentName);
+  return parts.join(" · ");
+}
+
 export async function createEval(db: Db, userId: string, input: EvalInput) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
 
@@ -159,6 +174,18 @@ export async function createEval(db: Db, userId: string, input: EvalInput) {
       message: "A judge model is required for this preset",
     });
   }
+  // Presets without a default template (the custom judge) must ship their own
+  // prompt — otherwise the runner would silently score a bare "{output}".
+  if (
+    preset.source === "llm" &&
+    !preset.prompt &&
+    !input.config?.promptOverride?.trim()
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "A judge prompt is required for this preset",
+    });
+  }
   // Definition + its 1:1 state row must land atomically — a crash between the
   // two inserts leaves a stateless eval the scoring planner can't pick up.
   const id = await db.transaction(async (tx) => {
@@ -166,7 +193,7 @@ export async function createEval(db: Db, userId: string, input: EvalInput) {
       .insert(evalDefinition)
       .values({
         projectId: input.projectId,
-        name: input.name,
+        name: input.name?.trim() || generateEvalName(preset, input),
         presetId: input.presetId,
         scorerSource: preset.source,
         targetLevel: input.targetLevel,
@@ -190,7 +217,21 @@ export async function updateEval(
   userId: string,
   input: { evalId: string } & Partial<Omit<EvalInput, "projectId" | "presetId">>,
 ) {
-  await requireEvalAccess(db, userId, input.evalId);
+  const ev = await requireEvalAccess(db, userId, input.evalId);
+  // Same rule as create: a prompt-less judge preset needs a custom prompt.
+  if (input.config !== undefined) {
+    const preset = getPreset(ev.presetId);
+    if (
+      preset?.source === "llm" &&
+      !preset.prompt &&
+      !input.config?.promptOverride?.trim()
+    ) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "A judge prompt is required for this preset",
+      });
+    }
+  }
   await db
     .update(evalDefinition)
     .set({

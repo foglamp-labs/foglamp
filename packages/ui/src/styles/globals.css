@@ -94,6 +94,10 @@
     0px 0px 0px 0.5px rgba(139, 92, 246, 0.25),
     0px 0.5px 2px -0.5px rgba(139, 92, 246, 0.18),
     0px 2px 4px 0px rgba(139, 92, 246, 0.12);
+  --custom-shadow-fuchsia:
+    0px 0px 0px 0.5px rgba(217, 70, 239, 0.25),
+    0px 0.5px 2px -0.5px rgba(217, 70, 239, 0.18),
+    0px 2px 4px 0px rgba(217, 70, 239, 0.12);
   /* Outline buttons: same as --custom-shadow in light; dark overrides below. */
   --custom-outline-shadow:
     0px 0px 0px 0.5px rgba(0, 0, 0, 0.06),
@@ -180,6 +184,9 @@
   --custom-shadow-violet:
     inset 0 0.5px 0 0 rgba(139, 92, 246, 0.03),
     0 0 0 0.5px rgba(139, 92, 246, 0.18), 0 0.5px 2px 0 rgba(139, 92, 246, 0.1);
+  --custom-shadow-fuchsia:
+    inset 0 0.5px 0 0 rgba(217, 70, 239, 0.03),
+    0 0 0 0.5px rgba(217, 70, 239, 0.18), 0 0.5px 2px 0 rgba(217, 70, 239, 0.1);
 }
 
 @theme inline {

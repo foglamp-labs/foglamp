@@ -32,6 +32,8 @@ import {
 	IconListCheckFilled,
 	IconMoodSmile,
 	IconMoodSmileFilled,
+	IconPencil,
+	IconPencilFilled,
 	IconPuzzle,
 	IconPuzzleFilled,
 	IconRosetteDiscountCheck,
@@ -169,6 +171,12 @@ export const PRESET_META: Record<
 		outline: IconPuzzle,
 		family: "tool",
 	},
+	// Custom judge (bring-your-own prompt)
+	custom: {
+		icon: IconPencilFilled,
+		outline: IconPencil,
+		family: "quality",
+	},
 };
 
 export const presetMeta = (
@@ -193,3 +201,20 @@ export const FAMILY_ORDER: Family[] = [
 
 export const familyRank = (id: string) =>
 	FAMILY_ORDER.indexOf(presetMeta(id).family);
+
+// Badge variant per family, matching the FAMILY_CHIP colors, so a preset's
+// badge (evals table, detail chips) reads in the same color as its card chip.
+export const FAMILY_BADGE: Record<
+	Family,
+	"rose" | "blue" | "violet" | "fuchsia" | "emerald" | "amber"
+> = {
+	safety: "rose",
+	format: "blue",
+	match: "violet",
+	quality: "fuchsia",
+	grounding: "emerald",
+	tool: "amber",
+};
+
+export const presetBadgeVariant = (id: string) =>
+	FAMILY_BADGE[presetMeta(id).family];

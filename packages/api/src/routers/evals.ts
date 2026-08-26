@@ -56,7 +56,9 @@ export const evalsRouter = router({
     .input(
       z.object({
         projectId: z.string(),
-        name: z.string().min(1).max(200),
+        // Optional: when omitted the server generates a name from the
+        // definition (preset + target + agent), mirroring alerts.
+        name: z.string().min(1).max(200).optional(),
         presetId: z.string(),
         targetLevel: levelEnum,
         filters: filtersSchema,

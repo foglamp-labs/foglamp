@@ -117,14 +117,18 @@ export const PROMPT_PLACEHOLDERS = [
  * used as-is — an unknown {placeholder}, or no placeholder at all (which would
  * send the judge a static prompt with none of the trace in it) — or null when
  * it's fine. Code presets, and an empty override (→ falls back to the preset
- * default), are always allowed. Shared by the create wizard + edit dialog. */
+ * default), are always allowed — except the custom preset, which has no default
+ * and therefore requires a prompt. Shared by the create wizard + edit dialog. */
 export function promptOverrideError(
-	preset: { source: "code" | "llm" } | null,
+	preset: { id: string; source: "code" | "llm" } | null,
 	promptOverride: string,
 ): string | null {
 	if (!preset || preset.source !== "llm") return null;
 	const text = promptOverride.trim();
-	if (!text) return null; // empty → use the preset default
+	if (!text) {
+		// The custom judge has no default template to fall back to.
+		return preset.id === "custom" ? "Write the judge prompt." : null;
+	}
 	const tokens = [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!);
 	const known = PROMPT_PLACEHOLDERS as readonly string[];
 	const unknown = tokens.find((t) => !known.includes(t));

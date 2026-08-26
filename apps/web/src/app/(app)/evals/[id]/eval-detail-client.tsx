@@ -10,6 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@foglamp/ui/components/dialog";
+import { Field, FieldLabel } from "@foglamp/ui/components/field";
+import { Input } from "@foglamp/ui/components/input";
 import {
   Table,
   TableBody,
@@ -78,15 +80,16 @@ import {
   promptOverrideError,
   settingsParamError,
 } from "../eval-settings-fields";
-import { presetMeta } from "../preset-meta";
+import { presetBadgeVariant, presetMeta } from "../preset-meta";
 
 type ScoreRow = RouterOutputs["evals"]["recentScores"]["scores"][number];
 
 const PAGE_SIZES = [25, 50, 100];
 
-// Edit-dialog draft: the subset of an eval that the "How should it score?"
-// fields can change (judge model + sample rate, or a code check's params).
+// Edit-dialog draft: the eval's name plus the subset the "How should it
+// score?" fields can change (judge model + sample rate, or a check's params).
 type EditDraft = {
+  name: string;
   judgeModel: string;
   judgeProvider: Provider;
   sampleRate: string;
@@ -119,6 +122,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
   // Edit dialog: open state + the draft seeded from the eval when opened.
   const [editOpen, setEditOpen] = useState(false);
   const [draft, setDraft] = useState<EditDraft>({
+    name: "",
     judgeModel: "",
     judgeProvider: "google",
     sampleRate: "0.1",
@@ -213,6 +217,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
     const presetDefault =
       presets.data?.find((p) => p.id === ev.presetId)?.prompt ?? "";
     setDraft({
+      name: ev.name,
       judgeModel: ev.model?.modelId ?? "",
       judgeProvider: (ev.model?.provider as Provider) ?? "google",
       sampleRate: String(ev.sampleRate),
@@ -254,6 +259,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 
     update.mutate({
       evalId,
+      name: draft.name.trim(),
       sampleRate: Number(draft.sampleRate),
       model: isJudge
         ? { provider: draft.judgeProvider, modelId: draft.judgeModel.trim() }
@@ -329,12 +335,12 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
           actions={
             <>
               <RangeControl value={range} onChange={setRange} />
-              {ev && (
-                <Button variant="secondary" onClick={openEdit}>
-                  <IconPencilFilled />
-                  Edit
-                </Button>
-              )}
+              {/* Always rendered (disabled until the eval loads) so it doesn't
+                  pop in — loading.tsx paints the same disabled button. */}
+              <Button variant="secondary" disabled={!ev} onClick={openEdit}>
+                <IconPencilFilled />
+                Edit
+              </Button>
             </>
           }
         />
@@ -348,7 +354,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
             entrance && "page-fade-in"
           )}
         >
-          <Badge variant={ev.scorerSource === "llm" ? "violet" : "secondary"}>
+          <Badge variant={presetBadgeVariant(ev.presetId)}>
             <CheckIcon />
             {checkName}
           </Badge>
@@ -421,7 +427,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
             description="Scores appear here as new matching traffic is sampled and scored."
             className={cn(
               entrance && !recentSkeletonShown && "page-fade-in",
-              "px-8"
+              "px-40"
             )}
           />
         ) : (
@@ -549,6 +555,18 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
             </DialogDescription>
           </DialogHeader>
           {ev && (
+            <Field>
+              <FieldLabel>Name</FieldLabel>
+              <Input
+                value={draft.name}
+                maxLength={200}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, name: e.target.value }))
+                }
+              />
+            </Field>
+          )}
+          {ev && (
             <EvalSettingsFields
               preset={{ id: ev.presetId, source: ev.scorerSource }}
               judgeModel={draft.judgeModel}
@@ -575,6 +593,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
               disabled={
                 update.isPending ||
                 needsKey ||
+                !draft.name.trim() ||
                 (isJudge && !draft.judgeModel.trim()) ||
                 !!settingsParamError(ev ? { id: ev.presetId } : null, {
                   substring: draft.substring,
@@ -582,7 +601,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                   maxChars: draft.maxChars,
                 }) ||
                 !!promptOverrideError(
-                  ev ? { source: ev.scorerSource } : null,
+                  ev ? { id: ev.presetId, source: ev.scorerSource } : null,
                   draft.promptOverride
                 )
               }

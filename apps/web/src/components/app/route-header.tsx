@@ -41,7 +41,7 @@ export function RouteHeader({
 	back?: boolean;
 	/** Skip the section icon (settings/operator pages render a plain title). */
 	noIcon?: boolean;
-	/** Append the live range picker to the actions. */
+	/** Prepend the live range picker to the actions. */
 	withRange?: boolean;
 	actions?: React.ReactNode;
 }) {
@@ -49,8 +49,8 @@ export function RouteHeader({
 	const composedActions =
 		withRange || actions ? (
 			<>
-				{actions}
 				{withRange && <LiveRangePicker />}
+				{actions}
 			</>
 		) : undefined;
 	if (back) {

@@ -256,6 +256,17 @@ export const PRESETS: Preset[] = [
 		prompt:
 			"Compare the ANSWER to the REFERENCE. Rate correctness from 0.00 to 1.00 (1.00 = equivalent), using two decimals, and set passed=true if it is essentially correct.\n\nREFERENCE:\n{reference}\n\nANSWER:\n{output}",
 	}),
+
+	// --- Custom (bring-your-own judge prompt; no default template) ---
+	judge({
+		id: "custom",
+		name: "Custom judge",
+		description:
+			"Your own LLM-as-a-judge prompt, using {input}/{output} placeholders.",
+		level: "both",
+		emitsScore: true,
+		emitsPassed: true,
+	}),
 ];
 
 const BY_ID = new Map(PRESETS.map((p) => [p.id, p]));
