@@ -258,6 +258,7 @@ export function SettingsClient() {
             // Fixed layout: column widths come from the header's w-* classes,
             // so the skeleton→data swap can't re-measure and shift columns.
             <Table
+              stickyHeader
               className={cn(
                 "table-fixed min-w-176",
                 entrance && "page-fade-in"

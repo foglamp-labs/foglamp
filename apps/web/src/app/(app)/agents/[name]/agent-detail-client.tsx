@@ -591,7 +591,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 									entrance && !tracesSkeletonShown && "page-fade-in",
 								)}
 							>
-								<Table>
+								<Table stickyHeader>
 									<TableHeader>
 										<TableRow>
 											<TableHead>Trace</TableHead>

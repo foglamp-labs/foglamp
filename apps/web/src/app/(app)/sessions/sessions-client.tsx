@@ -283,7 +283,7 @@ export function SessionsClient() {
             <TooltipProvider delay={150}>
               {/* Fixed layout: column widths come from the header's w-* classes,
                     so the skeleton→data swap can't re-measure and shift columns. */}
-              <Table className="table-fixed min-w-240">
+              <Table className="table-fixed min-w-240" stickyHeader>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Session</TableHead>

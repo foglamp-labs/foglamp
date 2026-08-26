@@ -549,7 +549,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                   entrance && !runsSkeletonShown && "page-fade-in"
                 )}
               >
-                <Table>
+                <Table stickyHeader>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Run</TableHead>

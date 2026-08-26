@@ -289,7 +289,7 @@ export function PricingClient() {
 					className={cn(entrance && !skeletonShown && "page-fade-in")}
 				/>
 			) : (
-				<Table className={cn(entrance && !skeletonShown && "page-fade-in")}>
+				<Table stickyHeader className={cn(entrance && !skeletonShown && "page-fade-in")}>
 					<TableHeader>
 						<TableRow>
 							<TableHead>Model pattern</TableHead>

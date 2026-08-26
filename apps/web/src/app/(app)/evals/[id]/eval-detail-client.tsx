@@ -442,7 +442,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
               entrance && !recentSkeletonShown && "page-fade-in"
             )}
           >
-            <Table>
+            <Table stickyHeader>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-72">Target</TableHead>

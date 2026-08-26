@@ -531,7 +531,7 @@ export function AlertsClient() {
                 entrance && !skeletonShown && "page-fade-in"
               )}
             >
-              <Table className="table-fixed min-w-5xl">
+              <Table className="table-fixed min-w-5xl" stickyHeader>
                 <TableHeader>
                   <TableRow>
                     <SortableHead

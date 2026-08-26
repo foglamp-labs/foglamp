@@ -33,12 +33,38 @@ function Table({
 }) {
   const scrollable = maxHeight != null;
   const sticky = stickyHeader ?? scrollable;
+  // A sticky header with no internal max-height pins against the *page*
+  // scroll — any overflow on this wrapper would create a scroll container
+  // that traps `position: sticky`, so the wrapper stays overflow-visible.
+  const stickyPage = sticky && !scrollable;
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  // When the table is wider than its container the horizontal scroll should
+  // stay contained to the table, not spill into the page. CSS can't express
+  // "overflow only when overflowing", so measure: restore overflow-x-auto
+  // only while the table actually overflows (the pinned header is sacrificed
+  // in that cramped state — sticky can't survive a scroll container).
+  const [overflowing, setOverflowing] = React.useState(false);
+  React.useEffect(() => {
+    if (!stickyPage) return;
+    const el = containerRef.current;
+    const table = el?.querySelector("table");
+    if (!el || !table) return;
+    const measure = () =>
+      setOverflowing(table.offsetWidth > el.clientWidth + 1);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    ro.observe(table);
+    return () => ro.disconnect();
+  }, [stickyPage]);
   return (
     <TableContext.Provider value={{ stickyHeader: sticky }}>
       <div
+        ref={containerRef}
         data-slot="table-container"
         className={cn(
-          "relative w-full overflow-x-auto",
+          "relative w-full",
+          (!stickyPage || overflowing) && "overflow-x-auto",
           scrollable && "overflow-y-auto"
         )}
         style={scrollable ? { maxHeight } : undefined}
@@ -70,9 +96,8 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
         // Height on the row too: Safari doesn't propagate a thead height down
         // to its tr the way Chromium does.
         "h-13 [&_tr]:h-13",
-        // When sticky, use a near-solid blurred bg so scrolling rows don't bleed through.
-        stickyHeader &&
-          "sticky top-0 z-10 bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/75",
+        // When sticky, a solid page bg so scrolling rows don't show through.
+        stickyHeader && "sticky top-0 z-10 bg-background",
         className
       )}
       {...props}

@@ -225,7 +225,7 @@ export function AgentsClient() {
             <TooltipProvider delay={150}>
               {/* Fixed layout: column widths come from the header's w-* classes,
 								    so the skeleton→data swap can't re-measure and shift columns. */}
-              <Table className="table-fixed min-w-5xl">
+              <Table className="table-fixed min-w-5xl" stickyHeader>
                 <TableHeader>
                   <TableRow>
                     <SortableHead sortKey="name" sort={sort} onSort={toggle}>

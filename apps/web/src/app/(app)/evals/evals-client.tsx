@@ -785,7 +785,7 @@ export function EvalsClient() {
           // table doesn't reflow as sorting changes which rows are visible.
           // The text/badge columns truncate (see cells below).
           <TooltipProvider delay={150}>
-            <Table className="table-fixed min-w-5xl -mt-2">
+            <Table className="table-fixed min-w-5xl -mt-2" stickyHeader>
               <TableHeader>
                 <TableRow>
                   <SortableHead
