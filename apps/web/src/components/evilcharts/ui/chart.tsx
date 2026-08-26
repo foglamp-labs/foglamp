@@ -91,6 +91,11 @@ function ChartContainer({
 	id,
 	config,
 	initialDimension = { width: 320, height: 200 },
+	// Coalesce resize storms into a single re-render. Layout-driven tweens (the
+	// Foggy panel animating its width, dragging its resize handle) fire the
+	// ResizeObserver every frame; without a debounce each chart fully re-renders
+	// its SVG per frame, which is what tanks the FPS on chart-heavy pages.
+	debounce = 100,
 	className,
 	children,
 	footer,
@@ -119,6 +124,7 @@ function ChartContainer({
 				<RechartsPrimitive.ResponsiveContainer
 					className="min-h-0 w-full flex-1"
 					initialDimension={initialDimension}
+					debounce={debounce}
 				>
 					{children}
 				</RechartsPrimitive.ResponsiveContainer>

@@ -135,7 +135,11 @@ function TableRow({
       onKeyDown={handleKeyDown}
       className={cn(
         "[&_th:last-child]:border-0 border-b dark:border-border/40 border-border/50 data-[state=selected]:bg-muted has-aria-expanded:bg-muted/50",
-        "data-interactive:cursor-pointer data-interactive:hover:[&>td]:border-neutral-200  data-interactive:dark:hover:[&>td]:border-neutral-800 data-interactive:hover:bg-muted data-interactive:outline-none data-interactive:focus-visible:bg-muted/50 data-interactive:focus-visible:ring-[1.5px] data-interactive:focus-visible:ring-inset data-interactive:focus-visible:ring-ring/50",
+        "data-interactive:cursor-pointer data-interactive:hover:bg-muted data-interactive:outline-none data-interactive:focus-visible:bg-muted/50 data-interactive:focus-visible:ring-[1.5px] data-interactive:focus-visible:ring-inset data-interactive:focus-visible:ring-ring/50",
+        // Hide the hovered row's bottom border and the previous row's (which
+        // draws the hovered row's top edge) so the highlight reads as one
+        // seamless block instead of a stripe with lines through it.
+        "data-interactive:hover:border-transparent has-[+tr[data-interactive]:hover]:border-transparent",
         className
       )}
       {...props}

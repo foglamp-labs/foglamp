@@ -427,7 +427,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
             description="Scores appear here as new matching traffic is sampled and scored."
             className={cn(
               entrance && !recentSkeletonShown && "page-fade-in",
-              "px-40"
+              "px-8"
             )}
           />
         ) : (

@@ -280,7 +280,9 @@ export function Toolbar({
   const group = useMemo(() => ({ openId, setOpenId }), [openId]);
   return (
     <FilterGroupContext.Provider value={group}>
-      <div className={cn("flex flex-wrap items-center gap-2 pl-7 pr-9", className)}>
+      <div
+        className={cn("flex flex-wrap items-center gap-2 pl-7 pr-9", className)}
+      >
         {children}
       </div>
     </FilterGroupContext.Provider>
@@ -634,13 +636,13 @@ export function PaginationFooter({
 }) {
   const totalPages = Math.max(page + 1, Math.ceil(total / pageSize) || 1);
   const range =
-    shown === 0 ? "0" : `${page * pageSize + 1}–${page * pageSize + shown}`;
+    shown === 0 ? "0" : `${page * pageSize + 1} to ${page * pageSize + shown}`;
   return (
     <div className="flex items-center justify-end gap-1 border-t border-border/50 px-8 pt-4 dark:border-border/40">
       <span className="text-xs text-muted-foreground/50 tabular-nums">
         {formatCount(total)} {total === 1 ? noun[0] : noun[1]}
       </span>
-      <span className="text-xs text-muted-foreground/50 mx-2">·</span>
+      <span className="text-xs text-muted-foreground/20 mx-3">/</span>
       {onPageSizeChange ? (
         <Select<string, false>
           value={String(pageSize)}
@@ -650,7 +652,7 @@ export function PaginationFooter({
             title="Rows per page"
             // Strip the trigger surface down to bare text so it reads as part
             // of the count line, only revealing itself as a control on hover.
-            className="h-auto data-[size=default]:h-auto gap-0.5 rounded-md squircle:rounded-md border-0 bg-transparent p-0 text-xs text-muted-foreground/50 tabular-nums shadow-none transition-[color,box-shadow] hover:text-foreground dark:border-0 dark:bg-transparent dark:shadow-none dark:hover:bg-transparent"
+            className="h-auto data-[size=default]:h-auto gap-1.5 rounded-md squircle:rounded-md border-0 bg-transparent p-0 text-xs text-muted-foreground/50 tabular-nums shadow-none transition-[color,box-shadow] hover:text-foreground dark:border-0 dark:bg-transparent dark:shadow-none dark:hover:bg-transparent"
           >
             {range}
           </SelectTrigger>
