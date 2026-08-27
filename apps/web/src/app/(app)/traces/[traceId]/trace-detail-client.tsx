@@ -40,6 +40,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentIcon } from "@/components/app/agent-icon";
 import { useShikiHtml } from "@/components/app/code-block";
 import { ContextChip } from "@/components/app/context-chip";
+import { ModelChip } from "@/components/app/model-chip";
 import { CopyButton } from "@/components/app/copy-button";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import {
@@ -206,6 +207,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
   const ordered = useMemo(() => orderSpans(spans), [spans]);
   const window = useMemo(() => computeWindow(spans), [spans]);
   const subtreeStats = useMemo(() => computeSubtreeStats(spans), [spans]);
+  const models = useMemo(() => aggregateUsage(spans).models, [spans]);
 
   const active = spans.find((s) => s.spanId === selected) ?? null;
   const erroredSpans = spans.filter((s) => s.status === "error");
@@ -493,10 +495,12 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
         </div>
       )}
 
-      {(ctx?.sessionId ||
-        ctx?.workflowName ||
-        ctx?.agentName ||
-        ctx?.customer) && (
+      {ctx &&
+        (ctx.sessionId ||
+          ctx.workflowName ||
+          ctx.agentName ||
+          ctx.customer ||
+          models.length > 0) && (
         <div
           className={cn(
             "mt-1 flex flex-wrap items-center gap-2 text-xs px-7",
@@ -558,6 +562,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
               label={ctx.agentName}
             />
           )}
+          <ModelChip models={models} />
         </div>
       )}
 

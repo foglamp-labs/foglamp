@@ -859,6 +859,26 @@ export function getSessionToolCalls(
 	);
 }
 
+export type SessionModelRow = { model_id: string; provider: string };
+
+/** Distinct models a session's spans ran on, in first-use order. */
+export function getSessionModels(
+	client: ClickHouseClient,
+	params: { projectId: string; sessionId: string },
+): Promise<SessionModelRow[]> {
+	return rows<SessionModelRow>(
+		client,
+		`SELECT model_id, any(provider) AS provider
+     FROM spans FINAL
+     WHERE project_id = {projectId:String}
+       AND session_id = {sessionId:String}
+       AND model_id != ''
+     GROUP BY model_id
+     ORDER BY min(start_time) ASC`,
+		{ projectId: params.projectId, sessionId: params.sessionId },
+	);
+}
+
 export type SpanDetailRow = {
 	span_id: string;
 	parent_span_id: string;

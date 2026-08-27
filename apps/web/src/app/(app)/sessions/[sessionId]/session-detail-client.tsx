@@ -29,6 +29,7 @@ import {
   useSkeletonShown,
 } from "@/components/app/hooks";
 import { markdownComponents } from "@/components/app/markdown";
+import { ModelChip } from "@/components/app/model-chip";
 import { navItem } from "@/components/app/nav";
 import { EmptyState, NoProject, PageHeader } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
@@ -153,7 +154,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
 
       {/* Context chips: the customer this session served and the agent that
 				    ran it — same linked-entity pills as the trace detail page. */}
-      {(data?.customer || data?.agentName) && (
+      {(data?.customer || data?.agentName || data?.models.length) && (
         <div
           className={cn(
             "mt-1 flex flex-wrap items-center gap-2 text-xs px-7",
@@ -192,6 +193,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
               label={data.agentName}
             />
           )}
+          <ModelChip models={data.models} />
         </div>
       )}
 

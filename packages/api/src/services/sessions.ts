@@ -1,6 +1,7 @@
 import {
   getCustomerDisplays,
   getSessionFirstInputs,
+  getSessionModels,
   getSessionToolCalls,
   getSessionTurns,
   listSessions,
@@ -133,7 +134,7 @@ export async function getSessionDetail(
   // per-turn metrics come from `metrics`. If the two limits diverge, turns past
   // the smaller cap get zeroed metrics that still feed the summed session stats,
   // silently understating total cost/tokens.
-  const [content, metrics, toolCalls] = await Promise.all([
+  const [content, metrics, toolCalls, modelRows] = await Promise.all([
     getSessionTurns(ch, {
       projectId: input.projectId,
       sessionId: input.sessionId,
@@ -148,7 +149,12 @@ export async function getSessionDetail(
       projectId: input.projectId,
       sessionId: input.sessionId,
     }),
+    getSessionModels(ch, {
+      projectId: input.projectId,
+      sessionId: input.sessionId,
+    }),
   ]);
+  const models = modelRows.map((r) => ({ modelId: r.model_id, provider: r.provider || null }));
 
   const byTrace = new Map<string, TraceListRow>(metrics.map((m) => [m.trace_id, m]));
 
@@ -209,5 +215,5 @@ export async function getSessionDetail(
     lastSeen: turns[turns.length - 1]?.endTime ?? null,
   };
 
-  return { sessionId: input.sessionId, agentName: turns[0]?.agentName ?? null, customer, stats, turns };
+  return { sessionId: input.sessionId, agentName: turns[0]?.agentName ?? null, customer, models, stats, turns };
 }
