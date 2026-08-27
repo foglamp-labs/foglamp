@@ -826,7 +826,9 @@ function Judgment({ score }: { score: BaseScoreRow }) {
     : `/traces/${encodeURIComponent(score.traceId)}`;
   const showCost = score.cost != null && score.cost > 0;
   return (
-    <div className="flex shrink-0 flex-col gap-4 lg:w-72">
+    // w-88 + the 2rem column gap = the table's w-96 Run column, so the
+    // conversation starts under the Verdict cell above it.
+    <div className="flex shrink-0 flex-col gap-4 lg:w-88">
       <div className="flex flex-col gap-2">
         <div className="flex h-5 flex-wrap items-center gap-2">
           {/* Same plain verdict/score treatment as the table cell. */}
