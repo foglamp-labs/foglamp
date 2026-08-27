@@ -141,59 +141,67 @@ async function planOneEval(
   if (preset.spanType && !filters.spanType) filters.spanType = preset.spanType;
   const sampleRate = Number(ev.sampleRate);
 
+  // Read the candidate batch from ClickHouse *before* touching Postgres. This
+  // read is the slow part (and hangs if ClickHouse or the process stalls), and
+  // it must never run inside a Postgres transaction: an open tx pins a pool
+  // connection for the whole read, and a frozen/killed instance mid-read
+  // leaves it "idle in transaction" forever — enough of those exhaust the
+  // instance's connection slots and every sweep fails.
+  const candidates = await queryEvalCandidates(ch, {
+    projectId: ev.projectId,
+    level: ev.targetLevel,
+    filters,
+    since: toClickHouseDateTime64(since.getTime()),
+    until: toClickHouseDateTime64(until.getTime()),
+    sampleThousandths: Math.max(0, Math.min(1000, Math.round(sampleRate * 1000))),
+    limit: env.EVAL_SCORING_BATCH,
+  });
+
+  // When the batch is capped, trim trailing rows that share the last row's
+  // ingested_at so we never end mid-millisecond: the watermark lands on a clean
+  // boundary and strict `ingested_at > watermark` re-fetches the trimmed ties
+  // next sweep — no skipped spans, no re-scored (re-judged) spans. If the whole
+  // batch is one millisecond (pathological), score it all and advance past it.
+  let batch = candidates;
+  let newWatermark = until;
+  if (candidates.length === env.EVAL_SCORING_BATCH) {
+    const lastTs = candidates[candidates.length - 1]!.ingested_at;
+    const trimmed = candidates.filter((c) => c.ingested_at !== lastTs);
+    if (trimmed.length > 0) {
+      batch = trimmed;
+      newWatermark = new Date(trimmed[trimmed.length - 1]!.ingested_at + "Z");
+    } else {
+      newWatermark = new Date(lastTs + "Z");
+    }
+    // Degenerate guard: if the boundary rounds back to `since` (sub-ms
+    // ingested_at truncation), force 1ms of progress or the planner would
+    // re-read the identical batch every sweep forever.
+    if (newWatermark.getTime() <= since.getTime()) {
+      newWatermark = new Date(since.getTime() + 1);
+    }
+  }
+
   // Claim the [since, newWatermark) window. The worker has no cross-process
   // lock — the `running` guard in scoringCron is per-process only — so multiple
   // instances (replicas, or dev hot-reloads each firing an immediate tick) read
   // the same watermark and would each plan the same window.
   //
-  // Two layers, both inside one short Postgres transaction (no LLM calls here):
+  // Two layers, both inside one short Postgres transaction (milliseconds: only
+  // local Postgres statements here — no ClickHouse, no LLM calls):
   //   1. A per-eval advisory lock (fast path). A concurrent sweep that can't grab
-  //      it bails immediately — skipping even the candidate read. The lock is
-  //      transaction-scoped so the pool can't unlock it on the wrong connection,
-  //      and it auto-releases at commit.
+  //      it bails immediately. The lock is transaction-scoped so the pool can't
+  //      unlock it on the wrong connection, and it auto-releases at commit.
   //   2. A compare-and-swap on the watermark (correctness). Even if two sweeps
   //      somehow both reach the CAS, only one advances the watermark and wins.
   // The eval_job INSERT rides the same transaction as the CAS, so a claimed
   // window and its job row are atomic: either both exist or neither does.
+  // A losing sweep wastes at most the ClickHouse read above — cheap next to
+  // holding a Postgres connection open across it.
   const planned = await db.transaction(async (tx) => {
     const lock = await tx.execute<{ locked: boolean }>(
       sql`SELECT pg_try_advisory_xact_lock(hashtext(${ev.id})) AS locked`,
     );
     if (!lock.rows[0]?.locked) return null;
-
-    const candidates = await queryEvalCandidates(ch, {
-      projectId: ev.projectId,
-      level: ev.targetLevel,
-      filters,
-      since: toClickHouseDateTime64(since.getTime()),
-      until: toClickHouseDateTime64(until.getTime()),
-      sampleThousandths: Math.max(0, Math.min(1000, Math.round(sampleRate * 1000))),
-      limit: env.EVAL_SCORING_BATCH,
-    });
-
-    // When the batch is capped, trim trailing rows that share the last row's
-    // ingested_at so we never end mid-millisecond: the watermark lands on a clean
-    // boundary and strict `ingested_at > watermark` re-fetches the trimmed ties
-    // next sweep — no skipped spans, no re-scored (re-judged) spans. If the whole
-    // batch is one millisecond (pathological), score it all and advance past it.
-    let batch = candidates;
-    let newWatermark = until;
-    if (candidates.length === env.EVAL_SCORING_BATCH) {
-      const lastTs = candidates[candidates.length - 1]!.ingested_at;
-      const trimmed = candidates.filter((c) => c.ingested_at !== lastTs);
-      if (trimmed.length > 0) {
-        batch = trimmed;
-        newWatermark = new Date(trimmed[trimmed.length - 1]!.ingested_at + "Z");
-      } else {
-        newWatermark = new Date(lastTs + "Z");
-      }
-      // Degenerate guard: if the boundary rounds back to `since` (sub-ms
-      // ingested_at truncation), force 1ms of progress or the planner would
-      // re-read the identical batch every sweep forever.
-      if (newWatermark.getTime() <= since.getTime()) {
-        newWatermark = new Date(since.getTime() + 1);
-      }
-    }
 
     if (!(await claimScoringWindow(tx, ev.id, since, newWatermark))) return null;
 
