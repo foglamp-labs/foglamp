@@ -328,7 +328,7 @@ export function SearchInput({
     // it matches the sibling filters (which render that variant).
     <InputGroup
       className={cn(
-        "h-8 w-56 rounded-full squircle:rounded-full corner-round! bg-background shadow-(--custom-outline-shadow) dark:shadow-(--custom-outline-shadow) dark:border-0 dark:bg-card hover:bg-muted/50 dark:hover:bg-muted",
+        "h-8 w-56 rounded-full squircle:rounded-full corner-round! shadow-(--custom-outline-shadow) dark:shadow-(--custom-outline-shadow) dark:border-0 bg-card hover:bg-muted/50 dark:hover:bg-muted",
         className
       )}
     >
@@ -381,7 +381,7 @@ export function ToggleChip({
         // icon to neutral, hence the svg override).
         "font-normal transition-[color,box-shadow] active:scale-100",
         !active &&
-          "text-muted-foreground/50 hover:text-muted-foreground/50 [&_svg:not([class*='text-'])]:text-muted-foreground/50 dark:[&_svg:not([class*='text-'])]:text-muted-foreground/50"
+          "text-muted-foreground/50 hover:text-muted-foreground/50 bg-card [&_svg:not([class*='text-'])]:text-muted-foreground/50 dark:[&_svg:not([class*='text-'])]:text-muted-foreground/50"
       )}
     >
       {children}
@@ -467,10 +467,11 @@ export function FilterSelect<T extends string>({
           // conflicting class stacks). On top of it: the trigger's own layout
           // (value/chevron spread vs Button's centering, squircle off), no dark
           // border/shadow-none from the trigger base (Button outline has
-          // neither), instant background hover like the SearchInput, and no
-          // press scale.
+          // neither), the SearchInput's exact hover/open surface (muted/50 in
+          // light, muted in dark — the outline variant's plain muted reads
+          // darker next to it), and no press scale.
           buttonVariants({ variant: "outline" }),
-          "min-w-36 justify-between font-normal corner-round! transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)",
+          "min-w-36 justify-between font-normal corner-round! bg-card hover:bg-muted/50 aria-expanded:bg-muted/50 dark:hover:bg-muted dark:aria-expanded:bg-muted transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)",
           className
         )}
         onMouseEnter={() => {
@@ -593,7 +594,7 @@ export function ClearFiltersButton({
           <Button
             variant="outline"
             onClick={onClick}
-            className="text-muted-foreground gap-1"
+            className="text-muted-foreground gap-1 bg-card"
           >
             <IconX />
             Clear

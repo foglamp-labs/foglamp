@@ -140,7 +140,7 @@ export function SettingsClient() {
                 onClick={() => setKeyDialogOpen(true)}
                 variant="secondary"
               >
-                <IconPlusFilled /> Create key
+                <IconPlusFilled strokeWidth={2.4} /> Create key
               </Button>
             )
           }
@@ -254,7 +254,7 @@ export function SettingsClient() {
                 className={cn(entrance && "page-fade-in")}
               >
                 <Button className="mt-2" onClick={() => setKeyDialogOpen(true)}>
-                  <IconPlusFilled /> Create key
+                  <IconPlusFilled strokeWidth={2.4} /> Create key
                 </Button>
               </EmptyState>
             </div>

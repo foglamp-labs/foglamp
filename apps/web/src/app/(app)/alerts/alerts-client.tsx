@@ -279,8 +279,7 @@ export function AlertsClient() {
           <DialogHeader>
             <DialogTitle>New alert</DialogTitle>
             <DialogDescription>
-              Create a threshold rule to get notified when a metric crosses a
-              value.
+              Create a threshold rule to get notified.
             </DialogDescription>
           </DialogHeader>
           {/* A real form so Enter in any field submits the dialog. */}
@@ -481,7 +480,7 @@ export function AlertsClient() {
             className={cn(entrance && !skeletonShown && "page-fade-in")}
           >
             <Button className="mt-2" onClick={() => setOpen(true)}>
-              <IconPlus strokeWidth={2.5} />
+              <IconPlus strokeWidth={2.4} />
               New alert
             </Button>
           </EmptyState>
@@ -510,7 +509,7 @@ export function AlertsClient() {
             />
             <div className="ml-auto flex items-center gap-3">
               <Button onClick={() => setOpen(true)} variant="secondary">
-                <IconPlus />
+                <IconPlus strokeWidth={2.4} />
                 New alert
               </Button>
             </div>

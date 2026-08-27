@@ -897,7 +897,8 @@ function TraceCostSection({
   const hasCategory = byCategory.length > 1;
   const hasModel = byModel.length > 1;
   if (!hasCategory && !hasModel) return null;
-  const active = hasCategory && hasModel ? mode : hasCategory ? "category" : "model";
+  const active =
+    hasCategory && hasModel ? mode : hasCategory ? "category" : "model";
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <div className="flex items-start justify-between gap-2">
@@ -1010,7 +1011,7 @@ function SessionChip({
   const link = (t: { traceId: string } | null) =>
     t ? `/traces/${encodeURIComponent(t.traceId)}` : null;
   return (
-    <span className="flex h-8 max-w-sm items-center rounded-full bg-background text-sm shadow-(--custom-outline-shadow) dark:bg-card">
+    <span className="flex h-8 max-w-sm items-center rounded-full text-sm shadow-(--custom-outline-shadow) bg-card">
       <Link
         // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
         href={`/sessions/${encodeURIComponent(sessionId)}` as any}
@@ -1214,9 +1215,7 @@ function StartedOffset({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger
-          render={<span className="cursor-help tabular-nums" />}
-        >
+        <TooltipTrigger render={<span className="cursor-help tabular-nums" />}>
           {offsetMs < 1 ? "Trace start" : `+${formatSpanDuration(offsetMs)}`}
         </TooltipTrigger>
         <TooltipContent>{formatDateTime(startTime)}</TooltipContent>

@@ -50,8 +50,8 @@ export function RangeControl({
               // transition-[color,box-shadow] leaves background-color out of
               // Button's transition-all, so the hover bg snaps instantly —
               // intentional; the calendar trigger below matches it.
-              "font-normal tabular-nums transition-[color,box-shadow] active:scale-100",
-              !active && "text-muted-foreground"
+              "font-normal tabular-nums bg-card transition-[color,box-shadow] active:scale-100",
+              !active && "text-muted-foreground/50"
             )}
             onClick={() => onChange(resolvePreset(key))}
           >
@@ -101,14 +101,14 @@ export function RangePicker({
             // so the picker drops back to the plain outline surface.
             variant={compact ? "outline" : "secondary"}
             // Instant hover bg (no ease), matching the quick chips above.
-            className="w-fit justify-start transition-[color,box-shadow] active:scale-100 font-normal gap-1.5"
+            className="w-fit justify-start transition-[color,box-shadow] bg-card active:scale-100 font-normal gap-1.5"
           />
         }
       >
         <IconCalendarFilled
           className={cn(
             "ml-0.5 mb-px",
-            compact ? "text-muted-foreground" : "text-foreground/95"
+            compact ? "text-muted-foreground/50" : "text-foreground/95"
           )}
         />
         {!compact && (

@@ -755,7 +755,7 @@ export function EvalsClient() {
             <RangeControl value={range} onChange={setRange} />
             {!noEvals && (
               <Button onClick={() => setOpen(true)} variant="secondary">
-                <IconPlus strokeWidth={2.5} />
+                <IconPlus strokeWidth={2.4} />
                 New eval
               </Button>
             )}
@@ -773,7 +773,7 @@ export function EvalsClient() {
                 description="Create an eval to score your production traces and spans."
               >
                 <Button className="mt-2" onClick={() => setOpen(true)}>
-                  <IconPlus />
+                  <IconPlus strokeWidth={2.4} />
                   New eval
                 </Button>
               </EmptyState>
@@ -873,7 +873,7 @@ export function EvalsClient() {
                                   side="bottom"
                                   className="max-w-sm items-start"
                                 >
-                                  <span className="break-words">
+                                  <span className="wrap-break-word">
                                     {r.status === "paused_no_key"
                                       ? "Paused: add an API key for the judge model's provider."
                                       : (r.lastError ?? "Scoring is failing.")}

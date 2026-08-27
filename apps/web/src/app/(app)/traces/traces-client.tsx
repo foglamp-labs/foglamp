@@ -127,7 +127,7 @@ function AddFilterMenu({
         render={
           <Button
             variant="outline"
-            className="font-normal transition-[color,box-shadow] active:scale-100 text-muted-foreground/50 hover:text-muted-foreground/50 aria-expanded:text-muted-foreground/50"
+            className="font-normal transition-[color,box-shadow] bg-card active:scale-100 text-muted-foreground/50 hover:text-muted-foreground/50 aria-expanded:text-muted-foreground/50"
             onMouseEnter={group.onTriggerMouseEnter}
           />
         }
