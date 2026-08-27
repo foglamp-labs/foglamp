@@ -17,6 +17,7 @@ import {
 } from "@foglamp/ui/components/dialog";
 import { Field, FieldLabel } from "@foglamp/ui/components/field";
 import { Input } from "@foglamp/ui/components/input";
+import { Skeleton } from "@foglamp/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -82,8 +83,8 @@ import {
   type Part,
   toMessages,
 } from "@/components/app/payload-messages";
-import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
+import { formatModelName, ModelLogo } from "@/components/model-logo";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
@@ -546,7 +547,8 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                           className={cn(
                             "group",
                             // Open row + drawer read as one unit: no divider between them.
-                            isOpen && "border-b-0",
+                            isOpen &&
+                              "border-b-0 bg-muted/40 data-interactive:hover:bg-muted/40 dark:bg-muted/30 dark:data-interactive:hover:bg-muted/30",
                             // Deep-linked run: a soft tint (same as a selected
                             // preset card) rather than an edge bar.
                             isFocused &&
@@ -748,7 +750,7 @@ function ScoreDetail({
           under the open row. */}
       <TableCell
         colSpan={colSpan}
-        className="border-t border-border/50 bg-muted/30 px-8 py-5 dark:border-border/40"
+        className="bg-muted/40 px-8 pt-2 pb-6 dark:bg-muted/30"
       >
         <RunExchange score={score} projectId={projectId} />
       </TableCell>
@@ -783,7 +785,7 @@ function RunExchange({
       <Judgment score={score} />
       <div className="min-w-0 flex-1">
         {detail.isLoading ? (
-          <span className="text-xs text-muted-foreground">Loading trace…</span>
+          <ConversationSkeleton />
         ) : !glimpse ? (
           <span className="text-xs text-muted-foreground">
             Trace payload unavailable.
@@ -828,31 +830,37 @@ function Judgment({ score }: { score: BaseScoreRow }) {
       )}`
     : `/traces/${encodeURIComponent(score.traceId)}`;
   const LevelIcon = isSpan ? IconStack2 : IconAffiliate;
+  const showCost = score.cost != null && score.cost > 0;
   return (
     <div className="flex shrink-0 flex-col gap-4 lg:w-72">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {score.passed !== null && (
+            <Badge variant={score.passed ? "emerald" : "rose"}>
+              {score.passed ? <IconCircleCheckFilled /> : <IconForbidFilled />}
+              {score.passed ? "pass" : "fail"}
+            </Badge>
+          )}
+          {score.score !== null && (
+            <Badge variant="secondary">
+              <IconGauge />
+              {score.score.toFixed(2)}
+            </Badge>
+          )}
+          {truncated && (
+            <Badge variant="amber">
+              <IconScissors />
+              judged on truncated payload
+            </Badge>
+          )}
+        </div>
+        {text && (
+          <p className="whitespace-pre-wrap wrap-break-word text-[13px] leading-relaxed">
+            {text}
+          </p>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-4">
-        {score.passed !== null && (
-          <Meta
-            label="Verdict"
-            value={
-              <Badge variant={score.passed ? "emerald" : "rose"}>
-                {score.passed ? <IconCircleCheckFilled /> : <IconForbidFilled />}
-                {score.passed ? "pass" : "fail"}
-              </Badge>
-            }
-          />
-        )}
-        {score.score !== null && (
-          <Meta
-            label="Score"
-            value={
-              <Badge variant="secondary">
-                <IconGauge />
-                {score.score.toFixed(2)}
-              </Badge>
-            }
-          />
-        )}
         <Meta
           label="Scored"
           value={formatDateTime(score.scoredAt)}
@@ -861,17 +869,24 @@ function Judgment({ score }: { score: BaseScoreRow }) {
         {score.modelId && (
           <Meta
             label="Judge"
-            value={<span className="font-mono truncate">{score.modelId}</span>}
+            className="col-span-2"
+            value={
+              <span className="flex min-w-0 items-center gap-1.5">
+                <ModelLogo modelId={score.modelId} className="size-3 shrink-0" />
+                <span className="truncate" title={score.modelId}>
+                  {formatModelName(score.modelId)}
+                </span>
+              </span>
+            }
           />
         )}
-        <Meta
-          label="Cost"
-          value={
-            score.cost != null && score.cost > 0
-              ? formatCost(score.cost, 4)
-              : "—"
-          }
-        />
+        {showCost && (
+          <Meta
+            label="Cost"
+            className="col-span-2"
+            value={formatCost(score.cost as number, 4)}
+          />
+        )}
         <Meta
           label={isSpan ? "Span" : "Trace"}
           className="col-span-2"
@@ -884,27 +899,6 @@ function Judgment({ score }: { score: BaseScoreRow }) {
             </span>
           }
         />
-        {(text || truncated) && (
-          <Meta
-            label="Reason"
-            className="col-span-2 border-t border-border/40 pt-4"
-            value={
-              <span className="flex flex-col gap-2">
-                {truncated && (
-                  <Badge variant="amber" className="w-fit">
-                    <IconScissors />
-                    judged on truncated payload
-                  </Badge>
-                )}
-                {text && (
-                  <span className="whitespace-pre-wrap wrap-break-word leading-relaxed">
-                    {text}
-                  </span>
-                )}
-              </span>
-            }
-          />
-        )}
       </div>
       <Button
         size="sm"
@@ -951,14 +945,16 @@ function Conversation({
   }
   const history = messages && lastUser > 0 ? messages.slice(0, lastUser) : [];
   const current = messages ? messages.slice(Math.max(0, lastUser)) : [];
-  const outputText = outMessages ? messagesText(outMessages) : "";
+  // A payload that is not JSON is prose (the SDK stores plain strings
+  // verbatim) — a bubble, not the raw viewer.
+  const outputText = outMessages
+    ? messagesText(outMessages)
+    : (output?.trim() ?? "");
 
   return (
     <div className="flex flex-col gap-4">
       {!input ? null : !messages ? (
-        <div className="max-h-80 overflow-x-hidden overflow-y-auto rounded-lg shadow-(--custom-shadow)">
-          <PayloadView value={input} />
-        </div>
+        <Bubble who="user" text={input} />
       ) : (
         <>
           {history.length > 0 && (
@@ -984,10 +980,6 @@ function Conversation({
       )}
       {outputText ? (
         <Bubble who="assistant" text={outputText} />
-      ) : output && !outMessages ? (
-        <div className="max-h-80 overflow-x-hidden overflow-y-auto rounded-lg shadow-(--custom-shadow)">
-          <PayloadView value={output} />
-        </div>
       ) : (
         <div className="flex gap-3">
           <Avatar who="assistant" />
@@ -1078,13 +1070,34 @@ function ToolChips({
   );
 }
 
+/** Loading treatment shaped like the loaded conversation (same as the
+ * session page): a user bubble and a few prose lines under real avatars. */
+function ConversationSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-3">
+        <div className="mt-1.5 size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
+        <Skeleton className="h-11 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl" />
+      </div>
+      <div className="flex gap-3">
+        <div className="size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
+        <div className="flex min-w-0 flex-1 flex-col gap-2 px-1 pt-1">
+          <Skeleton className="h-3.5 w-full" />
+          <Skeleton className="h-3.5 w-11/12" />
+          <Skeleton className="h-3.5 w-2/3" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Avatar({ who }: { who: "user" | "assistant" }) {
   const Icon = who === "user" ? IconUserFilled : IconGhostFilled;
   return (
     <div
       className={cn(
         who === "user" && "mt-1.5",
-        "flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-(--custom-shadow)"
+        "flex size-6 shrink-0 items-center justify-center rounded-full bg-muted-foreground/15 text-muted-foreground shadow-(--custom-shadow)"
       )}
     >
       <Icon className="size-3.5" />

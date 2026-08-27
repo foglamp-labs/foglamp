@@ -30,11 +30,7 @@ import {
 } from "@/components/app/hooks";
 import { markdownComponents } from "@/components/app/markdown";
 import { navItem } from "@/components/app/nav";
-import {
-  EmptyState,
-  NoProject,
-  PageHeader,
-} from "@/components/app/page-parts";
+import { EmptyState, NoProject, PageHeader } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { RelativeTime } from "@/components/app/relative-time";
 import {
@@ -361,13 +357,7 @@ function SessionStats({
   );
 }
 
-function SessionStat({
-  label,
-  value,
-}: {
-  label: string;
-  value: ReactNode;
-}) {
+function SessionStat({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -494,7 +484,7 @@ function Bubble({
   return (
     <div className="group/bubble flex gap-3">
       <div
-        className={`${isUser && "mt-1.5"} flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-(--custom-shadow)`}
+        className={`${isUser && "mt-1.5"} flex size-6 shrink-0 items-center justify-center rounded-full bg-muted-foreground/15 text-muted-foreground shadow-(--custom-shadow)`}
       >
         <Icon className="size-3.5" />
       </div>
