@@ -121,6 +121,54 @@ export function toMessages(value: string): Message[] | null {
 	return [{ role: null, parts: items.map(partFrom) }];
 }
 
+const ROLE_LINE = /^(user|assistant|system|tool): ?/;
+const TOOL_LINE = /^\[tool-(call|result) ([^\]\s]+)\] ?(.*)$/;
+
+/** Reverse the judge's flattening of a message payload: `buildContext`
+ * renders `[{role, content}]` as `role: text` blocks separated by blank lines,
+ * with tool parts as `[tool-call name] {json}` lines. Parsing that back gives
+ * the same turns the transcript renderer shows for the raw trace, while still
+ * being exactly the text the judge read. Returns null when no role prefix is
+ * found (a plain answer or prose payload). */
+export function fromHumanized(value: string): Message[] | null {
+	const out: Message[] = [];
+	let cur: Message | null = null;
+	let text: string[] = [];
+	const flush = () => {
+		if (!cur) return;
+		const t = text.join("\n").trim();
+		if (t) cur.parts.push({ kind: "text", text: t });
+		text = [];
+	};
+	for (const rawLine of value.split("\n")) {
+		let line = rawLine;
+		const role = ROLE_LINE.exec(line);
+		if (role) {
+			flush();
+			cur = { role: role[1] ?? null, parts: [] };
+			out.push(cur);
+			line = line.slice(role[0].length);
+		}
+		const tool = TOOL_LINE.exec(line);
+		if (tool && cur) {
+			flush();
+			let data: unknown = tool[3];
+			try {
+				data = JSON.parse(tool[3] ?? "");
+			} catch {}
+			cur.parts.push({
+				kind: tool[1] === "call" ? "tool-call" : "tool-result",
+				name: tool[2] ?? "tool",
+				data,
+			});
+			continue;
+		}
+		if (cur) text.push(line);
+	}
+	flush();
+	return out.length > 0 ? out : null;
+}
+
 /** How many leading messages of `current` are carried over unchanged from
  * `previous` — the fold point for the transcript's "N earlier messages" delta.
  * Non-zero only when `previous` is an exact message-prefix of `current` (agent

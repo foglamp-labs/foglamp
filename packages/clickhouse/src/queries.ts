@@ -2756,6 +2756,46 @@ export async function queryScoreAlertWindow(
 			projectId: params.projectId,
 			evalId: params.evalId,
 			from: params.from,
+/**
+ * The scored target of one score row — the span itself (span-level) or the
+ * trace's earliest-ingested `agent` span (trace-level), matching the row the
+ * worker graded. Backs the "what the judge saw" reconstruction.
+ */
+export async function queryEvalTarget(
+	client: ClickHouseClient,
+	params: {
+		projectId: string;
+		level: "trace" | "span";
+		traceId: string;
+		targetId: string;
+	},
+): Promise<EvalCandidateRow | null> {
+	const cond =
+		params.level === "trace"
+			? "span_type = 'agent'"
+			: "span_id = {targetId:String}";
+	const r = await rows<EvalCandidateRow>(
+		client,
+		`SELECT
+       ${params.level === "trace" ? "trace_id" : "span_id"} AS target_id,
+       trace_id,
+       span_type,
+       toUnixTimestamp64Milli(start_time) AS start_time_ms,
+       input,
+       output,
+       metadata,
+       ingested_at
+     FROM spans
+     WHERE project_id = {projectId:String}
+       AND trace_id = {traceId:String}
+       AND ${cond}
+     ORDER BY ingested_at ASC
+     LIMIT 1`,
+		params,
+	);
+	return r[0] ?? null;
+}
+
 			to: params.to,
 		},
 	);

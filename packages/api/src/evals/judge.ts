@@ -44,6 +44,37 @@ export function renderPrompt(
 		.replaceAll("{tools}", extracted.tools ?? "");
 }
 
+export type PromptSegment =
+	| { kind: "text"; text: string }
+	| { kind: "field"; field: keyof ExtractedContext };
+
+const FIELD_TOKEN = /\{(input|output|context|reference|tools)\}/g;
+
+/**
+ * Break a judge template into its instruction text and field placeholders so
+ * the UI can render the rubric and each field as its own section instead of
+ * one flat prompt. A trailing "LABEL:" line before a placeholder (the
+ * template's own caption for that field) is dropped: the UI captions fields
+ * itself, and keeping both would read as noise.
+ */
+export function splitTemplate(template: string): PromptSegment[] {
+	const out: PromptSegment[] = [];
+	let last = 0;
+	const pushText = (raw: string) => {
+		const text = raw
+			.replace(/(^|\n)[^\n]{0,40}:\s*$/, "$1")
+			.trim();
+		if (text) out.push({ kind: "text", text });
+	};
+	for (const m of template.matchAll(FIELD_TOKEN)) {
+		pushText(template.slice(last, m.index));
+		out.push({ kind: "field", field: m[1] as keyof ExtractedContext });
+		last = (m.index ?? 0) + m[0].length;
+	}
+	pushText(template.slice(last));
+	return out;
+}
+
 // --- Payload truncation -----------------------------------------------------
 // Judge inputs are bounded before the model call so a pathologically large span
 // (multi-MB output, huge retrieved context) can't blow the context window or

@@ -6,6 +6,7 @@ import {
   deleteEval,
   getEvalScore,
   getEvalTimeseries,
+  getJudgeInput,
   getTraceScores,
   listEvals,
   listPresets,
@@ -139,6 +140,16 @@ export const evalsRouter = router({
     .query(({ ctx, input }) =>
       preflightEval(ctx.db, ctx.ch, ctx.session.user.id, input),
     ),
+  // The exact fields + rendered prompt a score row's judge received.
+  judgeInput: protectedProcedure
+    .input(z.object({ evalId: z.string(), scoreId: z.string() }))
+    .query(({ ctx, input }) =>
+      getJudgeInput(ctx.db, ctx.ch, ctx.session.user.id, input),
+    ),
+
+  score: protectedProcedure
+    .input(z.object({ evalId: z.string(), scoreId: z.string() }))
+    .query(({ ctx, input }) =>
 
       getEvalScore(ctx.db, ctx.ch, ctx.session.user.id, input),
     ),

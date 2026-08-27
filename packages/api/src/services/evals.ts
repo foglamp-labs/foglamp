@@ -8,6 +8,7 @@ import {
   listEvalScores,
   queryScoreTimeseries,
 } from "@foglamp/clickhouse";
+  queryEvalTarget,
   queryEvalCandidates,
 import {
   type EvalConfig,
@@ -538,3 +539,77 @@ export async function preflightEval(
   };
 }
 
+/**
+ * Rebuild exactly what the judge was sent for one score row: the extracted
+ * fields and the rendered prompt (same extraction + template + truncation the
+ * worker used). Reconstructed from the trace rather than stored, so it drifts
+ * only if the eval's prompt was edited after the run.
+ */
+export async function getJudgeInput(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: { evalId: string; scoreId: string },
+) {
+  const ev = await requireEvalAccess(db, userId, input.evalId);
+  const full = await db.query.evalDefinition.findFirst({
+    where: eq(evalDefinition.id, input.evalId),
+  });
+  const preset = getPreset(ev.presetId);
+  if (!full || !preset) return null;
+  const score = await chGetEvalScore(ch, {
+    projectId: ev.projectId,
+    evalId: input.evalId,
+    scoreId: input.scoreId,
+    threshold: Number(ev.passThreshold),
+  });
+  if (!score) return null;
+  const level = score.target_type === "span" ? "span" : "trace";
+  const row = await queryEvalTarget(ch, {
+    projectId: ev.projectId,
+    level,
+    traceId: score.trace_id,
+    targetId: score.target_id,
+  });
+  if (!row) return null;
+
+  let siblings: SiblingSpan[] = [];
+  if (preset.needsContext || preset.needsTools) {
+    siblings = toSiblings(
+      await queryTraceSiblings(ch, {
+        projectId: ev.projectId,
+        traceId: score.trace_id,
+      }),
+    );
+  }
+  const config = (full.config ?? {}) as EvalConfig;
+  const extracted = buildContext(
+    {
+      level,
+      targetId: row.target_id,
+      traceId: row.trace_id,
+      spanType: row.span_type,
+      startTimeMs: row.start_time_ms,
+      input: row.input,
+      output: row.output,
+      metadata: row.metadata ?? {},
+      siblings,
+    },
+    preset,
+    (config.contextSpec ?? {}) as ContextSpec,
+  );
+  const { extracted: bounded, truncated } = truncateExtracted(
+    extracted,
+    env.EVAL_JUDGE_MAX_INPUT_CHARS,
+  );
+  const template =
+    config.promptOverride?.trim() || preset.prompt || "{output}";
+  return {
+    preset: { id: preset.id, name: preset.name },
+    prompt: preset.source === "llm" ? renderPrompt(template, bounded) : null,
+    segments: splitTemplate(template),
+    fields: bounded,
+    truncated,
+    skipped: skipReason(preset, extracted),
+  };
+}

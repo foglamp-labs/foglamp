@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { partFrom, toMessages, unchangedPrefix } from "./payload-messages";
+import { fromHumanized, partFrom, toMessages, unchangedPrefix } from "./payload-messages";
 
 // The payloads under test are captured verbatim from the Vercel AI SDK, so the
 // shapes here are the real ones the SDK emits — not a normalized schema. The
@@ -246,5 +246,29 @@ describe("unchangedPrefix — the transcript delta fold", () => {
 
 	test("an empty previous input is not a delta", () => {
 		expect(unchangedPrefix(history, [])).toBe(0);
+	});
+});
+
+describe("fromHumanized", () => {
+	test("rebuilds turns and tool parts from the judge's flattened transcript", () => {
+		const m = fromHumanized(
+			'system: You are Foggy.\n\nuser: hi\nthere\n\nassistant: let me check\n[tool-call getAlertHistory] {"projectId":"p"}\n\ntool: [tool-result getAlertHistory] [{"id":1}]\n\nassistant: done',
+		);
+		expect(m?.map((x) => x.role)).toEqual([
+			"system",
+			"user",
+			"assistant",
+			"tool",
+			"assistant",
+		]);
+		expect(m?.[1]?.parts).toEqual([{ kind: "text", text: "hi\nthere" }]);
+		expect(m?.[2]?.parts).toEqual([
+			{ kind: "text", text: "let me check" },
+			{ kind: "tool-call", name: "getAlertHistory", data: { projectId: "p" } },
+		]);
+		expect(m?.[3]?.parts[0]?.kind).toBe("tool-result");
+	});
+	test("returns null for prose without role prefixes", () => {
+		expect(fromHumanized("just prose")).toBeNull();
 	});
 });

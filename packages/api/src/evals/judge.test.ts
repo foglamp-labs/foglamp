@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { truncateExtracted } from "./judge";
+import { splitTemplate, truncateExtracted } from "./judge";
 import type { ExtractedContext } from "./types";
 
 const MARKER = "characters truncated";
@@ -55,4 +55,31 @@ describe("truncateExtracted", () => {
     const e: ExtractedContext = { input: "a".repeat(500), output: "b".repeat(500) };
     expect(truncateExtracted(e, 1_000).truncated).toBe(false);
   });
+});
+
+describe("splitTemplate", () => {
+	test("separates rubric, dropped captions, and fields", () => {
+		expect(
+			splitTemplate(
+				"Rate how helpful the RESPONSE is.\n\nREQUEST:\n{input}\n\nRESPONSE:\n{output}",
+			),
+		).toEqual([
+			{ kind: "text", text: "Rate how helpful the RESPONSE is." },
+			{ kind: "field", field: "input" },
+			{ kind: "field", field: "output" },
+		]);
+	});
+	test("keeps instruction text between and after fields", () => {
+		expect(
+			splitTemplate("Compare.\n\nREFERENCE:\n{reference}\nANSWER:\n{output}\n\nBe strict."),
+		).toEqual([
+			{ kind: "text", text: "Compare." },
+			{ kind: "field", field: "reference" },
+			{ kind: "field", field: "output" },
+			{ kind: "text", text: "Be strict." },
+		]);
+	});
+	test("a bare {output} template has no rubric", () => {
+		expect(splitTemplate("{output}")).toEqual([{ kind: "field", field: "output" }]);
+	});
 });

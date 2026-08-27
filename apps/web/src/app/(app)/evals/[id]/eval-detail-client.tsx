@@ -38,6 +38,7 @@ import {
   IconForbidFilled,
   IconGauge,
   IconGaugeFilled,
+  IconScaleFilled,
   IconGhostFilled,
   IconPencilFilled,
   IconPercentage,
@@ -80,6 +81,7 @@ import {
 import {
   type Message,
   type Part,
+  fromHumanized,
   toMessages,
 } from "@/components/app/payload-messages";
 import { useProject } from "@/components/app/project-context";
@@ -792,9 +794,11 @@ function RunExchange({
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-      <Judgment score={score} />
+      <Judgment score={score} showReason={!judged} />
       <div className="min-w-0 flex-1">
-        {detail.isLoading ? (
+        {judged ? (
+          <JudgeInput score={score} />
+        ) : detail.isLoading ? (
           <ConversationSkeleton />
         ) : !glimpse ? (
           <span className="text-xs text-muted-foreground">
@@ -805,6 +809,10 @@ function RunExchange({
             input={glimpse.input}
             output={glimpse.output}
             emptyHint={emptyOutputHint(spans)}
+  // A judged run shows the exact prompt the model graded (rendered from the
+  // eval's template) rather than the trace's transcript — that's what the
+  // reason refers to. Code checks and skipped rows keep the conversation.
+  const judged = score.scorer === "llm" && score.label !== "skipped";
           />
         )}
       </div>
@@ -828,10 +836,165 @@ function Meta({
     </div>
   );
 }
+/** The right column for a judged run: the exact material the judge graded,
+ * laid out in the order the template presents it. Instruction text reads as
+ * the rubric; each placeholder becomes a labelled section rendered the same
+ * way the trace's own exchange is (transcript for the input, a bubble for the
+ * output), so an empty field is a visible gap rather than a blank line in a
+ * wall of prompt. The judge's reason sits right above the output it is
+ * about; the raw prompt stays available at the bottom. */
+function JudgeInput({ score }: { score: BaseScoreRow }) {
+  const q = useQuery(
+    trpc.evals.judgeInput.queryOptions({
+      evalId: score.evalId,
+      scoreId: score.scoreId,
+    })
+  );
+  if (q.isLoading) return <JudgeInputSkeleton />;
+  const d = q.data;
+  if (!d || !d.prompt) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        Judge input unavailable. The trace may have expired.
+      </span>
+    );
+  }
+  const { text: reason } = splitReason(score.reason);
+  const PresetIcon = presetMeta(d.preset.id).icon;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium">
+          <PresetIcon className="size-3 shrink-0" />
+          {d.preset.name}
+        </span>
+        {d.truncated && (
+          <span className="text-xs text-amber-600 dark:text-amber-400">
+            truncated before judging
+          </span>
+        )}
+      </div>
+
+      {d.segments.map((seg, i) =>
+        seg.kind === "text" ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: positional template segments
+          <JudgeSection key={`t${i}`} label="Rubric">
+            <p className="whitespace-pre-wrap wrap-break-word text-[13px] leading-relaxed text-muted-foreground">
+              {seg.text}
+            </p>
+          </JudgeSection>
+        ) : (
+          // biome-ignore lint/suspicious/noArrayIndexKey: positional template segments
+          <JudgeSection key={`f${i}`} label={FIELD_LABEL[seg.field]}>
+            <JudgeField
+              field={seg.field}
+              value={d.fields[seg.field]}
+              reason={seg.field === "output" ? reason : undefined}
+            />
+          </JudgeSection>
+        )
+      )}
+
+      <details className="group/raw">
+        <summary className="flex h-5 cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+          <IconChevronRight className="size-3.5 transition-transform group-open/raw:rotate-90" />
+          Raw prompt
+        </summary>
+        <pre className="mt-3 max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-3 font-mono text-xs leading-relaxed">
+          {d.prompt}
+        </pre>
+      </details>
+    </div>
+  );
+}
+
+const FIELD_LABEL = {
+  input: "Input",
+  output: "Output",
+  context: "Context",
+  reference: "Reference",
+  tools: "Tools",
+} as const;
+
+/** What the judge would have been missing. Same wording as the worker's skip
+ * reasons so a near-miss reads like the skipped rows in the table. */
+const FIELD_EMPTY = {
+  input: "No input was captured for this run.",
+  output: "The run has no output to grade.",
+  context: "No retrieved context found in the trace.",
+  reference: "No reference answer in the trace metadata.",
+  tools: "No tool calls in this run.",
+} as const;
+
+function JudgeSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function JudgeField({
+  field,
+  value,
+  reason,
+}: {
+  field: keyof typeof FIELD_LABEL;
+  value: string | undefined;
+  reason?: string;
+}) {
+  const text = value?.trim() ?? "";
+  if (!text) {
+    return (
+      <p className="text-[13px] text-rose-600 italic dark:text-rose-400">
+        {FIELD_EMPTY[field]}
+      </p>
+    );
+  }
+  if (field === "input") return <Transcript input={text} />;
+  if (field === "output") {
+    return (
+      <div className="flex flex-col gap-4">
+        {reason && (
+          <div className="rounded-lg border border-dashed px-3 py-2">
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <IconScaleFilled className="size-3 shrink-0 mb-px" />
+              Judge's reason
+            </span>
+            <p className="mt-1 whitespace-pre-wrap wrap-break-word text-[13px] leading-relaxed">
+              {reason}
+            </p>
+          </div>
+        )}
+        <Bubble who="assistant" text={text} />
+      </div>
+    );
+  }
+  return (
+    <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-3 text-xs leading-relaxed">
+      {text}
+    </pre>
+  );
+}
+
 
 /** The left column: verdict, score, judge, cost, when, what was scored, and
  * the full reason — each under a field label, like a trace's overview. */
-function Judgment({ score }: { score: BaseScoreRow }) {
+function Judgment({
+  score,
+  showReason = true,
+}: {
+  score: BaseScoreRow;
+  showReason?: boolean;
+}) {
   const { text, truncated } = splitReason(score.reason);
   const isSpan = score.targetType === "span";
   const href = isSpan
@@ -885,7 +1048,7 @@ function Judgment({ score }: { score: BaseScoreRow }) {
             </Badge>
           )}
         </div>
-        {text && (
+        {showReason && text && (
           <p className="whitespace-pre-wrap wrap-break-word text-balance text-[13px] leading-relaxed">
             {text}
           </p>
@@ -948,22 +1111,10 @@ function Conversation({
   output: string | null | undefined;
   emptyHint: string;
 }) {
-  const messages = useMemo(() => (input ? toMessages(input) : null), [input]);
   const outMessages = useMemo(
     () => (output ? toMessages(output) : null),
     [output]
   );
-  let lastUser = -1;
-  if (messages) {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i]?.role === "user") {
-        lastUser = i;
-        break;
-      }
-    }
-  }
-  const history = messages && lastUser > 0 ? messages.slice(0, lastUser) : [];
-  const current = messages ? messages.slice(Math.max(0, lastUser)) : [];
   // A payload that is not JSON is prose (the SDK stores plain strings
   // verbatim) — a bubble, not the raw viewer.
   const outputText = outMessages
@@ -972,31 +1123,7 @@ function Conversation({
 
   return (
     <div className="flex flex-col gap-4">
-      {!input ? null : !messages ? (
-        <Bubble who="user" text={input} />
-      ) : (
-        <>
-          {history.length > 0 && (
-            <details className="group/history">
-              <summary className="flex h-5 cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
-                <IconChevronRight className="size-3.5 transition-transform group-open/history:rotate-90" />
-                {history.length} earlier{" "}
-                {history.length === 1 ? "message" : "messages"}
-              </summary>
-              <div className="mt-4 flex flex-col gap-4">
-                {history.map((m, i) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: positional transcript
-                  <Turn key={i} message={m} />
-                ))}
-              </div>
-            </details>
-          )}
-          {current.map((m, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: positional transcript
-            <Turn key={i} message={m} />
-          ))}
-        </>
-      )}
+      {input ? <Transcript input={input} /> : null}
       {outputText ? (
         <Bubble who="assistant" text={outputText} />
       ) : (
@@ -1028,6 +1155,49 @@ function messagesText(messages: Message[]): string {
 }
 
 /** One message of the transcript. User turns get the bubble, assistant turns
+/** The input side of an exchange: message-shaped payloads become turns with
+ * everything before the latest user message folded away; anything else is a
+ * single user bubble. */
+function Transcript({ input }: { input: string }) {
+  const messages = useMemo(
+    () => toMessages(input) ?? fromHumanized(input),
+    [input]
+  );
+  if (!messages) return <Bubble who="user" text={input} />;
+  let lastUser = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role === "user") {
+      lastUser = i;
+      break;
+    }
+  }
+  const history = lastUser > 0 ? messages.slice(0, lastUser) : [];
+  const current = messages.slice(Math.max(0, lastUser));
+  return (
+    <div className="flex flex-col gap-4">
+      {history.length > 0 && (
+        <details className="group/history">
+          <summary className="flex h-5 cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+            <IconChevronRight className="size-3.5 transition-transform group-open/history:rotate-90" />
+            {history.length} earlier{" "}
+            {history.length === 1 ? "message" : "messages"}
+          </summary>
+          <div className="mt-4 flex flex-col gap-4">
+            {history.map((m, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: positional transcript
+              <Turn key={i} message={m} />
+            ))}
+          </div>
+        </details>
+      )}
+      {current.map((m, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: positional transcript
+        <Turn key={i} message={m} />
+      ))}
+    </div>
+  );
+}
+
  * prose; tool calls and results collapse to chips; system prompts and other
  * roles show as a muted note. */
 function Turn({ message }: { message: Message }) {
@@ -1110,6 +1280,47 @@ function ConversationSkeleton() {
         </div>
       </div>
     </div>
+/** Mirrors JudgeInput: header, rubric, input transcript, reason and output. */
+function JudgeInputSkeleton() {
+  const label = <Skeleton className="h-3 w-12" />;
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-1.5">
+        <Skeleton className="size-3 rounded-full" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+      <div className="flex flex-col gap-2">
+        {label}
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-4/5" />
+      </div>
+      <div className="flex flex-col gap-2">
+        {label}
+        <div className="flex gap-3">
+          <div className="mt-1.5 size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
+          <Skeleton className="h-11 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        {label}
+        <div className="flex flex-col gap-2 rounded-lg border border-dashed px-3 py-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3.5 w-full" />
+          <Skeleton className="h-3.5 w-3/4" />
+        </div>
+        <div className="flex gap-3">
+          <div className="size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2 px-1 pt-1">
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-11/12" />
+            <Skeleton className="h-3.5 w-2/3" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
   );
 }
 
