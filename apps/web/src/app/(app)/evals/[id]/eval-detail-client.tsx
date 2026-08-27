@@ -38,6 +38,7 @@ import {
   IconForbidFilled,
   IconGauge,
   IconGaugeFilled,
+  IconGhostFilled,
   IconPencilFilled,
   IconPercentage,
   IconScissors,
@@ -45,14 +46,17 @@ import {
   IconStack2,
   IconStack2Filled,
   IconTargetArrow,
+  IconUserFilled,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Streamdown } from "streamdown";
 
 import { ContextChip } from "@/components/app/context-chip";
+import { CopyButton } from "@/components/app/copy-button";
 import {
   PaginationFooter,
   SortableHead,
@@ -64,6 +68,7 @@ import {
   useEntranceOnce,
   useSkeletonShown,
 } from "@/components/app/hooks";
+import { markdownComponents } from "@/components/app/markdown";
 import { navItem } from "@/components/app/nav";
 import {
   EmptyState,
@@ -72,12 +77,17 @@ import {
   StatCard,
   TableRowsSkeleton,
 } from "@/components/app/page-parts";
+import {
+  type Message,
+  type Part,
+  toMessages,
+} from "@/components/app/payload-messages";
 import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
-import { formatCost } from "@/lib/format";
+import { formatCost, formatDateTime } from "@/lib/format";
 import { type RouterOutputs, trpc } from "@/utils/trpc";
 
 import {
@@ -731,6 +741,31 @@ function ScoreDetail({
   projectId: string;
   colSpan: number;
 }) {
+  return (
+    <TableRow className="hover:bg-transparent">
+      {/* px-8 matches the row cells' inset so the drawer's content lines up
+          with the row text; the hairline + tint make it read as a drawer
+          under the open row. */}
+      <TableCell
+        colSpan={colSpan}
+        className="border-t border-border/50 bg-muted/30 px-8 py-5 dark:border-border/40"
+      >
+        <RunExchange score={score} projectId={projectId} />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/** Two columns: the judgment on the left as labelled fields (the same
+ * treatment as the trace detail panel), the scored exchange on the right laid
+ * out like a session — the user's turn in a bubble, the answer as prose. */
+function RunExchange({
+  score,
+  projectId,
+}: {
+  score: BaseScoreRow;
+  projectId: string;
+}) {
   const detail = useQuery(
     trpc.traces.get.queryOptions({ projectId, traceId: score.traceId })
   );
@@ -743,67 +778,359 @@ function ScoreDetail({
   const root = spans.find((s) => !s.parentSpanId) ?? spans[0];
   const glimpse = target ?? root;
 
-  const href =
-    score.targetType === "span"
-      ? `/traces/${encodeURIComponent(score.traceId)}?span=${encodeURIComponent(
-          score.targetId
-        )}`
-      : `/traces/${encodeURIComponent(score.traceId)}`;
-
-  const isSpan = score.targetType === "span";
-  const LevelIcon = isSpan ? IconStack2 : IconAffiliate;
-
   return (
-    <TableRow className="hover:bg-transparent">
-      {/* px-8 matches the row cells' inset so the drawer's content lines up
-          with the row text; the hairline + tint make it read as a drawer
-          under the open row. */}
-      <TableCell
-        colSpan={colSpan}
-        className="border-t border-border/50 bg-muted/30 px-8 py-4 dark:border-border/40"
-      >
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-4">
-            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <LevelIcon className="size-3.5 shrink-0" />
-              {isSpan ? "Span" : "Trace"}
-              <span className="font-mono">
+    <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+      <Judgment score={score} />
+      <div className="min-w-0 flex-1">
+        {detail.isLoading ? (
+          <span className="text-xs text-muted-foreground">Loading trace…</span>
+        ) : !glimpse ? (
+          <span className="text-xs text-muted-foreground">
+            Trace payload unavailable.
+          </span>
+        ) : (
+          <Conversation
+            input={glimpse.input}
+            output={glimpse.output}
+            emptyHint={emptyOutputHint(spans)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Meta({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="min-w-0 text-[13px] tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+/** The left column: verdict, score, judge, cost, when, what was scored, and
+ * the full reason — each under a field label, like a trace's overview. */
+function Judgment({ score }: { score: BaseScoreRow }) {
+  const { text, truncated } = splitReason(score.reason);
+  const isSpan = score.targetType === "span";
+  const href = isSpan
+    ? `/traces/${encodeURIComponent(score.traceId)}?span=${encodeURIComponent(
+        score.targetId
+      )}`
+    : `/traces/${encodeURIComponent(score.traceId)}`;
+  const LevelIcon = isSpan ? IconStack2 : IconAffiliate;
+  return (
+    <div className="flex shrink-0 flex-col gap-4 lg:w-72">
+      <div className="grid grid-cols-2 gap-4">
+        {score.passed !== null && (
+          <Meta
+            label="Verdict"
+            value={
+              <Badge variant={score.passed ? "emerald" : "rose"}>
+                {score.passed ? <IconCircleCheckFilled /> : <IconForbidFilled />}
+                {score.passed ? "pass" : "fail"}
+              </Badge>
+            }
+          />
+        )}
+        {score.score !== null && (
+          <Meta
+            label="Score"
+            value={
+              <Badge variant="secondary">
+                <IconGauge />
+                {score.score.toFixed(2)}
+              </Badge>
+            }
+          />
+        )}
+        <Meta
+          label="Scored"
+          value={formatDateTime(score.scoredAt)}
+          className="col-span-2"
+        />
+        {score.modelId && (
+          <Meta
+            label="Judge"
+            value={<span className="font-mono truncate">{score.modelId}</span>}
+          />
+        )}
+        <Meta
+          label="Cost"
+          value={
+            score.cost != null && score.cost > 0
+              ? formatCost(score.cost, 4)
+              : "—"
+          }
+        />
+        <Meta
+          label={isSpan ? "Span" : "Trace"}
+          className="col-span-2"
+          value={
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
+              <LevelIcon className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate font-mono">
                 {isSpan ? score.targetId : score.traceId}
               </span>
             </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="shrink-0"
-              // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
-              render={<Link href={href as any} />}
-            >
-              See full trace
-              <IconArrowUpRight />
-            </Button>
-          </div>
-          <Verdict score={score} />
-          {detail.isLoading ? (
-            <span className="text-xs text-muted-foreground">
-              Loading trace…
-            </span>
-          ) : !glimpse ? (
-            <span className="text-xs text-muted-foreground">
-              Trace payload unavailable.
-            </span>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Glimpse label="Input" value={glimpse.input} foldBeforeLastUser />
-              <Glimpse
-                label="Output"
-                value={glimpse.output}
-                emptyHint={emptyOutputHint(spans)}
-              />
-            </div>
-          )}
+          }
+        />
+        {(text || truncated) && (
+          <Meta
+            label="Reason"
+            className="col-span-2 border-t border-border/40 pt-4"
+            value={
+              <span className="flex flex-col gap-2">
+                {truncated && (
+                  <Badge variant="amber" className="w-fit">
+                    <IconScissors />
+                    judged on truncated payload
+                  </Badge>
+                )}
+                {text && (
+                  <span className="whitespace-pre-wrap wrap-break-word leading-relaxed">
+                    {text}
+                  </span>
+                )}
+              </span>
+            }
+          />
+        )}
+      </div>
+      <Button
+        size="sm"
+        variant="secondary"
+        className="w-fit"
+        // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
+        render={<Link href={href as any} />}
+      >
+        See full trace
+        <IconArrowUpRight />
+      </Button>
+    </div>
+  );
+}
+
+/** The scored exchange as a conversation. Earlier history folds behind a
+ * disclosure so the drawer opens on the latest user turn and the answer;
+ * payloads that aren't message-shaped fall back to the raw viewer. */
+function Conversation({
+  input,
+  output,
+  emptyHint,
+}: {
+  input: string | null | undefined;
+  output: string | null | undefined;
+  emptyHint: string;
+}) {
+  const messages = useMemo(
+    () => (input ? toMessages(input) : null),
+    [input]
+  );
+  const outMessages = useMemo(
+    () => (output ? toMessages(output) : null),
+    [output]
+  );
+  let lastUser = -1;
+  if (messages) {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]?.role === "user") {
+        lastUser = i;
+        break;
+      }
+    }
+  }
+  const history = messages && lastUser > 0 ? messages.slice(0, lastUser) : [];
+  const current = messages ? messages.slice(Math.max(0, lastUser)) : [];
+  const outputText = outMessages ? messagesText(outMessages) : "";
+
+  return (
+    <div className="flex flex-col gap-4">
+      {!input ? null : !messages ? (
+        <div className="max-h-80 overflow-x-hidden overflow-y-auto rounded-lg shadow-(--custom-shadow)">
+          <PayloadView value={input} />
         </div>
-      </TableCell>
-    </TableRow>
+      ) : (
+        <>
+          {history.length > 0 && (
+            <details className="group/history">
+              <summary className="flex cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+                <IconChevronRight className="size-3.5 transition-transform group-open/history:rotate-90" />
+                {history.length} earlier{" "}
+                {history.length === 1 ? "message" : "messages"}
+              </summary>
+              <div className="mt-4 flex flex-col gap-4">
+                {history.map((m, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: positional transcript
+                  <Turn key={i} message={m} />
+                ))}
+              </div>
+            </details>
+          )}
+          {current.map((m, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: positional transcript
+            <Turn key={i} message={m} />
+          ))}
+        </>
+      )}
+      {outputText ? (
+        <Bubble who="assistant" text={outputText} />
+      ) : output && !outMessages ? (
+        <div className="max-h-80 overflow-x-hidden overflow-y-auto rounded-lg shadow-(--custom-shadow)">
+          <PayloadView value={output} />
+        </div>
+      ) : (
+        <div className="flex gap-3">
+          <Avatar who="assistant" />
+          <p className="inline-flex items-center gap-1.5 px-1 text-sm text-muted-foreground italic">
+            <IconTool className="size-3.5 shrink-0 text-muted-foreground/60" />
+            {emptyHint}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function partsText(parts: Part[]): string {
+  return parts
+    .filter((p): p is Extract<Part, { kind: "text" }> => p.kind === "text")
+    .map((p) => p.text)
+    .join("\n\n")
+    .trim();
+}
+function messagesText(messages: Message[]): string {
+  return messages
+    .filter((m) => m.role !== "user" && m.role !== "system")
+    .map((m) => partsText(m.parts))
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/** One message of the transcript. User turns get the bubble, assistant turns
+ * prose; tool calls and results collapse to chips; system prompts and other
+ * roles show as a muted note. */
+function Turn({ message }: { message: Message }) {
+  const text = partsText(message.parts);
+  const tools = message.parts.filter(
+    (p) =>
+      p.kind === "tool-call" || p.kind === "tool-result" || p.kind === "tool-error"
+  ) as Extract<Part, { kind: "tool-call" | "tool-result" | "tool-error" }>[];
+  if (message.role === "user") {
+    return <Bubble who="user" text={text || "(no text)"} />;
+  }
+  if (message.role === "assistant" || message.role === null) {
+    return (
+      <div className="flex flex-col gap-2">
+        {text && <Bubble who="assistant" text={text} />}
+        {tools.length > 0 && <ToolChips tools={tools} />}
+      </div>
+    );
+  }
+  if (tools.length > 0 && !text) return <ToolChips tools={tools} />;
+  return (
+    <div className="flex gap-3">
+      <span className="w-6 shrink-0 text-right text-[10px] font-medium uppercase leading-6 text-muted-foreground/60">
+        {message.role}
+      </span>
+      <p className="max-h-40 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word px-1 text-xs text-muted-foreground">
+        {text || JSON.stringify(message.parts)}
+      </p>
+    </div>
+  );
+}
+
+function ToolChips({
+  tools,
+}: {
+  tools: Extract<Part, { kind: "tool-call" | "tool-result" | "tool-error" }>[];
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 pl-9">
+      {tools.map((t, i) => (
+        <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: positional
+          key={i}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border bg-card/40 px-2 py-0.5 text-xs text-muted-foreground",
+            t.kind === "tool-error" && "border-rose-500/40 text-rose-600 dark:text-rose-400"
+          )}
+        >
+          <IconTool className="size-3 shrink-0" />
+          <span className="max-w-40 truncate font-mono">{t.name}</span>
+          {t.kind !== "tool-call" && (
+            <span className="text-muted-foreground/60">
+              {t.kind === "tool-error" ? "error" : "result"}
+            </span>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function Avatar({ who }: { who: "user" | "assistant" }) {
+  const Icon = who === "user" ? IconUserFilled : IconGhostFilled;
+  return (
+    <div
+      className={cn(
+        who === "user" && "mt-1.5",
+        "flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-(--custom-shadow)"
+      )}
+    >
+      <Icon className="size-3.5" />
+    </div>
+  );
+}
+
+// Same bubble as the session page: user text in a card, assistant markdown
+// as prose with a hover copy button.
+function Bubble({
+  who,
+  text,
+}: {
+  who: "user" | "assistant";
+  text: string;
+}) {
+  const isUser = who === "user";
+  return (
+    <div className="group/bubble flex gap-3">
+      <Avatar who={who} />
+      <div
+        className={
+          isUser
+            ? "min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl bg-card dark:bg-muted-foreground/20 shadow-(--custom-shadow) px-3 py-2.5"
+            : "min-w-0 flex-1 px-1 py-0"
+        }
+      >
+        {isUser ? (
+          <p className="whitespace-pre-wrap wrap-break-word text-sm">{text}</p>
+        ) : (
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1 text-sm leading-relaxed [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:last:mb-0 [&>*:first-child>*:first-child]:mt-0 [&>*:first-child>*:first-child>*:first-child]:mt-0">
+              <Streamdown
+                components={markdownComponents}
+                controls={{ table: false }}
+              >
+                {text}
+              </Streamdown>
+            </div>
+            <div className="shrink-0 opacity-0 transition-opacity group-hover/bubble:opacity-100">
+              <CopyButton value={text} title="Copy output" />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -824,62 +1151,6 @@ function emptyOutputHint(spans: { spanType: string }[]): string {
     : "No output was recorded for this run.";
 }
 
-/** The judgment itself, first: pass/fail or the score, the full reason (the
- * table only has room for one truncated line), and the judge facts — model,
- * cost, whether it judged a truncated payload — in a muted line below. */
-function Verdict({ score }: { score: BaseScoreRow }) {
-  const { text, truncated } = splitReason(score.reason);
-  const facts: React.ReactNode[] = [];
-  if (score.modelId) {
-    facts.push(
-      <span key="model" className="font-mono">
-        {score.modelId}
-      </span>
-    );
-  }
-  if (score.cost != null && score.cost > 0) {
-    facts.push(<span key="cost">{formatCost(score.cost, 4)}</span>);
-  }
-  facts.push(<RelativeTime key="at" value={score.scoredAt} />);
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-center gap-2">
-        {score.passed !== null ? (
-          <Badge variant={score.passed ? "emerald" : "rose"}>
-            {score.passed ? <IconCircleCheckFilled /> : <IconForbidFilled />}
-            {score.passed ? "pass" : "fail"}
-          </Badge>
-        ) : null}
-        {score.score !== null ? (
-          <Badge variant="secondary">
-            <IconGauge />
-            <span className="tabular-nums">{score.score.toFixed(2)}</span>
-          </Badge>
-        ) : null}
-        {truncated && (
-          <Badge variant="amber">
-            <IconScissors />
-            judged on truncated payload
-          </Badge>
-        )}
-        <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground tabular-nums">
-          {facts.map((f, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static, positional
-            <Fragment key={i}>
-              {i > 0 && <span className="text-muted-foreground/40">·</span>}
-              {f}
-            </Fragment>
-          ))}
-        </span>
-      </div>
-      {text && <p className="max-w-3xl text-sm">{text}</p>}
-    </div>
-  );
-}
-
-/** The deep-linked run, pinned above the table. Mirrors an expanded ScoreDetail
- * but stands alone (with a primary accent) so a targeted score is always shown,
- * even when it's outside the active range or on another page. */
 function FocusedRun({
   score,
   projectId,
@@ -887,113 +1158,15 @@ function FocusedRun({
   score: BaseScoreRow;
   projectId: string;
 }) {
-  const detail = useQuery(
-    trpc.traces.get.queryOptions({ projectId, traceId: score.traceId })
-  );
-  const spans = detail.data?.spans ?? [];
-  const target =
-    score.targetType === "span"
-      ? spans.find((s) => s.spanId === score.targetId)
-      : undefined;
-  const root = spans.find((s) => !s.parentSpanId) ?? spans[0];
-  const glimpse = target ?? root;
-
-  const href =
-    score.targetType === "span"
-      ? `/traces/${encodeURIComponent(score.traceId)}?span=${encodeURIComponent(
-          score.targetId
-        )}`
-      : `/traces/${encodeURIComponent(score.traceId)}`;
-
   return (
     <Card size="sm">
-      <CardHeader className="flex items-center gap-2 w-full">
-        <CardTitle className="w-full">Focused run</CardTitle>
-        <div className="flex items-center gap-2 w-full justify-end">
-          <span className="text-xs text-muted-foreground tabular-nums">
-            <RelativeTime value={score.scoredAt} />
-          </span>
-          {score.passed !== null ? (
-            <Badge variant={score.passed ? "emerald" : "rose"}>
-              {score.passed ? <IconCircleCheckFilled /> : <IconForbidFilled />}
-              {score.passed ? "pass" : "fail"}
-            </Badge>
-          ) : score.score !== null ? (
-            <Badge variant="secondary">
-              <IconGauge />
-              <span className="tabular-nums">{score.score.toFixed(2)}</span>
-            </Badge>
-          ) : null}
-
-          <Button
-            size="sm"
-            variant="secondary"
-            // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
-            render={<Link href={href as any} />}
-          >
-            See full trace
-            <IconArrowUpRight />
-          </Button>
-        </div>
+      <CardHeader>
+        <CardTitle>Focused run</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {score.reason && (
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              Reason
-            </span>
-            <p className="text-sm">{splitReason(score.reason).text}</p>
-          </div>
-        )}
-        {detail.isLoading ? (
-          <span className="text-xs text-muted-foreground">Loading trace…</span>
-        ) : !glimpse ? (
-          <span className="text-xs text-muted-foreground">
-            Trace payload unavailable.
-          </span>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Glimpse label="Input" value={glimpse.input} foldBeforeLastUser />
-            <Glimpse
-              label="Output"
-              value={glimpse.output}
-              emptyHint={emptyOutputHint(spans)}
-            />
-          </div>
-        )}
+      <CardContent>
+        <RunExchange score={score} projectId={projectId} />
       </CardContent>
     </Card>
   );
 }
 
-function Glimpse({
-  label,
-  value,
-  foldBeforeLastUser,
-  emptyHint,
-}: {
-  label: string;
-  value: string | null | undefined;
-  foldBeforeLastUser?: boolean;
-  /** Shown instead of a bare dash when there's no payload, so a blank reads
-   * as a fact about the run rather than a rendering gap. */
-  emptyHint?: string;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      {value ? (
-        <div className="max-h-64 overflow-x-hidden overflow-y-auto shadow-(--custom-shadow) rounded-lg">
-          <PayloadView value={value} foldBeforeLastUser={foldBeforeLastUser} />
-        </div>
-      ) : emptyHint ? (
-        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-          <IconTool className="size-3.5 shrink-0 text-muted-foreground/60" />
-          {emptyHint}
-        </span>
-      ) : (
-        <span className="text-sm text-muted-foreground">—</span>
-      )}
-    </div>
-  );
-}
