@@ -113,6 +113,7 @@ export async function getSessionList(
       totalTokens: num(s.total_tokens),
       firstSeen: s.first_seen,
       lastSeen: s.last_seen,
+      models: s.models,
     })),
   };
 }

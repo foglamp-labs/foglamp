@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
+import { ModelLogo, formatModelName } from "@/components/model-logo";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import {
   ClearFiltersButton,
@@ -362,6 +363,25 @@ export function SessionsClient() {
                               )}
                             </div>
                             <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
+                              {/* Same model line as the traces list; static
+                                  here since sessions have no model filter. */}
+                              {s.models.length > 0 && (
+                                <span
+                                  title={s.models.map(formatModelName).join(", ")}
+                                  className="inline-flex min-w-0 shrink items-center gap-1"
+                                >
+                                  <ModelLogo
+                                    modelId={s.models[0]}
+                                    className="size-2.75 shrink-0"
+                                  />
+                                  <span className="truncate">
+                                    {formatModelName(s.models[0])}
+                                    {s.models.length > 1
+                                      ? ` +${s.models.length - 1}`
+                                      : ""}
+                                  </span>
+                                </span>
+                              )}
                               {s.agentName && (
                                 <Link
                                   href={`/agents/${encodeURIComponent(s.agentName)}`}

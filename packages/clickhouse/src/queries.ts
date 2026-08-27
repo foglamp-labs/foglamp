@@ -419,6 +419,7 @@ export type SessionListRow = {
 	total_tokens: string;
 	first_seen: string;
 	last_seen: string;
+	models: string[];
 };
 
 /**
@@ -486,7 +487,8 @@ export function listSessions(
        sum(priced_span_count) AS priced_span_count,
        sum(total_tokens) AS total_tokens,
        min(trace_summary.trace_start) AS first_seen,
-       max(trace_summary.trace_end) AS last_seen
+       max(trace_summary.trace_end) AS last_seen,
+       groupUniqArrayMerge(models) AS models
      FROM trace_summary
      WHERE project_id = {projectId:String}
      GROUP BY session_id
