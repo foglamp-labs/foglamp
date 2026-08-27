@@ -130,7 +130,7 @@ async function planOneEval(
   const until = new Date(Date.now() - env.SCORING_SETTLE_MS);
   const since = watermark ?? until; // no state yet → start now (future-only)
   if (since >= until) {
-    await setState(db, ev.id, until, "ok", null);
+    await setState(db, ev.id, until, "ok", null, { keepError: true });
     return;
   }
 
@@ -494,8 +494,13 @@ async function claimScoringWindow(
     .update(evalState)
     .set({
       watermark: newWatermark,
-      status: "ok",
-      lastError: null,
+      // Planning a window proves nothing about scoring, so a claim only
+      // clears `paused_no_key` (the planner owns that: a key exists now).
+      // An `error` set by a dead job stays until a job actually completes
+      // (see the executor's success path) — otherwise an erroring eval
+      // flips error → ok → error every sweep and the UI blinks.
+      status: sql`CASE WHEN ${evalState.status} = 'error' THEN ${evalState.status} ELSE 'ok'::eval_run_status END`,
+      lastError: sql`CASE WHEN ${evalState.status} = 'error' THEN ${evalState.lastError} ELSE NULL END`,
     })
     .where(
       and(
@@ -513,12 +518,19 @@ async function setState(
   watermark: Date | null,
   status: "ok" | "paused_no_key" | "error",
   lastError: string | null,
+  opts: { keepError?: boolean } = {},
 ): Promise<void> {
+  // `keepError`: planner-side "ok" writes (empty windows) must not clear an
+  // executor-set `error` — same reasoning as claimScoringWindow.
   const set = {
-    status,
-    lastError,
+    status: opts.keepError
+      ? sql`CASE WHEN ${evalState.status} = 'error' THEN ${evalState.status} ELSE ${status}::eval_run_status END`
+      : status,
+    lastError: opts.keepError
+      ? sql`CASE WHEN ${evalState.status} = 'error' THEN ${evalState.lastError} ELSE ${lastError} END`
+      : lastError,
     ...(watermark ? { watermark } : {}),
-    ...(status === "ok" ? { lastScoredAt: new Date() } : {}),
+    ...(status === "ok" && !opts.keepError ? { lastScoredAt: new Date() } : {}),
   };
   await db
     .insert(evalState)
