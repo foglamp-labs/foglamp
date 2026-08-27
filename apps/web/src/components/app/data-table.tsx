@@ -328,7 +328,10 @@ export function SearchInput({
     // it matches the sibling filters (which render that variant).
     <InputGroup
       className={cn(
-        "h-8 w-56 rounded-full squircle:rounded-full corner-round! shadow-(--custom-outline-shadow) dark:shadow-(--custom-outline-shadow) dark:border-0 bg-card hover:bg-muted/50 dark:hover:bg-muted",
+        // dark:bg-card explicitly: InputGroup's base sets dark:bg-input/30 (a
+        // translucent wash that lands a shade lighter than card), which would
+        // otherwise win over the plain bg-card and mismatch the FilterSelects.
+        "h-8 w-56 rounded-full squircle:rounded-full corner-round! shadow-(--custom-outline-shadow) dark:shadow-(--custom-outline-shadow) dark:border-0 bg-card dark:bg-card hover:bg-muted/50 dark:hover:bg-muted",
         className
       )}
     >
