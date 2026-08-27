@@ -10,6 +10,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@foglamp/ui/components/alert-dialog";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@foglamp/ui/components/alert";
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
@@ -29,6 +34,7 @@ import {
   DialogTitle,
 } from "@foglamp/ui/components/dialog";
 import { Field, FieldLabel } from "@foglamp/ui/components/field";
+import { InputGroupAddon } from "@foglamp/ui/components/input-group";
 import {
   Select,
   SelectContent,
@@ -557,7 +563,19 @@ export function EvalsClient() {
                           inputValue={form.agentName}
                           onInputValueChange={(v) => set({ agentName: v })}
                         >
-                          <ComboboxInput placeholder="any" className="w-full" />
+                          <ComboboxInput placeholder="any" className="w-full">
+                            {/* Same treatment as the alert dialog's metric
+                                select: the chosen agent keeps its icon in
+                                the value, not just in the list. */}
+                            {agentNames.includes(form.agentName) && (
+                              <InputGroupAddon align="inline-start">
+                                <AgentIcon
+                                  name={form.agentName}
+                                  className="size-3.5"
+                                />
+                              </InputGroupAddon>
+                            )}
+                          </ComboboxInput>
                           <ComboboxContent>
                             <ComboboxList>
                               {(item: string) => (
@@ -671,6 +689,20 @@ export function EvalsClient() {
                     <EvalSettingsFields
                       preset={selectedPreset}
                       judgeModel={form.judgeModel}
+                  {step === 3 && selectedPreset && (
+                    <PreflightNotice
+                      projectId={projectId}
+                      presetId={selectedPreset.id}
+                      targetLevel={form.targetLevel}
+                      filters={clean({
+                        agentName: form.agentName,
+                        workflowName: form.workflowName,
+                        spanType:
+                          form.targetLevel === "span" ? form.spanType : "",
+                        status: form.status,
+                      })}
+                    />
+                  )}
                       judgeProvider={form.judgeProvider}
                       sampleRate={form.sampleRate}
                       substring={form.substring}
@@ -942,7 +974,11 @@ export function EvalsClient() {
                           bold
                           mutedWhenZero
                         >
-                          {r.cost > 0 ? formatCost(r.cost, 4) : "—"}
+                          {r.cost > 0
+                            ? formatCost(r.cost, 4)
+                            : r.scorerSource === "code"
+                              ? "$0"
+                              : "—"}
                         </HeatCell>
                         <TableCell
                           onClick={(e) => e.stopPropagation()}
@@ -1036,3 +1072,63 @@ const SKELETON_COLS = [
   { align: "right", w: "w-14" },
   {},
 ] as const;
+
+/** Step-3 dry run: samples the last week of matching traffic and warns when
+ * the check would skip most of it (no output, no reference in metadata, no
+ * retrieved context) — the eval can still be created, but the user learns
+ * *before* paying a judge that the traffic lacks what the preset needs. */
+function PreflightNotice({
+  projectId,
+  presetId,
+  targetLevel,
+  filters,
+}: {
+  projectId: string;
+  presetId: string;
+  targetLevel: "trace" | "span";
+  filters: Record<string, string>;
+}) {
+  const preflight = useQuery({
+    ...trpc.evals.preflight.queryOptions({
+      projectId,
+      presetId,
+      targetLevel,
+      filters: Object.keys(filters).length ? filters : undefined,
+    }),
+    staleTime: 60_000,
+  });
+  const d = preflight.data;
+  if (!d || d.sampled === 0) return null;
+  const top = d.skips[0];
+  if (!top) return null;
+  const reason = top.reason.replace(/^Skipped: /, "").replace(/\.$/, "");
+  const others =
+    d.skips.length > 1
+      ? ` (+${d.skips.length - 1} other ${d.skips.length === 2 ? "reason" : "reasons"})`
+      : "";
+  if (d.gradable === 0) {
+    return (
+      <Alert variant="destructive" className="-mt-2 mb-4">
+        <IconAlertTriangle />
+        <AlertTitle>
+          This check can't grade any of the recent matching runs
+        </AlertTitle>
+        <AlertDescription>
+          {reason}
+          {others}. Pick a different check, or adjust the target filters.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  // Partial skips are advisory: one quiet line, not a banner.
+  return (
+    <p className="-mt-2 mb-4 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+      <IconAlertTriangle className="size-3.5 shrink-0" />
+      <span>
+        {d.sampled - d.gradable} of the last {d.sampled} matching runs would be
+        skipped: {reason}
+        {others}.
+      </span>
+    </p>
+  );
+}

@@ -11,6 +11,7 @@ import {
   listPresets,
   listRecentScores,
   updateEval,
+  preflightEval,
 } from "../services/evals";
 
 const providerEnum = z.enum(["google", "openai", "anthropic"]);
@@ -124,6 +125,21 @@ export const evalsRouter = router({
   score: protectedProcedure
     .input(z.object({ evalId: z.string(), scoreId: z.string() }))
     .query(({ ctx, input }) =>
+  // Create-wizard dry run: can this preset grade the traffic it would target?
+  preflight: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        presetId: z.string(),
+        targetLevel: levelEnum,
+        filters: filtersSchema,
+        contextSpec: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .query(({ ctx, input }) =>
+      preflightEval(ctx.db, ctx.ch, ctx.session.user.id, input),
+    ),
+
       getEvalScore(ctx.db, ctx.ch, ctx.session.user.id, input),
     ),
 });

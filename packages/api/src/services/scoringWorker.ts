@@ -25,7 +25,7 @@ import { getPreset, type Preset } from "../evals/presets";
 import { decryptSecret } from "../lib/crypto";
 import { mapLimit } from "../lib/util";
 import type { Ch, Db, Log } from "../types";
-import type { ScoringTarget, SiblingSpan } from "../evals/types";
+import type { ExtractedContext, ScoringTarget, SiblingSpan } from "../evals/types";
 
 // The transaction handle drizzle hands to `db.transaction(async (tx) => …)`.
 // Derived from Db so it tracks the schema without importing drizzle internals.
@@ -47,6 +47,22 @@ type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 // watermark advances no longer silently skips the window (the job survives and
 // is retried), and re-scoring a window is idempotent because scores collapse in
 // ClickHouse (ReplacingMergeTree on score_id = eval_id:target_id).
+
+// `label` on a score row that was skipped rather than graded.
+export const SKIPPED_LABEL = "skipped";
+
+/** Why a target can't be graded, or null when it can. */
+export function skipReason(
+  preset: Preset,
+  extracted: ExtractedContext,
+): string | null {
+  if (!extracted.output.trim()) return "Skipped: the run has no output to grade.";
+  if (preset.needsReference && !extracted.reference?.trim())
+    return "Skipped: no reference answer in the trace metadata.";
+  if (preset.needsContext && !extracted.context?.trim())
+    return "Skipped: no retrieved context found in the trace.";
+  return null;
+}
 
 function toScore(passed: boolean | null): number | null {
   return passed === null ? null : passed ? 1 : 0;
@@ -381,6 +397,30 @@ async function executeOneJob(
       try {
         const target = await buildTarget(ch, ev, c, preset, siblingCache);
         const extracted = buildContext(target, preset, contextSpec);
+        // Nothing to grade: an empty output (a run that ended on a tool call,
+        // an aborted stream) or a context preset whose reference/context is
+        // missing. Record a skipped row — visible in the run list with the
+        // reason, excluded from averages/pass rates (both fields null) — and
+        // never pay a judge to say "the text is empty".
+        const skip = skipReason(preset, extracted);
+        if (skip) {
+          return {
+            project_id: ev.projectId,
+            eval_id: ev.id,
+            score_id: `${ev.id}:${c.target_id}`,
+            target_type: ev.targetLevel,
+            target_id: c.target_id,
+            trace_id: c.trace_id,
+            scorer: preset.source,
+            label: SKIPPED_LABEL,
+            score: null,
+            passed: null,
+            reason: skip,
+            model_id: "",
+            cost: null,
+            scored_at: now,
+          };
+        }
         const { result, cost, truncated } =
           preset.source === "code"
             ? {

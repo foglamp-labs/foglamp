@@ -8,8 +8,11 @@ import {
   listEvalScores,
   queryScoreTimeseries,
 } from "@foglamp/clickhouse";
+  queryEvalCandidates,
 import {
   type EvalConfig,
+  queryTraceSiblings,
+  toClickHouseDateTime64,
   type EvalFilters,
   type EvalModel,
   evalDefinition,
@@ -22,8 +25,13 @@ import { count, desc, eq } from "drizzle-orm";
 import { PRESETS, getPreset } from "../evals/presets";
 import { userMessageSnippet } from "../lib/user-message";
 import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
+
+import { buildContext, type ContextSpec } from "../evals/context";
+import { renderPrompt, splitTemplate, truncateExtracted } from "../evals/judge";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
+import type { SiblingSpan } from "../evals/types";
+import { skipReason } from "./scoringWorker";
 
 export type EvalInput = {
   projectId: string;
@@ -423,3 +431,110 @@ function mapScore(s: {
     scoredAt: s.scored_at,
   };
 }
+
+// How far back the create-wizard preflight samples matching traffic.
+const PREFLIGHT_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
+const PREFLIGHT_SAMPLE = 100;
+
+function toSiblings(
+  rows: {
+    span_id: string;
+    span_type: string;
+    output: string;
+    start_time_ms: number;
+    tool_catalog: string;
+  }[],
+): SiblingSpan[] {
+  return rows.map((r) => ({
+    spanId: r.span_id,
+    spanType: r.span_type,
+    output: r.output,
+    startTimeMs: r.start_time_ms,
+    toolCatalog: r.tool_catalog,
+  }));
+}
+
+/**
+ * Dry run for the create wizard: sample recent traffic that matches the
+ * would-be eval and report how many targets the scorer could actually grade.
+ * Surfaces "this judge will skip everything" (no reference in metadata, no
+ * retrieved context, runs without output) before the eval exists.
+ */
+export async function preflightEval(
+  db: Db,
+  ch: Ch,
+  userId: string,
+  input: {
+    projectId: string;
+    presetId: string;
+    targetLevel: "trace" | "span";
+    filters?: EvalFilters;
+    contextSpec?: ContextSpec;
+  },
+) {
+  await requireProjectAccess(db, userId, input.projectId);
+  const preset = getPreset(input.presetId);
+  if (!preset) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown preset" });
+  }
+  const filters = { ...(input.filters ?? {}) } as EvalFilters;
+  if (preset.spanType && !filters.spanType) filters.spanType = preset.spanType;
+  const now = Date.now();
+  const candidates = await queryEvalCandidates(ch, {
+    projectId: input.projectId,
+    level: input.targetLevel,
+    filters,
+    since: toClickHouseDateTime64(now - PREFLIGHT_LOOKBACK_MS),
+    until: toClickHouseDateTime64(now),
+    sampleThousandths: 1000,
+    limit: PREFLIGHT_SAMPLE,
+  });
+
+  const siblingCache = new Map<string, SiblingSpan[]>();
+  const needsSiblings = preset.needsContext || preset.needsTools;
+  const reasons = new Map<string, number>();
+  for (const c of candidates) {
+    let siblings: SiblingSpan[] = [];
+    if (needsSiblings) {
+      const cached = siblingCache.get(c.trace_id);
+      if (cached) {
+        siblings = cached;
+      } else {
+        siblings = toSiblings(
+          await queryTraceSiblings(ch, {
+            projectId: input.projectId,
+            traceId: c.trace_id,
+          }),
+        );
+        siblingCache.set(c.trace_id, siblings);
+      }
+    }
+    const extracted = buildContext(
+      {
+        level: input.targetLevel,
+        targetId: c.target_id,
+        traceId: c.trace_id,
+        spanType: c.span_type,
+        startTimeMs: c.start_time_ms,
+        input: c.input,
+        output: c.output,
+        metadata: c.metadata ?? {},
+        siblings,
+      },
+      preset,
+      input.contextSpec ?? {},
+    );
+    const skip = skipReason(preset, extracted);
+    if (skip) reasons.set(skip, (reasons.get(skip) ?? 0) + 1);
+  }
+  const skipped = [...reasons.values()].reduce((a, b) => a + b, 0);
+  return {
+    sampled: candidates.length,
+    gradable: candidates.length - skipped,
+    // Most common skip reason first, so the wizard can lead with it.
+    skips: [...reasons.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count),
+  };
+}
+
