@@ -10,6 +10,8 @@ import {
 	IconBoltFilled,
 	IconBook,
 	IconBookFilled,
+	IconCircleCheck,
+	IconCircleCheckFilled,
 	IconClipboardCheck,
 	IconClipboardCheckFilled,
 	IconCurrentLocation,
@@ -42,8 +44,6 @@ import {
 	IconShieldLockFilled,
 	IconSparkles,
 	IconSparklesFilled,
-	IconSquareRoundedCheck,
-	IconSquareRoundedCheckFilled,
 	IconZoom,
 	IconZoomFilled,
 } from "@tabler/icons-react";
@@ -175,10 +175,8 @@ export const PRESET_META: Record<
 		family: "grounding",
 	},
 	correctness: {
-		// The rounded-square check fills its box; circle-check reads a size
-		// smaller than its siblings in the list badges.
-		icon: IconSquareRoundedCheckFilled,
-		outline: IconSquareRoundedCheck,
+		icon: IconCircleCheckFilled,
+		outline: IconCircleCheck,
 		family: "grounding",
 	},
 	// Tool
