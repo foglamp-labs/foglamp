@@ -149,6 +149,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
               rounded-full, and these must read as the pills they stand in for. */}
           <div className="h-8 w-32 animate-pulse rounded-full bg-muted" />
           <div className="h-8 w-28 animate-pulse rounded-full bg-muted" />
+          <div className="h-8 w-36 animate-pulse rounded-full bg-muted" />
         </div>
       )}
 
