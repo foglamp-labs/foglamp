@@ -33,7 +33,7 @@ export function ContextChip({
     </>
   );
   const className =
-    "max-w-xs justify-start bg-card font-normal transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)";
+    "max-w-xs justify-start bg-card hover:bg-muted/50 aria-expanded:bg-muted/50 dark:hover:bg-muted dark:aria-expanded:bg-muted font-normal transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)";
   if (!href) {
     return (
       <Button

@@ -101,7 +101,7 @@ export function RangePicker({
             // so the picker drops back to the plain outline surface.
             variant={compact ? "outline" : "secondary"}
             // Instant hover bg (no ease), matching the quick chips above.
-            className="w-fit justify-start transition-[color,box-shadow] bg-card active:scale-100 font-normal gap-1.5"
+            className="w-fit justify-start transition-[color,box-shadow] bg-card hover:bg-muted/50 aria-expanded:bg-muted/50 dark:hover:bg-muted dark:aria-expanded:bg-muted active:scale-100 font-normal gap-1.5"
           />
         }
       >

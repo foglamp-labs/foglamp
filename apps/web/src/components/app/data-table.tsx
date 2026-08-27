@@ -384,7 +384,7 @@ export function ToggleChip({
         // icon to neutral, hence the svg override).
         "font-normal transition-[color,box-shadow] active:scale-100",
         !active &&
-          "text-muted-foreground/50 hover:text-muted-foreground/50 bg-card [&_svg:not([class*='text-'])]:text-muted-foreground/50 dark:[&_svg:not([class*='text-'])]:text-muted-foreground/50"
+          "text-muted-foreground/50 hover:text-muted-foreground/50 bg-card hover:bg-muted/50 aria-expanded:bg-muted/50 dark:hover:bg-muted dark:aria-expanded:bg-muted [&_svg:not([class*='text-'])]:text-muted-foreground/50 dark:[&_svg:not([class*='text-'])]:text-muted-foreground/50"
       )}
     >
       {children}
@@ -597,7 +597,7 @@ export function ClearFiltersButton({
           <Button
             variant="outline"
             onClick={onClick}
-            className="text-muted-foreground gap-1 bg-card"
+            className="text-muted-foreground gap-1 bg-card hover:bg-muted/50 aria-expanded:bg-muted/50 dark:hover:bg-muted dark:aria-expanded:bg-muted"
           >
             <IconX />
             Clear
