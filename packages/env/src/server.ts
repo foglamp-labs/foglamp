@@ -122,7 +122,7 @@ const serverSchema = {
   // Foggy is enabled only when a Google key is present; otherwise the chat
   // reports that it isn't configured.
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
-  FOGGY_MODEL: z.string().default("gemini-3.1-flash-lite"),
+  FOGGY_MODEL: z.string().default("gemini-3.7-flash"),
   // Docs site Foggy's docs tool fetches llms.txt / llms-full.txt from.
   FOGGY_DOCS_URL: z.url().default("https://docs.foglamp.dev"),
   // Cost guardrails.
