@@ -871,7 +871,7 @@ function Judgment({ score }: { score: BaseScoreRow }) {
           )}
         </div>
         {text && (
-          <p className="whitespace-pre-wrap wrap-break-word text-[13px] leading-relaxed">
+          <p className="whitespace-pre-wrap wrap-break-word text-balance text-[13px] leading-relaxed">
             {text}
           </p>
         )}
