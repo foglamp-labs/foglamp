@@ -1,3 +1,4 @@
+import { cn } from "@foglamp/ui/lib/utils";
 import {
 	type Icon,
 	IconAdjustments,
@@ -34,6 +35,7 @@ import {
 	IconMoodSmileFilled,
 	IconPencil,
 	IconPencilFilled,
+	type IconProps,
 	IconPuzzle,
 	IconPuzzleFilled,
 	IconRosetteDiscountCheck,
@@ -47,6 +49,7 @@ import {
 	IconZoom,
 	IconZoomFilled,
 } from "@tabler/icons-react";
+import { createElement, forwardRef } from "react";
 
 // Checks are grouped into families that share a color, so related checks (e.g.
 // Valid JSON / Non-empty) read as siblings at a glance.
@@ -90,7 +93,20 @@ export const FAMILY_ICON: Record<Family, string> = {
 
 // Filled icon + color family per preset id (stable). Anything new falls back to
 // a generic sparkle in the "quality" color.
-export const PRESET_META: Record<
+export // A filled circle has the least ink of any glyph at a given box size, so at
+// the badge's 12px it reads a size smaller than its siblings. Scale it up
+// visually (a transform, so layout is untouched) to match.
+const IconCorrectnessFilled: Icon = forwardRef<SVGSVGElement, IconProps>(
+	function IconCorrectnessFilled({ className, ...props }, ref) {
+		return createElement(IconCircleCheckFilled, {
+			...props,
+			ref,
+			className: cn("scale-[1.2]", className),
+		});
+	},
+);
+
+const PRESET_META: Record<
 	string,
 	{ icon: Icon; outline: Icon; family: Family }
 > = {
@@ -175,7 +191,7 @@ export const PRESET_META: Record<
 		family: "grounding",
 	},
 	correctness: {
-		icon: IconCircleCheckFilled,
+		icon: IconCorrectnessFilled,
 		outline: IconCircleCheck,
 		family: "grounding",
 	},
