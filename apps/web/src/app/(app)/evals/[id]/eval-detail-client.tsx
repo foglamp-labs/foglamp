@@ -28,7 +28,6 @@ import {
 } from "@foglamp/ui/components/table";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
-  IconAffiliate,
   IconAffiliateFilled,
   IconAlertTriangle,
   IconArrowUpRight,
@@ -44,7 +43,6 @@ import {
   IconPercentage,
   IconScissors,
   IconTool,
-  IconStack2,
   IconStack2Filled,
   IconTargetArrow,
   IconUserFilled,
@@ -826,7 +824,6 @@ function Judgment({ score }: { score: BaseScoreRow }) {
         score.targetId
       )}`
     : `/traces/${encodeURIComponent(score.traceId)}`;
-  const LevelIcon = isSpan ? IconStack2 : IconAffiliate;
   const showCost = score.cost != null && score.cost > 0;
   return (
     <div className="flex shrink-0 flex-col gap-4 lg:w-72">
@@ -887,18 +884,6 @@ function Judgment({ score }: { score: BaseScoreRow }) {
             value={formatCost(score.cost as number, 4)}
           />
         )}
-        <Meta
-          label={isSpan ? "Span" : "Trace"}
-          className="col-span-2"
-          value={
-            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
-              <LevelIcon className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="truncate font-mono">
-                {isSpan ? score.targetId : score.traceId}
-              </span>
-            </span>
-          }
-        />
       </div>
       <Button
         size="sm"
