@@ -20,13 +20,26 @@ import {
 } from "@foglamp/ui/components/tooltip";
 import {
   IconArrowUp,
+  IconBlur,
+  IconClock,
   IconClockBolt,
   IconClockExclamation,
+  IconClockOff,
   IconDatabaseSearch,
   IconGauge,
   IconGaugeFilled,
+  IconHourglass,
   IconLayoutSidebar,
+  IconLineDashed,
+  IconLineDotted,
+  IconLoader,
+  IconMinus,
+  IconPlugConnectedX,
   IconRefresh,
+  IconSpacingHorizontal,
+  IconSquareRounded,
+  IconSquareRoundedFilled,
+  IconTexture,
   IconTrash,
   IconWifi,
 } from "@tabler/icons-react";
@@ -103,13 +116,17 @@ export type TtftVariant =
   | "gap"
   | "dots";
 
-export const TTFT_VARIANTS: { value: TtftVariant; label: string }[] = [
-  { value: "dashed", label: "Dashed" },
-  { value: "stripes", label: "Stripes" },
-  { value: "faded", label: "Faded" },
-  { value: "thin", label: "Thin" },
-  { value: "gap", label: "Gap" },
-  { value: "dots", label: "Dots" },
+export const TTFT_VARIANTS: {
+  value: TtftVariant;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { value: "dashed", label: "Dashed", icon: IconLineDashed },
+  { value: "stripes", label: "Stripes", icon: IconTexture },
+  { value: "faded", label: "Faded", icon: IconBlur },
+  { value: "thin", label: "Thin", icon: IconMinus },
+  { value: "gap", label: "Gap", icon: IconSpacingHorizontal },
+  { value: "dots", label: "Dots", icon: IconLineDotted },
 ];
 
 const TTFT_KEY = "foglamp:dev:ttft-variant";
@@ -174,6 +191,15 @@ function formatDelay(delay: DevNetworkDelay) {
   if (delay === 0) return "Off";
   return delay < 1_000 ? `+${delay} ms` : `+${delay / 1_000} s`;
 }
+
+function delayIcon(delay: DevNetworkDelay) {
+  if (delay === 0) return IconClockOff;
+  return delay < 1_000 ? IconClock : IconHourglass;
+}
+
+// Dev-bar menus are dense: the items drop to the toolbar's text size and
+// their leading icons shrink to match.
+const MENU_ITEM = "text-xs [&_svg]:size-3.5 [&_svg]:text-muted-foreground";
 
 // ---------------------------------------------------------------------------
 // Dev bar
@@ -410,8 +436,12 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
                 setNavIconVariant(value as NavIconVariant)
               }
             >
-              <DropdownMenuRadioItem value="chip">Chips</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="simple">
+              <DropdownMenuRadioItem value="chip" className={MENU_ITEM}>
+                <IconSquareRoundedFilled />
+                Chips
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="simple" className={MENU_ITEM}>
+                <IconSquareRounded />
                 Simple
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
@@ -436,7 +466,12 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
               onValueChange={(value) => setTtftVariant(value as TtftVariant)}
             >
               {TTFT_VARIANTS.map((option) => (
-                <DropdownMenuRadioItem key={option.value} value={option.value}>
+                <DropdownMenuRadioItem
+                  key={option.value}
+                  value={option.value}
+                  className={MENU_ITEM}
+                >
+                  <option.icon />
                   {option.label}
                 </DropdownMenuRadioItem>
               ))}
@@ -473,17 +508,27 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
                 setDevNetworkDelay(Number(value) as DevNetworkDelay)
               }
             >
-              {DEV_NETWORK_DELAYS.map((delay) => (
-                <DropdownMenuRadioItem key={delay} value={String(delay)}>
-                  {formatDelay(delay)}
-                </DropdownMenuRadioItem>
-              ))}
+              {DEV_NETWORK_DELAYS.map((delay) => {
+                const Icon = delayIcon(delay);
+                return (
+                  <DropdownMenuRadioItem
+                    key={delay}
+                    value={String(delay)}
+                    className={MENU_ITEM}
+                  >
+                    <Icon />
+                    {formatDelay(delay)}
+                  </DropdownMenuRadioItem>
+                );
+              })}
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem
               checked={netFail}
               onCheckedChange={setDevNetworkFail}
+              className={MENU_ITEM}
             >
+              <IconPlugConnectedX />
               Fail {Math.round(DEV_NETWORK_FAIL_RATE * 100)}% of requests
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem
@@ -497,7 +542,9 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
                     .then(() => queryClient.invalidateQueries());
                 }
               }}
+              className={MENU_ITEM}
             >
+              <IconLoader />
               Force loading state
             </DropdownMenuCheckboxItem>
           </DropdownMenuGroup>
