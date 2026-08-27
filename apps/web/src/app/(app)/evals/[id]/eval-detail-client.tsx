@@ -54,6 +54,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
+import { AgentIcon } from "@/components/app/agent-icon";
 import { ContextChip } from "@/components/app/context-chip";
 import { CopyButton } from "@/components/app/copy-button";
 import {
@@ -405,6 +406,20 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                 icon={IconPercentage}
                 label={`${Math.round(ev.sampleRate * 100)}% sampled`}
               />
+              {ev.filters?.agentName && (
+                <ContextChip
+                  href={`/agents/${encodeURIComponent(ev.filters.agentName)}`}
+                  icon={(p) => (
+                    <AgentIcon
+                      name={ev.filters?.agentName ?? ""}
+                      filled
+                      className={p.className}
+                    />
+                  )}
+                  iconClassName=""
+                  label={ev.filters.agentName}
+                />
+              )}
             </>
           ) : (
             <EvalChipPlaceholders />
