@@ -101,6 +101,7 @@ import {
 import {
   EvalSettingsFields,
   type Provider,
+  passThresholdError,
   promptOverrideError,
   settingsParamError,
 } from "../eval-settings-fields";
@@ -136,6 +137,7 @@ type EditDraft = {
   judgeModel: string;
   judgeProvider: Provider;
   sampleRate: string;
+  passThreshold: string;
   substring: string;
   pattern: string;
   maxChars: string;
@@ -169,6 +171,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
     judgeModel: "",
     judgeProvider: "google",
     sampleRate: "0.1",
+    passThreshold: "0.7",
     substring: "",
     pattern: "",
     maxChars: "4000",
@@ -264,6 +267,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
       judgeModel: ev.model?.modelId ?? "",
       judgeProvider: (ev.model?.provider as Provider) ?? "google",
       sampleRate: String(ev.sampleRate),
+      passThreshold: String(ev.passThreshold),
       substring: params.substring != null ? String(params.substring) : "",
       pattern: params.pattern != null ? String(params.pattern) : "",
       maxChars: params.maxChars != null ? String(params.maxChars) : "4000",
@@ -304,6 +308,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
       evalId,
       name: draft.name.trim(),
       sampleRate: Number(draft.sampleRate),
+      passThreshold: isJudge ? Number(draft.passThreshold) : undefined,
       model: isJudge
         ? { provider: draft.judgeProvider, modelId: draft.judgeModel.trim() }
         : undefined,
@@ -472,20 +477,20 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
           formatValue={(n) => Math.round(n).toLocaleString("en-US")}
         />
         <StatCard
-          icon={IconGaugeFilled}
-          iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
-          size="sm"
-          label="Avg score"
-          value={totals.avgScore ?? "—"}
-          formatValue={(n) => n.toFixed(2)}
-        />
-        <StatCard
           icon={IconCircleCheckFilled}
           iconClassName="text-emerald-500 dark:text-emerald-500"
           size="sm"
           label="Pass rate"
           value={totals.passRate ?? "—"}
           formatValue={(n) => `${Math.round(n * 100)}%`}
+        />
+        <StatCard
+          icon={IconGaugeFilled}
+          iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
+          size="sm"
+          label="Avg score"
+          value={totals.avgScore ?? "—"}
+          formatValue={(n) => n.toFixed(2)}
         />
         <StatCard
           icon={IconCoinFilled}
@@ -604,6 +609,11 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                                   <IconForbidFilled className="size-3.25" />
                                 )}
                                 {s.passed ? "Pass" : "Fail"}
+                                {s.score !== null && (
+                                  <span className="ml-1 font-normal tabular-nums text-muted-foreground">
+                                    {s.score.toFixed(2)}
+                                  </span>
+                                )}
                               </span>
                             ) : s.score !== null ? (
                               <span
@@ -616,6 +626,10 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                                 )}
                               >
                                 {s.score.toFixed(2)}
+                              </span>
+                            ) : s.label === "skipped" ? (
+                              <span className="text-sm text-muted-foreground">
+                                Skipped
                               </span>
                             ) : (
                               <span className="text-muted-foreground/40">
@@ -702,6 +716,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
               judgeModel={draft.judgeModel}
               judgeProvider={draft.judgeProvider}
               sampleRate={draft.sampleRate}
+              passThreshold={draft.passThreshold}
               substring={draft.substring}
               pattern={draft.pattern}
               maxChars={draft.maxChars}
@@ -733,7 +748,8 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                 !!promptOverrideError(
                   ev ? { id: ev.presetId, source: ev.scorerSource } : null,
                   draft.promptOverride
-                )
+                ) ||
+                (isJudge && !!passThresholdError(draft.passThreshold))
               }
               onClick={saveEdit}
             >
@@ -791,6 +807,10 @@ function RunExchange({
       : undefined;
   const root = spans.find((s) => !s.parentSpanId) ?? spans[0];
   const glimpse = target ?? root;
+  // A judged run shows the exact prompt the model graded (rendered from the
+  // eval's template) rather than the trace's transcript — that's what the
+  // reason refers to. Code checks and skipped rows keep the conversation.
+  const judged = score.scorer === "llm" && score.label !== "skipped";
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
@@ -809,10 +829,6 @@ function RunExchange({
             input={glimpse.input}
             output={glimpse.output}
             emptyHint={emptyOutputHint(spans)}
-  // A judged run shows the exact prompt the model graded (rendered from the
-  // eval's template) rather than the trace's transcript — that's what the
-  // reason refers to. Code checks and skipped rows keep the conversation.
-  const judged = score.scorer === "llm" && score.label !== "skipped";
           />
         )}
       </div>
@@ -820,22 +836,6 @@ function RunExchange({
   );
 }
 
-function Meta({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="min-w-0 text-[13px] tabular-nums">{value}</span>
-    </div>
-  );
-}
 /** The right column for a judged run: the exact material the judge graded,
  * laid out in the order the template presents it. Instruction text reads as
  * the rubric; each placeholder becomes a labelled section rendered the same
@@ -985,6 +985,22 @@ function JudgeField({
   );
 }
 
+function Meta({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="min-w-0 text-[13px] tabular-nums">{value}</span>
+    </div>
+  );
+}
 
 /** The left column: verdict, score, judge, cost, when, what was scored, and
  * the full reason — each under a field label, like a trace's overview. */
@@ -1139,22 +1155,6 @@ function Conversation({
   );
 }
 
-function partsText(parts: Part[]): string {
-  return parts
-    .filter((p): p is Extract<Part, { kind: "text" }> => p.kind === "text")
-    .map((p) => p.text)
-    .join("\n\n")
-    .trim();
-}
-function messagesText(messages: Message[]): string {
-  return messages
-    .filter((m) => m.role !== "user" && m.role !== "system")
-    .map((m) => partsText(m.parts))
-    .filter(Boolean)
-    .join("\n\n");
-}
-
-/** One message of the transcript. User turns get the bubble, assistant turns
 /** The input side of an exchange: message-shaped payloads become turns with
  * everything before the latest user message folded away; anything else is a
  * single user bubble. */
@@ -1198,6 +1198,22 @@ function Transcript({ input }: { input: string }) {
   );
 }
 
+function partsText(parts: Part[]): string {
+  return parts
+    .filter((p): p is Extract<Part, { kind: "text" }> => p.kind === "text")
+    .map((p) => p.text)
+    .join("\n\n")
+    .trim();
+}
+function messagesText(messages: Message[]): string {
+  return messages
+    .filter((m) => m.role !== "user" && m.role !== "system")
+    .map((m) => partsText(m.parts))
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/** One message of the transcript. User turns get the bubble, assistant turns
  * prose; tool calls and results collapse to chips; system prompts and other
  * roles show as a muted note. */
 function Turn({ message }: { message: Message }) {
@@ -1264,22 +1280,6 @@ function ToolChips({
 
 /** Loading treatment shaped like the loaded conversation (same as the
  * session page): a user bubble and a few prose lines under real avatars. */
-function ConversationSkeleton() {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-3">
-        <div className="mt-1.5 size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
-        <Skeleton className="h-11 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl" />
-      </div>
-      <div className="flex gap-3">
-        <div className="size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
-        <div className="flex min-w-0 flex-1 flex-col gap-2 px-1 pt-1">
-          <Skeleton className="h-3.5 w-full" />
-          <Skeleton className="h-3.5 w-11/12" />
-          <Skeleton className="h-3.5 w-2/3" />
-        </div>
-      </div>
-    </div>
 /** Mirrors JudgeInput: header, rubric, input transcript, reason and output. */
 function JudgeInputSkeleton() {
   const label = <Skeleton className="h-3 w-12" />;
@@ -1321,6 +1321,22 @@ function JudgeInputSkeleton() {
   );
 }
 
+function ConversationSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-3">
+        <div className="mt-1.5 size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
+        <Skeleton className="h-11 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl" />
+      </div>
+      <div className="flex gap-3">
+        <div className="size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
+        <div className="flex min-w-0 flex-1 flex-col gap-2 px-1 pt-1">
+          <Skeleton className="h-3.5 w-full" />
+          <Skeleton className="h-3.5 w-11/12" />
+          <Skeleton className="h-3.5 w-2/3" />
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -11,8 +11,8 @@ import {
   listEvals,
   listPresets,
   listRecentScores,
-  updateEval,
   preflightEval,
+  updateEval,
 } from "../services/evals";
 
 const providerEnum = z.enum(["google", "openai", "anthropic"]);
@@ -65,6 +65,7 @@ export const evalsRouter = router({
         targetLevel: levelEnum,
         filters: filtersSchema,
         sampleRate: z.number().min(0).max(1).optional(),
+        passThreshold: z.number().min(0).max(1).optional(),
         model: modelSchema.optional(),
         config: configSchema,
         enabled: z.boolean().optional(),
@@ -80,6 +81,7 @@ export const evalsRouter = router({
         targetLevel: levelEnum.optional(),
         filters: filtersSchema,
         sampleRate: z.number().min(0).max(1).optional(),
+        passThreshold: z.number().min(0).max(1).optional(),
         model: modelSchema.optional(),
         config: configSchema,
         enabled: z.boolean().optional(),
@@ -123,9 +125,6 @@ export const evalsRouter = router({
       getTraceScores(ctx.db, ctx.ch, ctx.session.user.id, input),
     ),
 
-  score: protectedProcedure
-    .input(z.object({ evalId: z.string(), scoreId: z.string() }))
-    .query(({ ctx, input }) =>
   // Create-wizard dry run: can this preset grade the traffic it would target?
   preflight: protectedProcedure
     .input(
@@ -140,6 +139,7 @@ export const evalsRouter = router({
     .query(({ ctx, input }) =>
       preflightEval(ctx.db, ctx.ch, ctx.session.user.id, input),
     ),
+
   // The exact fields + rendered prompt a score row's judge received.
   judgeInput: protectedProcedure
     .input(z.object({ evalId: z.string(), scoreId: z.string() }))
@@ -150,7 +150,6 @@ export const evalsRouter = router({
   score: protectedProcedure
     .input(z.object({ evalId: z.string(), scoreId: z.string() }))
     .query(({ ctx, input }) =>
-
       getEvalScore(ctx.db, ctx.ch, ctx.session.user.id, input),
     ),
 });

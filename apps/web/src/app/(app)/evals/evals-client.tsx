@@ -114,6 +114,7 @@ import { EvalsHeader } from "./header";
 import {
   EvalSettingsFields,
   type Provider,
+  passThresholdError,
   promptOverrideError,
   settingsParamError,
 } from "./eval-settings-fields";
@@ -203,6 +204,7 @@ const DEFAULT_FORM = {
   judgeProvider: "google" as Provider,
   judgeModel: "",
   sampleRate: "0.1",
+  passThreshold: "0.7",
   substring: "",
   pattern: "",
   maxChars: "4000",
@@ -425,6 +427,7 @@ export function EvalsClient() {
       targetLevel: form.targetLevel,
       filters: Object.keys(filters).length ? filters : undefined,
       sampleRate: Number(form.sampleRate),
+      passThreshold: isJudge ? Number(form.passThreshold) : undefined,
       model: isJudge
         ? { provider: form.judgeProvider, modelId: form.judgeModel.trim() }
         : undefined,
@@ -443,7 +446,8 @@ export function EvalsClient() {
       pattern: form.pattern,
       maxChars: form.maxChars,
     }) ||
-    !!promptOverrideError(selectedPreset, form.promptOverride);
+    !!promptOverrideError(selectedPreset, form.promptOverride) ||
+    (isJudge && !!passThresholdError(form.passThreshold));
 
   // With no evals at all, the create button lives inside the empty state
   // (more discoverable there) instead of the header.
@@ -686,10 +690,6 @@ export function EvalsClient() {
                   )}
 
                   {step === 3 && selectedPreset && (
-                    <EvalSettingsFields
-                      preset={selectedPreset}
-                      judgeModel={form.judgeModel}
-                  {step === 3 && selectedPreset && (
                     <PreflightNotice
                       projectId={projectId}
                       presetId={selectedPreset.id}
@@ -703,8 +703,13 @@ export function EvalsClient() {
                       })}
                     />
                   )}
+                  {step === 3 && selectedPreset && (
+                    <EvalSettingsFields
+                      preset={selectedPreset}
+                      judgeModel={form.judgeModel}
                       judgeProvider={form.judgeProvider}
                       sampleRate={form.sampleRate}
+                      passThreshold={form.passThreshold}
                       substring={form.substring}
                       pattern={form.pattern}
                       maxChars={form.maxChars}

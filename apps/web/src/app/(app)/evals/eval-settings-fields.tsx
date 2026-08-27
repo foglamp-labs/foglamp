@@ -1,10 +1,6 @@
 "use client";
 
-import {
-	Field,
-	FieldDescription,
-	FieldLabel,
-} from "@foglamp/ui/components/field";
+import { Field, FieldLabel } from "@foglamp/ui/components/field";
 import { Input } from "@foglamp/ui/components/input";
 import {
 	Select,
@@ -16,6 +12,11 @@ import {
 	SelectValue,
 } from "@foglamp/ui/components/select";
 import { Textarea } from "@foglamp/ui/components/textarea";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@foglamp/ui/components/tooltip";
 import { cn } from "@foglamp/ui/lib/utils";
 import { motion } from "motion/react";
 import Link from "next/link";
@@ -23,6 +24,9 @@ import Link from "next/link";
 import { ModelLogo } from "@/components/model-logo";
 
 export type Provider = "google" | "openai" | "anthropic";
+
+// Pass thresholds offered for scored judges (score >= threshold passes).
+export const THRESHOLD_PRESETS = ["0.5", "0.6", "0.7", "0.8", "0.9"] as const;
 
 export const SAMPLE_PRESETS = [
 	"0.01",
@@ -194,6 +198,14 @@ export function Segmented<T extends string>({
 	);
 }
 
+export function passThresholdError(value: string): string | null {
+	const n = Number(value);
+	if (value.trim() === "" || Number.isNaN(n) || n < 0 || n > 1) {
+		return "Enter a threshold between 0 and 1.";
+	}
+	return null;
+}
+
 /** The "how should it score?" fields — shared by the create wizard's step 3 and
  * the single-eval edit dialog. Renders the judge model (LLM presets), the
  * preset's code params (substring / pattern / max length), and the sample rate.
@@ -203,6 +215,7 @@ export function EvalSettingsFields({
 	judgeModel,
 	judgeProvider,
 	sampleRate,
+	passThreshold,
 	substring,
 	pattern,
 	maxChars,
@@ -216,6 +229,8 @@ export function EvalSettingsFields({
 	judgeModel: string;
 	judgeProvider: Provider;
 	sampleRate: string;
+	/** Judge presets only: score at or above this passes (0..1). */
+	passThreshold: string;
 	substring: string;
 	pattern: string;
 	maxChars: string;
@@ -229,6 +244,7 @@ export function EvalSettingsFields({
 		judgeModel?: string;
 		judgeProvider?: Provider;
 		sampleRate?: string;
+		passThreshold?: string;
 		substring?: string;
 		pattern?: string;
 		maxChars?: string;
@@ -314,17 +330,27 @@ export function EvalSettingsFields({
 						</p>
 					)}
 					<Field>
-						<FieldLabel>Judge prompt</FieldLabel>
+						<div className="flex items-baseline justify-between gap-3">
+							<FieldLabel>Judge prompt</FieldLabel>
+							<Tooltip>
+								<TooltipTrigger
+									render={
+										<span className="cursor-default truncate font-mono text-[11px] text-muted-foreground" />
+									}
+								>
+									{"{input} {output} {context} {reference} {tools}"}
+								</TooltipTrigger>
+								<TooltipContent>
+									Placeholders: the trace fills these in where you put them.
+								</TooltipContent>
+							</Tooltip>
+						</div>
 						<Textarea
 							className="max-h-72 min-h-32 text-xs leading-relaxed"
 							value={promptOverride}
 							placeholder={defaultPrompt}
 							onChange={(e) => onChange({ promptOverride: e.target.value })}
 						/>
-						<FieldDescription>
-							Use {"{input}"}, {"{output}"}, {"{context}"}, {"{reference}"}, or{" "}
-							{"{tools}"} where the trace should go.
-						</FieldDescription>
 						{promptError && (
 							<p className="text-sm text-destructive">{promptError}</p>
 						)}
@@ -362,18 +388,41 @@ export function EvalSettingsFields({
 			{paramError && (
 				<p className="-mt-2 text-sm text-destructive">{paramError}</p>
 			)}
-			<Field>
-				<FieldLabel>Sample rate</FieldLabel>
-				<Segmented
-					layoutId={segmentedLayoutId}
-					options={SAMPLE_PRESETS.map((s) => ({
-						value: s,
-						label: `${Math.round(Number(s) * 100)}%`,
-					}))}
-					value={sampleRate}
-					onChange={(v) => onChange({ sampleRate: v })}
-				/>
-			</Field>
+			<div className={cn("grid gap-4", isJudge && "sm:grid-cols-[2fr_3fr]")}>
+				{isJudge && (
+					<Field>
+						<Tooltip>
+							<TooltipTrigger
+								render={<FieldLabel className="w-fit cursor-default" />}
+							>
+								Pass at
+							</TooltipTrigger>
+							<TooltipContent>
+								Scores run from 0.00 to 1.00; a run at or above this passes.
+								Changing it re-grades past runs too.
+							</TooltipContent>
+						</Tooltip>
+						<Segmented
+							layoutId={segmentedLayoutId ? `${segmentedLayoutId}-threshold` : "threshold-pill"}
+							options={THRESHOLD_PRESETS.map((t) => ({ value: t, label: t }))}
+							value={passThreshold}
+							onChange={(v) => onChange({ passThreshold: v })}
+						/>
+					</Field>
+				)}
+				<Field>
+					<FieldLabel>Sample rate</FieldLabel>
+					<Segmented
+						layoutId={segmentedLayoutId}
+						options={SAMPLE_PRESETS.map((s) => ({
+							value: s,
+							label: `${Math.round(Number(s) * 100)}%`,
+						}))}
+						value={sampleRate}
+						onChange={(v) => onChange({ sampleRate: v })}
+					/>
+				</Field>
+			</div>
 		</div>
 	);
 }

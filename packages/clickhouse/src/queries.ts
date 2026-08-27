@@ -2250,6 +2250,28 @@ export async function queryProjectSummary(
 
 // --- Eval scores -----------------------------------------------------------
 
+/**
+ * Pass/fail as the eval defines it *now*. Scored judges store only a score;
+ * the verdict is `score >= pass_threshold` at read time so editing the
+ * threshold re-grades history. Rows with no score (code checks, older
+ * verdict-only judges) keep their stored flag; rows with neither stay null.
+ * `thresholdSql` is the per-row threshold expression — a scalar param for
+ * single-eval queries, a map lookup for project-wide ones.
+ */
+function verdictSql(thresholdSql: string): string {
+	return `if(isNotNull(score), toUInt8(score >= ${thresholdSql}), passed)`;
+}
+const VERDICT = verdictSql("{threshold:Float64}");
+// Project-wide queries carry every eval's threshold as a map; an eval missing
+// from the map (deleted since) falls back to the default.
+const VERDICT_BY_EVAL = verdictSql(
+	"if(mapContains({thresholds:Map(String, Float64)}, eval_id), {thresholds:Map(String, Float64)}[eval_id], {defaultThreshold:Float64})",
+);
+export const DEFAULT_PASS_THRESHOLD = 0.7;
+
+/** Per-eval pass thresholds, keyed by eval id. */
+export type PassThresholds = Record<string, number>;
+
 export type ScoreDetailRow = {
 	score_id: string;
 	eval_id: string;
@@ -2269,17 +2291,22 @@ export type ScoreDetailRow = {
 /** All scores for one trace (and its spans), deduped — for trace detail. */
 export function getTraceScores(
 	client: ClickHouseClient,
-	params: { projectId: string; traceId: string },
+	params: { projectId: string; traceId: string; thresholds: PassThresholds },
 ): Promise<ScoreDetailRow[]> {
 	return rows<ScoreDetailRow>(
 		client,
 		`SELECT
        score_id, eval_id, target_type, target_id, trace_id,
-       scorer, label, score, passed, reason, model_id, cost, scored_at
+       scorer, label, score, ${VERDICT_BY_EVAL} AS passed, reason, model_id, cost, scored_at
      FROM scores FINAL
      WHERE project_id = {projectId:String} AND trace_id = {traceId:String}
      ORDER BY scored_at ASC`,
-		{ projectId: params.projectId, traceId: params.traceId },
+		{
+			projectId: params.projectId,
+			traceId: params.traceId,
+			thresholds: params.thresholds,
+			defaultThreshold: DEFAULT_PASS_THRESHOLD,
+		},
 	);
 }
 
@@ -2287,13 +2314,18 @@ export function getTraceScores(
  * on the eval detail page regardless of the active range or page. */
 export async function getEvalScore(
 	client: ClickHouseClient,
-	params: { projectId: string; evalId: string; scoreId: string },
+	params: {
+		projectId: string;
+		evalId: string;
+		scoreId: string;
+		threshold: number;
+	},
 ): Promise<ScoreDetailRow | null> {
 	const result = await rows<ScoreDetailRow>(
 		client,
 		`SELECT
        score_id, eval_id, target_type, target_id, trace_id,
-       scorer, label, score, passed, reason, model_id, cost, scored_at
+       scorer, label, score, ${VERDICT} AS passed, reason, model_id, cost, scored_at
      FROM scores FINAL
      WHERE project_id = {projectId:String}
        AND eval_id = {evalId:String}
@@ -2303,6 +2335,7 @@ export async function getEvalScore(
 			projectId: params.projectId,
 			evalId: params.evalId,
 			scoreId: params.scoreId,
+			threshold: params.threshold,
 		},
 	);
 	return result[0] ?? null;
@@ -2319,6 +2352,7 @@ export function listEvalScores(
 		from?: string;
 		to?: string;
 		sort?: { field: "score"; dir: "asc" | "desc" };
+		threshold: number;
 	},
 ): Promise<ScoreDetailRow[]> {
 	// Optional [from, to) window — passed by the single-eval page so the recent
@@ -2332,7 +2366,7 @@ export function listEvalScores(
 	// neither (the "—" cells) sink to the bottom. Recency is the default and the
 	// stable tiebreak. `dir` is a fixed enum, so interpolating it is safe.
 	const orderBy = params.sort
-		? `coalesce(score, toFloat64(passed)) ${
+		? `coalesce(score, toFloat64(${VERDICT})) ${
 				params.sort.dir === "asc" ? "ASC" : "DESC"
 			} NULLS LAST, scored_at DESC`
 		: "scored_at DESC";
@@ -2340,7 +2374,7 @@ export function listEvalScores(
 		client,
 		`SELECT
        score_id, eval_id, target_type, target_id, trace_id,
-       scorer, label, score, passed, reason, model_id, cost, scored_at
+       scorer, label, score, ${VERDICT} AS passed, reason, model_id, cost, scored_at
      FROM scores FINAL
      WHERE project_id = {projectId:String} AND eval_id = {evalId:String}
        ${window}
@@ -2349,6 +2383,7 @@ export function listEvalScores(
 		{
 			projectId: params.projectId,
 			evalId: params.evalId,
+			threshold: params.threshold,
 			limit: params.limit ?? 50,
 			offset: params.offset ?? 0,
 			...(params.from && params.to ? { from: params.from, to: params.to } : {}),
@@ -2443,8 +2478,8 @@ export type ScoreSummaryRow = { pass_count: string; fail_count: string };
 
 /**
  * Project-wide pass/fail totals over a window, across all evals. Pass rate =
- * pass / (pass + fail) — numeric-only judge scores (no verdict) are excluded,
- * since they contribute to neither count.
+ * pass / (pass + fail); scored rows count via each eval's pass threshold, and
+ * rows with neither score nor verdict (skips) contribute to neither.
  *
  * Counts deduplicated `scores FINAL`, not the per-minute MV: the MV fires per
  * insert, *before* ReplacingMergeTree collapses re-scores of the same target,
@@ -2452,17 +2487,28 @@ export type ScoreSummaryRow = { pass_count: string; fail_count: string };
  */
 export async function queryProjectScoreSummary(
 	client: ClickHouseClient,
-	params: { projectId: string; from: string; to: string },
+	params: {
+		projectId: string;
+		from: string;
+		to: string;
+		thresholds: PassThresholds;
+	},
 ): Promise<ScoreSummaryRow> {
 	const result = await rows<ScoreSummaryRow>(
 		client,
 		`SELECT
-       countIf(passed = 1) AS pass_count,
-       countIf(passed = 0) AS fail_count
+       countIf(${VERDICT_BY_EVAL} = 1) AS pass_count,
+       countIf(${VERDICT_BY_EVAL} = 0) AS fail_count
      FROM scores FINAL
      WHERE project_id = {projectId:String}
        AND scored_at >= {from:DateTime} AND scored_at < {to:DateTime}`,
-		{ projectId: params.projectId, from: params.from, to: params.to },
+		{
+			projectId: params.projectId,
+			from: params.from,
+			to: params.to,
+			thresholds: params.thresholds,
+			defaultThreshold: DEFAULT_PASS_THRESHOLD,
+		},
 	);
 	return result[0] ?? { pass_count: "0", fail_count: "0" };
 }
@@ -2473,8 +2519,8 @@ export type ScoreBucketRow = {
 	// Rows whose score is non-null — the correct avg denominator (a null score
 	// must not drag the average toward 0).
 	scored_count: string;
-	// Rows whose passed verdict is non-null — the correct pass-rate denominator
-	// (numeric-only judges emit score-only rows with no verdict).
+	// Rows with a verdict (stored or derived from the score) — the pass-rate
+	// denominator; skipped rows have neither and are excluded.
 	verdict_count: string;
 	pass_count: string;
 	fail_count: string;
@@ -2490,7 +2536,13 @@ export type ScoreBucketRow = {
  * must dedup the same way the list column does. */
 export function queryScoreTimeseries(
 	client: ClickHouseClient,
-	params: { projectId: string; evalId: string; from: string; to: string },
+	params: {
+		projectId: string;
+		evalId: string;
+		from: string;
+		to: string;
+		threshold: number;
+	},
 ): Promise<ScoreBucketRow[]> {
 	return rows<ScoreBucketRow>(
 		client,
@@ -2498,9 +2550,9 @@ export function queryScoreTimeseries(
        toStartOfMinute(scored_at) AS bucket,
        count() AS score_count,
        countIf(isNotNull(score)) AS scored_count,
-       countIf(isNotNull(passed)) AS verdict_count,
-       countIf(passed = 1) AS pass_count,
-       countIf(passed = 0) AS fail_count,
+       countIf(isNotNull(${VERDICT})) AS verdict_count,
+       countIf(${VERDICT} = 1) AS pass_count,
+       countIf(${VERDICT} = 0) AS fail_count,
        sum(ifNull(score, 0)) AS score_sum,
        sum(cost) AS cost,
        quantilesTDigestIf(0.5, 0.95, 0.99)(toFloat32(ifNull(score, 0)), isNotNull(score)) AS score_quantiles
@@ -2514,6 +2566,7 @@ export function queryScoreTimeseries(
 			evalId: params.evalId,
 			from: params.from,
 			to: params.to,
+			threshold: params.threshold,
 		},
 	);
 }
@@ -2543,7 +2596,12 @@ export type EvalListSummaryRow = {
  */
 export function evalListSummary(
 	client: ClickHouseClient,
-	params: { projectId: string; from: string; to: string },
+	params: {
+		projectId: string;
+		from: string;
+		to: string;
+		thresholds: PassThresholds;
+	},
 ): Promise<EvalListSummaryRow[]> {
 	return rows<EvalListSummaryRow>(
 		client,
@@ -2551,16 +2609,22 @@ export function evalListSummary(
        eval_id,
        count() AS score_count,
        countIf(isNotNull(score)) AS scored_count,
-       countIf(isNotNull(passed)) AS verdict_count,
-       countIf(passed = 1) AS pass_count,
-       countIf(passed = 0) AS fail_count,
+       countIf(isNotNull(${VERDICT_BY_EVAL})) AS verdict_count,
+       countIf(${VERDICT_BY_EVAL} = 1) AS pass_count,
+       countIf(${VERDICT_BY_EVAL} = 0) AS fail_count,
        sum(ifNull(score, 0)) AS score_sum,
        sum(cost) AS cost
      FROM scores FINAL
      WHERE project_id = {projectId:String}
        AND scored_at >= {from:DateTime} AND scored_at < {to:DateTime}
      GROUP BY eval_id`,
-		{ projectId: params.projectId, from: params.from, to: params.to },
+		{
+			projectId: params.projectId,
+			from: params.from,
+			to: params.to,
+			thresholds: params.thresholds,
+			defaultThreshold: DEFAULT_PASS_THRESHOLD,
+		},
 	);
 }
 
@@ -2692,6 +2756,46 @@ export function queryEvalCandidates(
 	);
 }
 
+/**
+ * The scored target of one score row — the span itself (span-level) or the
+ * trace's earliest-ingested `agent` span (trace-level), matching the row the
+ * worker graded. Backs the "what the judge saw" reconstruction.
+ */
+export async function queryEvalTarget(
+	client: ClickHouseClient,
+	params: {
+		projectId: string;
+		level: "trace" | "span";
+		traceId: string;
+		targetId: string;
+	},
+): Promise<EvalCandidateRow | null> {
+	const cond =
+		params.level === "trace"
+			? "span_type = 'agent'"
+			: "span_id = {targetId:String}";
+	const r = await rows<EvalCandidateRow>(
+		client,
+		`SELECT
+       ${params.level === "trace" ? "trace_id" : "span_id"} AS target_id,
+       trace_id,
+       span_type,
+       toUnixTimestamp64Milli(start_time) AS start_time_ms,
+       input,
+       output,
+       metadata,
+       ingested_at
+     FROM spans
+     WHERE project_id = {projectId:String}
+       AND trace_id = {traceId:String}
+       AND ${cond}
+     ORDER BY ingested_at ASC
+     LIMIT 1`,
+		params,
+	);
+	return r[0] ?? null;
+}
+
 export type EvalSiblingRow = {
 	span_id: string;
 	span_type: string;
@@ -2737,16 +2841,22 @@ export type ScoreAlertWindowRow = {
  */
 export async function queryScoreAlertWindow(
 	client: ClickHouseClient,
-	params: { projectId: string; evalId: string; from: string; to: string },
+	params: {
+		projectId: string;
+		evalId: string;
+		from: string;
+		to: string;
+		threshold: number;
+	},
 ): Promise<ScoreAlertWindowRow> {
 	const result = await rows<ScoreAlertWindowRow>(
 		client,
 		`SELECT
        count() AS score_count,
        countIf(isNotNull(score)) AS scored_count,
-       countIf(isNotNull(passed)) AS verdict_count,
-       countIf(passed = 1) AS pass_count,
-       countIf(passed = 0) AS fail_count,
+       countIf(isNotNull(${VERDICT})) AS verdict_count,
+       countIf(${VERDICT} = 1) AS pass_count,
+       countIf(${VERDICT} = 0) AS fail_count,
        sum(ifNull(score, 0)) AS score_sum,
        quantilesTDigestIf(0.5, 0.95, 0.99)(toFloat32(ifNull(score, 0)), isNotNull(score)) AS score_quantiles
      FROM scores FINAL
@@ -2756,47 +2866,8 @@ export async function queryScoreAlertWindow(
 			projectId: params.projectId,
 			evalId: params.evalId,
 			from: params.from,
-/**
- * The scored target of one score row — the span itself (span-level) or the
- * trace's earliest-ingested `agent` span (trace-level), matching the row the
- * worker graded. Backs the "what the judge saw" reconstruction.
- */
-export async function queryEvalTarget(
-	client: ClickHouseClient,
-	params: {
-		projectId: string;
-		level: "trace" | "span";
-		traceId: string;
-		targetId: string;
-	},
-): Promise<EvalCandidateRow | null> {
-	const cond =
-		params.level === "trace"
-			? "span_type = 'agent'"
-			: "span_id = {targetId:String}";
-	const r = await rows<EvalCandidateRow>(
-		client,
-		`SELECT
-       ${params.level === "trace" ? "trace_id" : "span_id"} AS target_id,
-       trace_id,
-       span_type,
-       toUnixTimestamp64Milli(start_time) AS start_time_ms,
-       input,
-       output,
-       metadata,
-       ingested_at
-     FROM spans
-     WHERE project_id = {projectId:String}
-       AND trace_id = {traceId:String}
-       AND ${cond}
-     ORDER BY ingested_at ASC
-     LIMIT 1`,
-		params,
-	);
-	return r[0] ?? null;
-}
-
 			to: params.to,
+			threshold: params.threshold,
 		},
 	);
 	return (

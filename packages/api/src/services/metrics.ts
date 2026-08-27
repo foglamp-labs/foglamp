@@ -19,6 +19,7 @@ import {
 } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
+import { evalPassThresholds } from "./evals";
 
 export type MetricsFilter = {
   projectId: string;
@@ -126,6 +127,8 @@ export async function getSummary(
   await requireProjectAccess(db, userId, input.projectId);
   const windowMs = input.to.getTime() - input.from.getTime();
   const prevFrom = new Date(input.from.getTime() - windowMs);
+  // Pass/fail for scored judges is derived from each eval's threshold.
+  const thresholds = await evalPassThresholds(db, input.projectId);
   const [current, previous, curScore, prevScore] = await Promise.all([
     queryProjectSummary(ch, {
       projectId: input.projectId,
@@ -141,11 +144,13 @@ export async function getSummary(
       projectId: input.projectId,
       from: toClickHouseDateTime(input.from),
       to: toClickHouseDateTime(input.to),
+      thresholds,
     }),
     queryProjectScoreSummary(ch, {
       projectId: input.projectId,
       from: toClickHouseDateTime(prevFrom),
       to: toClickHouseDateTime(input.from),
+      thresholds,
     }),
   ]);
   return {

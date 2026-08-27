@@ -1,0 +1,1 @@
+ALTER TABLE "eval" ADD COLUMN "pass_threshold" numeric(3, 2) DEFAULT '0.7' NOT NULL;

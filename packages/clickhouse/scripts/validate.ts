@@ -305,7 +305,11 @@ const scoreRows: ScoreRow[] = [
 await insertScores(client, scoreRows);
 await new Promise((r) => setTimeout(r, 300));
 
-const traceScores = await getTraceScores(client, { projectId: PID, traceId: "trace_1" });
+const traceScores = await getTraceScores(client, {
+  projectId: PID,
+  traceId: "trace_1",
+  thresholds: {},
+});
 assert(traceScores.length === 2, `two scores for trace_1, got ${traceScores.length}`);
 assert(
   traceScores.some((s) => s.target_type === "trace" && Number(s.score) === 4) &&
@@ -313,13 +317,25 @@ assert(
   "trace- and span-level scores round-trip",
 );
 
-const scoreSeries = await queryScoreTimeseries(client, { projectId: PID, evalId: EVAL, from, to });
+const scoreSeries = await queryScoreTimeseries(client, {
+  projectId: PID,
+  evalId: EVAL,
+  from,
+  to,
+  threshold: 0.7,
+});
 assert(scoreSeries.length >= 1, "at least one score bucket");
 const sCount = scoreSeries.reduce((n, r) => n + Number(r.score_count), 0);
 const sSum = scoreSeries.reduce((n, r) => n + Number(r.score_sum), 0);
 assert(sCount === 2 && Math.abs(sSum - 6) < 1e-9, `count=2 sum=6 (got ${sCount}/${sSum})`);
 
-const win = await queryScoreAlertWindow(client, { projectId: PID, evalId: EVAL, from, to });
+const win = await queryScoreAlertWindow(client, {
+  projectId: PID,
+  evalId: EVAL,
+  from,
+  to,
+  threshold: 0.7,
+});
 assert(Number(win.score_count) === 2, `window score_count = ${win.score_count}`);
 assert(
   Math.abs(Number(win.score_sum) / Number(win.score_count) - 3) < 1e-9,

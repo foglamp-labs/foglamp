@@ -3,17 +3,19 @@ import {
   getEvalScore as chGetEvalScore,
   getTraceScores as chGetTraceScores,
   countEvalScores,
+  DEFAULT_PASS_THRESHOLD,
   evalListSummary,
+  type PassThresholds,
   getTraceRootInputs,
   listEvalScores,
-  queryScoreTimeseries,
-} from "@foglamp/clickhouse";
-  queryEvalTarget,
   queryEvalCandidates,
-import {
-  type EvalConfig,
+  queryEvalTarget,
+  queryScoreTimeseries,
   queryTraceSiblings,
   toClickHouseDateTime64,
+} from "@foglamp/clickhouse";
+import {
+  type EvalConfig,
   type EvalFilters,
   type EvalModel,
   evalDefinition,
@@ -23,16 +25,17 @@ import { project } from "@foglamp/db/schema/project";
 import { TRPCError } from "@trpc/server";
 import { count, desc, eq } from "drizzle-orm";
 
-import { PRESETS, getPreset } from "../evals/presets";
-import { userMessageSnippet } from "../lib/user-message";
-import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
+import { env } from "@foglamp/env/server";
 
 import { buildContext, type ContextSpec } from "../evals/context";
 import { renderPrompt, splitTemplate, truncateExtracted } from "../evals/judge";
-import type { Ch, Db } from "../types";
-import { requireProjectAccess } from "./access";
+import { PRESETS, getPreset } from "../evals/presets";
 import type { SiblingSpan } from "../evals/types";
 import { skipReason } from "./scoringWorker";
+import { userMessageSnippet } from "../lib/user-message";
+import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
+import type { Ch, Db } from "../types";
+import { requireProjectAccess } from "./access";
 
 export type EvalInput = {
   projectId: string;
@@ -41,10 +44,28 @@ export type EvalInput = {
   targetLevel: "trace" | "span";
   filters?: EvalFilters;
   sampleRate?: number;
+  // Scored judges pass at score >= this (0..1). Ignored for code checks.
+  passThreshold?: number;
   model?: EvalModel;
   config?: EvalConfig;
   enabled?: boolean;
 };
+
+/** Every eval's pass threshold in a project, for the project-wide score
+ * queries that derive pass/fail at read time. */
+export async function evalPassThresholds(
+  db: Db,
+  projectId: string,
+): Promise<PassThresholds> {
+  const rows = await db
+    .select({
+      id: evalDefinition.id,
+      passThreshold: evalDefinition.passThreshold,
+    })
+    .from(evalDefinition)
+    .where(eq(evalDefinition.projectId, projectId));
+  return Object.fromEntries(rows.map((r) => [r.id, Number(r.passThreshold)]));
+}
 
 export async function requireEvalAccess(
   db: Db,
@@ -56,6 +77,7 @@ export async function requireEvalAccess(
       id: evalDefinition.id,
       projectId: evalDefinition.projectId,
       presetId: evalDefinition.presetId,
+      passThreshold: evalDefinition.passThreshold,
     })
     .from(evalDefinition)
     .where(eq(evalDefinition.id, evalId))
@@ -97,21 +119,25 @@ export async function listEvals(
   // Definitions (Postgres) + per-eval score rollups for the window (ClickHouse),
   // in parallel. The rollup feeds the list's scored/pass-rate/avg/spend columns
   // and stat strip — date-windowed, mirroring the single eval page's cards.
-  const [rows, summaryRows] = await Promise.all([
-    db
-      .select({ ev: evalDefinition, st: evalState })
-      .from(evalDefinition)
-      .leftJoin(evalState, eq(evalState.evalId, evalDefinition.id))
-      .where(eq(evalDefinition.projectId, input.projectId))
-      .orderBy(desc(evalDefinition.createdAt)),
+  // Definitions first: the rollup derives pass/fail from each eval's
+  // threshold, so it needs them before it can run.
+  const rows = await db
+    .select({ ev: evalDefinition, st: evalState })
+    .from(evalDefinition)
+    .leftJoin(evalState, eq(evalState.evalId, evalDefinition.id))
+    .where(eq(evalDefinition.projectId, input.projectId))
+    .orderBy(desc(evalDefinition.createdAt));
+  const summaryRows =
     input.from && input.to
-      ? evalListSummary(ch, {
+      ? await evalListSummary(ch, {
           projectId: input.projectId,
           from: toClickHouseDateTime(input.from),
           to: toClickHouseDateTime(input.to),
+          thresholds: Object.fromEntries(
+            rows.map(({ ev }) => [ev.id, Number(ev.passThreshold)]),
+          ),
         })
-      : Promise.resolve([]),
-  ]);
+      : [];
 
   const byEval = new Map(summaryRows.map((s) => [s.eval_id, s]));
 
@@ -128,6 +154,7 @@ export async function listEvals(
       targetLevel: ev.targetLevel,
       filters: ev.filters ?? null,
       sampleRate: Number(ev.sampleRate),
+      passThreshold: Number(ev.passThreshold),
       model: ev.model ?? null,
       config: ev.config ?? null,
       enabled: ev.enabled,
@@ -137,8 +164,8 @@ export async function listEvals(
       createdAt: ev.createdAt,
       // Windowed score metrics (0 / null when the eval didn't score in range).
       scoreCount,
-      // Rate only over rows with a verdict; numeric-only judges (score, no
-      // pass/fail) show "—" rather than a misleading 0%.
+      // Rate over rows with a verdict (stored, or derived from the score via
+      // the eval's threshold); null when nothing gradable scored in range.
       passRate: verdictCount > 0 ? passCount / verdictCount : null,
       // Average only over non-null scores; null means "not scorable", not 0.
       avgScore:
@@ -215,6 +242,7 @@ export async function createEval(db: Db, userId: string, input: EvalInput) {
         targetLevel: input.targetLevel,
         filters: input.filters,
         sampleRate: String(input.sampleRate ?? 0.1),
+        passThreshold: String(input.passThreshold ?? DEFAULT_PASS_THRESHOLD),
         model: preset.source === "llm" ? input.model : null,
         config: input.config,
         enabled: input.enabled ?? true,
@@ -261,6 +289,9 @@ export async function updateEval(
       ...(input.sampleRate !== undefined
         ? { sampleRate: String(input.sampleRate) }
         : {}),
+      ...(input.passThreshold !== undefined
+        ? { passThreshold: String(input.passThreshold) }
+        : {}),
       ...(input.model !== undefined ? { model: input.model } : {}),
       ...(input.config !== undefined ? { config: input.config } : {}),
       ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
@@ -291,6 +322,7 @@ export async function getEvalTimeseries(
     evalId: input.evalId,
     from: toClickHouseDateTime(input.from),
     to: toClickHouseDateTime(input.to),
+    threshold: Number(ev.passThreshold),
   });
   return rows.map((r) => {
     const count = num(r.score_count);
@@ -302,8 +334,8 @@ export async function getEvalTimeseries(
       // Rows with a non-null score — the avgScore denominator. Lets clients
       // re-aggregate avgScore across buckets without skew from unscored rows.
       scoredCount: scored,
-      // Rows with a non-null verdict — the passRate denominator, for the same
-      // reason (numeric-only judges emit score-only rows with no verdict).
+      // Rows with a verdict (stored or derived from the score) — the passRate
+      // denominator, for the same reason.
       verdictCount: verdicts,
       passCount: num(r.pass_count),
       failCount: num(r.fail_count),
@@ -343,6 +375,7 @@ export async function listRecentScores(
       from,
       to,
       sort: input.sort,
+      threshold: Number(ev.passThreshold),
     }),
     countEvalScores(ch, {
       projectId: ev.projectId,
@@ -380,7 +413,10 @@ export async function getTraceScores(
   input: { projectId: string; traceId: string },
 ) {
   await requireProjectAccess(db, userId, input.projectId);
-  const rows = await chGetTraceScores(ch, input);
+  const rows = await chGetTraceScores(ch, {
+    ...input,
+    thresholds: await evalPassThresholds(db, input.projectId),
+  });
   return rows.map(mapScore);
 }
 
@@ -397,6 +433,7 @@ export async function getEvalScore(
     projectId: ev.projectId,
     evalId: input.evalId,
     scoreId: input.scoreId,
+    threshold: Number(ev.passThreshold),
   });
   return row ? mapScore(row) : null;
 }

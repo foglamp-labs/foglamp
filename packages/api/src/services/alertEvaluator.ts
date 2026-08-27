@@ -5,6 +5,7 @@ import {
   alertRule,
   alertState,
 } from "@foglamp/db/schema/alert";
+import { evalDefinition } from "@foglamp/db/schema/eval";
 import { project } from "@foglamp/db/schema/project";
 import { env } from "@foglamp/env/server";
 import { eq } from "drizzle-orm";
@@ -159,15 +160,26 @@ export async function evaluateAlerts(db: Db, ch: Ch, log: Log): Promise<void> {
           log.error("alert.eval_metric_without_eval", { ruleId: rule.id });
           return;
         }
+        // The eval's threshold turns judge scores into pass/fail.
+        const [ev] = await db
+          .select({ passThreshold: evalDefinition.passThreshold })
+          .from(evalDefinition)
+          .where(eq(evalDefinition.id, rule.evalId))
+          .limit(1);
+        if (!ev) {
+          log.error("alert.eval_metric_missing_eval", { ruleId: rule.id });
+          return;
+        }
         const sw = await queryScoreAlertWindow(ch, {
           projectId: rule.projectId,
           evalId: rule.evalId,
           from: toClickHouseDateTime(from),
           to: toClickHouseDateTime(now),
+          threshold: Number(ev.passThreshold),
         });
         const scored = num(sw.scored_count);
-        // Pass rate over rows with a verdict only — score-only rows (numeric
-        // judges) carry no pass/fail and must not deflate the rate.
+        // Pass rate over rows with a verdict only (stored or derived); skipped
+        // rows carry neither and must not deflate the rate.
         const verdicts = num(sw.verdict_count);
         value =
           metric === "eval_avg_score"

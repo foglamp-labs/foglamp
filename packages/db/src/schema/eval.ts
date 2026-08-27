@@ -75,6 +75,11 @@ export const evalDefinition = pgTable(
     sampleRate: numeric("sample_rate", { precision: 5, scale: 4 })
       .default("0.1")
       .notNull(),
+    // Scored judges pass when score >= this (0..1). Applied when scores are
+    // read, not when they are written, so changing it re-grades history.
+    passThreshold: numeric("pass_threshold", { precision: 3, scale: 2 })
+      .default("0.7")
+      .notNull(),
     model: jsonb("model").$type<EvalModel>(),
     config: jsonb("config").$type<EvalConfig>(),
     enabled: boolean("enabled").default(true).notNull(),
