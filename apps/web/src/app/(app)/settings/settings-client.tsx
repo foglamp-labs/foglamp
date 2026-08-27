@@ -135,7 +135,11 @@ export function SettingsClient() {
           actions={
             projectId &&
             !noKeys && (
-              <Button size="sm" onClick={() => setKeyDialogOpen(true)}>
+              <Button
+                size="sm"
+                onClick={() => setKeyDialogOpen(true)}
+                variant="secondary"
+              >
                 <IconPlusFilled /> Create key
               </Button>
             )
