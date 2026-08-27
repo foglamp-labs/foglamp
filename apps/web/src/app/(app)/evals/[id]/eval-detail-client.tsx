@@ -746,7 +746,7 @@ function ScoreDetail({
       {/* px-8 matches the row cells' inset so the drawer's content lines up
           with the row text; the hairline + tint make it read as a drawer
           under the open row. */}
-      <TableCell colSpan={colSpan} className="bg-card px-8 pt-2 pb-6">
+      <TableCell colSpan={colSpan} className="bg-card px-8 pt-2 pb-8">
         <RunExchange score={score} projectId={projectId} />
       </TableCell>
     </TableRow>
