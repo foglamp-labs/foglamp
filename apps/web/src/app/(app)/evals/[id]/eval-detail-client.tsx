@@ -535,8 +535,10 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                             "group",
                             // Open row + drawer read as one unit: no divider between them.
                             isOpen && "border-b-0",
+                            // Deep-linked run: a soft tint (same as a selected
+                            // preset card) rather than an edge bar.
                             isFocused &&
-                              "shadow-[inset_2px_0_0_0_var(--color-primary)]"
+                              "bg-primary/5 dark:bg-primary/10 data-interactive:hover:bg-primary/10 dark:data-interactive:hover:bg-primary/15"
                           )}
                         >
                           {/* Content-first, like the traces list: the trace's user
