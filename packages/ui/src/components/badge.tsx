@@ -6,7 +6,7 @@ import * as React from "react";
 import { cn } from "@foglamp/ui/lib/utils";
 
 const badgeVariants = cva(
-	"group/badge inline-flex w-fit rounded-full shrink-0 items-center justify-center capitalize overflow-hidden font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none",
+	"group/badge inline-flex w-fit rounded-full shrink-0 items-center justify-center capitalize overflow-hidden font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&_svg]:shrink-0",
 	{
 		variants: {
 			variant: {
