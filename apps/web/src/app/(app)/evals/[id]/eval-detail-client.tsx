@@ -548,7 +548,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                             "group",
                             // Open row + drawer read as one unit: no divider between them.
                             isOpen &&
-                              "border-b-0 bg-muted/40 data-interactive:hover:bg-muted/40 dark:bg-muted/30 dark:data-interactive:hover:bg-muted/30",
+                              "border-b-0 bg-muted/60 data-interactive:hover:bg-muted/60",
                             // Deep-linked run: a soft tint (same as a selected
                             // preset card) rather than an edge bar.
                             isFocused &&
@@ -750,7 +750,7 @@ function ScoreDetail({
           under the open row. */}
       <TableCell
         colSpan={colSpan}
-        className="bg-muted/40 px-8 pt-2 pb-6 dark:bg-muted/30"
+        className="bg-muted/60 px-8 pt-2 pb-6"
       >
         <RunExchange score={score} projectId={projectId} />
       </TableCell>
