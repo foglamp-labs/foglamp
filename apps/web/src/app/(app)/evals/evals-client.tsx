@@ -371,7 +371,7 @@ export function EvalsClient() {
       presetId: id,
       targetLevel: p?.level === "span" ? "span" : form.targetLevel,
       judgeProvider: (p?.defaultModel?.provider as Provider) ?? "google",
-      judgeModel: p?.defaultModel?.modelId ?? "gemini-3.1-flash-lite",
+      judgeModel: p?.defaultModel?.modelId ?? "gemini-3.5-flash-lite",
       // Prefill the prompt editor with the preset default so it's editable.
       promptOverride: p?.prompt ?? "",
     });

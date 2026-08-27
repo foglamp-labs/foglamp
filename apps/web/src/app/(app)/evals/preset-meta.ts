@@ -51,6 +51,7 @@ import {
 // Checks are grouped into families that share a color, so related checks (e.g.
 // Valid JSON / Non-empty) read as siblings at a glance.
 export type Family =
+	| "custom"
 	| "safety"
 	| "format"
 	| "match"
@@ -61,6 +62,8 @@ export type Family =
 // Colored icon chips for the check cards, in the same vein as the sidebar nav:
 // a tinted square with a filled icon and a matching inset/drop shadow.
 export const FAMILY_CHIP: Record<Family, string> = {
+	custom:
+		"bg-orange-100 dark:bg-orange-950 text-orange-500 shadow-[inset_0_0_0_1px_rgba(249,115,22,0.14),0_2px_6px_-2px_rgba(249,115,22,0.25)] dark:shadow-(--custom-shadow)",
 	safety:
 		"bg-rose-100 dark:bg-rose-950 text-rose-500 shadow-[inset_0_0_0_1px_rgba(244,63,94,0.14),0_2px_6px_-2px_rgba(244,63,94,0.25)] dark:shadow-(--custom-shadow)",
 	format:
@@ -76,6 +79,7 @@ export const FAMILY_CHIP: Record<Family, string> = {
 
 // Icon-only tint per family, for chips that share the outline pill surface.
 export const FAMILY_ICON: Record<Family, string> = {
+	custom: "text-orange-500",
 	safety: "text-rose-500",
 	format: "text-sky-500",
 	match: "text-violet-500",
@@ -181,11 +185,12 @@ export const PRESET_META: Record<
 		outline: IconPuzzle,
 		family: "tool",
 	},
-	// Custom judge (bring-your-own prompt)
+	// Custom judge (bring-your-own prompt): its own color so it stands apart
+	// from the canned presets.
 	custom: {
 		icon: IconPencilFilled,
 		outline: IconPencil,
-		family: "quality",
+		family: "custom",
 	},
 };
 
@@ -199,8 +204,10 @@ export const presetMeta = (
 	};
 
 // Display order for the check cards: group by family so same-colored chips sit
-// next to each other in the grid rather than scattered.
+// next to each other in the grid rather than scattered. Custom leads the LLM
+// list so bring-your-own-prompt is the first thing users see.
 export const FAMILY_ORDER: Family[] = [
+	"custom",
 	"safety",
 	"format",
 	"match",
@@ -216,8 +223,9 @@ export const familyRank = (id: string) =>
 // badge (evals table, detail chips) reads in the same color as its card chip.
 export const FAMILY_BADGE: Record<
 	Family,
-	"rose" | "blue" | "violet" | "fuchsia" | "emerald" | "amber"
+	"rose" | "blue" | "violet" | "fuchsia" | "emerald" | "amber" | "orange"
 > = {
+	custom: "orange",
 	safety: "rose",
 	format: "blue",
 	match: "violet",

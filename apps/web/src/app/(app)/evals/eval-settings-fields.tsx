@@ -37,18 +37,22 @@ export const SAMPLE_PRESETS = [
 // directly), surfaced as a dropdown so users don't have to type a model id.
 export const JUDGE_MODELS: Record<Provider, { id: string; label: string }[]> = {
 	google: [
-		{ id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite" },
+		{ id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite" },
+		{ id: "gemini-3.7-flash", label: "Gemini 3.7 Flash" },
 		{ id: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
+		{ id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash Lite" },
 		{ id: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
 	],
 	openai: [
 		{ id: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
 		{ id: "gpt-5.5", label: "GPT-5.5" },
+		{ id: "gpt-5.6-sol", label: "GPT-5.6 Sol" },
 	],
 	anthropic: [
 		{ id: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
-		{ id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-		{ id: "claude-opus-4-8", label: "Claude Opus 4.8" },
+		{ id: "claude-sonnet-5", label: "Claude Sonnet 5" },
+		{ id: "claude-opus-5", label: "Claude Opus 5" },
+		{ id: "claude-fable-5", label: "Claude Fable 5" },
 	],
 };
 

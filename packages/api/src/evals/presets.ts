@@ -30,10 +30,10 @@ export type Preset = {
 	defaultParams?: Record<string, unknown>;
 };
 
-// Cheap, fast default judge — matches Foggy's default model.
+// Cheap, fast default judge.
 const DEFAULT_JUDGE: { provider: Provider; modelId: string } = {
 	provider: "google",
-	modelId: "gemini-3.1-flash-lite",
+	modelId: "gemini-3.5-flash-lite",
 };
 // Numeric judges score on a normalized 0.00–1.00 scale (two decimals), so an
 // average reads directly as a quality fraction (0 = worst, 1 = best).
