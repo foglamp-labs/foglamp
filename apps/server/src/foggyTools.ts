@@ -87,6 +87,27 @@ function iso(v: Date | string | null | undefined): string | null {
   return v instanceof Date ? v.toISOString() : v;
 }
 
+// Last line of defence for the same problem: coerce a whole tool result to
+// plain JSON (Dates → ISO strings, undefined dropped, bigint → string). The
+// tools above map dates explicitly, but one raw Postgres row slipping through
+// turns into "The messages do not match the ModelMessage[] schema" and the
+// user just sees "Foggy hit a snag" — so every tool's output goes through
+// this before it reaches the model.
+function jsonSafe<T>(value: T): T {
+  return JSON.parse(
+    JSON.stringify(value, (_k, v) => (typeof v === "bigint" ? v.toString() : v)),
+  ) as T;
+}
+
+function withJsonSafeOutputs(tools: ToolSet): ToolSet {
+  for (const t of Object.values(tools)) {
+    const execute = t.execute;
+    if (!execute) continue;
+    t.execute = async (input, options) => jsonSafe(await execute(input, options));
+  }
+  return tools;
+}
+
 // Docs corpus fetcher: Mintlify auto-serves /llms.txt (index + summaries) and
 // /llms-full.txt (the whole docs text). Cached in-process for 5 minutes and
 // capped so a runaway docs build can't blow up the model context; on fetch
@@ -232,7 +253,7 @@ export function buildFoggyTools({
     to: to ? new Date(to) : fallback.to,
   });
 
-  return {
+  return withJsonSafeOutputs({
     getProjectSummary: tool({
       description:
         "Totals for the current project over a window — cost, tokens (in/out), request/span counts, error rate, and latency/TTFT percentiles (p50/p95/p99). Includes the previous equal-length window for comparison.",
@@ -741,7 +762,10 @@ export function buildFoggyTools({
           return { ruleId, error: "No alert rule with that id exists in this project." };
         }
         const events = await getAlertHistory(db, userId, { ruleId, limit: limit ?? 20 });
-        return { ruleId, events };
+        return {
+          ruleId,
+          events: events.map((e) => ({ ...e, createdAt: iso(e.createdAt) })),
+        };
       },
     }),
 
@@ -801,5 +825,5 @@ export function buildFoggyTools({
         return { source: env.FOGGY_DOCS_URL, text };
       },
     }),
-  };
+  });
 }
