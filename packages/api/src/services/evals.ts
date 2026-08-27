@@ -1,25 +1,27 @@
 import { getOrgPlan } from "@foglamp/billing";
 import {
+  getEvalScore as chGetEvalScore,
   getTraceScores as chGetTraceScores,
   countEvalScores,
   evalListSummary,
-  getEvalScore as chGetEvalScore,
+  getTraceRootInputs,
   listEvalScores,
   queryScoreTimeseries,
 } from "@foglamp/clickhouse";
-import { TRPCError } from "@trpc/server";
 import {
-  evalDefinition,
-  evalState,
   type EvalConfig,
   type EvalFilters,
   type EvalModel,
+  evalDefinition,
+  evalState,
 } from "@foglamp/db/schema/eval";
 import { project } from "@foglamp/db/schema/project";
+import { TRPCError } from "@trpc/server";
 import { count, desc, eq } from "drizzle-orm";
 
+import { PRESETS, getPreset } from "../evals/presets";
+import { userMessageSnippet } from "../lib/user-message";
 import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
-import { getPreset, PRESETS } from "../evals/presets";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
 
@@ -35,7 +37,11 @@ export type EvalInput = {
   enabled?: boolean;
 };
 
-export async function requireEvalAccess(db: Db, userId: string, evalId: string) {
+export async function requireEvalAccess(
+  db: Db,
+  userId: string,
+  evalId: string,
+) {
   const rows = await db
     .select({
       id: evalDefinition.id,
@@ -46,7 +52,8 @@ export async function requireEvalAccess(db: Db, userId: string, evalId: string) 
     .where(eq(evalDefinition.id, evalId))
     .limit(1);
   const ev = rows[0];
-  if (!ev) throw new TRPCError({ code: "NOT_FOUND", message: "Eval not found" });
+  if (!ev)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Eval not found" });
   await requireProjectAccess(db, userId, ev.projectId);
   return ev;
 }
@@ -215,7 +222,9 @@ export async function createEval(db: Db, userId: string, input: EvalInput) {
 export async function updateEval(
   db: Db,
   userId: string,
-  input: { evalId: string } & Partial<Omit<EvalInput, "projectId" | "presetId">>,
+  input: { evalId: string } & Partial<
+    Omit<EvalInput, "projectId" | "presetId">
+  >,
 ) {
   const ev = await requireEvalAccess(db, userId, input.evalId);
   // Same rule as create: a prompt-less judge preset needs a custom prompt.
@@ -236,7 +245,9 @@ export async function updateEval(
     .update(evalDefinition)
     .set({
       ...(input.name !== undefined ? { name: input.name } : {}),
-      ...(input.targetLevel !== undefined ? { targetLevel: input.targetLevel } : {}),
+      ...(input.targetLevel !== undefined
+        ? { targetLevel: input.targetLevel }
+        : {}),
       ...(input.filters !== undefined ? { filters: input.filters } : {}),
       ...(input.sampleRate !== undefined
         ? { sampleRate: String(input.sampleRate) }
@@ -249,7 +260,11 @@ export async function updateEval(
   return { id: input.evalId };
 }
 
-export async function deleteEval(db: Db, userId: string, input: { evalId: string }) {
+export async function deleteEval(
+  db: Db,
+  userId: string,
+  input: { evalId: string },
+) {
   await requireEvalAccess(db, userId, input.evalId);
   await db.delete(evalDefinition).where(eq(evalDefinition.id, input.evalId));
   return { id: input.evalId };
@@ -291,6 +306,9 @@ export async function getEvalTimeseries(
   });
 }
 
+// Cap on the per-run headline snippet (matches the traces list).
+const USER_MESSAGE_SNIPPET_CAP = 300;
+
 export async function listRecentScores(
   db: Db,
   ch: Ch,
@@ -324,7 +342,25 @@ export async function listRecentScores(
       to,
     }),
   ]);
-  return { scores: rows.map(mapScore), total };
+  // Headline per run: the scored trace's user message (same snippet the
+  // traces list leads with), so rows read as content rather than raw ids.
+  const rootInputs = await getTraceRootInputs(ch, {
+    projectId: ev.projectId,
+    traceIds: [...new Set(rows.map((r) => r.trace_id))],
+  });
+  const snippetByTrace = new Map(
+    rootInputs.map((r) => [
+      r.trace_id,
+      userMessageSnippet(r.input, USER_MESSAGE_SNIPPET_CAP),
+    ]),
+  );
+  return {
+    scores: rows.map((r) => ({
+      ...mapScore(r),
+      userMessage: snippetByTrace.get(r.trace_id) ?? null,
+    })),
+    total,
+  };
 }
 
 /** Scores for a single trace and its spans — for the trace detail view. */
@@ -387,4 +423,3 @@ function mapScore(s: {
     scoredAt: s.scored_at,
   };
 }
-

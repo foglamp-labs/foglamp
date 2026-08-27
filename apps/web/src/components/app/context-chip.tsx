@@ -11,28 +11,50 @@ import { cn } from "@/lib/utils";
  * hover, and the dark border swapped for the outline shadow.
  */
 export function ContextChip({
-  href,
-  icon: Icon,
-  iconClassName,
-  label,
+	href,
+	icon: Icon,
+	iconClassName,
+	label,
 }: {
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  iconClassName: string;
-  label: string;
+	/** Link target. Omit for a static, non-interactive chip (same surface, no
+	 * arrow, no hover) — e.g. an eval's definition facts. */
+	href?: string;
+	icon: React.ComponentType<{ className?: string }>;
+	iconClassName?: string;
+	label: string;
 }) {
-  return (
-    <Button
-      variant="outline"
-      className="max-w-xs justify-start font-normal transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)"
-      render={
-        // biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
-        <Link href={href as any} />
-      }
-    >
-      <Icon className={cn("size-3.5 shrink-0", iconClassName)} />
-      <span className="truncate">{label}</span>
-      <IconArrowUpRight className="size-3.5 shrink-0 -ml-0.5 mt-px text-muted-foreground" />
-    </Button>
-  );
+	const content = (
+		<>
+			<Icon className={cn("size-3.5 shrink-0", iconClassName)} />
+			<span className="truncate">{label}</span>
+			{href && (
+				<IconArrowUpRight className="size-3.5 shrink-0 -ml-0.5 mt-px text-muted-foreground" />
+			)}
+		</>
+	);
+	const className =
+		"max-w-xs justify-start font-normal transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)";
+	if (!href) {
+		return (
+			<Button
+				variant="outline"
+				className={cn(className, "pointer-events-none")}
+				render={<div />}
+			>
+				{content}
+			</Button>
+		);
+	}
+	return (
+		<Button
+			variant="outline"
+			className={className}
+			render={
+				// biome-ignore lint/suspicious/noExplicitAny: app routes are typed as Route
+				<Link href={href as any} />
+			}
+		>
+			{content}
+		</Button>
+	);
 }

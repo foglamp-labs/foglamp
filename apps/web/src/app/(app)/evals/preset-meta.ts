@@ -74,6 +74,16 @@ export const FAMILY_CHIP: Record<Family, string> = {
 	tool: "bg-amber-100 dark:bg-amber-950 text-amber-500 shadow-[inset_0_0_0_1px_rgba(245,158,11,0.14),0_2px_6px_-2px_rgba(245,158,11,0.25)] dark:shadow-(--custom-shadow)",
 };
 
+// Icon-only tint per family, for chips that share the outline pill surface.
+export const FAMILY_ICON: Record<Family, string> = {
+	safety: "text-rose-500",
+	format: "text-sky-500",
+	match: "text-violet-500",
+	quality: "text-fuchsia-500",
+	grounding: "text-emerald-500",
+	tool: "text-amber-500",
+};
+
 // Filled icon + color family per preset id (stable). Anything new falls back to
 // a generic sparkle in the "quality" color.
 export const PRESET_META: Record<

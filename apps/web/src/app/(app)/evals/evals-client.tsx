@@ -746,10 +746,10 @@ export function EvalsClient() {
               setSourceFilter("");
             }}
           />
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2">
             <RangeControl value={range} onChange={setRange} />
             {!noEvals && (
-              <Button onClick={() => setOpen(true)}>
+              <Button onClick={() => setOpen(true)} variant="secondary">
                 <IconPlus strokeWidth={2.5} />
                 New eval
               </Button>

@@ -23,6 +23,7 @@ import {
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAffiliate,
+  IconAffiliateFilled,
   IconArrowUpRight,
   IconBoltFilled,
   IconChevronRight,
@@ -32,7 +33,9 @@ import {
   IconGauge,
   IconGaugeFilled,
   IconPencilFilled,
+  IconPercentage,
   IconStack2,
+  IconStack2Filled,
   IconTargetArrow,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,12 +44,13 @@ import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { CopyButton } from "@/components/app/copy-button";
+import { ContextChip } from "@/components/app/context-chip";
 import {
   PaginationFooter,
   SortableHead,
   useTableSort,
 } from "@/components/app/data-table";
+import { HeatCell } from "@/components/app/heat-cell";
 import {
   useDelayedLoading,
   useEntranceOnce,
@@ -58,7 +62,7 @@ import {
   NoProject,
   PageHeader,
   StatCard,
-  TableSkeleton,
+  TableRowsSkeleton,
 } from "@/components/app/page-parts";
 import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
@@ -80,11 +84,30 @@ import {
   promptOverrideError,
   settingsParamError,
 } from "../eval-settings-fields";
-import { presetBadgeVariant, presetMeta } from "../preset-meta";
+import { FAMILY_ICON, presetMeta } from "../preset-meta";
+import { EvalChipPlaceholders } from "./chip-placeholders";
 
 type ScoreRow = RouterOutputs["evals"]["recentScores"]["scores"][number];
+// The deep-linked run comes from `evals.score`, which has no headline snippet.
+type BaseScoreRow = Omit<ScoreRow, "userMessage">;
 
 const PAGE_SIZES = [25, 50, 100];
+
+// Skeleton column spec for the loading body rows (see TableRowsSkeleton).
+const SKELETON_COLS = [
+  { icon: true, w: "w-64" },
+  { w: "w-10" },
+  { w: "w-72" },
+  { align: "right", w: "w-12" },
+  { align: "right", w: "w-14" },
+] as const;
+
+/** 20/40/60/80th percentile thresholds (positive values only) for HeatCell. */
+function quintiles(values: number[]): number[] {
+  const v = values.filter((x) => x > 0).sort((a, b) => a - b);
+  if (v.length === 0) return [];
+  return [0.2, 0.4, 0.6, 0.8].map((q) => v[Math.floor(q * (v.length - 1))]!);
+}
 
 // Edit-dialog draft: the eval's name plus the subset the "How should it
 // score?" fields can change (judge model + sample rate, or a check's params).
@@ -279,7 +302,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
   }, [presets.data, ev]);
 
   // Same per-preset icon the evals table uses for its Check column.
-  const CheckIcon = ev ? presetMeta(ev.presetId).outline : IconGauge;
+  const CheckIcon = ev ? presetMeta(ev.presetId).icon : IconGaugeFilled;
 
   const totals = useMemo(() => {
     const buckets = series.data ?? [];
@@ -304,6 +327,13 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
     };
   }, [series.data]);
 
+  // Per-page spend quintiles for the Cost heat cell (the table is paginated,
+  // so thresholds are relative to the visible page).
+  const spendThresholds = useMemo(
+    () => quintiles(scores.map((s) => s.cost ?? 0)),
+    [scores]
+  );
+
   const back = navItem("/evals");
 
   if (!projectId) {
@@ -318,59 +348,63 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
   return (
     <>
       {/* Wrapped here (not inside a shared header component) so the copy
-			    rendered by loading.tsx stays unanimated — only the page's own
-			    header fades. */}
+          rendered by loading.tsx stays unanimated — only the page's own
+          header fades. */}
       <div className={cn(entrance && "page-fade-in")}>
-        <PageHeader
-          title={ev?.name ?? "Eval"}
-          back={back}
-          titleTrailing={
-            <CopyButton
-              value={evalId}
-              title="Copy eval ID"
-              iconSize="size-3.5"
-              className="p-0.5"
-            />
-          }
-          actions={
-            <>
-              <RangeControl value={range} onChange={setRange} />
-              {/* Always rendered (disabled until the eval loads) so it doesn't
-                  pop in — loading.tsx paints the same disabled button. */}
-              <Button variant="secondary" disabled={!ev} onClick={openEdit}>
-                <IconPencilFilled />
-                Edit
-              </Button>
-            </>
-          }
-        />
+        <PageHeader title={ev?.name ?? "Eval"} back={back} />
       </div>
 
-      {/* Definition chips: the check, what it runs on, and the sample rate. */}
-      {ev && (
-        <div
-          className={cn(
-            "-mt-1 flex flex-wrap items-center gap-2 px-8",
-            entrance && "page-fade-in"
+      {/* Definition chips (the check, what it runs on, the sample rate) on the
+          left — same pills as the session page's context chips — with the
+          range picker and Edit button aligned on the same row. Chip-shaped
+          placeholders hold the layout until the eval loads; loading.tsx paints
+          the same row. */}
+      <div
+        className={cn(
+          "mt-1 flex flex-wrap items-center justify-between gap-2 text-xs px-7",
+          entrance && "page-fade-in"
+        )}
+      >
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {ev ? (
+            <>
+              <ContextChip
+                icon={CheckIcon}
+                iconClassName={cn(
+                  "mb-px",
+                  FAMILY_ICON[presetMeta(ev.presetId).family]
+                )}
+                label={checkName}
+              />
+              <ContextChip
+                icon={
+                  ev.targetLevel === "span"
+                    ? IconStack2Filled
+                    : IconAffiliateFilled
+                }
+                label={ev.targetLevel === "span" ? "Span" : "Trace"}
+              />
+              <ContextChip
+                icon={IconPercentage}
+                label={`${Math.round(ev.sampleRate * 100)}% sampled`}
+              />
+            </>
+          ) : (
+            <EvalChipPlaceholders />
           )}
-        >
-          <Badge variant={presetBadgeVariant(ev.presetId)}>
-            <CheckIcon />
-            {checkName}
-          </Badge>
-          <Badge variant="secondary">
-            {ev.targetLevel === "span" ? <IconStack2 /> : <IconAffiliate />}
-            {ev.targetLevel}
-          </Badge>
-          <Badge variant="secondary">
-            {`${Math.round(ev.sampleRate * 100)}%`} sampled
-          </Badge>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <RangeControl value={range} onChange={setRange} />
+          <Button variant="secondary" disabled={!ev} onClick={openEdit}>
+            <IconPencilFilled className="mb-px" />
+            Edit
+          </Button>
+        </div>
+      </div>
 
       <div
         className={cn(
-          "grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-8",
+          "grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-7",
           entrance && "page-fade-in"
         )}
       >
@@ -414,16 +448,10 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
             <FocusedRun score={pinnedScore} projectId={projectId} />
           </div>
         )}
-        {recent.isLoading ? (
-          showRecentSkeleton ? (
-            <div className={cn(entrance && "page-fade-in")}>
-              <TableSkeleton rows={4} />
-            </div>
-          ) : null
-        ) : scores.length === 0 ? (
+        {!recent.isLoading && scores.length === 0 ? (
           <div
             className={cn(
-              "px-8",
+              "px-7",
               entrance && !recentSkeletonShown && "page-fade-in"
             )}
           >
@@ -434,115 +462,156 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
             />
           </div>
         ) : (
-          // Keep the footer flush with the table's last row, matching the
-          // other paginated main tables.
+          // The table (header included) is mounted while loading, with
+          // skeleton rows in the body, so the fallback → data swap doesn't
+          // reflow. Footer flush with the last row, like the other main tables.
           <div
             className={cn(
               "flex flex-col",
               entrance && !recentSkeletonShown && "page-fade-in"
             )}
           >
-            <Table stickyHeader>
+            <Table className="table-fixed" stickyHeader>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-72">Target</TableHead>
+                  <TableHead className="w-96">Run</TableHead>
                   <SortableHead
                     sortKey="score"
                     sort={sort}
                     onSort={toggle}
-                    className="w-28"
+                    className="w-24"
                   >
-                    Score
+                    Verdict
                   </SortableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead className="w-24 text-right">Cost</TableHead>
                   <TableHead className="w-32 text-right">When</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scores.map((s) => {
-                  const isOpen = expanded === s.scoreId;
-                  const isFocused = s.scoreId === focusScore;
-                  return (
-                    <Fragment key={s.scoreId}>
-                      <TableRow
-                        ref={isFocused ? focusRef : undefined}
-                        interactive
-                        onClick={() => setExpanded(isOpen ? null : s.scoreId)}
-                        className={cn(
-                          isFocused &&
-                            "shadow-[inset_2px_0_0_0_var(--color-primary)]"
-                        )}
-                      >
-                        <TableCell className="max-w-96 text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <IconChevronRight
-                              className={cn(
-                                "size-3.5 shrink-0 transition-transform",
-                                isOpen && "rotate-90"
-                              )}
-                            />
-                            <span className="truncate font-mono text-xs">
-                              {s.targetType}:{s.targetId}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {s.passed !== null ? (
-                            <Badge variant={s.passed ? "emerald" : "rose"}>
-                              {s.passed ? (
-                                <IconCircleCheckFilled />
-                              ) : (
-                                <IconForbidFilled />
-                              )}
-                              {s.passed ? "pass" : "fail"}
-                            </Badge>
-                          ) : s.score !== null ? (
-                            <Badge variant="secondary">
-                              <IconGauge />
-                              <span className="tabular-nums">
+                {recent.isLoading ? (
+                  showRecentSkeleton ? (
+                    <TableRowsSkeleton cols={SKELETON_COLS} />
+                  ) : null
+                ) : (
+                  scores.map((s) => {
+                    const isOpen = expanded === s.scoreId;
+                    const isFocused = s.scoreId === focusScore;
+                    return (
+                      <Fragment key={s.scoreId}>
+                        <TableRow
+                          ref={isFocused ? focusRef : undefined}
+                          interactive
+                          aria-expanded={isOpen}
+                          onClick={() => setExpanded(isOpen ? null : s.scoreId)}
+                          className={cn(
+                            "group",
+                            // Open row + drawer read as one unit: no divider between them.
+                            isOpen && "border-b-0",
+                            isFocused &&
+                              "shadow-[inset_2px_0_0_0_var(--color-primary)]"
+                          )}
+                        >
+                          {/* Content-first, like the traces list: the trace's user
+                            message, falling back to the id. */}
+                          <TableCell className="h-12 font-medium">
+                            <div className="flex items-center gap-2">
+                              {/* Expand affordance (agents page convention): muted chevron
+                                that brightens on hover and turns when open. */}
+                              <IconChevronRight
+                                className={cn(
+                                  "size-3.5 shrink-0 text-muted-foreground/50 transition-[transform,color] group-hover:text-muted-foreground",
+                                  isOpen && "rotate-90 text-muted-foreground"
+                                )}
+                              />
+                              <span className="truncate">
+                                {s.userMessage ?? s.traceId}
+                              </span>
+                            </div>
+                          </TableCell>
+                          {/* Colored text, no pill — same weight in every row. */}
+                          <TableCell>
+                            {s.passed !== null ? (
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1 text-sm font-medium",
+                                  s.passed
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-rose-600 dark:text-rose-400"
+                                )}
+                              >
+                                {s.passed ? (
+                                  <IconCircleCheckFilled className="size-3.25" />
+                                ) : (
+                                  <IconForbidFilled className="size-3.25" />
+                                )}
+                                {s.passed ? "Pass" : "Fail"}
+                              </span>
+                            ) : s.score !== null ? (
+                              <span
+                                className={cn(
+                                  "tabular-nums",
+                                  s.score >= 0.9
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : s.score < 0.5 &&
+                                        "text-rose-600 dark:text-rose-400"
+                                )}
+                              >
                                 {s.score.toFixed(2)}
                               </span>
-                            </Badge>
-                          ) : (
-                            "—"
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          <span className="line-clamp-2 whitespace-normal">
-                            {s.reason}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          <RelativeTime value={s.scoredAt} />
-                        </TableCell>
-                      </TableRow>
-                      {isOpen && (
-                        <ScoreDetail
-                          score={s}
-                          projectId={projectId}
-                          colSpan={4}
-                        />
-                      )}
-                    </Fragment>
-                  );
-                })}
+                            ) : (
+                              <span className="text-muted-foreground/40">
+                                —
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="max-w-0 text-muted-foreground">
+                            <span className="block truncate">{s.reason}</span>
+                          </TableCell>
+                          <HeatCell
+                            value={s.cost}
+                            thresholds={spendThresholds}
+                            metric="spend"
+                            mutedWhenZero
+                          >
+                            {s.cost == null || s.cost <= 0
+                              ? "—"
+                              : formatCost(s.cost, 4)}
+                          </HeatCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            <RelativeTime value={s.scoredAt} />
+                          </TableCell>
+                        </TableRow>
+                        {isOpen && (
+                          <ScoreDetail
+                            score={s}
+                            projectId={projectId}
+                            colSpan={5}
+                          />
+                        )}
+                      </Fragment>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
 
-            <PaginationFooter
-              page={page}
-              pageSize={pageSize}
-              total={scoreTotal}
-              shown={scores.length}
-              noun={["run", "runs"]}
-              isFetching={recent.isFetching}
-              onPageChange={setPage}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setPage(0);
-              }}
-              pageSizes={PAGE_SIZES}
-            />
+            {!recent.isLoading && (
+              <PaginationFooter
+                page={page}
+                pageSize={pageSize}
+                total={scoreTotal}
+                shown={scores.length}
+                noun={["run", "runs"]}
+                isFetching={recent.isFetching}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(0);
+                }}
+                pageSizes={PAGE_SIZES}
+              />
+            )}
           </div>
         )}
       </div>
@@ -627,7 +696,7 @@ function ScoreDetail({
   projectId,
   colSpan,
 }: {
-  score: ScoreRow;
+  score: BaseScoreRow;
   projectId: string;
   colSpan: number;
 }) {
@@ -650,24 +719,30 @@ function ScoreDetail({
         )}`
       : `/traces/${encodeURIComponent(score.traceId)}`;
 
+  const isSpan = score.targetType === "span";
+  const LevelIcon = isSpan ? IconStack2 : IconAffiliate;
+
   return (
     <TableRow className="hover:bg-transparent">
-      <TableCell colSpan={colSpan} className="bg-muted/30 p-0">
-        <div className="flex flex-col gap-3 p-4">
-          <div className="flex items-start justify-between gap-4">
-            {score.reason && (
-              <div className="flex min-w-0 max-w-[80%] flex-col gap-1">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Reason
-                </span>
-                <p className="whitespace-normal wrap-break-word text-sm">
-                  {score.reason}
-                </p>
-              </div>
-            )}
+      {/* px-8 matches the row cells' inset so the drawer's content lines up
+          with the row text; the hairline + tint make it read as a drawer
+          under the open row. */}
+      <TableCell
+        colSpan={colSpan}
+        className="border-t border-border/50 bg-muted/30 px-8 py-4 dark:border-border/40"
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <LevelIcon className="size-3.5 shrink-0" />
+              {isSpan ? "Span" : "Trace"}
+              <span className="font-mono">
+                {isSpan ? score.targetId : score.traceId}
+              </span>
+            </span>
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               className="shrink-0"
               // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
               render={<Link href={href as any} />}
@@ -703,7 +778,7 @@ function FocusedRun({
   score,
   projectId,
 }: {
-  score: ScoreRow;
+  score: BaseScoreRow;
   projectId: string;
 }) {
   const detail = useQuery(
@@ -746,7 +821,7 @@ function FocusedRun({
 
           <Button
             size="sm"
-            variant="outline"
+            variant="secondary"
             // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
             render={<Link href={href as any} />}
           >
@@ -792,7 +867,7 @@ function Glimpse({
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       {value ? (
-        <div className="max-h-64 overflow-x-hidden overflow-y-auto rounded-md bg-muted p-2.5">
+        <div className="max-h-64 overflow-x-hidden overflow-y-auto shadow-(--custom-shadow) rounded-lg">
           <PayloadView value={value} />
         </div>
       ) : (

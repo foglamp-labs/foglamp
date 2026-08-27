@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@foglamp/ui/components/badge";
+import { Skeleton } from "@foglamp/ui/components/skeleton";
 import { Button } from "@foglamp/ui/components/button";
 import {
 	Card,
@@ -10,13 +11,6 @@ import {
 	CardTitle,
 } from "@foglamp/ui/components/card";
 import {
-	Pagination,
-	PaginationContent,
-	PaginationEllipsis,
-	PaginationItem,
-	PaginationLink,
-	PaginationNext,
-	PaginationPrevious,
 } from "@foglamp/ui/components/pagination";
 import {
 	Table,
@@ -27,6 +21,7 @@ import {
 	TableRow,
 } from "@foglamp/ui/components/table";
 import {
+	IconAffiliateFilled,
 	IconAlertTriangle,
 	IconAlertTriangleFilled,
 	IconArrowUpRight,
@@ -46,7 +41,11 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CostBreakdownCard } from "@/components/app/cost-breakdown-card";
-import { SortableHead, useTableSort } from "@/components/app/data-table";
+import {
+	PaginationFooter,
+	SortableHead,
+	useTableSort,
+} from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
 import {
 	useDelayedLoading,
@@ -64,7 +63,7 @@ import {
 	NoProject,
 	PageHeader,
 	StatCard,
-	TableSkeleton,
+	TableRowsSkeleton,
 } from "@/components/app/page-parts";
 import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
@@ -77,7 +76,6 @@ import {
 	formatBucketFull,
 	makeBucketLabel,
 	makeEdgeTick,
-	pageWindow,
 	themed,
 	thinTicks,
 } from "@/components/app/trend-charts";
@@ -88,14 +86,25 @@ import {
 	formatCost,
 	formatCount,
 	formatDuration,
-	formatSpanDuration,
 	formatPercent,
+	formatSpanDuration,
 	formatTokens,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZES = [25, 50, 100];
+
+// Skeleton column spec for the loading body rows (see TableRowsSkeleton).
+const SKELETON_COLS = [
+	{ icon: true, w: "w-48" },
+	{ w: "w-20" },
+	{ align: "right", w: "w-8" },
+	{ align: "right", w: "w-10" },
+	{ align: "right", w: "w-12" },
+	{ align: "right", w: "w-14" },
+	{ align: "right", w: "w-16" },
+] as const;
 
 type TraceSortKey = "when" | "duration" | "tokens" | "spans" | "cost";
 
@@ -130,6 +139,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 		searchParams.get("trace"),
 	);
 	const [page, setPage] = useState(0);
+	const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
 	// Which trace row is expanded to glimpse its input/output (by traceId).
 	const [expanded, setExpanded] = useState<string | null>(null);
 	// Selected series for each trend chart, driven by the header legends.
@@ -174,8 +184,8 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 			from,
 			to,
 			sort: sort ? { field: sort.key, dir: sort.dir } : undefined,
-			limit: PAGE_SIZE,
-			offset: page * PAGE_SIZE,
+			limit: pageSize,
+			offset: page * pageSize,
 		}),
 		enabled,
 		// Keep the current page visible while the next one loads.
@@ -210,9 +220,11 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 			traceId: activeTraceId!,
 		}),
 		enabled: enabled && !!activeTraceId,
-		// Keep the prior trace's flow on screen while switching refetches.
-		placeholderData: (prev) => prev,
 	});
+	// Skeleton whenever the selected trace's flow isn't loaded yet — on first
+	// load and on every row switch (no placeholderData, so a different trace's
+	// flow never lingers under the new selection).
+	const flowLoading = !activeTraceId || traceDetail.isPending;
 
 	// The selected trace's row (for the flow header chips + skeleton sizing).
 	const activeTrace = traceRows.find((t) => t.traceId === activeTraceId);
@@ -301,12 +313,6 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 	}));
 
 	const totalTraces = traces.data?.summary.traceCount ?? 0;
-	const totalPages = Math.max(
-		page + 1,
-		Math.ceil(totalTraces / PAGE_SIZE) || 1,
-	);
-	const currentPage = page + 1;
-	const pages = pageWindow(currentPage, totalPages);
 	// No activity for this agent at all (not just filtered away). Wait for the
 	// stats so a slow rollup doesn't flash the empty state before they land.
 	const noData = !detail.isLoading && (stats === null || stats.spanCount === 0);
@@ -509,8 +515,10 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 						/>
 					</section>
 
-					{/* Step flow for the selected trace. */}
-					{activeTraceId && (
+					{/* Step flow for the selected trace. Mounted while the traces list
+					    loads too (skeleton body), since the selection defaults to the
+					    first row — otherwise the card pops in below the stats. */}
+					{(activeTraceId || traces.isLoading) && (
 						<div className="px-8">
 							<Card
 								size="sm"
@@ -520,7 +528,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 									<CardTitle className="flex flex-wrap items-center gap-2">
 										Trace flow
 									</CardTitle>
-									{activeTrace && (
+									{activeTrace ? (
 										<CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
 											<span>{formatCount(activeTrace.spanCount)} spans</span>
 											<span>·</span>
@@ -539,10 +547,14 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 												</Badge>
 											)}
 										</CardDescription>
+									) : (
+										<CardDescription className="flex h-5 items-center">
+											<Skeleton className="h-3.5 w-56" />
+										</CardDescription>
 									)}
 								</CardHeader>
 								<CardContent className="px-4 mt-3">
-									{traceDetail.isLoading ? (
+									{flowLoading ? (
 										<NodeFlowSkeleton count={activeTrace?.spanCount} />
 									) : nodes.length === 0 ? (
 										<p className="text-sm text-muted-foreground">
@@ -553,7 +565,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 											nodes={nodes}
 											onNodeClick={(spanId) =>
 												router.push(
-													`/traces/${encodeURIComponent(activeTraceId)}?span=${encodeURIComponent(spanId)}`,
+													`/traces/${encodeURIComponent(activeTraceId ?? "")}?span=${encodeURIComponent(spanId)}`,
 												)
 											}
 										/>
@@ -565,13 +577,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 
 					{/* Traces table — click a row to drive the flow above. */}
 					<div className="flex flex-col gap-3 mt-4">
-						{traces.isLoading && traceRows.length === 0 ? (
-							showTracesSkeleton ? (
-								<div className={cn(entrance && "page-fade-in")}>
-									<TableSkeleton />
-								</div>
-							) : null
-						) : traceRows.length === 0 ? (
+						{!traces.isLoading && traceRows.length === 0 ? (
 							<div
 								className={cn(
 									entrance && !tracesSkeletonShown && "page-fade-in",
@@ -585,16 +591,18 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 								/>
 							</div>
 						) : (
+							// Table mounted while loading (skeleton rows in the body) so the
+							// swap to data doesn't reflow; footer flush with the last row.
 							<div
 								className={cn(
-									"flex flex-col gap-3",
+									"flex flex-col",
 									entrance && !tracesSkeletonShown && "page-fade-in",
 								)}
 							>
-								<Table stickyHeader>
+								<Table className="table-fixed" stickyHeader>
 									<TableHeader>
 										<TableRow>
-											<TableHead>Trace</TableHead>
+											<TableHead className="w-96">Trace</TableHead>
 											<TableHead>Workflow</TableHead>
 											<SortableHead
 												sortKey="spans"
@@ -644,14 +652,24 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 										</TableRow>
 									</TableHeader>
 									<TableBody>
-										{traceRows.map((t) => {
+										{traces.isLoading ? (
+											showTracesSkeleton ? (
+												<TableRowsSkeleton cols={SKELETON_COLS} />
+											) : null
+										) : (
+											traceRows.map((t) => {
 											const isOpen = expanded === t.traceId;
 											return (
 												<Fragment key={t.traceId}>
 													<TableRow
 														interactive
+														aria-expanded={isOpen}
 														className={cn(
-															t.traceId === activeTraceId && "bg-accent/60 dark:bg-accent/30",
+															"group",
+															// Open row + drawer read as one unit: no divider between them.
+															isOpen && "border-b-0",
+															t.traceId === activeTraceId &&
+																"bg-accent/60 dark:bg-accent/30",
 															// Left accent bar on errored traces — scannable at a glance.
 															t.errorCount > 0 &&
 																"shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
@@ -663,30 +681,32 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 															setExpanded(isOpen ? null : t.traceId);
 														}}
 													>
-														<TableCell>
+														<TableCell className="h-12 font-medium">
 															<div className="flex items-center gap-2">
+																{/* Expand affordance: muted chevron that brightens on
+																    hover and turns when open. */}
 																<IconChevronRight
 																	className={cn(
-																		"size-3.5 transition-transform",
-																		isOpen && "rotate-90",
+																		"size-3.5 shrink-0 text-muted-foreground/50 transition-[transform,color] group-hover:text-muted-foreground",
+																		isOpen && "rotate-90 text-muted-foreground",
 																	)}
 																/>
-																<span className="truncate font-medium">
+																<span className="truncate">
 																	{t.traceName ?? (
 																		<span className="font-mono text-xs text-muted-foreground">
 																			{t.traceId}
 																		</span>
 																	)}
 																</span>
+																{/* Compact error count — colored text, no pill. */}
 																{t.errorCount > 0 && (
-																	<Badge
-																		variant="rose"
-																		className="shrink-0 font-sans ml-auto"
+																	<span
+																		title={`${t.errorCount} ${t.errorCount === 1 ? "error" : "errors"}`}
+																		className="flex shrink-0 items-center gap-0.75 font-sans text-sm text-red-600 dark:text-red-400"
 																	>
-																		<IconAlertTriangle />
-																		{formatCount(t.errorCount)}
-																		{t.errorCount === 1 ? "error" : "errors"}
-																	</Badge>
+																		<IconAlertTriangle className="size-3.5 fill-current/20" />
+																		{t.errorCount}
+																	</span>
 																)}
 															</div>
 														</TableCell>
@@ -744,65 +764,27 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 													)}
 												</Fragment>
 											);
-										})}
+										})
+										)}
 									</TableBody>
 								</Table>
 
-								<div className="flex items-center justify-between px-1">
-									<span className="text-sm text-muted-foreground/50 tabular-nums">
-										{traceRows.length === 0
-											? `Showing 0 of ${formatCount(totalTraces)}`
-											: `Showing ${page * PAGE_SIZE + 1}–${
-													page * PAGE_SIZE + traceRows.length
-												} of ${formatCount(totalTraces)}`}
-									</span>
-									<Pagination className="mx-0 w-auto justify-end">
-										<PaginationContent>
-											<PaginationItem>
-												<PaginationPrevious
-													aria-disabled={page === 0 || traces.isFetching}
-													className={cn(
-														(page === 0 || traces.isFetching) &&
-															"pointer-events-none opacity-50",
-													)}
-													onClick={() => setPage((p) => Math.max(0, p - 1))}
-												/>
-											</PaginationItem>
-											{pages.map((p, i) =>
-												p === "ellipsis" ? (
-													// biome-ignore lint/suspicious/noArrayIndexKey: positional separator
-													<PaginationItem key={`ellipsis-${i}`}>
-														<PaginationEllipsis />
-													</PaginationItem>
-												) : (
-													<PaginationItem key={p}>
-														<PaginationLink
-															isActive={p === currentPage}
-															className={cn(
-																traces.isFetching && "pointer-events-none",
-															)}
-															onClick={() => setPage(p - 1)}
-														>
-															{p}
-														</PaginationLink>
-													</PaginationItem>
-												),
-											)}
-											<PaginationItem>
-												<PaginationNext
-													aria-disabled={
-														currentPage >= totalPages || traces.isFetching
-													}
-													className={cn(
-														(currentPage >= totalPages || traces.isFetching) &&
-															"pointer-events-none opacity-50",
-													)}
-													onClick={() => setPage((p) => p + 1)}
-												/>
-											</PaginationItem>
-										</PaginationContent>
-									</Pagination>
-								</div>
+								{!traces.isLoading && (
+									<PaginationFooter
+										page={page}
+										pageSize={pageSize}
+										total={totalTraces}
+										shown={traceRows.length}
+										noun={["trace", "traces"]}
+										isFetching={traces.isFetching}
+										onPageChange={setPage}
+										onPageSizeChange={(size) => {
+											setPageSize(size);
+											setPage(0);
+										}}
+										pageSizes={PAGE_SIZES}
+									/>
+								)}
 							</div>
 						)}
 					</div>
@@ -831,12 +813,24 @@ function TracePreview({
 
 	return (
 		<TableRow className="hover:bg-transparent">
-			<TableCell colSpan={colSpan} className="bg-muted/30 p-0">
-				<div className="flex flex-col gap-3 p-4">
-					<div className="flex items-center justify-end">
+			{/* px-8 matches the row cells' inset so the drawer's content lines up
+			    with the row text; the hairline + tint make it read as a drawer
+			    under the open row. */}
+			<TableCell
+				colSpan={colSpan}
+				className="border-t border-border/50 bg-muted/30 px-8 py-4 dark:border-border/40"
+			>
+				<div className="flex flex-col gap-3">
+					<div className="flex items-center justify-between gap-4">
+						<span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+							<IconAffiliateFilled className="size-3.5 shrink-0" />
+							Trace
+							<span className="font-mono">{traceId}</span>
+						</span>
 						<Button
 							size="sm"
-							variant="outline"
+							variant="secondary"
+							className="shrink-0"
 							// biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
 							render={
 								<Link href={`/traces/${encodeURIComponent(traceId)}` as any} />
@@ -877,7 +871,7 @@ function Glimpse({
 		<div className="flex min-w-0 flex-col gap-1.5">
 			<span className="text-xs font-medium text-muted-foreground">{label}</span>
 			{value ? (
-				<div className="max-h-64 overflow-x-hidden overflow-y-auto rounded-md bg-muted p-2.5">
+				<div className="max-h-64 overflow-x-hidden overflow-y-auto shadow-(--custom-shadow) rounded-lg">
 					<PayloadView value={value} />
 				</div>
 			) : (

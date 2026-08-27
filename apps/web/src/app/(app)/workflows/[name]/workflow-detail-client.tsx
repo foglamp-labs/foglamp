@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@foglamp/ui/components/badge";
+import { Skeleton } from "@foglamp/ui/components/skeleton";
 import {
   Card,
   CardContent,
@@ -8,15 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@foglamp/ui/components/card";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@foglamp/ui/components/pagination";
+import {} from "@foglamp/ui/components/pagination";
 import {
   Table,
   TableBody,
@@ -39,7 +32,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { SortableHead, useTableSort } from "@/components/app/data-table";
+import {
+  PaginationFooter,
+  SortableHead,
+  useTableSort,
+} from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
 import {
   useDelayedLoading,
@@ -57,19 +54,17 @@ import {
   NoProject,
   PageHeader,
   StatCard,
-  TableSkeleton,
+  TableRowsSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
-import { ToolBreakdownCard } from "@/components/app/tool-breakdown-card";
 import {
   ChartLegend,
   formatBucketFull,
   makeBucketLabel,
   makeEdgeTick,
-  pageWindow,
   themed,
   thinTicks,
 } from "@/components/app/trend-charts";
@@ -88,7 +83,16 @@ import { trpc } from "@/utils/trpc";
 
 import { UNGROUPED } from "../workflows-client";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZES = [25, 50, 100];
+
+// Skeleton column spec for the loading body rows (see TableRowsSkeleton).
+const SKELETON_COLS = [
+  { w: "w-48" },
+  { align: "right", w: "w-8" },
+  { align: "right", w: "w-12" },
+  { align: "right", w: "w-14" },
+  { align: "right", w: "w-16" },
+] as const;
 
 type RunSortKey = "when" | "duration" | "traces" | "errors" | "cost";
 
@@ -116,6 +120,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
     searchParams.get("run")
   );
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
   // Selected series for each trend chart, driven by the header legends.
   const [volumeSelected, setVolumeSelected] = useState<string | null>(null);
   const [latencySelected, setLatencySelected] = useState<string | null>(null);
@@ -156,8 +161,8 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
       from: range.from,
       to: range.to,
       sort: sort ? { field: sort.key, dir: sort.dir } : undefined,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
+      limit: pageSize,
+      offset: page * pageSize,
     }),
     enabled: !!projectId,
     // Keep the current page visible while the next one loads.
@@ -184,11 +189,11 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
       workflowRunId: activeRunId!,
     }),
     enabled: !!projectId && !!activeRunId,
-    // Keep the prior run's flow on screen while switching runs refetches, so the
-    // card doesn't flick to a skeleton on every click (isLoading stays false
-    // once there's placeholder data — the skeleton only shows on first load).
-    placeholderData: (prev) => prev,
   });
+  // Skeleton whenever the selected run's flow isn't loaded yet — on first
+  // load and on every row switch (no placeholderData, so a different run's
+  // flow never lingers under the new selection).
+  const flowLoading = !activeRunId || runDetail.isPending;
 
   // The selected run's row (for the flow header chips + skeleton sizing).
   const activeRun = runRows.find((r) => r.workflowRunId === activeRunId);
@@ -267,9 +272,6 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   const costQuantiles = stats?.costQuantiles ?? [];
   const durationQuantiles = stats?.durationQuantiles ?? [];
   const totalRuns = stats?.runCount ?? 0;
-  const totalPages = Math.max(page + 1, Math.ceil(totalRuns / PAGE_SIZE) || 1);
-  const currentPage = page + 1;
-  const pages = pageWindow(currentPage, totalPages);
   // No runs at all in this window (not just filtered away). Wait for the
   // summary so a slow rollup doesn't flash the empty state before stats land.
   const noRuns =
@@ -459,20 +461,10 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
             </Card>
           </section>
 
-          {/* Which tools this workflow's runs lean on. The "Ungrouped" pseudo-
-              workflow has no name to filter by, so the card is skipped there
-              rather than silently showing project-wide numbers. */}
-          {!ungrouped && (
-            <section className="px-8">
-              <ToolBreakdownCard
-                workflowName={workflowName}
-                className={cn(entrance && "page-fade-in")}
-              />
-            </section>
-          )}
-
-          {/* Step flow for the selected run. */}
-          {activeRunId && (
+          {/* Step flow for the selected run. Mounted while the runs list
+              loads too (skeleton body), since the selection defaults to the
+              first row — otherwise the card pops in below the stats. */}
+          {(activeRunId || runs.isLoading) && (
             <div className="px-8">
               <Card
                 size="sm"
@@ -482,7 +474,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                   <CardTitle className="flex flex-wrap items-center gap-2">
                     Run flow
                   </CardTitle>
-                  {activeRun && (
+                  {activeRun ? (
                     <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
                       <span>{formatCount(activeRun.traceCount)} traces</span>
                       <span>·</span>
@@ -499,10 +491,14 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                         </Badge>
                       )}
                     </CardDescription>
+                  ) : (
+                    <CardDescription className="flex h-5 items-center">
+                      <Skeleton className="h-3.5 w-56" />
+                    </CardDescription>
                   )}
                 </CardHeader>
                 <CardContent className="px-4 mt-3">
-                  {runDetail.isLoading ? (
+                  {flowLoading ? (
                     <NodeFlowSkeleton count={activeRun?.traceCount} />
                   ) : nodes.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
@@ -523,13 +519,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
 
           {/* Runs table — click a row to drive the flow above. */}
           <div className="flex flex-col gap-3 mt-4">
-            {runs.isLoading && runRows.length === 0 ? (
-              showRunsSkeleton ? (
-                <div className={cn(entrance && "page-fade-in")}>
-                  <TableSkeleton />
-                </div>
-              ) : null
-            ) : runRows.length === 0 ? (
+            {!runs.isLoading && runRows.length === 0 ? (
               <div
                 className={cn(
                   entrance && !runsSkeletonShown && "page-fade-in",
@@ -543,9 +533,11 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                 />
               </div>
             ) : (
+              // Table mounted while loading (skeleton rows in the body) so the
+              // swap to data doesn't reflow; footer flush with the last row.
               <div
                 className={cn(
-                  "flex flex-col gap-3",
+                  "flex flex-col",
                   entrance && !runsSkeletonShown && "page-fade-in"
                 )}
               >
@@ -592,116 +584,81 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {runRows.map((r) => (
-                      <TableRow
-                        key={r.workflowRunId}
-                        interactive
-                        className={cn(
-                          r.workflowRunId === activeRunId && "bg-accent/60 dark:bg-accent/30",
-                          // Left accent bar on errored runs — scannable at a glance.
-                          r.errorCount > 0 &&
-                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
-                        )}
-                        onClick={() => selectRun(r.workflowRunId)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">
-                              <span className="font-mono text-xs text-muted-foreground">
+                    {runs.isLoading ? (
+                      showRunsSkeleton ? (
+                        <TableRowsSkeleton cols={SKELETON_COLS} />
+                      ) : null
+                    ) : (
+                      runRows.map((r) => (
+                        <TableRow
+                          key={r.workflowRunId}
+                          interactive
+                          className={cn(
+                            r.workflowRunId === activeRunId &&
+                              "bg-accent/60 dark:bg-accent/30"
+                          )}
+                          onClick={() => selectRun(r.workflowRunId)}
+                        >
+                          <TableCell className="h-12 max-w-96 font-medium">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate font-mono text-xs text-muted-foreground">
                                 {r.workflowRunId}
                               </span>
-                            </span>
-                            {r.errorCount > 0 && (
-                              <Badge
-                                variant="rose"
-                                className="shrink-0 font-sans ml-auto"
-                              >
-                                <IconAlertTriangle />
-                                {formatCount(r.errorCount)}
-                                {r.errorCount === 1 ? "error" : "errors"}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {formatCount(r.traceCount)}
-                        </TableCell>
-                        <HeatCell
-                          value={r.durationMs}
-                          thresholds={durationQuantiles}
-                          metric="duration"
-                        >
-                          {formatSpanDuration(r.durationMs)}
-                        </HeatCell>
-                        <HeatCell
-                          value={r.totalCost}
-                          thresholds={costQuantiles}
-                          metric="cost"
-                          bold
-                        >
-                          {formatCost(r.totalCost)}
-                        </HeatCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          <RelativeTime value={r.startTime} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              {/* Compact error count — colored text, no pill. */}
+                              {r.errorCount > 0 && (
+                                <span
+                                  title={`${r.errorCount} ${r.errorCount === 1 ? "error" : "errors"}`}
+                                  className="flex shrink-0 items-center gap-0.75 font-sans text-sm text-red-600 dark:text-red-400"
+                                >
+                                  <IconAlertTriangle className="size-3.5 fill-current/20" />
+                                  {r.errorCount}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatCount(r.traceCount)}
+                          </TableCell>
+                          <HeatCell
+                            value={r.durationMs}
+                            thresholds={durationQuantiles}
+                            metric="duration"
+                          >
+                            {formatSpanDuration(r.durationMs)}
+                          </HeatCell>
+                          <HeatCell
+                            value={r.totalCost}
+                            thresholds={costQuantiles}
+                            metric="cost"
+                            bold
+                          >
+                            {formatCost(r.totalCost)}
+                          </HeatCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            <RelativeTime value={r.startTime} />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
 
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-sm text-muted-foreground/50 tabular-nums">
-                    {`Showing ${page * PAGE_SIZE + 1}–${
-                      page * PAGE_SIZE + runRows.length
-                    } of ${formatCount(totalRuns)}`}
-                  </span>
-                  <Pagination className="mx-0 w-auto justify-end">
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          aria-disabled={page === 0 || runs.isFetching}
-                          className={cn(
-                            (page === 0 || runs.isFetching) &&
-                              "pointer-events-none opacity-50"
-                          )}
-                          onClick={() => setPage((p) => Math.max(0, p - 1))}
-                        />
-                      </PaginationItem>
-                      {pages.map((p, i) =>
-                        p === "ellipsis" ? (
-                          // biome-ignore lint/suspicious/noArrayIndexKey: positional separator
-                          <PaginationItem key={`ellipsis-${i}`}>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        ) : (
-                          <PaginationItem key={p}>
-                            <PaginationLink
-                              isActive={p === currentPage}
-                              className={cn(
-                                runs.isFetching && "pointer-events-none"
-                              )}
-                              onClick={() => setPage(p - 1)}
-                            >
-                              {p}
-                            </PaginationLink>
-                          </PaginationItem>
-                        )
-                      )}
-                      <PaginationItem>
-                        <PaginationNext
-                          aria-disabled={
-                            currentPage >= totalPages || runs.isFetching
-                          }
-                          className={cn(
-                            (currentPage >= totalPages || runs.isFetching) &&
-                              "pointer-events-none opacity-50"
-                          )}
-                          onClick={() => setPage((p) => p + 1)}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
-                </div>
+                {!runs.isLoading && (
+                  <PaginationFooter
+                    page={page}
+                    pageSize={pageSize}
+                    total={totalRuns}
+                    shown={runRows.length}
+                    noun={["run", "runs"]}
+                    isFetching={runs.isFetching}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(0);
+                    }}
+                    pageSizes={PAGE_SIZES}
+                  />
+                )}
               </div>
             )}
           </div>

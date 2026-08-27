@@ -509,7 +509,7 @@ export function AlertsClient() {
               }}
             />
             <div className="ml-auto flex items-center gap-3">
-              <Button onClick={() => setOpen(true)}>
+              <Button onClick={() => setOpen(true)} variant="secondary">
                 <IconPlus />
                 New alert
               </Button>

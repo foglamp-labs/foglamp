@@ -13,7 +13,7 @@ import { RangeControl } from "./range-picker";
  * loading.tsx is fully live during the suspense window — changing the range
  * while a page streams in carries over to the mounted page.
  */
-function LiveRangePicker() {
+export function LiveRangePicker() {
 	const { range, setRange } = useRange();
 	return <RangeControl value={range} onChange={setRange} />;
 }
