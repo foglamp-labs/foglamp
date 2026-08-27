@@ -45,7 +45,12 @@ import {
   TableHeader,
   TableRow,
 } from "@foglamp/ui/components/table";
-import { TooltipProvider } from "@foglamp/ui/components/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@foglamp/ui/components/tooltip";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   type Icon,
@@ -856,16 +861,25 @@ export function EvalsClient() {
                             <span className="truncate">{r.name}</span>
                             {(r.status === "error" ||
                               r.status === "paused_no_key") && (
-                              <span
-                                title={
-                                  r.status === "paused_no_key"
-                                    ? "Needs an API key"
-                                    : "Erroring"
-                                }
-                                className="flex shrink-0 items-center font-sans text-sm text-red-600 dark:text-red-400"
-                              >
-                                <IconAlertTriangle className="size-3.5 fill-current/20" />
-                              </span>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <span className="flex shrink-0 items-center font-sans text-sm text-red-600 dark:text-red-400" />
+                                  }
+                                >
+                                  <IconAlertTriangle className="size-3.5 fill-current/20" />
+                                </TooltipTrigger>
+                                <TooltipContent
+                                  side="bottom"
+                                  className="max-w-sm items-start"
+                                >
+                                  <span className="break-words">
+                                    {r.status === "paused_no_key"
+                                      ? "Paused: add an API key for the judge model's provider."
+                                      : (r.lastError ?? "Scoring is failing.")}
+                                  </span>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                           </div>
                         </TableCell>

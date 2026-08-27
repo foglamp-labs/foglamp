@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@foglamp/ui/components/alert";
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
@@ -24,6 +29,7 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconAffiliate,
   IconAffiliateFilled,
+  IconAlertTriangle,
   IconArrowUpRight,
   IconBoltFilled,
   IconChevronRight,
@@ -401,6 +407,27 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
           </Button>
         </div>
       </div>
+
+      {/* Scoring health: when the worker can't score this eval (dead jobs, no
+          provider key) say so up front with the actual reason. */}
+      {ev && ev.status !== "ok" && (
+        <div className={cn("px-7", entrance && "page-fade-in")}>
+          <Alert variant="destructive">
+            <IconAlertTriangle />
+            <AlertTitle>
+              {ev.status === "paused_no_key"
+                ? "Scoring is paused"
+                : "Scoring is failing"}
+            </AlertTitle>
+            <AlertDescription className="break-words">
+              {ev.status === "paused_no_key"
+                ? "Add an API key for the judge model's provider in the organization settings to resume."
+                : (ev.lastError ??
+                  "Recent scoring jobs failed. It will retry on the next sweep.")}
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
 
       <div
         className={cn(

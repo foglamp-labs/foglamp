@@ -370,6 +370,9 @@ async function executeOneJob(
   const params = config.params ?? preset.defaultParams ?? {};
   const siblingCache = new Map<string, SiblingSpan[]>();
   const now = Date.now();
+  // First per-target failure, surfaced in the job/eval error when every target
+  // fails so the UI shows the real cause (bad key, quota, ...) not a summary.
+  let firstError: string | null = null;
 
   const results = await mapLimit(
     batch,
@@ -413,10 +416,12 @@ async function executeOneJob(
           scored_at: now,
         };
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        firstError ??= message;
         log.error("eval.score_failed", {
           evalId: ev.id,
           targetId: c.target_id,
-          error: err instanceof Error ? err.message : String(err),
+          error: message,
         });
         return null;
       }
@@ -427,7 +432,9 @@ async function executeOneJob(
   // If every target errored, surface it as a job failure so it retries instead
   // of silently marking the window done with zero scores.
   if (rows.length === 0) {
-    throw new Error("all targets failed to score");
+    throw new Error(
+      `All ${batch.length} targets failed to score: ${(firstError ?? "unknown error").slice(0, 500)}`,
+    );
   }
   await insertScores(ch, rows);
   return rows.length;
