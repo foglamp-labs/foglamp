@@ -40,6 +40,8 @@ import {
   IconGaugeFilled,
   IconPencilFilled,
   IconPercentage,
+  IconScissors,
+  IconTool,
   IconStack2,
   IconStack2Filled,
   IconTargetArrow,
@@ -780,6 +782,7 @@ function ScoreDetail({
               <IconArrowUpRight />
             </Button>
           </div>
+          <Verdict score={score} />
           {detail.isLoading ? (
             <span className="text-xs text-muted-foreground">
               Loading trace…
@@ -790,13 +793,87 @@ function ScoreDetail({
             </span>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Glimpse label="Input" value={glimpse.input} />
-              <Glimpse label="Output" value={glimpse.output} />
+              <Glimpse label="Input" value={glimpse.input} foldBeforeLastUser />
+              <Glimpse
+                label="Output"
+                value={glimpse.output}
+                emptyHint={emptyOutputHint(spans)}
+              />
             </div>
           )}
         </div>
       </TableCell>
     </TableRow>
+  );
+}
+
+// The worker prefixes a judge's reason when it scored a payload cut at the
+// input cap; split that flag back out so it renders as a badge, not prose.
+const TRUNCATED_PREFIX = "[judged on truncated payload] ";
+function splitReason(reason: string): { text: string; truncated: boolean } {
+  return reason.startsWith(TRUNCATED_PREFIX)
+    ? { text: reason.slice(TRUNCATED_PREFIX.length), truncated: true }
+    : { text: reason, truncated: false };
+}
+
+/** Why a scored target has no output: an agent run that stopped after a tool
+ * call never produced a final answer (the usual case for a blank root span). */
+function emptyOutputHint(spans: { spanType: string }[]): string {
+  return spans.some((s) => s.spanType === "tool")
+    ? "No final answer, the run ended after a tool call."
+    : "No output was recorded for this run.";
+}
+
+/** The judgment itself, first: pass/fail or the score, the full reason (the
+ * table only has room for one truncated line), and the judge facts — model,
+ * cost, whether it judged a truncated payload — in a muted line below. */
+function Verdict({ score }: { score: BaseScoreRow }) {
+  const { text, truncated } = splitReason(score.reason);
+  const facts: React.ReactNode[] = [];
+  if (score.modelId) {
+    facts.push(
+      <span key="model" className="font-mono">
+        {score.modelId}
+      </span>
+    );
+  }
+  if (score.cost != null && score.cost > 0) {
+    facts.push(<span key="cost">{formatCost(score.cost, 4)}</span>);
+  }
+  facts.push(<RelativeTime key="at" value={score.scoredAt} />);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        {score.passed !== null ? (
+          <Badge variant={score.passed ? "emerald" : "rose"}>
+            {score.passed ? <IconCircleCheckFilled /> : <IconForbidFilled />}
+            {score.passed ? "pass" : "fail"}
+          </Badge>
+        ) : null}
+        {score.score !== null ? (
+          <Badge variant="secondary">
+            <IconGauge />
+            <span className="tabular-nums">{score.score.toFixed(2)}</span>
+          </Badge>
+        ) : null}
+        {truncated && (
+          <Badge variant="amber">
+            <IconScissors />
+            judged on truncated payload
+          </Badge>
+        )}
+        <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground tabular-nums">
+          {facts.map((f, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static, positional
+            <Fragment key={i}>
+              {i > 0 && <span className="text-muted-foreground/40">·</span>}
+              {f}
+            </Fragment>
+          ))}
+        </span>
+      </div>
+      {text && <p className="max-w-3xl text-sm">{text}</p>}
+    </div>
   );
 }
 
@@ -865,7 +942,7 @@ function FocusedRun({
             <span className="text-xs font-medium text-muted-foreground">
               Reason
             </span>
-            <p className="text-sm">{score.reason}</p>
+            <p className="text-sm">{splitReason(score.reason).text}</p>
           </div>
         )}
         {detail.isLoading ? (
@@ -876,8 +953,12 @@ function FocusedRun({
           </span>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
-            <Glimpse label="Input" value={glimpse.input} />
-            <Glimpse label="Output" value={glimpse.output} />
+            <Glimpse label="Input" value={glimpse.input} foldBeforeLastUser />
+            <Glimpse
+              label="Output"
+              value={glimpse.output}
+              emptyHint={emptyOutputHint(spans)}
+            />
           </div>
         )}
       </CardContent>
@@ -888,17 +969,28 @@ function FocusedRun({
 function Glimpse({
   label,
   value,
+  foldBeforeLastUser,
+  emptyHint,
 }: {
   label: string;
   value: string | null | undefined;
+  foldBeforeLastUser?: boolean;
+  /** Shown instead of a bare dash when there's no payload, so a blank reads
+   * as a fact about the run rather than a rendering gap. */
+  emptyHint?: string;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       {value ? (
         <div className="max-h-64 overflow-x-hidden overflow-y-auto shadow-(--custom-shadow) rounded-lg">
-          <PayloadView value={value} />
+          <PayloadView value={value} foldBeforeLastUser={foldBeforeLastUser} />
         </div>
+      ) : emptyHint ? (
+        <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+          <IconTool className="size-3.5 shrink-0 text-muted-foreground/60" />
+          {emptyHint}
+        </span>
       ) : (
         <span className="text-sm text-muted-foreground">—</span>
       )}

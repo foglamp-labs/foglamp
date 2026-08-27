@@ -301,6 +301,7 @@ function ClampedBody({ children }: { children: React.ReactNode }) {
 export function PayloadView({
   value,
   previousValue,
+  foldBeforeLastUser,
   className,
 }: {
   value: string;
@@ -311,15 +312,39 @@ export function PayloadView({
    * reading an agent loop. Anything else (edited history, unparseable
    * payloads) falls back to the full view, so the delta never lies. */
   previousValue?: string | null;
+  /** Fold every message before the last user turn, so a long conversation
+   * opens on the exchange that matters (the latest question and what
+   * followed it) with the history one click away. Used where the payload is
+   * a whole transcript but the reader cares about one turn — e.g. an eval
+   * run's scored input. Ignored when `previousValue` produces a delta. */
+  foldBeforeLastUser?: boolean;
   className?: string;
 }) {
-  const { messages, shared } = useMemo(() => {
+  const { messages, shared, foldedByTurn } = useMemo(() => {
     const messages = toMessages(value);
-    if (!messages || !previousValue) return { messages, shared: 0 };
-    const prev = toMessages(previousValue);
-    if (!prev) return { messages, shared: 0 };
-    return { messages, shared: unchangedPrefix(messages, prev) };
-  }, [value, previousValue]);
+    if (!messages) return { messages, shared: 0, foldedByTurn: false };
+    if (previousValue) {
+      const prev = toMessages(previousValue);
+      if (prev) {
+        return {
+          messages,
+          shared: unchangedPrefix(messages, prev),
+          foldedByTurn: false,
+        };
+      }
+    }
+    if (foldBeforeLastUser) {
+      let last = -1;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i]?.role === "user") {
+          last = i;
+          break;
+        }
+      }
+      return { messages, shared: Math.max(0, last), foldedByTurn: true };
+    }
+    return { messages, shared: 0, foldedByTurn: false };
+  }, [value, previousValue, foldBeforeLastUser]);
   const [showEarlier, setShowEarlier] = useState(false);
   // The component instance survives span switches — fold back down for each
   // new payload.
@@ -350,8 +375,8 @@ export function PayloadView({
               showEarlier && "rotate-90"
             )}
           />
-          {shared} earlier {shared === 1 ? "message" : "messages"} · unchanged
-          from the previous call
+          {shared} earlier {shared === 1 ? "message" : "messages"}
+          {foldedByTurn ? "" : " · unchanged from the previous call"}
         </button>
       )}
       {(showEarlier ? messages.slice(0, shared) : []).map((message, i) => (
@@ -361,7 +386,7 @@ export function PayloadView({
       {shared > 0 && showEarlier && (
         <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/60">
           <span className="h-px flex-1 bg-border" />
-          new in this call
+          {foldedByTurn ? "latest turn" : "new in this call"}
           <span className="h-px flex-1 bg-border" />
         </div>
       )}
