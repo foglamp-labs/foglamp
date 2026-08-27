@@ -51,7 +51,9 @@ export function RangeControl({
               // Button's transition-all, so the hover bg snaps instantly —
               // intentional; the calendar trigger below matches it.
               "font-normal tabular-nums bg-card hover:bg-muted/50 aria-expanded:bg-muted/50 dark:hover:bg-muted dark:aria-expanded:bg-muted transition-[color,box-shadow] active:scale-100",
-              !active && "text-muted-foreground/50"
+              // Stay muted on hover (the outline variant lifts text to
+              // foreground); only the surface responds, like ToggleChip.
+              !active && "text-muted-foreground/50 hover:text-muted-foreground/50"
             )}
             onClick={() => onChange(resolvePreset(key))}
           >
