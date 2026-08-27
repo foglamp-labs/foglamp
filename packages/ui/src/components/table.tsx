@@ -168,8 +168,10 @@ function TableRow({
         "data-interactive:cursor-pointer data-interactive:hover:bg-muted data-interactive:outline-none data-interactive:focus-visible:bg-muted/50 data-interactive:focus-visible:ring-[1.5px] data-interactive:focus-visible:ring-inset data-interactive:focus-visible:ring-ring/50",
         // Hide the hovered row's bottom border and the previous row's (which
         // draws the hovered row's top edge) so the highlight reads as one
-        // seamless block instead of a stripe with lines through it.
-        "data-interactive:hover:border-transparent has-[+tr[data-interactive]:hover]:border-transparent",
+        // seamless block instead of a stripe with lines through it. An
+        // expanded row (aria-expanded=true) is already one block with the
+        // drawer beneath it and keeps its top edge on hover.
+        "data-interactive:hover:border-transparent has-[+tr[data-interactive]:not([aria-expanded=true]):hover]:border-transparent",
         className
       )}
       {...props}

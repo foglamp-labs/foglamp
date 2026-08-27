@@ -548,7 +548,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                             "group",
                             // Open row + drawer read as one unit: no divider between them.
                             isOpen &&
-                              "border-b-0 bg-muted/60 data-interactive:hover:bg-muted/60",
+                              "border-b-0 bg-card data-interactive:hover:bg-card",
                             // Deep-linked run: a soft tint (same as a selected
                             // preset card) rather than an edge bar.
                             isFocused &&
@@ -748,10 +748,7 @@ function ScoreDetail({
       {/* px-8 matches the row cells' inset so the drawer's content lines up
           with the row text; the hairline + tint make it read as a drawer
           under the open row. */}
-      <TableCell
-        colSpan={colSpan}
-        className="bg-muted/60 px-8 pt-2 pb-6"
-      >
+      <TableCell colSpan={colSpan} className="bg-card px-8 pt-2 pb-6">
         <RunExchange score={score} projectId={projectId} />
       </TableCell>
     </TableRow>
@@ -872,7 +869,10 @@ function Judgment({ score }: { score: BaseScoreRow }) {
             className="col-span-2"
             value={
               <span className="flex min-w-0 items-center gap-1.5">
-                <ModelLogo modelId={score.modelId} className="size-3 shrink-0" />
+                <ModelLogo
+                  modelId={score.modelId}
+                  className="size-3 shrink-0"
+                />
                 <span className="truncate" title={score.modelId}>
                   {formatModelName(score.modelId)}
                 </span>
@@ -926,10 +926,7 @@ function Conversation({
   output: string | null | undefined;
   emptyHint: string;
 }) {
-  const messages = useMemo(
-    () => (input ? toMessages(input) : null),
-    [input]
-  );
+  const messages = useMemo(() => (input ? toMessages(input) : null), [input]);
   const outMessages = useMemo(
     () => (output ? toMessages(output) : null),
     [output]
@@ -1015,7 +1012,9 @@ function Turn({ message }: { message: Message }) {
   const text = partsText(message.parts);
   const tools = message.parts.filter(
     (p) =>
-      p.kind === "tool-call" || p.kind === "tool-result" || p.kind === "tool-error"
+      p.kind === "tool-call" ||
+      p.kind === "tool-result" ||
+      p.kind === "tool-error"
   ) as Extract<Part, { kind: "tool-call" | "tool-result" | "tool-error" }>[];
   if (message.role === "user") {
     return <Bubble who="user" text={text || "(no text)"} />;
@@ -1054,7 +1053,8 @@ function ToolChips({
           key={i}
           className={cn(
             "inline-flex items-center gap-1 rounded-full border bg-card/40 px-2 py-0.5 text-xs text-muted-foreground",
-            t.kind === "tool-error" && "border-rose-500/40 text-rose-600 dark:text-rose-400"
+            t.kind === "tool-error" &&
+              "border-rose-500/40 text-rose-600 dark:text-rose-400"
           )}
         >
           <IconTool className="size-3 shrink-0" />
@@ -1107,13 +1107,7 @@ function Avatar({ who }: { who: "user" | "assistant" }) {
 
 // Same bubble as the session page: user text in a card, assistant markdown
 // as prose with a hover copy button.
-function Bubble({
-  who,
-  text,
-}: {
-  who: "user" | "assistant";
-  text: string;
-}) {
+function Bubble({ who, text }: { who: "user" | "assistant"; text: string }) {
   const isUser = who === "user";
   return (
     <div className="group/bubble flex gap-3">
@@ -1182,4 +1176,3 @@ function FocusedRun({
     </Card>
   );
 }
-
