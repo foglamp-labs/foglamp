@@ -776,7 +776,7 @@ function RunExchange({
   const glimpse = target ?? root;
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
       <Judgment score={score} />
       <div className="min-w-0 flex-1">
         {detail.isLoading ? (
@@ -828,18 +828,38 @@ function Judgment({ score }: { score: BaseScoreRow }) {
   return (
     <div className="flex shrink-0 flex-col gap-4 lg:w-72">
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex h-5 flex-wrap items-center gap-2">
+          {/* Same plain verdict/score treatment as the table cell. */}
           {score.passed !== null && (
-            <Badge variant={score.passed ? "emerald" : "rose"}>
-              {score.passed ? <IconCircleCheckFilled /> : <IconForbidFilled />}
-              {score.passed ? "pass" : "fail"}
-            </Badge>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 text-sm font-medium",
+                score.passed
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400"
+              )}
+            >
+              {score.passed ? (
+                <IconCircleCheckFilled className="size-3.25" />
+              ) : (
+                <IconForbidFilled className="size-3.25" />
+              )}
+              {score.passed ? "Pass" : "Fail"}
+            </span>
           )}
           {score.score !== null && (
-            <Badge variant="secondary">
-              <IconGauge />
+            <span
+              className={cn(
+                "text-sm tabular-nums",
+                score.score >= 0.9
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : score.score < 0.5
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-foreground"
+              )}
+            >
               {score.score.toFixed(2)}
-            </Badge>
+            </span>
           )}
           {truncated && (
             <Badge variant="amber">
@@ -941,7 +961,7 @@ function Conversation({
         <>
           {history.length > 0 && (
             <details className="group/history">
-              <summary className="flex cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+              <summary className="flex h-5 cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
                 <IconChevronRight className="size-3.5 transition-transform group-open/history:rotate-90" />
                 {history.length} earlier{" "}
                 {history.length === 1 ? "message" : "messages"}
