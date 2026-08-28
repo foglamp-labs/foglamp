@@ -418,6 +418,51 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
       aria-orientation="horizontal"
       className="flex h-8 shrink-0 items-center justify-end gap-4 px-1"
     >
+      <div
+        className="flex shrink-0 items-center gap-4 text-xs tabular-nums text-muted-foreground"
+        aria-label={`${fps} frames per second, ${queries.stale.length} stale queries, ${queries.fetching.length} queries fetching`}
+      >
+        <span className="flex items-center gap-1.25" aria-hidden>
+          {lowFps ? (
+            <IconGaugeFilled className="size-3.25 text-destructive" />
+          ) : (
+            <IconGauge className="size-3.25 text-muted-foreground opacity-80" />
+          )}
+          <span
+            className={
+              lowFps ? "text-destructive -mr-px" : "text-foreground -mr-px"
+            }
+          >
+            {fps}
+          </span>{" "}
+          FPS
+        </span>
+        <TooltipProvider delay={150}>
+          <QueryTooltip
+            title="Stale queries"
+            queries={queries.stale}
+            footer={
+              queries.staleInactive > 0
+                ? `+${queries.staleInactive} inactive (no observers)`
+                : undefined
+            }
+          >
+            <IconClockExclamation className="size-3.25 text-muted-foreground opacity-80" />
+            <span className="text-foreground -mr-px">
+              {queries.stale.length}
+            </span>{" "}
+            stale
+          </QueryTooltip>
+          <QueryTooltip title="Fetching queries" queries={queries.fetching}>
+            <IconDatabaseSearch className="size-3.25 text-muted-foreground opacity-80" />
+            <span className="text-foreground -mr-px">
+              {queries.fetching.length}
+            </span>{" "}
+            fetching
+          </QueryTooltip>
+        </TooltipProvider>
+      </div>
+
       <DropdownMenu>
         <DropdownMenuTrigger>
           <div className="flex gap-1.25 items-center text-xs group text-foreground transition-all cursor-pointer">
@@ -550,51 +595,6 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <div
-        className="flex shrink-0 items-center gap-4 text-xs tabular-nums text-muted-foreground"
-        aria-label={`${fps} frames per second, ${queries.stale.length} stale queries, ${queries.fetching.length} queries fetching`}
-      >
-        <span className="flex items-center gap-1.25" aria-hidden>
-          {lowFps ? (
-            <IconGaugeFilled className="size-3.25 text-destructive" />
-          ) : (
-            <IconGauge className="size-3.25 text-muted-foreground opacity-80" />
-          )}
-          <span
-            className={
-              lowFps ? "text-destructive -mr-px" : "text-foreground -mr-px"
-            }
-          >
-            {fps}
-          </span>{" "}
-          FPS
-        </span>
-        <TooltipProvider delay={150}>
-          <QueryTooltip
-            title="Stale queries"
-            queries={queries.stale}
-            footer={
-              queries.staleInactive > 0
-                ? `+${queries.staleInactive} inactive (no observers)`
-                : undefined
-            }
-          >
-            <IconClockExclamation className="size-3.25 text-muted-foreground opacity-80" />
-            <span className="text-foreground -mr-px">
-              {queries.stale.length}
-            </span>{" "}
-            stale
-          </QueryTooltip>
-          <QueryTooltip title="Fetching queries" queries={queries.fetching}>
-            <IconDatabaseSearch className="size-3.25 text-muted-foreground opacity-80" />
-            <span className="text-foreground -mr-px">
-              {queries.fetching.length}
-            </span>{" "}
-            fetching
-          </QueryTooltip>
-        </TooltipProvider>
-      </div>
 
       <TooltipProvider delay={0}>
         <div className="flex items-center -ml-1.5 gap-1">
