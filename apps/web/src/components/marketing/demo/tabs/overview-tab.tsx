@@ -129,15 +129,14 @@ function ChartLegend({
 	);
 }
 
-// A ranked breakdown entry: glyph + name + metrics on the left; cost + a share
-// bar on the right. Interactive rows (agents/workflows) pop the matching detail.
+// A ranked breakdown entry: glyph + name on the left; cost + a share bar on
+// the right. Interactive rows (agents/workflows) pop the matching detail.
 function BreakdownRow({
 	renderIcon,
 	title,
 	value,
 	fraction,
 	color,
-	metrics,
 	onClick,
 }: {
 	renderIcon: (className: string) => React.ReactNode;
@@ -145,23 +144,18 @@ function BreakdownRow({
 	value: React.ReactNode;
 	fraction: number;
 	color: string;
-	metrics: React.ReactNode;
 	onClick?: () => void;
 }) {
-	const rowClassName =
-		"flex w-full items-center justify-between gap-6 py-3 last:pb-0 px-5 last:pb-6";
+	const rowClassName = "flex w-full items-center justify-between gap-6 py-3 px-5";
 	const inner = (
 		<>
 			<div className="min-w-0 flex-1">
 				<div className="flex items-center gap-1.5">
-					{renderIcon("size-4 shrink-0")}
-					<span className="truncate text-sm font-medium">{title}</span>
-				</div>
-				<div className="mt-1 text-xs tabular-nums text-muted-foreground/70 text-left">
-					{metrics}
+					{renderIcon("size-3.5 shrink-0")}
+					<span className="truncate text-sm font-normal">{title}</span>
 				</div>
 			</div>
-			<div className="flex shrink-0 flex-col items-end gap-2">
+			<div className="flex shrink-0 flex-col items-end gap-1.5">
 				<span className="text-sm tabular-nums">{value}</span>
 				<div className="h-0.5 w-14 overflow-hidden rounded-full bg-muted-foreground/10">
 					<div
@@ -242,7 +236,7 @@ export function OverviewTab() {
 			<DemoListHeader href="/overview" title="Overview" withRange />
 
 			{/* KPIs */}
-			<section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8 mt-2">
+			<section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8 mt-1">
 				<StatCard
 					icon={IconCirclesFilled}
 					iconClassName="text-blue-500 dark:text-blue-500"
@@ -309,7 +303,7 @@ export function OverviewTab() {
 
 			{/* Models / Agents / Workflows / Customers breakdown */}
 			<section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4 px-8">
-				<BreakdownCard title="Models">
+				<BreakdownCard title="Models" count={OVERVIEW_BREAKDOWN.models.length}>
 					{OVERVIEW_BREAKDOWN.models.map((m) => (
 						<BreakdownRow
 							key={m.name}
@@ -320,12 +314,11 @@ export function OverviewTab() {
 							value={formatCost(m.cost, 3)}
 							fraction={m.fraction}
 							color={m.color}
-							metrics={m.metrics}
 						/>
 					))}
 				</BreakdownCard>
 
-				<BreakdownCard title="Agents">
+				<BreakdownCard title="Agents" count={OVERVIEW_BREAKDOWN.agents.length}>
 					{OVERVIEW_BREAKDOWN.agents.map((a) => (
 						<BreakdownRow
 							key={a.name}
@@ -335,12 +328,11 @@ export function OverviewTab() {
 							value={formatCost(a.cost, 3)}
 							fraction={a.fraction}
 							color={a.color}
-							metrics={a.metrics}
 						/>
 					))}
 				</BreakdownCard>
 
-				<BreakdownCard title="Workflows">
+				<BreakdownCard title="Workflows" count={OVERVIEW_BREAKDOWN.workflows.length}>
 					{OVERVIEW_BREAKDOWN.workflows.map((w) => (
 						<BreakdownRow
 							key={w.name}
@@ -352,12 +344,11 @@ export function OverviewTab() {
 							value={formatCost(w.cost, 3)}
 							fraction={w.fraction}
 							color={w.color}
-							metrics={w.metrics}
 						/>
 					))}
 				</BreakdownCard>
 
-				<BreakdownCard title="Customers">
+				<BreakdownCard title="Customers" count={OVERVIEW_BREAKDOWN.customers.length}>
 					{OVERVIEW_BREAKDOWN.customers.map((c) => (
 						<BreakdownRow
 							key={c.name}
@@ -368,7 +359,6 @@ export function OverviewTab() {
 							value={formatCost(c.cost, 3)}
 							fraction={c.fraction}
 							color={c.color}
-							metrics={c.metrics}
 						/>
 					))}
 				</BreakdownCard>
@@ -521,12 +511,16 @@ export function OverviewTab() {
 	);
 }
 
-// Shared shell for the four ranked-breakdown cards.
+// Shared shell for the four ranked-breakdown cards. Only the overflowing
+// lists get bottom padding so the last row clears the scroll fade; short
+// lists sit flush, matching overview-client.
 function BreakdownCard({
 	title,
+	count,
 	children,
 }: {
 	title: string;
+	count: number;
 	children: React.ReactNode;
 }) {
 	return (
@@ -534,9 +528,11 @@ function BreakdownCard({
 			<CardHeader>
 				<CardTitle>{title}</CardTitle>
 			</CardHeader>
-			<CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-				<ScrollFade className="max-h-60">
-					<div className="divide-y divide-border/40 pb-6">{children}</div>
+			<CardContent className="px-0 group-data-[size=sm]/card:px-0! min-h-58 max-h-58">
+				<ScrollFade className="max-h-60 -mt-1">
+					<div className={cn("divide-y divide-border/40", count > 4 && "pb-6")}>
+						{children}
+					</div>
 				</ScrollFade>
 			</CardContent>
 		</Card>

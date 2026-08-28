@@ -26,6 +26,7 @@ import {
 	useTableSort,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
+import { ModelLogo, formatModelName } from "@/components/model-logo";
 import {
 	formatCostFixed,
 	formatCount,
@@ -144,7 +145,7 @@ export function SessionsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-36"
+										className="w-30"
 									>
 										Turns
 									</SortableHead>
@@ -153,7 +154,7 @@ export function SessionsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-36"
+										className="w-32"
 									>
 										Tokens
 									</SortableHead>
@@ -162,7 +163,7 @@ export function SessionsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-40"
+										className="w-36"
 									>
 										Cost
 									</SortableHead>
@@ -184,10 +185,10 @@ export function SessionsTab() {
 										interactive
 										onClick={() => openDetail({ type: "session", id: s.sessionId })}
 									>
-										<TableCell>
+										<TableCell className="h-16">
 											<div className="flex flex-col gap-1">
 												<div className="flex items-center gap-2">
-													<span className="truncate font-medium text-[13px]">
+													<span className="truncate font-normal text-[14px]">
 														{s.userMessage}
 													</span>
 													{s.errorCount > 0 && (
@@ -201,6 +202,25 @@ export function SessionsTab() {
 													)}
 												</div>
 												<div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
+													{/* Same model line as the traces list; static here
+													    since sessions have no model filter. */}
+													{s.models.length > 0 && (
+														<span
+															title={s.models.map(formatModelName).join(", ")}
+															className="inline-flex min-w-0 shrink items-center gap-1"
+														>
+															<ModelLogo
+																modelId={s.models[0]!}
+																className="size-2.75 shrink-0"
+															/>
+															<span className="truncate">
+																{formatModelName(s.models[0]!)}
+																{s.models.length > 1
+																	? ` +${s.models.length - 1}`
+																	: ""}
+															</span>
+														</span>
+													)}
 													<button
 														type="button"
 														onClick={(e) => {

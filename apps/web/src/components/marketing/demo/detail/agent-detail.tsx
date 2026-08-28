@@ -179,19 +179,19 @@ export function AgentDetail({ agentName }: { agentName: string }) {
       />
 
       {/* Stat strip — totals over all spans in the window. */}
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-4 px-8">
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-4 px-8 mt-1">
         <StatCard
-          icon={IconBoltFilled}
-          iconClassName="text-orange-500 dark:text-orange-500"
+          icon={IconCoinFilled}
+          iconClassName="text-amber-400 dark:text-yellow-500"
           size="sm"
-          label="Spans"
-          value={agent.spanCount}
-          formatValue={formatCount}
-          hint={`${formatCount(llmSpanCount)} LLM`}
+          label="Total cost"
+          value={agent.costValue}
+          formatValue={(n) => formatCost(n, 4)}
+          hint={`${formatTokens(agent.totalTokens)} tokens`}
         />
         <StatCard
           icon={IconAlertTriangleFilled}
-          iconClassName="text-red-500 dark:text-red-600"
+          iconClassName="text-red-500/90 dark:text-red-600/95 mt-px"
           size="sm"
           label="Error rate"
           value={errorRate}
@@ -200,7 +200,7 @@ export function AgentDetail({ agentName }: { agentName: string }) {
         />
         <StatCard
           icon={IconClockFilled}
-          iconClassName="text-sky-500 dark:text-sky-500"
+          iconClassName="text-sky-400 dark:text-sky-500"
           size="sm"
           label="p95 latency"
           value={agent.p95Ms}
@@ -208,13 +208,13 @@ export function AgentDetail({ agentName }: { agentName: string }) {
           hint={`p50 ${formatDuration(agent.p50Ms)}`}
         />
         <StatCard
-          icon={IconCoinFilled}
-          iconClassName="text-yellow-400 dark:text-yellow-500"
+          icon={IconBoltFilled}
+          iconClassName="text-orange-500 dark:text-orange-500"
           size="sm"
-          label="Total cost"
-          value={agent.costValue}
-          formatValue={(n) => formatCost(n, 4)}
-          hint={`${formatTokens(agent.totalTokens)} tokens`}
+          label="Spans"
+          value={agent.spanCount}
+          formatValue={formatCount}
+          hint={`${formatCount(llmSpanCount)} LLM`}
         />
       </section>
 

@@ -2,13 +2,14 @@
 
 import { Button } from "@foglamp/ui/components/button";
 import { cn } from "@foglamp/ui/lib/utils";
-import { IconArrowUpRight, IconChevronRight } from "@tabler/icons-react";
+import { IconArrowUpRight, IconChevronRight, IconCpu } from "@tabler/icons-react";
 import type { Route } from "next";
 import { useState } from "react";
 
 import { navItem } from "@/components/app/nav";
 import { PageHeader } from "@/components/app/page-parts";
 import { RangeControl } from "@/components/app/range-picker";
+import { formatModelName, ModelLogo } from "@/components/model-logo";
 import { resolvePreset } from "@/lib/range";
 
 // The demo reuses the dashboard's real chrome (Toolbar, SearchInput,
@@ -96,7 +97,12 @@ export function DetailHeader({
 					{titleTrailing}
 				</h1>
 			</div>
-			{actions && <div className="flex items-center gap-2">{actions}</div>}
+			{actions && (
+				// Nudge actions down so they line up with the title text.
+				<div className="flex items-center gap-2 translate-y-1">
+					{actions}
+				</div>
+			)}
 		</div>
 	);
 }
@@ -117,12 +123,53 @@ export function DemoContextChip({
 	return (
 		<Button
 			variant="outline"
-			className="max-w-xs justify-start font-normal transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)"
+			className="max-w-xs justify-start bg-card hover:bg-muted/50 aria-expanded:bg-muted/50 dark:hover:bg-muted dark:aria-expanded:bg-muted font-normal transition-[color,box-shadow] active:scale-100 dark:border-0 dark:shadow-(--custom-outline-shadow)"
 			onClick={onClick}
 		>
 			<ChipIcon className={cn("size-3.5 shrink-0", iconClassName)} />
 			<span className="truncate">{label}</span>
 			<IconArrowUpRight className="size-3.5 shrink-0 -ml-0.5 mt-px text-muted-foreground" />
 		</Button>
+	);
+}
+
+/** Static context chip for the model(s) a session or trace ran on — the real
+ * ModelChip built on DemoContextChip. One model shows its logo and display
+ * name; several overlap their logos (capped at three) and read "n models". */
+export function DemoModelChip({ models }: { models: string[] }) {
+	if (models.length === 0) return null;
+	const only = models[0];
+	if (models.length === 1 && only) {
+		return (
+			<DemoContextChip
+				icon={(p) => <ModelLogo modelId={only} className={p.className} />}
+				iconClassName=""
+				label={formatModelName(only)}
+			/>
+		);
+	}
+	const shown = models.slice(0, 3);
+	return (
+		<span title={models.map((m) => formatModelName(m)).join(", ")}>
+			<DemoContextChip
+				icon={(p) => (
+					<span className={cn("flex items-center -space-x-1.5", p.className)}>
+						{shown.map((m) => (
+							<span
+								key={m}
+								className="flex size-4 items-center justify-center rounded-full bg-card ring-1 ring-card"
+							>
+								<ModelLogo modelId={m} className="size-3" />
+							</span>
+						))}
+						{models.length > shown.length && (
+							<IconCpu className="size-3 text-muted-foreground" />
+						)}
+					</span>
+				)}
+				iconClassName="w-auto"
+				label={`${models.length} models`}
+			/>
+		</span>
 	);
 }

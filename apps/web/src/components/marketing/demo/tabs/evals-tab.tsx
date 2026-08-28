@@ -40,7 +40,7 @@ import {
 	useTableSort,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
-import { formatCost, formatPercent } from "@/lib/format";
+import { formatCostFixed, formatPercent } from "@/lib/format";
 
 import { DemoListHeader, DemoRange } from "../demo-chrome";
 import { useDemo } from "../demo-context";
@@ -48,7 +48,7 @@ import { EVALS, type EvalRow, quintiles } from "../mock-data";
 
 const SPEND_QUANTILES = quintiles(EVALS.map((e) => e.spend));
 
-type EvalSortKey = "name" | "sample" | "passRate" | "avgScore" | "spend";
+type EvalSortKey = "name" | "passRate" | "avgScore" | "spend";
 
 export function EvalsTab() {
 	const { openDetail } = useDemo();
@@ -75,7 +75,6 @@ export function EvalsTab() {
 	);
 	const visible = sortRows<EvalRow, EvalSortKey>(filtered, sort, {
 		name: (e) => e.name,
-		sample: (e) => e.sample,
 		passRate: (e) => e.passRate,
 		avgScore: (e) => e.avgScore,
 		spend: (e) => e.spend,
@@ -157,17 +156,8 @@ export function EvalsTab() {
 								>
 									Name
 								</SortableHead>
-								<TableHead className="w-40">Check</TableHead>
-								<TableHead className="w-32">Target</TableHead>
-								<SortableHead
-									sortKey="sample"
-									sort={sort}
-									onSort={toggle}
-									align="right"
-									className="w-24"
-								>
-									Sample
-								</SortableHead>
+								<TableHead className="w-36">Check</TableHead>
+								<TableHead className="w-52">Scope</TableHead>
 								<SortableHead
 									sortKey="passRate"
 									sort={sort}
@@ -245,16 +235,15 @@ export function EvalsTab() {
 												) : (
 													<IconAffiliate className="size-3.5 shrink-0" />
 												)}
-												<span className="truncate capitalize">
-													{r.level}
+												{/* Level, agent filter, and the sample rate in one line. */}
+												<span className="truncate">
+													<span className="capitalize">{r.level}</span>
 													{r.agentName ? ` · ${r.agentName}` : ""}
+													<span className="tabular-nums">{` · ${r.sample}%`}</span>
 												</span>
 											</span>
 										</TableCell>
-										<TableCell className="text-right tabular-nums text-muted-foreground">
-											{r.sample}%
-										</TableCell>
-										<TableCell className="text-right tabular-nums">
+										<TableCell className="text-right tabular-nums font-medium">
 											<span
 												className={cn(
 													r.passRate >= 0.9
@@ -273,10 +262,9 @@ export function EvalsTab() {
 											value={r.spend}
 											thresholds={SPEND_QUANTILES}
 											metric="spend"
-											bold
 											mutedWhenZero
 										>
-											{r.spend > 0 ? formatCost(r.spend, 4) : "—"}
+											{r.spend > 0 ? formatCostFixed(r.spend, 4) : "—"}
 										</HeatCell>
 										<TableCell
 											onClick={(e) => e.stopPropagation()}

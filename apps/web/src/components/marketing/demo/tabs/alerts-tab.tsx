@@ -37,7 +37,7 @@ import {
 	sortRows,
 	useTableSort,
 } from "@/components/app/data-table";
-import { formatDuration } from "@/lib/format";
+import { formatCostFixed, formatDuration } from "@/lib/format";
 
 import { DemoListHeader } from "../demo-chrome";
 import { ALERTS, type AlertRow } from "../mock-data";
@@ -94,7 +94,7 @@ export function AlertsTab() {
 				title="Alerts"
 				actions={
 					<Button size="sm">
-						<IconPlus />
+						<IconPlus strokeWidth={2.4} />
 						New alert
 					</Button>
 				}
@@ -163,7 +163,7 @@ export function AlertsTab() {
 										>
 											<TableCell>
 												<div className="flex min-w-0 items-center gap-2">
-													<span className="truncate font-medium">{r.name}</span>
+													<span className="truncate font-normal">{r.name}</span>
 													{firing && (
 														<span
 															title="Firing"
@@ -195,7 +195,9 @@ export function AlertsTab() {
 												{formatDuration(r.windowSeconds * 1000)}
 											</TableCell>
 											<TableCell className="text-right tabular-nums">
-												{formatAlertMetricValue(r.metric, r.currentValue)}
+												{r.metric === "cost"
+													? formatCostFixed(r.currentValue, 4)
+													: formatAlertMetricValue(r.metric, r.currentValue)}
 											</TableCell>
 											<TableCell
 												align="right"

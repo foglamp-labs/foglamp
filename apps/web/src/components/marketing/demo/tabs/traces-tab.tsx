@@ -123,7 +123,7 @@ function AddFilterMenu({
 				render={
 					<Button
 						variant="outline"
-						className="font-normal transition-[color,box-shadow] active:scale-100 text-muted-foreground/50 hover:text-muted-foreground/50 aria-expanded:text-muted-foreground/50"
+						className="font-normal transition-[color,box-shadow] bg-card active:scale-100 text-muted-foreground/50 hover:text-muted-foreground/50 aria-expanded:text-muted-foreground/50"
 						onMouseEnter={group.onTriggerMouseEnter}
 					/>
 				}
@@ -433,13 +433,13 @@ export function TracesTab() {
 										interactive
 										onClick={() => openDetail({ type: "trace", id: t.traceId })}
 									>
-										<TableCell>
+										<TableCell className="h-16">
 											<div className="min-w-0 flex justify-between items-center">
 												{/* min-w-0 so the meta line truncates instead of
 												    overflowing into the next column. */}
 												<div className="min-w-0 flex flex-col gap-1">
 													<div className="flex items-center gap-2">
-														<span className="truncate font-medium text-[13px]">
+														<span className="truncate text-[14px]">
 															{t.title}
 														</span>
 														{t.errors ? (
@@ -560,7 +560,7 @@ export function TracesTab() {
 												</button>
 											</TableCell>
 										)}
-										<TableCell className="text-right tabular-nums">
+										<TableCell className="text-right tabular-nums text-muted-foreground">
 											{formatCount(t.spans)}
 										</TableCell>
 										<TableCell className="text-right tabular-nums">

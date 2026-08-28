@@ -24,9 +24,10 @@ import {
 	formatTokens,
 } from "@/lib/format";
 
-import { DemoContextChip, DetailHeader } from "../demo-chrome";
+import { DemoContextChip, DemoModelChip, DetailHeader } from "../demo-chrome";
 import { useDemo } from "../demo-context";
 import {
+	AGENTS,
 	quintiles,
 	SESSION_TURNS,
 	SESSIONS,
@@ -45,6 +46,8 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
 	const { closeDetail, openDetail } = useDemo();
 	const session =
 		SESSIONS.find((s) => s.sessionId === sessionId) ?? SESSIONS[0]!;
+	const models =
+		AGENTS.find((a) => a.name === session.agentName)?.models ?? [];
 	const turnRefs = useRef<(HTMLDivElement | null)[]>([]);
 
 	const turns = SESSION_TURNS;
@@ -93,6 +96,7 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
 					label={session.agentName}
 					onClick={() => openDetail({ type: "agent", id: session.agentName })}
 				/>
+				<DemoModelChip models={models} />
 			</div>
 
 			<div className="flex flex-col gap-6 mt-1">
@@ -319,7 +323,7 @@ function Bubble({ role, text }: { role: "user" | "assistant"; text: string }) {
 	return (
 		<div className="group/bubble flex gap-3">
 			<div
-				className={`${isUser && "mt-1.5"} flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground shadow-(--custom-shadow)`}
+				className={`${isUser && "mt-1.5"} flex size-6 shrink-0 items-center justify-center rounded-full bg-muted-foreground/15 text-muted-foreground shadow-(--custom-shadow)`}
 			>
 				<Icon className="size-3.5" />
 			</div>

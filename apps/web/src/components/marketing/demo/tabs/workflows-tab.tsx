@@ -22,7 +22,7 @@ import {
 	useTableSort,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
-import { formatCost, formatCount, formatTokens } from "@/lib/format";
+import { formatCostFixed, formatCount, formatTokens } from "@/lib/format";
 
 import { DemoListHeader, DemoRange } from "../demo-chrome";
 import { useDemo } from "../demo-context";
@@ -30,13 +30,7 @@ import { WORKFLOWS, type WorkflowRow, quintiles } from "../mock-data";
 
 const COST_QUANTILES = quintiles(WORKFLOWS.map((w) => w.costValue));
 
-type WorkflowSortKey =
-	| "name"
-	| "runs"
-	| "traces"
-	| "tokens"
-	| "cost"
-	| "lastRun";
+type WorkflowSortKey = "name" | "runs" | "tokens" | "cost" | "lastRun";
 
 export function WorkflowsTab() {
 	const { openDetail } = useDemo();
@@ -55,7 +49,6 @@ export function WorkflowsTab() {
 	const rows = sortRows<WorkflowRow, WorkflowSortKey>(filtered, sort, {
 		name: (w) => w.name,
 		runs: (w) => w.runs,
-		traces: (w) => w.traces,
 		tokens: (w) => w.tokens,
 		cost: (w) => w.costValue,
 		lastRun: (w) => -WORKFLOWS.indexOf(w),
@@ -108,15 +101,6 @@ export function WorkflowsTab() {
 										Runs
 									</SortableHead>
 									<SortableHead
-										sortKey="traces"
-										sort={sort}
-										onSort={toggle}
-										align="right"
-										className="w-36"
-									>
-										Traces
-									</SortableHead>
-									<SortableHead
 										sortKey="tokens"
 										sort={sort}
 										onSort={toggle}
@@ -155,7 +139,7 @@ export function WorkflowsTab() {
 										<TableCell className="h-12">
 											<div className="flex min-w-0 items-center gap-2">
 												<IconSitemap className="size-4 shrink-0 text-emerald-500" />
-												<span className="truncate font-medium">{w.name}</span>
+												<span className="truncate font-normal">{w.name}</span>
 												{w.errors > 0 && (
 													<span
 														title={`${w.errors} ${w.errors === 1 ? "error" : "errors"}`}
@@ -171,13 +155,10 @@ export function WorkflowsTab() {
 											{formatCount(w.runs)}
 										</TableCell>
 										<TableCell align="right" className="tabular-nums">
-											{formatCount(w.traces)}
-										</TableCell>
-										<TableCell align="right" className="tabular-nums">
 											{formatTokens(w.tokens)}
 										</TableCell>
 										<HeatCell value={w.costValue} thresholds={COST_QUANTILES} bold>
-											{formatCost(w.costValue, 4)}
+											{formatCostFixed(w.costValue, 4)}
 										</HeatCell>
 										<TableCell align="right" className="text-muted-foreground">
 											{w.lastRun}

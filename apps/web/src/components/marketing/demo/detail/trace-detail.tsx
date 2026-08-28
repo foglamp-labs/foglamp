@@ -38,7 +38,7 @@ import {
 } from "@/lib/format";
 import type { TraceSpan } from "@/lib/trace-timeline";
 
-import { DemoContextChip, DetailHeader } from "../demo-chrome";
+import { DemoContextChip, DemoModelChip, DetailHeader } from "../demo-chrome";
 import { useDemo } from "../demo-context";
 import { TRACE_MESSAGES, TRACE_ROWS, TRACE_SPANS } from "../mock-data";
 
@@ -197,6 +197,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 	const [selected, setSelected] = useState<string | null>(null);
 	const [costMode, setCostMode] = useState<"category" | "model">("category");
 	const row = TRACE_ROWS.find((t) => t.traceId === traceId) ?? TRACE_ROWS[0]!;
+	const models = [...new Set([row.model, "gemini-3.5-flash"])];
 
 	return (
 		<>
@@ -252,6 +253,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 					label={row.agentName}
 					onClick={() => openDetail({ type: "agent", id: row.agentName })}
 				/>
+				<DemoModelChip models={models} />
 			</div>
 
 			{/* Waterfall + the always-open whole-trace inspector, like the app. */}
@@ -321,7 +323,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 										label="Models"
 										value={
 											<span className="flex flex-col gap-1.5">
-												{[...new Set([row.model, "gemini-3.5-flash"])].map((m) => (
+												{models.map((m) => (
 													<span
 														key={m}
 														className="flex min-w-0 items-center gap-1.5"

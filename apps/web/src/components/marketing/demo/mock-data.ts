@@ -1205,6 +1205,8 @@ export type SessionRow = {
 	costValue: number;
 	errorCount: number;
 	when: string;
+	/** Models the session ran on, in order of first use. */
+	models: string[];
 };
 
 export const SESSIONS: SessionRow[] = [
@@ -1219,6 +1221,7 @@ export const SESSIONS: SessionRow[] = [
 		costValue: 0.182,
 		errorCount: 0,
 		when: "1m ago",
+		models: ["gpt-5.6-sol"],
 	},
 	{
 		sessionId: "ses_3c7d",
@@ -1230,6 +1233,7 @@ export const SESSIONS: SessionRow[] = [
 		costValue: 0.094,
 		errorCount: 1,
 		when: "4m ago",
+		models: ["claude-fable-5"],
 	},
 	{
 		sessionId: "ses_e02b",
@@ -1241,6 +1245,7 @@ export const SESSIONS: SessionRow[] = [
 		costValue: 0.318,
 		errorCount: 0,
 		when: "9m ago",
+		models: ["gpt-5.6-sol", "claude-fable-5"],
 	},
 	{
 		sessionId: "ses_5d8a",
@@ -1252,6 +1257,7 @@ export const SESSIONS: SessionRow[] = [
 		costValue: 0.041,
 		errorCount: 0,
 		when: "14m ago",
+		models: ["gemini-3.5-flash"],
 	},
 	{
 		sessionId: "ses_b44c",
@@ -1264,6 +1270,7 @@ export const SESSIONS: SessionRow[] = [
 		costValue: 0.412,
 		errorCount: 2,
 		when: "18m ago",
+		models: ["glm-5"],
 	},
 	{
 		sessionId: "ses_9e1d",
@@ -1275,6 +1282,7 @@ export const SESSIONS: SessionRow[] = [
 		costValue: 0.068,
 		errorCount: 0,
 		when: "28m ago",
+		models: ["gpt-5.6-sol"],
 	},
 ];
 
@@ -1486,30 +1494,35 @@ export const EVAL_SAMPLES: {
 	score: number;
 	verdict: "pass" | "fail";
 	note: string;
+	cost: number;
 }[] = [
 	{
 		traceId: "tr_9f2a4c8e",
 		score: 0.97,
 		verdict: "pass",
 		note: "Polite, acknowledges delay, offers remedy.",
+		cost: 0.0012,
 	},
 	{
 		traceId: "tr_3b8e1d6a",
 		score: 0.91,
 		verdict: "pass",
 		note: "Clear and courteous; slightly terse closing.",
+		cost: 0.0009,
 	},
 	{
 		traceId: "tr_7c1f5a2b",
 		score: 0.42,
 		verdict: "fail",
 		note: "Curt tone; no acknowledgement of the issue.",
+		cost: 0.0014,
 	},
 	{
 		traceId: "tr_2d9a6c3f",
 		score: 0.95,
 		verdict: "pass",
 		note: "Warm, on-brand, well-structured.",
+		cost: 0.0008,
 	},
 ];
 

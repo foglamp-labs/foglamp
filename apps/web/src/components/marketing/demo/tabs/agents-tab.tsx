@@ -24,7 +24,7 @@ import {
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
 import {
-	formatCost,
+	formatCostFixed,
 	formatCount,
 	formatDuration,
 	formatTokens,
@@ -36,7 +36,7 @@ import { AGENTS, type AgentCard, quintiles } from "../mock-data";
 
 const COST_QUANTILES = quintiles(AGENTS.map((a) => a.costValue));
 
-type AgentSortKey = "name" | "spans" | "tokens" | "latency" | "cost" | "lastRun";
+type AgentSortKey = "name" | "tokens" | "latency" | "cost" | "lastRun";
 
 export function AgentsTab() {
 	const { openDetail } = useDemo();
@@ -54,7 +54,6 @@ export function AgentsTab() {
 	);
 	const rows = sortRows<AgentCard, AgentSortKey>(filtered, sort, {
 		name: (a) => a.name,
-		spans: (a) => a.spanCount,
 		tokens: (a) => a.totalTokens,
 		latency: (a) => a.p95Ms,
 		cost: (a) => a.costValue,
@@ -97,15 +96,6 @@ export function AgentsTab() {
 								<TableRow>
 									<SortableHead sortKey="name" sort={sort} onSort={toggle}>
 										Agent
-									</SortableHead>
-									<SortableHead
-										sortKey="spans"
-										sort={sort}
-										onSort={toggle}
-										align="right"
-										className="w-32"
-									>
-										Spans
 									</SortableHead>
 									<SortableHead
 										sortKey="tokens"
@@ -155,7 +145,7 @@ export function AgentsTab() {
 										<TableCell className="h-12">
 											<div className="flex min-w-0 items-center gap-2">
 												<AgentIcon name={a.name} className="size-4" />
-												<span className="truncate font-medium">{a.name}</span>
+												<span className="truncate font-normal">{a.name}</span>
 												{a.errorCount > 0 && (
 													<span
 														title={`${a.errorCount} ${a.errorCount === 1 ? "error" : "errors"}`}
@@ -168,16 +158,13 @@ export function AgentsTab() {
 											</div>
 										</TableCell>
 										<TableCell align="right" className="tabular-nums">
-											{formatCount(a.spanCount)}
-										</TableCell>
-										<TableCell align="right" className="tabular-nums">
 											{formatTokens(a.totalTokens)}
 										</TableCell>
 										<TableCell align="right" className="tabular-nums">
 											{formatDuration(a.p95Ms)}
 										</TableCell>
 										<HeatCell value={a.costValue} thresholds={COST_QUANTILES} bold>
-											{formatCost(a.costValue, 4)}
+											{formatCostFixed(a.costValue, 4)}
 										</HeatCell>
 										<TableCell align="right" className="text-muted-foreground">
 											{a.lastRun}
