@@ -202,13 +202,12 @@ function BreakdownRowsSkeleton({
   skeleton: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        // Same viewport cap as the loaded list (ScrollFade max-h-60), so the
-        // card is exactly as tall while loading as once the rows land.
-        "max-h-60 overflow-hidden",
-        !skeleton && "invisible"
-      )}
+    // Same ScrollFade viewport as the loaded list, so the card is exactly as
+    // tall while loading as once the rows land, and the bottom fade already
+    // reads as "more below" during the shimmer.
+    <ScrollFade
+      className="max-h-60"
+      containerClassName={cn(!skeleton && "invisible")}
     >
       <div className="divide-y divide-border/40 pb-6">
       {Array.from({ length: rows }).map((_, i) => (
@@ -232,7 +231,7 @@ function BreakdownRowsSkeleton({
         </div>
       ))}
       </div>
-    </div>
+    </ScrollFade>
   );
 }
 
