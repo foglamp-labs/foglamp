@@ -190,7 +190,8 @@ function ChartLegend({
 }
 
 /** Loading rows for a breakdown list card — one blob per BreakdownRow slot
- * (icon + name, secondary metrics, value + share bar) at the real row height.
+ * (icon + name, secondary metrics, value + share bar) at the real row height,
+ * capped at the list's scroll height.
  * Invisible until `skeleton` flips (see useDelayedLoading), so the card holds
  * its final height from the first paint and fast loads never flash shimmer. */
 function BreakdownRowsSkeleton({
@@ -201,7 +202,15 @@ function BreakdownRowsSkeleton({
   skeleton: boolean;
 }) {
   return (
-    <div className={cn("divide-y divide-border/40 pb-6", !skeleton && "invisible")}>
+    <div
+      className={cn(
+        // Same viewport cap as the loaded list (ScrollFade max-h-60), so the
+        // card is exactly as tall while loading as once the rows land.
+        "max-h-60 overflow-hidden",
+        !skeleton && "invisible"
+      )}
+    >
+      <div className="divide-y divide-border/40 pb-6">
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
@@ -222,6 +231,7 @@ function BreakdownRowsSkeleton({
           </div>
         </div>
       ))}
+      </div>
     </div>
   );
 }

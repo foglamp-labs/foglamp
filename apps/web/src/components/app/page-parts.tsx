@@ -223,8 +223,9 @@ export function StatCard({
 	 * hint, delta, and chart slots are held empty at their final heights, so
 	 * the data drops into place without shifting the card. */
 	loading?: boolean;
-	/** With `loading`, paints shimmer blobs in the held slots (pair with
-	 * `useDelayedLoading` so fast loads never flash them). */
+	/** With `loading`, paints shimmer blobs in the value, hint, and delta
+	 * slots (pair with `useDelayedLoading` so fast loads never flash them).
+	 * The chart slot is only ever held blank. */
 	skeleton?: boolean;
 }) {
 	const hold = loading ? (skeleton ? "skeleton" : "blank") : null;
@@ -258,7 +259,7 @@ export function StatCard({
 							// height matches the loaded card exactly.
 							<span className="inline-flex items-center">
 								{"\u200b"}
-								<Skeleton className={cn("h-6 w-20", placeholderClass)} />
+								<Skeleton className={cn("h-4.5 w-20", placeholderClass)} />
 							</span>
 						) : typeof value === "number" ? (
 							<>
@@ -286,15 +287,10 @@ export function StatCard({
 			</CardHeader>
 
 			{hold && chart ? (
-				// Same 32px strip as CardSparkline / PillMeter, bleeding to the
-				// card edge like the real chart does.
+				// Same 32px strip as CardSparkline / PillMeter, held blank (never
+				// shimmered) so the chart simply appears when the data lands.
 				<div className="mt-auto -mb-6 group-data-[size=sm]/card:-mb-5">
-					<Skeleton
-						className={cn(
-							"h-8 w-full rounded-b-none squircle:rounded-b-none",
-							placeholderClass,
-						)}
-					/>
+					<div className="h-8 w-full" />
 				</div>
 			) : (
 				chart && (
@@ -358,7 +354,7 @@ export function CardSparkline({
 
 	const W = 100;
 	const H = 32;
-	const PAD = 2;
+	const PAD = 3;
 	const max = Math.max(...pts, 0);
 	const span = max > 0 ? max : 1;
 	const coords = pts.map((v, i) => {
@@ -384,7 +380,7 @@ export function CardSparkline({
 		<svg
 			viewBox={`0 0 ${W} ${H}`}
 			preserveAspectRatio="none"
-			className={cn("block h-8 w-full", className)}
+			className={cn("block h-8 w-full overflow-visible", className)}
 			aria-hidden
 		>
 			<defs>
