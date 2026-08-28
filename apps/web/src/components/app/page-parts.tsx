@@ -2,7 +2,6 @@
 
 import {
 	Card,
-	CardDescription,
 	CardHeader,
 	CardTitle,
 } from "@foglamp/ui/components/card";
@@ -251,7 +250,11 @@ export function StatCard({
 								)}
 							/>
 						)}
-						<CardDescription className="truncate">{label}</CardDescription>
+						{/* A plain span, not CardDescription: its data-slot would make
+						    CardHeader reserve a second grid row (plus gap) under this
+						    single row, leaving extra space at the bottom of chartless
+						    cards. */}
+						<span className="truncate text-sm text-muted-foreground">{label}</span>
 					</div>
 					<div className="flex shrink-0 items-center gap-2">
 						{hold ? (
