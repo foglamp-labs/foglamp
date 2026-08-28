@@ -341,7 +341,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
           {/* Stat strip — totals over all spans in the window. */}
           <section
             className={cn(
-              "grid grid-cols-2 gap-4 md:grid-cols-4 px-8 mt-2",
+              "grid grid-cols-2 gap-4 md:grid-cols-4 px-8 mt-1",
               entrance && "page-fade-in"
             )}
           >
