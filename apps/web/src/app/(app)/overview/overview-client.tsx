@@ -43,6 +43,7 @@ import { navItem } from "@/components/app/nav";
 import { OnboardingPanel } from "@/components/app/onboarding-panel";
 import {
   CardSparkline,
+  CardSparklinePlaceholder,
   EmptyState,
   NoProject,
   PageHeader,
@@ -736,6 +737,7 @@ export function OverviewClient() {
           size="sm"
           loading={statsLoading}
           skeleton={statsSkeleton}
+          chartPlaceholder={<CardSparklinePlaceholder />}
           value={cur?.totalTokens ?? 0}
           formatValue={formatTokens}
           delta={formatDelta(cur?.totalTokens, prev?.totalTokens)}
@@ -754,6 +756,7 @@ export function OverviewClient() {
           size="sm"
           loading={statsLoading}
           skeleton={statsSkeleton}
+          chartPlaceholder={<CardSparklinePlaceholder />}
           value={cur?.totalCost ?? "—"}
           formatValue={(n) => formatCost(n, 2)}
           delta={formatDelta(cur?.totalCost, prev?.totalCost)}
@@ -773,6 +776,7 @@ export function OverviewClient() {
           size="sm"
           loading={statsLoading}
           skeleton={statsSkeleton}
+          chartPlaceholder={<PillMeter fraction={null} />}
           value={cur?.passRate ?? "—"}
           formatValue={formatPercent}
           delta={formatDelta(cur?.passRate, prev?.passRate)}
@@ -795,6 +799,7 @@ export function OverviewClient() {
           size="sm"
           loading={statsLoading}
           skeleton={statsSkeleton}
+          chartPlaceholder={<PillMeter fraction={null} />}
           value={cur?.errorRate ?? "—"}
           formatValue={formatPercent}
           delta={formatDelta(cur?.errorRate, prev?.errorRate)}

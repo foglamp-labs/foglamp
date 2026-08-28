@@ -190,6 +190,7 @@ export function StatCard({
 	formatValue,
 	loading = false,
 	skeleton = false,
+	chartPlaceholder,
 }: {
 	label: string;
 	/** A `number` gets the ticker treatment — on change the digits animate to
@@ -225,8 +226,12 @@ export function StatCard({
 	loading?: boolean;
 	/** With `loading`, paints shimmer blobs in the value, hint, and delta
 	 * slots (pair with `useDelayedLoading` so fast loads never flash them).
-	 * The chart slot is only ever held blank. */
+	 * The chart slot shows `chartPlaceholder` (or stays blank). */
 	skeleton?: boolean;
+	/** Loading stand-in for the chart slot, e.g. a gray `CardSparklinePlaceholder`
+	 * or an all-inactive `PillMeter`. Shown once `skeleton` flips; the slot is
+	 * held blank at full height before that. */
+	chartPlaceholder?: React.ReactNode;
 }) {
 	const hold = loading ? (skeleton ? "skeleton" : "blank") : null;
 	const placeholderClass = hold === "blank" ? "invisible" : undefined;
@@ -287,11 +292,13 @@ export function StatCard({
 			</CardHeader>
 
 			{hold && chart ? (
-				// Held blank (never shimmered) at the height of the tallest chart
-				// slot (PillMeter: 6 + 14 + 20px) so the chart simply appears when
-				// the data lands without growing the card.
+				// Held at the height of the tallest chart slot (PillMeter:
+				// 6 + 14 + 20px) so the chart appears without growing the card;
+				// the placeholder (if any) paints in the same box after the delay.
 				<div className="mt-auto -mb-6 group-data-[size=sm]/card:-mb-5">
-					<div className="h-10 w-full" />
+					<div className="flex h-10 w-full flex-col justify-end">
+						{hold === "skeleton" && chartPlaceholder}
+					</div>
 				</div>
 			) : (
 				chart && (
@@ -425,7 +432,7 @@ const SAMPLE_SPARKLINE = [0.3, 0.45, 0.38, 0.55, 0.48, 0.66, 0.58, 0.75];
 /** Faint placeholder trend for an empty `CardSparkline`. Ignores the caller's
  * accent and renders in the muted color so the card reads as "trend goes here"
  * rather than leaving a blank strip below the value. */
-function CardSparklinePlaceholder() {
+export function CardSparklinePlaceholder() {
 	const gid = useId().replace(/:/g, "");
 	const W = 100;
 	const H = 32;
