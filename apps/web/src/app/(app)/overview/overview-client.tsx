@@ -200,14 +200,15 @@ function BreakdownRowsSkeleton({
   skeleton: boolean;
 }) {
   return (
-    // Same ScrollFade viewport as the loaded list, so the card is exactly as
-    // tall while loading as once the rows land, and the bottom fade already
-    // reads as "more below" during the shimmer.
-    <ScrollFade
-      className="max-h-60  -mt-1"
-      containerClassName={cn(!skeleton && "invisible")}
+    // Rendered inside the card's one ScrollFade (shared with the loaded rows)
+    // so the fade never remounts when the data lands. Invisible until the
+    // skeleton delay elapses; the fade over a blank card is invisible too.
+    <div
+      className={cn(
+        "divide-y divide-border/40 pb-6",
+        !skeleton && "invisible"
+      )}
     >
-      <div className="divide-y divide-border/40 pb-6">
         {Array.from({ length: rows }).map((_, i) => (
           <div
             key={i}
@@ -225,8 +226,7 @@ function BreakdownRowsSkeleton({
             </div>
           </div>
         ))}
-      </div>
-    </ScrollFade>
+    </div>
   );
 }
 
@@ -819,9 +819,7 @@ export function OverviewClient() {
             <CardTitle>Models</CardTitle>
           </CardHeader>
           <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-            {modelsLoading ? (
-              <BreakdownRowsSkeleton skeleton={modelsSkeleton} />
-            ) : modelRows.length === 0 ? (
+            {!modelsLoading && modelRows.length === 0 ? (
               // Sized to the list viewport (ScrollFade max-h-60) so an empty
               // card never stretches the grid row past its full siblings.
               <EmptyState
@@ -832,6 +830,9 @@ export function OverviewClient() {
               />
             ) : (
               <ScrollFade className="max-h-60 -mt-1">
+                {modelsLoading ? (
+                  <BreakdownRowsSkeleton skeleton={modelsSkeleton} />
+                ) : (
                 <div className="divide-y divide-border/40">
                   {modelRows.map((m) => (
                     <BreakdownRow
@@ -858,6 +859,7 @@ export function OverviewClient() {
                     />
                   ))}
                 </div>
+                )}
               </ScrollFade>
             )}
           </CardContent>
@@ -874,9 +876,7 @@ export function OverviewClient() {
             <CardTitle>Agents</CardTitle>
           </CardHeader>
           <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-            {agentsLoading ? (
-              <BreakdownRowsSkeleton skeleton={agentsSkeleton} />
-            ) : agentRows.length === 0 ? (
+            {!agentsLoading && agentRows.length === 0 ? (
               <EmptyState
                 icon={IconGhostFilled}
                 title="No agent yet"
@@ -884,7 +884,10 @@ export function OverviewClient() {
                 className="h-60 border-none py-0"
               />
             ) : (
-              <ScrollFade className="max-h-60  -mt-1">
+              <ScrollFade className="max-h-60 -mt-1">
+                {agentsLoading ? (
+                  <BreakdownRowsSkeleton skeleton={agentsSkeleton} />
+                ) : (
                 <div className="divide-y divide-border/40">
                   {agentRows.map((a) => (
                     <BreakdownRow
@@ -902,6 +905,7 @@ export function OverviewClient() {
                     />
                   ))}
                 </div>
+                )}
               </ScrollFade>
             )}
           </CardContent>
@@ -918,9 +922,7 @@ export function OverviewClient() {
             <CardTitle>Workflows</CardTitle>
           </CardHeader>
           <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-            {workflowsLoading ? (
-              <BreakdownRowsSkeleton skeleton={workflowsSkeleton} />
-            ) : workflowRows.length === 0 ? (
+            {!workflowsLoading && workflowRows.length === 0 ? (
               <EmptyState
                 icon={IconSitemapFilled}
                 title="No workflow yet"
@@ -928,7 +930,10 @@ export function OverviewClient() {
                 className="h-60 border-none py-0"
               />
             ) : (
-              <ScrollFade className="max-h-60  -mt-1">
+              <ScrollFade className="max-h-60 -mt-1">
+                {workflowsLoading ? (
+                  <BreakdownRowsSkeleton skeleton={workflowsSkeleton} />
+                ) : (
                 <div className="divide-y divide-border/40">
                   {workflowRows.map((w) => (
                     <BreakdownRow
@@ -950,6 +955,7 @@ export function OverviewClient() {
                     />
                   ))}
                 </div>
+                )}
               </ScrollFade>
             )}
           </CardContent>
@@ -966,9 +972,7 @@ export function OverviewClient() {
             <CardTitle>Customers</CardTitle>
           </CardHeader>
           <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-            {customersLoading ? (
-              <BreakdownRowsSkeleton skeleton={customersSkeleton} />
-            ) : customerRows.length === 0 ? (
+            {!customersLoading && customerRows.length === 0 ? (
               <EmptyState
                 icon={IconUserFilled}
                 title="No customer yet"
@@ -976,7 +980,10 @@ export function OverviewClient() {
                 className="h-60 border-none py-0"
               />
             ) : (
-              <ScrollFade className="max-h-60  -mt-1">
+              <ScrollFade className="max-h-60 -mt-1">
+                {customersLoading ? (
+                  <BreakdownRowsSkeleton skeleton={customersSkeleton} />
+                ) : (
                 <div className="divide-y divide-border/40">
                   {customerRows.map((c) => (
                     <BreakdownRow
@@ -1012,6 +1019,7 @@ export function OverviewClient() {
                     />
                   ))}
                 </div>
+                )}
               </ScrollFade>
             )}
           </CardContent>

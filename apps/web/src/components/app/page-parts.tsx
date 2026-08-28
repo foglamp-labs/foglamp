@@ -198,6 +198,8 @@ export function StatCard({
 	 * `prefix`/`suffix`. Any other ReactNode (a preformatted string, "—", …)
 	 * renders statically. */
 	value: React.ReactNode;
+	/** Accepted for callers, but not rendered in the current layout (the card
+	 * shows only label, delta, and value). */
 	hint?: React.ReactNode;
 	/** Static element rendered before an animated numeric value. */
 	prefix?: React.ReactNode;
@@ -221,10 +223,10 @@ export function StatCard({
 	 * `CardSparkline` or `PillMeter`. Bleeds past the card's vertical padding. */
 	chart?: React.ReactNode;
 	/** While true the static shell (icon + label) stays put and the value,
-	 * hint, delta, and chart slots are held empty at their final heights, so
+	 * delta, and chart slots are held empty at their final heights, so
 	 * the data drops into place without shifting the card. */
 	loading?: boolean;
-	/** With `loading`, paints shimmer blobs in the value, hint, and delta
+	/** With `loading`, paints shimmer blobs in the value and delta
 	 * slots (pair with `useDelayedLoading` so fast loads never flash them).
 	 * The chart slot shows `chartPlaceholder` (or stays blank). */
 	skeleton?: boolean;
@@ -238,7 +240,7 @@ export function StatCard({
 	return (
 		<Card size={size}>
 			<CardHeader className="gap-1.5">
-				{/* Row 1: icon + label on the left, the value on the right. */}
+				{/* Icon + label on the left; the delta badge and value on the right. */}
 				<div className="flex items-center justify-between gap-2">
 					<div className="flex min-w-0 items-center gap-1.5">
 						{Icon && (
@@ -251,47 +253,34 @@ export function StatCard({
 						)}
 						<CardDescription className="truncate">{label}</CardDescription>
 					</div>
-					<CardTitle className="shrink-0 tracking-tight tabular-nums">
+					<div className="flex shrink-0 items-center gap-2">
 						{hold ? (
-							// Zero-width text keeps the title's line box so the row
-							// height matches the loaded card exactly.
-							<span className="inline-flex items-center">
-								{"\u200b"}
-								<Skeleton className={cn("h-3 w-20", placeholderClass)} />
-							</span>
-						) : typeof value === "number" ? (
-							<>
-								{prefix}
-								<TickerValue
-									value={value}
-									format={formatValue ?? defaultTickerFormat}
-								/>
-								{suffix}
-							</>
-						) : (
-							value
-						)}
-					</CardTitle>
-				</div>
-				{/* Row 2: hint and delta side by side, right-aligned under the
-				    value. Always rendered so the card height never depends on
-				    whether either is present. */}
-				<div className="flex h-4 items-center justify-end gap-2">
-					{hold ? (
-						<>
-							<Skeleton className={cn("h-3 w-16", placeholderClass)} />
 							<Skeleton className={cn("h-3 w-9", placeholderClass)} />
-						</>
-					) : (
-						<>
-							{hint && (
-								<span className="min-w-0 truncate text-end text-xs text-muted-foreground/70">
-									{hint}
+						) : (
+							delta && <DeltaBadge delta={delta} inverted={deltaInverted} />
+						)}
+						<CardTitle className="tracking-tight tabular-nums">
+							{hold ? (
+								// Zero-width text keeps the title's line box so the row
+								// height matches the loaded card exactly.
+								<span className="inline-flex items-center">
+									{"\u200b"}
+									<Skeleton className={cn("h-3 w-20", placeholderClass)} />
 								</span>
+							) : typeof value === "number" ? (
+								<>
+									{prefix}
+									<TickerValue
+										value={value}
+										format={formatValue ?? defaultTickerFormat}
+									/>
+									{suffix}
+								</>
+							) : (
+								value
 							)}
-							{delta && <DeltaBadge delta={delta} inverted={deltaInverted} />}
-						</>
-					)}
+						</CardTitle>
+					</div>
 				</div>
 			</CardHeader>
 
