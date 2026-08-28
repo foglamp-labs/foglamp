@@ -85,7 +85,12 @@ import {
   TableRowsSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
-import { formatDateTime, formatDuration, formatRelative } from "@/lib/format";
+import {
+  formatCostFixed,
+  formatDateTime,
+  formatDuration,
+  formatRelative,
+} from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import {
   COMPARISON_OPTIONS,
@@ -537,11 +542,11 @@ export function AlertsClient() {
                       sortKey="name"
                       sort={sort}
                       onSort={toggle}
-                      className="w-92"
+                      className="w-60"
                     >
                       Alert
                     </SortableHead>
-                    <TableHead className="w-48">Condition</TableHead>
+                    <TableHead className="w-40">Condition</TableHead>
                     <SortableHead
                       sortKey="window"
                       sort={sort}
@@ -617,7 +622,9 @@ export function AlertsClient() {
                           <TableCell className="text-right tabular-nums">
                             {r.lastValue === null
                               ? "—"
-                              : formatAlertMetricValue(r.metric, r.lastValue)}
+                              : r.metric === "cost"
+                                ? formatCostFixed(r.lastValue, 4)
+                                : formatAlertMetricValue(r.metric, r.lastValue)}
                           </TableCell>
                           <TableCell
                             align="right"
