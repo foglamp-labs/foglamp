@@ -718,7 +718,7 @@ export function OverviewClient() {
           once the load outruns the skeleton delay). */}
       <section
         className={cn(
-          "grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8 mt-2",
+          "grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8 mt-1",
           entrance && "page-fade-in"
         )}
       >
