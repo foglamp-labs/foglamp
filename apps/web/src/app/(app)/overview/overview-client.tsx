@@ -830,11 +830,13 @@ export function OverviewClient() {
             {modelsLoading ? (
               <BreakdownRowsSkeleton skeleton={modelsSkeleton} />
             ) : modelRows.length === 0 ? (
+              // Sized to the list viewport (ScrollFade max-h-60) so an empty
+              // card never stretches the grid row past its full siblings.
               <EmptyState
                 icon={IconCpu}
                 title="No model yet"
                 description="Models are picked up automatically."
-                className="border-none mb-6"
+                className="h-60 border-none py-0"
               />
             ) : (
               <ScrollFade className="max-h-60  -mt-1">
@@ -888,7 +890,7 @@ export function OverviewClient() {
                 icon={IconGhostFilled}
                 title="No agent yet"
                 description="Set agentName on a call to group it under an agent."
-                className="border-none mb-6"
+                className="h-60 border-none py-0"
               />
             ) : (
               <ScrollFade className="max-h-60  -mt-1">
@@ -933,7 +935,7 @@ export function OverviewClient() {
                 icon={IconSitemapFilled}
                 title="No workflow yet"
                 description="Set workflowName to group it under a workflow."
-                className="border-none mb-6"
+                className="h-60 border-none py-0"
               />
             ) : (
               <ScrollFade className="max-h-60  -mt-1">
@@ -982,7 +984,7 @@ export function OverviewClient() {
                 icon={IconUserFilled}
                 title="No customer yet"
                 description="Set customer to attribute its cost."
-                className="border-none mb-6"
+                className="h-60 border-none py-0"
               />
             ) : (
               <ScrollFade className="max-h-60  -mt-1">
