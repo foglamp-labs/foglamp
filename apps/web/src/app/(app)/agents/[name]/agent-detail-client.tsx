@@ -4,35 +4,34 @@ import { Badge } from "@foglamp/ui/components/badge";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
 import { Button } from "@foglamp/ui/components/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@foglamp/ui/components/card";
+import {} from "@foglamp/ui/components/pagination";
 import {
-} from "@foglamp/ui/components/pagination";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@foglamp/ui/components/table";
 import {
-	IconAffiliateFilled,
-	IconAlertTriangle,
-	IconAlertTriangleFilled,
-	IconArrowUpRight,
-	IconBoltFilled,
-	IconChartAreaFilled,
-	IconChevronRight,
-	IconClockFilled,
-	IconCoinFilled,
-	IconCpu,
-	IconGhostFilled,
-	IconTool,
+  IconAffiliateFilled,
+  IconAlertTriangle,
+  IconAlertTriangleFilled,
+  IconArrowUpRight,
+  IconBoltFilled,
+  IconChartAreaFilled,
+  IconChevronRight,
+  IconClockFilled,
+  IconCoinFilled,
+  IconCpu,
+  IconGhostFilled,
+  IconTool,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -42,28 +41,28 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CostBreakdownCard } from "@/components/app/cost-breakdown-card";
 import {
-	PaginationFooter,
-	SortableHead,
-	useTableSort,
+  PaginationFooter,
+  SortableHead,
+  useTableSort,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
 import {
-	useDelayedLoading,
-	useEntranceOnce,
-	useSkeletonShown,
+  useDelayedLoading,
+  useEntranceOnce,
+  useSkeletonShown,
 } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import {
-	type FlowNode,
-	NodeFlow,
-	NodeFlowSkeleton,
+  type FlowNode,
+  NodeFlow,
+  NodeFlowSkeleton,
 } from "@/components/app/node-flow";
 import {
-	EmptyState,
-	NoProject,
-	PageHeader,
-	StatCard,
-	TableRowsSkeleton,
+  EmptyState,
+  NoProject,
+  PageHeader,
+  StatCard,
+  TableRowsSkeleton,
 } from "@/components/app/page-parts";
 import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
@@ -72,23 +71,23 @@ import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
 import { ToolBreakdownCard } from "@/components/app/tool-breakdown-card";
 import {
-	ChartLegend,
-	formatBucketFull,
-	makeBucketLabel,
-	makeEdgeTick,
-	themed,
-	thinTicks,
+  ChartLegend,
+  formatBucketFull,
+  makeBucketLabel,
+  makeEdgeTick,
+  themed,
+  thinTicks,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import { ModelLogo } from "@/components/model-logo";
 import {
-	formatCost,
-	formatCount,
-	formatDuration,
-	formatPercent,
-	formatSpanDuration,
-	formatTokens,
+  formatCost,
+  formatCount,
+  formatDuration,
+  formatPercent,
+  formatSpanDuration,
+  formatTokens,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
@@ -97,786 +96,788 @@ const PAGE_SIZES = [25, 50, 100];
 
 // Skeleton column spec for the loading body rows (see TableRowsSkeleton).
 const SKELETON_COLS = [
-	{ icon: true, w: "w-48" },
-	{ w: "w-20" },
-	{ align: "right", w: "w-8" },
-	{ align: "right", w: "w-10" },
-	{ align: "right", w: "w-12" },
-	{ align: "right", w: "w-14" },
-	{ align: "right", w: "w-16" },
+  { icon: true, w: "w-48" },
+  { w: "w-20" },
+  { align: "right", w: "w-8" },
+  { align: "right", w: "w-10" },
+  { align: "right", w: "w-12" },
+  { align: "right", w: "w-14" },
+  { align: "right", w: "w-16" },
 ] as const;
 
 type TraceSortKey = "when" | "duration" | "tokens" | "spans" | "cost";
 
 const volumeConfig = {
-	spans: { label: "Spans", colors: themed("var(--chart-2)") },
-	errors: { label: "Errored", colors: themed("var(--destructive)") },
+  spans: { label: "Spans", colors: themed("var(--chart-2)") },
+  errors: { label: "Errored", colors: themed("var(--destructive)") },
 } satisfies ChartConfig;
 
 const latencyConfig = {
-	// neutral-800 on light, neutral-200 on dark — matches the Overview latency chart
-	p50: { label: "p50", colors: { light: ["#262626"], dark: ["#e5e5e5"] } },
-	p95: { label: "p95", colors: themed("#0090FD") },
-	p99: { label: "p99", colors: themed("#FF5513") },
+  // neutral-800 on light, neutral-200 on dark — matches the Overview latency chart
+  p50: { label: "p50", colors: { light: ["#262626"], dark: ["#e5e5e5"] } },
+  p95: { label: "p95", colors: themed("#0090FD") },
+  p99: { label: "p99", colors: themed("#FF5513") },
 } satisfies ChartConfig;
 
 function stepIcon(spanType: string, modelId: string | null) {
-	if (spanType === "llm")
-		return <ModelLogo modelId={modelId} className="size-5" />;
-	if (spanType === "tool")
-		return <IconTool className="size-5 text-muted-foreground" />;
-	return <IconCpu className="size-5 text-muted-foreground" />;
+  if (spanType === "llm")
+    return <ModelLogo modelId={modelId} className="size-5" />;
+  if (spanType === "tool")
+    return <IconTool className="size-5 text-muted-foreground" />;
+  return <IconCpu className="size-5 text-muted-foreground" />;
 }
 
 export function AgentDetailClient({ agentName }: { agentName: string }) {
-	const entrance = useEntranceOnce();
-	const { projectId } = useProject();
-	const router = useRouter();
-	const searchParams = useSearchParams();
-	const { range, setRange } = useRange();
-	// Selected trace mirrors the `?trace=` query param so the flow is deep-linkable.
-	const [selected, setSelected] = useState<string | null>(() =>
-		searchParams.get("trace"),
-	);
-	const [page, setPage] = useState(0);
-	const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-	// Which trace row is expanded to glimpse its input/output (by traceId).
-	const [expanded, setExpanded] = useState<string | null>(null);
-	// Selected series for each trend chart, driven by the header legends.
-	const [volumeSelected, setVolumeSelected] = useState<string | null>(null);
-	const [latencySelected, setLatencySelected] = useState<string | null>(null);
-	const { sort, toggle } = useTableSort<TraceSortKey>();
+  const entrance = useEntranceOnce();
+  const { projectId } = useProject();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { range, setRange } = useRange();
+  // Selected trace mirrors the `?trace=` query param so the flow is deep-linkable.
+  const [selected, setSelected] = useState<string | null>(() =>
+    searchParams.get("trace")
+  );
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
+  // Which trace row is expanded to glimpse its input/output (by traceId).
+  const [expanded, setExpanded] = useState<string | null>(null);
+  // Selected series for each trend chart, driven by the header legends.
+  const [volumeSelected, setVolumeSelected] = useState<string | null>(null);
+  const [latencySelected, setLatencySelected] = useState<string | null>(null);
+  const { sort, toggle } = useTableSort<TraceSortKey>();
 
-	const { from, to } = useMemo(
-		() => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
-		[range],
-	);
-	const enabled = !!projectId;
+  const { from, to } = useMemo(
+    () => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
+    [range]
+  );
+  const enabled = !!projectId;
 
-	// Stats reflect *all* spans in the window (no errors-only filter), so the
-	// error-rate stat stays meaningful when the table below is filtered down.
-	const detail = useQuery({
-		...trpc.agents.get.queryOptions({
-			projectId: projectId!,
-			agentName,
-			from,
-			to,
-		}),
-		enabled,
-		placeholderData: (prev) => prev,
-	});
+  // Stats reflect *all* spans in the window (no errors-only filter), so the
+  // error-rate stat stays meaningful when the table below is filtered down.
+  const detail = useQuery({
+    ...trpc.agents.get.queryOptions({
+      projectId: projectId!,
+      agentName,
+      from,
+      to,
+    }),
+    enabled,
+    placeholderData: (prev) => prev,
+  });
 
-	const series = useQuery({
-		...trpc.metrics.timeseries.queryOptions({
-			projectId: projectId!,
-			agentName,
-			from,
-			to,
-		}),
-		enabled,
-		placeholderData: (prev) => prev,
-	});
+  const series = useQuery({
+    ...trpc.metrics.timeseries.queryOptions({
+      projectId: projectId!,
+      agentName,
+      from,
+      to,
+    }),
+    enabled,
+    placeholderData: (prev) => prev,
+  });
 
-	const traces = useQuery({
-		...trpc.traces.list.queryOptions({
-			projectId: projectId!,
-			agentName,
-			from,
-			to,
-			sort: sort ? { field: sort.key, dir: sort.dir } : undefined,
-			limit: pageSize,
-			offset: page * pageSize,
-		}),
-		enabled,
-		// Keep the current page visible while the next one loads.
-		placeholderData: (prev) => prev,
-	});
+  const traces = useQuery({
+    ...trpc.traces.list.queryOptions({
+      projectId: projectId!,
+      agentName,
+      from,
+      to,
+      sort: sort ? { field: sort.key, dir: sort.dir } : undefined,
+      limit: pageSize,
+      offset: page * pageSize,
+    }),
+    enabled,
+    // Keep the current page visible while the next one loads.
+    placeholderData: (prev) => prev,
+  });
 
-	// Reset paging + any open preview when the query that defines the result set
-	// changes.
-	useEffect(() => {
-		setPage(0);
-		setExpanded(null);
-	}, [range, projectId, sort]);
+  // Reset paging + any open preview when the query that defines the result set
+  // changes.
+  useEffect(() => {
+    setPage(0);
+    setExpanded(null);
+  }, [range, projectId, sort]);
 
-	const traceRows = traces.data?.traces ?? [];
-	// Global 20/40/60/80th-percentile thresholds for the heat-tinted cells,
-	// computed server-side over the whole filtered window (not just this page).
-	const costQuantiles = traces.data?.costQuantiles ?? [];
-	const durationQuantiles = traces.data?.durationQuantiles ?? [];
-	// Default the flow to the most recent trace on the page (list is newest-first).
-	const activeTraceId = selected ?? traceRows[0]?.traceId ?? null;
+  const traceRows = traces.data?.traces ?? [];
+  // Global 20/40/60/80th-percentile thresholds for the heat-tinted cells,
+  // computed server-side over the whole filtered window (not just this page).
+  const costQuantiles = traces.data?.costQuantiles ?? [];
+  const durationQuantiles = traces.data?.durationQuantiles ?? [];
+  // Default the flow to the most recent trace on the page (list is newest-first).
+  const activeTraceId = selected ?? traceRows[0]?.traceId ?? null;
 
-	const selectTrace = (id: string) => {
-		setSelected(id);
-		const sp = new URLSearchParams(Array.from(searchParams.entries()));
-		sp.set("trace", id);
-		router.replace(`?${sp.toString()}`, { scroll: false });
-	};
+  const selectTrace = (id: string) => {
+    setSelected(id);
+    const sp = new URLSearchParams(Array.from(searchParams.entries()));
+    sp.set("trace", id);
+    router.replace(`?${sp.toString()}`, { scroll: false });
+  };
 
-	const traceDetail = useQuery({
-		...trpc.traces.get.queryOptions({
-			projectId: projectId!,
-			traceId: activeTraceId!,
-		}),
-		enabled: enabled && !!activeTraceId,
-	});
-	// Skeleton whenever the selected trace's flow isn't loaded yet — on first
-	// load and on every row switch (no placeholderData, so a different trace's
-	// flow never lingers under the new selection).
-	const flowLoading = !activeTraceId || traceDetail.isPending;
+  const traceDetail = useQuery({
+    ...trpc.traces.get.queryOptions({
+      projectId: projectId!,
+      traceId: activeTraceId!,
+    }),
+    enabled: enabled && !!activeTraceId,
+  });
+  // Skeleton whenever the selected trace's flow isn't loaded yet — on first
+  // load and on every row switch (no placeholderData, so a different trace's
+  // flow never lingers under the new selection).
+  const flowLoading = !activeTraceId || traceDetail.isPending;
 
-	// The selected trace's row (for the flow header chips + skeleton sizing).
-	const activeTrace = traceRows.find((t) => t.traceId === activeTraceId);
-	// Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
-	const showTracesSkeleton = useDelayedLoading(traces.isLoading);
-	// Latch for the entrance fade: the traces table only fades in if this slot
-	// never painted a skeleton first (see useSkeletonShown).
-	const tracesSkeletonShown = useSkeletonShown(showTracesSkeleton);
+  // The selected trace's row (for the flow header chips + skeleton sizing).
+  const activeTrace = traceRows.find((t) => t.traceId === activeTraceId);
+  // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
+  const showTracesSkeleton = useDelayedLoading(traces.isLoading);
+  // Latch for the entrance fade: the traces table only fades in if this slot
+  // never painted a skeleton first (see useSkeletonShown).
+  const tracesSkeletonShown = useSkeletonShown(showTracesSkeleton);
 
-	const windowMs = range.to.getTime() - range.from.getTime();
-	const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
-	const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
-	// Keep the raw bucket as the x value (formatted on the axis) so we can thin the
-	// ticks and edge-anchor the first/last labels.
-	const seriesData = useMemo(
-		() =>
-			(series.data ?? []).map((r) => ({
-				bucket: r.bucket,
-				spans: r.spanCount,
-				errors: r.errorCount,
-				p50: r.latencyMs.p50,
-				p95: r.latencyMs.p95,
-				p99: r.latencyMs.p99,
-			})),
-		[series.data],
-	);
-	// Latency as a stacked *band* chart: each area plots the delta to the band
-	// below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between two
-	// percentile lines instead of bleeding down to the axis. The stack tops land
-	// exactly on p50/p95/p99; the absolutes ride along for the tooltip.
-	const latencyData = useMemo(
-		() =>
-			seriesData.map((r) => ({
-				bucket: r.bucket,
-				p50: r.p50,
-				p95: Math.max(0, r.p95 - r.p50),
-				p99: Math.max(0, r.p99 - r.p95),
-				p50Abs: r.p50,
-				p95Abs: r.p95,
-				p99Abs: r.p99,
-			})),
-		[seriesData],
-	);
+  const windowMs = range.to.getTime() - range.from.getTime();
+  const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
+  const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
+  // Keep the raw bucket as the x value (formatted on the axis) so we can thin the
+  // ticks and edge-anchor the first/last labels.
+  const seriesData = useMemo(
+    () =>
+      (series.data ?? []).map((r) => ({
+        bucket: r.bucket,
+        spans: r.spanCount,
+        errors: r.errorCount,
+        p50: r.latencyMs.p50,
+        p95: r.latencyMs.p95,
+        p99: r.latencyMs.p99,
+      })),
+    [series.data]
+  );
+  // Latency as a stacked *band* chart: each area plots the delta to the band
+  // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between two
+  // percentile lines instead of bleeding down to the axis. The stack tops land
+  // exactly on p50/p95/p99; the absolutes ride along for the tooltip.
+  const latencyData = useMemo(
+    () =>
+      seriesData.map((r) => ({
+        bucket: r.bucket,
+        p50: r.p50,
+        p95: Math.max(0, r.p95 - r.p50),
+        p99: Math.max(0, r.p99 - r.p95),
+        p50Abs: r.p50,
+        p95Abs: r.p95,
+        p99Abs: r.p99,
+      })),
+    [seriesData]
+  );
 
-	const seriesTicks = useMemo(
-		() =>
-			thinTicks(
-				seriesData.map((d) => d.bucket),
-				bucketLabel,
-			),
-		[seriesData, bucketLabel],
-	);
+  const seriesTicks = useMemo(
+    () =>
+      thinTicks(
+        seriesData.map((d) => d.bucket),
+        bucketLabel
+      ),
+    [seriesData, bucketLabel]
+  );
 
-	const back = navItem("/agents");
+  const back = navItem("/agents");
 
-	if (!projectId) {
-		return (
-			<>
-				<PageHeader
-					title={agentName}
-					titleLeading={<AgentIcon name={agentName} className="size-4.5" />}
-					back={back}
-				/>
-				<NoProject />
-			</>
-		);
-	}
+  if (!projectId) {
+    return (
+      <>
+        <PageHeader
+          title={agentName}
+          titleLeading={<AgentIcon name={agentName} className="size-4.5" />}
+          back={back}
+        />
+        <NoProject />
+      </>
+    );
+  }
 
-	const stats = detail.data?.stats ?? null;
-	const errorRate =
-		stats && stats.spanCount > 0 ? stats.errorCount / stats.spanCount : null;
+  const stats = detail.data?.stats ?? null;
+  const errorRate =
+    stats && stats.spanCount > 0 ? stats.errorCount / stats.spanCount : null;
 
-	const nodes: FlowNode[] = (traceDetail.data?.spans ?? []).map((s) => ({
-		id: s.spanId,
-		icon: stepIcon(s.spanType, s.modelId),
-		label: s.name,
-		sublabel: s.modelId,
-		status:
-			s.status === "error"
-				? "error"
-				: s.status === "aborted"
-					? "aborted"
-					: "ok",
-		timestamp: s.startTime,
-		durationMs: s.durationMs,
-	}));
+  const nodes: FlowNode[] = (traceDetail.data?.spans ?? []).map((s) => ({
+    id: s.spanId,
+    icon: stepIcon(s.spanType, s.modelId),
+    label: s.name,
+    sublabel: s.modelId,
+    status:
+      s.status === "error"
+        ? "error"
+        : s.status === "aborted"
+          ? "aborted"
+          : "ok",
+    timestamp: s.startTime,
+    durationMs: s.durationMs,
+  }));
 
-	const totalTraces = traces.data?.summary.traceCount ?? 0;
-	// No activity for this agent at all (not just filtered away). Wait for the
-	// stats so a slow rollup doesn't flash the empty state before they land.
-	const noData = !detail.isLoading && (stats === null || stats.spanCount === 0);
-	const seriesLoading = series.isLoading;
+  const totalTraces = traces.data?.summary.traceCount ?? 0;
+  // No activity for this agent at all (not just filtered away). Wait for the
+  // stats so a slow rollup doesn't flash the empty state before they land.
+  const noData = !detail.isLoading && (stats === null || stats.spanCount === 0);
+  const seriesLoading = series.isLoading;
 
-	return (
-		<>
-			<div className={cn(entrance && "page-fade-in")}>
-				<PageHeader
-					title={agentName}
-					titleLeading={<AgentIcon name={agentName} className="size-4.5" />}
-					back={back}
-					actions={<RangeControl value={range} onChange={setRange} />}
-				/>
-			</div>
+  return (
+    <>
+      <div className={cn(entrance && "page-fade-in")}>
+        <PageHeader
+          title={agentName}
+          titleLeading={<AgentIcon name={agentName} className="size-4.5" />}
+          back={back}
+          actions={<RangeControl value={range} onChange={setRange} />}
+        />
+      </div>
 
-			{noData ? (
-				<div className={cn(entrance && "page-fade-in", "px-8")}>
-					<EmptyState
-						icon={IconGhostFilled}
-						title="No activity in this range"
-						description="Try widening the time range, or this agent has no traces yet."
-					/>
-				</div>
-			) : (
-				<>
-					{/* Stat strip — totals over all spans in the window. */}
-					<section
-						className={cn(
-							"grid grid-cols-2 gap-4 md:grid-cols-4 px-8",
-							entrance && "page-fade-in",
-						)}
-					>
-						<StatCard
-							icon={IconBoltFilled}
-							iconClassName="text-orange-500 dark:text-orange-500"
-							size="sm"
-							label="Spans"
-							value={stats?.spanCount ?? 0}
-							formatValue={formatCount}
-							hint={`${formatCount(stats?.llmSpanCount ?? 0)} LLM`}
-						/>
-						<StatCard
-							icon={IconAlertTriangleFilled}
-							iconClassName="text-red-500 dark:text-red-600"
-							size="sm"
-							label="Error rate"
-							value={errorRate ?? "—"}
-							formatValue={formatPercent}
-							hint={`${formatCount(stats?.errorCount ?? 0)} errors`}
-						/>
-						<StatCard
-							icon={IconClockFilled}
-							iconClassName="text-sky-500 dark:text-sky-500"
-							size="sm"
-							label="p95 latency"
-							value={stats?.latencyMs.p95 ?? 0}
-							formatValue={formatDuration}
-							hint={`p50 ${formatDuration(stats?.latencyMs.p50 ?? 0)}`}
-						/>
-						<StatCard
-							icon={IconCoinFilled}
-							iconClassName="text-yellow-400 dark:text-yellow-500"
-							size="sm"
-							label="Total cost"
-							value={stats?.totalCost ?? "—"}
-							formatValue={(n) => formatCost(n, 4)}
-							hint={`${formatTokens(stats?.totalTokens ?? 0)} tokens`}
-						/>
-					</section>
+      {noData ? (
+        <div className={cn(entrance && "page-fade-in", "px-8")}>
+          <EmptyState
+            icon={IconGhostFilled}
+            title="No activity in this range"
+            description="Try widening the time range, or this agent has no traces yet."
+          />
+        </div>
+      ) : (
+        <>
+          {/* Stat strip — totals over all spans in the window. */}
+          <section
+            className={cn(
+              "grid grid-cols-2 gap-4 md:grid-cols-4 px-8 mt-2",
+              entrance && "page-fade-in"
+            )}
+          >
+            <StatCard
+              icon={IconCoinFilled}
+              iconClassName="text-amber-400 dark:text-yellow-500"
+              size="sm"
+              label="Total cost"
+              value={stats?.totalCost ?? "—"}
+              formatValue={(n) => formatCost(n, 4)}
+              hint={`${formatTokens(stats?.totalTokens ?? 0)} tokens`}
+            />
+            <StatCard
+              icon={IconAlertTriangleFilled}
+              iconClassName="text-red-500/90 dark:text-red-600/95 mt-px"
+              size="sm"
+              label="Error rate"
+              value={errorRate ?? "—"}
+              formatValue={formatPercent}
+              hint={`${formatCount(stats?.errorCount ?? 0)} errors`}
+            />
+            <StatCard
+              icon={IconClockFilled}
+              iconClassName="text-sky-400 dark:text-sky-500"
+              size="sm"
+              label="p95 latency"
+              value={stats?.latencyMs.p95 ?? 0}
+              formatValue={formatDuration}
+              hint={`p50 ${formatDuration(stats?.latencyMs.p50 ?? 0)}`}
+            />
 
-					{/* Trend: span volume + LLM latency percentiles over the window. */}
-					<section className="grid gap-4 lg:grid-cols-2 px-8">
-						<Card size="sm" className={cn(entrance && "page-fade-in")}>
-							<CardHeader className="flex flex-row items-center justify-between gap-4">
-								<CardTitle>Spans & errors</CardTitle>
-								<ChartLegend
-									config={volumeConfig}
-									selected={volumeSelected}
-									onSelect={setVolumeSelected}
-								/>
-							</CardHeader>
-							<CardContent className="mt-2">
-								{!seriesLoading && seriesData.length === 0 ? (
-									<EmptyState
-										icon={IconChartAreaFilled}
-										title="No data in this range"
-									/>
-								) : (
-									<AreaChart.EvilAreaChart
-										config={volumeConfig}
-										data={seriesData}
-										isLoading={seriesLoading}
-										xDataKey="bucket"
-										selectedDataKey={volumeSelected}
-										onSelectionChange={setVolumeSelected}
-										className="h-55 w-full"
-										chartProps={{
-											// left: 2 (vs Recharts' default 5) tucks the auto-width
-											// y-axis labels closer to the card content edge.
-											margin: { top: 5, right: 5, bottom: 5, left: 2 },
-										}}
-									>
-										<AreaChart.Grid />
-										<AreaChart.XAxis
-											dataKey="bucket"
-											ticks={seriesTicks}
-											tickFormatter={bucketLabel}
-											interval={0}
-											tick={edgeTick}
-										/>
-										<AreaChart.YAxis
-											allowDecimals={false}
-											tickFormatter={(v) => formatCount(Number(v))}
-										/>
-										<AreaChart.Tooltip
-											labelFormatter={(v) => formatBucketFull(String(v))}
-										/>
-										<AreaChart.Area dataKey="spans" strokeVariant="solid" />
-										<AreaChart.Area
-											dataKey="errors"
-											strokeVariant="solid"
-											variant="lines"
-										/>
-									</AreaChart.EvilAreaChart>
-								)}
-							</CardContent>
-						</Card>
+            <StatCard
+              icon={IconBoltFilled}
+              iconClassName="text-orange-500 dark:text-orange-500"
+              size="sm"
+              label="Spans"
+              value={stats?.spanCount ?? 0}
+              formatValue={formatCount}
+              hint={`${formatCount(stats?.llmSpanCount ?? 0)} LLM`}
+            />
+          </section>
 
-						<Card size="sm" className={cn(entrance && "page-fade-in")}>
-							<CardHeader className="flex flex-row items-center justify-between gap-4">
-								<CardTitle>Latency</CardTitle>
-								<ChartLegend
-									config={latencyConfig}
-									selected={latencySelected}
-									onSelect={setLatencySelected}
-								/>
-							</CardHeader>
-							<CardContent className="mt-2">
-								{!seriesLoading && seriesData.length === 0 ? (
-									<EmptyState
-										icon={IconChartAreaFilled}
-										title="No data in this range"
-									/>
-								) : (
-									<AreaChart.EvilAreaChart
-										config={latencyConfig}
-										data={latencyData}
-										isLoading={seriesLoading}
-										xDataKey="bucket"
-										stackType="stacked"
-										selectedDataKey={latencySelected}
-										onSelectionChange={setLatencySelected}
-										className="h-55 w-full"
-										chartProps={{
-											// left: 2 (vs Recharts' default 5) tucks the auto-width
-											// y-axis labels closer to the card content edge.
-											margin: { top: 5, right: 5, bottom: 5, left: 2 },
-										}}
-									>
-										<AreaChart.Grid />
-										<AreaChart.XAxis
-											dataKey="bucket"
-											ticks={seriesTicks}
-											tickFormatter={bucketLabel}
-											interval={0}
-											tick={edgeTick}
-										/>
-										<AreaChart.YAxis
-											tickFormatter={(v) => formatDuration(Number(v))}
-										/>
-										<AreaChart.Tooltip
-											labelFormatter={(v) => formatBucketFull(String(v))}
-											valueFormatter={(_v, key, row) =>
-												formatDuration(Number(row[`${key}Abs`] ?? _v))
-											}
-											reverse
-										/>
-										{/* Stacked deltas (see latencyData): draw bottom band → top
+          {/* Trend: span volume + LLM latency percentiles over the window. */}
+          <section className="grid gap-4 lg:grid-cols-2 px-8">
+            <Card size="sm" className={cn(entrance && "page-fade-in")}>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <CardTitle>Spans & errors</CardTitle>
+                <ChartLegend
+                  config={volumeConfig}
+                  selected={volumeSelected}
+                  onSelect={setVolumeSelected}
+                />
+              </CardHeader>
+              <CardContent className="mt-2">
+                {!seriesLoading && seriesData.length === 0 ? (
+                  <EmptyState
+                    icon={IconChartAreaFilled}
+                    title="No data in this range"
+                  />
+                ) : (
+                  <AreaChart.EvilAreaChart
+                    config={volumeConfig}
+                    data={seriesData}
+                    isLoading={seriesLoading}
+                    xDataKey="bucket"
+                    selectedDataKey={volumeSelected}
+                    onSelectionChange={setVolumeSelected}
+                    className="h-55 w-full"
+                    chartProps={{
+                      // left: 2 (vs Recharts' default 5) tucks the auto-width
+                      // y-axis labels closer to the card content edge.
+                      margin: { top: 5, right: 5, bottom: 5, left: 2 },
+                    }}
+                  >
+                    <AreaChart.Grid />
+                    <AreaChart.XAxis
+                      dataKey="bucket"
+                      ticks={seriesTicks}
+                      tickFormatter={bucketLabel}
+                      interval={0}
+                      tick={edgeTick}
+                    />
+                    <AreaChart.YAxis
+                      allowDecimals={false}
+                      tickFormatter={(v) => formatCount(Number(v))}
+                    />
+                    <AreaChart.Tooltip
+                      labelFormatter={(v) => formatBucketFull(String(v))}
+                    />
+                    <AreaChart.Area dataKey="spans" strokeVariant="solid" />
+                    <AreaChart.Area
+                      dataKey="errors"
+                      strokeVariant="solid"
+                      variant="lines"
+                    />
+                  </AreaChart.EvilAreaChart>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card size="sm" className={cn(entrance && "page-fade-in")}>
+              <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <CardTitle>Latency</CardTitle>
+                <ChartLegend
+                  config={latencyConfig}
+                  selected={latencySelected}
+                  onSelect={setLatencySelected}
+                />
+              </CardHeader>
+              <CardContent className="mt-2">
+                {!seriesLoading && seriesData.length === 0 ? (
+                  <EmptyState
+                    icon={IconChartAreaFilled}
+                    title="No data in this range"
+                  />
+                ) : (
+                  <AreaChart.EvilAreaChart
+                    config={latencyConfig}
+                    data={latencyData}
+                    isLoading={seriesLoading}
+                    xDataKey="bucket"
+                    stackType="stacked"
+                    selectedDataKey={latencySelected}
+                    onSelectionChange={setLatencySelected}
+                    className="h-55 w-full"
+                    chartProps={{
+                      // left: 2 (vs Recharts' default 5) tucks the auto-width
+                      // y-axis labels closer to the card content edge.
+                      margin: { top: 5, right: 5, bottom: 5, left: 2 },
+                    }}
+                  >
+                    <AreaChart.Grid />
+                    <AreaChart.XAxis
+                      dataKey="bucket"
+                      ticks={seriesTicks}
+                      tickFormatter={bucketLabel}
+                      interval={0}
+                      tick={edgeTick}
+                    />
+                    <AreaChart.YAxis
+                      tickFormatter={(v) => formatDuration(Number(v))}
+                    />
+                    <AreaChart.Tooltip
+                      labelFormatter={(v) => formatBucketFull(String(v))}
+                      valueFormatter={(_v, key, row) =>
+                        formatDuration(Number(row[`${key}Abs`] ?? _v))
+                      }
+                      reverse
+                    />
+                    {/* Stacked deltas (see latencyData): draw bottom band → top
                         so the stack reads p50, then p95−p50, then p99−p95. */}
-										<AreaChart.Area dataKey="p50" strokeVariant="solid" />
-										<AreaChart.Area dataKey="p95" strokeVariant="solid" />
-										<AreaChart.Area dataKey="p99" strokeVariant="solid" />
-									</AreaChart.EvilAreaChart>
-								)}
-							</CardContent>
-						</Card>
-					</section>
+                    <AreaChart.Area dataKey="p50" strokeVariant="solid" />
+                    <AreaChart.Area dataKey="p95" strokeVariant="solid" />
+                    <AreaChart.Area dataKey="p99" strokeVariant="solid" />
+                  </AreaChart.EvilAreaChart>
+                )}
+              </CardContent>
+            </Card>
+          </section>
 
-					{/* Where this agent's spend and time go: cost per price dimension
+          {/* Where this agent's spend and time go: cost per price dimension
               over the window, beside the per-tool runtime breakdown. */}
-					<section className="grid gap-4 lg:grid-cols-2 px-8">
-						<CostBreakdownCard
-							agentName={agentName}
-							className={cn(entrance && "page-fade-in")}
-						/>
-						<ToolBreakdownCard
-							agentName={agentName}
-							className={cn(entrance && "page-fade-in")}
-						/>
-					</section>
+          <section className="grid gap-4 lg:grid-cols-2 px-8">
+            <CostBreakdownCard
+              agentName={agentName}
+              className={cn(entrance && "page-fade-in")}
+            />
+            <ToolBreakdownCard
+              agentName={agentName}
+              className={cn(entrance && "page-fade-in")}
+            />
+          </section>
 
-					{/* Step flow for the selected trace. Mounted while the traces list
+          {/* Step flow for the selected trace. Mounted while the traces list
 					    loads too (skeleton body), since the selection defaults to the
 					    first row — otherwise the card pops in below the stats. */}
-					{(activeTraceId || traces.isLoading) && (
-						<div className="px-8">
-							<Card
-								size="sm"
-								className={cn("pb-4", entrance && "page-fade-in")}
-							>
-								<CardHeader>
-									<CardTitle className="flex flex-wrap items-center gap-2">
-										Trace flow
-									</CardTitle>
-									{activeTrace ? (
-										<CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
-											<span>{formatCount(activeTrace.spanCount)} spans</span>
-											<span>·</span>
-											<span>{formatSpanDuration(activeTrace.durationMs)}</span>
-											<span>·</span>
-											<span>{formatCost(activeTrace.totalCost)}</span>
-											<span>·</span>
-											<span>
-												{formatTokens(activeTrace.totalTokens)} tokens
-											</span>
-											{activeTrace.errorCount > 0 && (
-												<Badge variant="rose" className="font-sans">
-													<IconAlertTriangle />
-													{formatCount(activeTrace.errorCount)}
-													{activeTrace.errorCount === 1 ? "error" : "errors"}
-												</Badge>
-											)}
-										</CardDescription>
-									) : (
-										<CardDescription className="flex h-5 items-center">
-											<Skeleton className="h-3.5 w-56" />
-										</CardDescription>
-									)}
-								</CardHeader>
-								<CardContent className="px-4 mt-3">
-									{flowLoading ? (
-										<NodeFlowSkeleton count={activeTrace?.spanCount} />
-									) : nodes.length === 0 ? (
-										<p className="text-sm text-muted-foreground">
-											No steps in this trace.
-										</p>
-									) : (
-										<NodeFlow
-											nodes={nodes}
-											onNodeClick={(spanId) =>
-												router.push(
-													`/traces/${encodeURIComponent(activeTraceId ?? "")}?span=${encodeURIComponent(spanId)}`,
-												)
-											}
-										/>
-									)}
-								</CardContent>
-							</Card>
-						</div>
-					)}
+          {(activeTraceId || traces.isLoading) && (
+            <div className="px-8">
+              <Card
+                size="sm"
+                className={cn("pb-4", entrance && "page-fade-in")}
+              >
+                <CardHeader>
+                  <CardTitle className="flex flex-wrap items-center gap-2">
+                    Trace flow
+                  </CardTitle>
+                  {activeTrace ? (
+                    <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
+                      <span>{formatCount(activeTrace.spanCount)} spans</span>
+                      <span>·</span>
+                      <span>{formatSpanDuration(activeTrace.durationMs)}</span>
+                      <span>·</span>
+                      <span>{formatCost(activeTrace.totalCost)}</span>
+                      <span>·</span>
+                      <span>
+                        {formatTokens(activeTrace.totalTokens)} tokens
+                      </span>
+                      {activeTrace.errorCount > 0 && (
+                        <Badge variant="rose" className="font-sans">
+                          <IconAlertTriangle />
+                          {formatCount(activeTrace.errorCount)}
+                          {activeTrace.errorCount === 1 ? "error" : "errors"}
+                        </Badge>
+                      )}
+                    </CardDescription>
+                  ) : (
+                    <CardDescription className="flex h-5 items-center">
+                      <Skeleton className="h-3.5 w-56" />
+                    </CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent className="px-4 mt-3">
+                  {flowLoading ? (
+                    <NodeFlowSkeleton count={activeTrace?.spanCount} />
+                  ) : nodes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No steps in this trace.
+                    </p>
+                  ) : (
+                    <NodeFlow
+                      nodes={nodes}
+                      onNodeClick={(spanId) =>
+                        router.push(
+                          `/traces/${encodeURIComponent(activeTraceId ?? "")}?span=${encodeURIComponent(spanId)}`
+                        )
+                      }
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-					{/* Traces table — click a row to drive the flow above. */}
-					<div className="flex flex-col gap-3 mt-4">
-						{!traces.isLoading && traceRows.length === 0 ? (
-							<div
-								className={cn(
-									entrance && !tracesSkeletonShown && "page-fade-in",
-									"px-8",
-								)}
-							>
-								<EmptyState
-									icon={IconGhostFilled}
-									title="No traces in this range"
-									description="Try widening the time range."
-								/>
-							</div>
-						) : (
-							// Table mounted while loading (skeleton rows in the body) so the
-							// swap to data doesn't reflow; footer flush with the last row.
-							<div
-								className={cn(
-									"flex flex-col",
-									entrance && !tracesSkeletonShown && "page-fade-in",
-								)}
-							>
-								<Table className="table-fixed" stickyHeader>
-									<TableHeader>
-										<TableRow>
-											<TableHead className="w-96">Trace</TableHead>
-											<TableHead>Workflow</TableHead>
-											<SortableHead
-												sortKey="spans"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-24"
-											>
-												Spans
-											</SortableHead>
-											<SortableHead
-												sortKey="tokens"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-28"
-											>
-												Tokens
-											</SortableHead>
-											<SortableHead
-												sortKey="duration"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-28"
-											>
-												Duration
-											</SortableHead>
-											<SortableHead
-												sortKey="cost"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-28"
-											>
-												Cost
-											</SortableHead>
-											<SortableHead
-												sortKey="when"
-												sort={sort}
-												onSort={toggle}
-												align="right"
-												className="w-32"
-											>
-												When
-											</SortableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{traces.isLoading ? (
-											showTracesSkeleton ? (
-												<TableRowsSkeleton cols={SKELETON_COLS} />
-											) : null
-										) : (
-											traceRows.map((t) => {
-											const isOpen = expanded === t.traceId;
-											return (
-												<Fragment key={t.traceId}>
-													<TableRow
-														interactive
-														aria-expanded={isOpen}
-														className={cn(
-															"group",
-															// Open row + drawer read as one unit: no divider between them.
-															isOpen && "border-b-0",
-															t.traceId === activeTraceId &&
-																"bg-accent/60 dark:bg-accent/30",
-															// Left accent bar on errored traces — scannable at a glance.
-															t.errorCount > 0 &&
-																"shadow-[inset_1px_0_0_0_var(--color-rose-500)]",
-														)}
-														onClick={() => {
-															// Row click both drives the flow above and
-															// toggles the input/output preview.
-															selectTrace(t.traceId);
-															setExpanded(isOpen ? null : t.traceId);
-														}}
-													>
-														<TableCell className="h-12 font-medium">
-															<div className="flex items-center gap-2">
-																{/* Expand affordance: muted chevron that brightens on
+          {/* Traces table — click a row to drive the flow above. */}
+          <div className="flex flex-col gap-3 mt-4">
+            {!traces.isLoading && traceRows.length === 0 ? (
+              <div
+                className={cn(
+                  entrance && !tracesSkeletonShown && "page-fade-in",
+                  "px-8"
+                )}
+              >
+                <EmptyState
+                  icon={IconGhostFilled}
+                  title="No traces in this range"
+                  description="Try widening the time range."
+                />
+              </div>
+            ) : (
+              // Table mounted while loading (skeleton rows in the body) so the
+              // swap to data doesn't reflow; footer flush with the last row.
+              <div
+                className={cn(
+                  "flex flex-col",
+                  entrance && !tracesSkeletonShown && "page-fade-in"
+                )}
+              >
+                <Table className="table-fixed" stickyHeader>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-96">Trace</TableHead>
+                      <TableHead>Workflow</TableHead>
+                      <SortableHead
+                        sortKey="spans"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-24"
+                      >
+                        Spans
+                      </SortableHead>
+                      <SortableHead
+                        sortKey="tokens"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-28"
+                      >
+                        Tokens
+                      </SortableHead>
+                      <SortableHead
+                        sortKey="duration"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-28"
+                      >
+                        Duration
+                      </SortableHead>
+                      <SortableHead
+                        sortKey="cost"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-28"
+                      >
+                        Cost
+                      </SortableHead>
+                      <SortableHead
+                        sortKey="when"
+                        sort={sort}
+                        onSort={toggle}
+                        align="right"
+                        className="w-32"
+                      >
+                        When
+                      </SortableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {traces.isLoading ? (
+                      showTracesSkeleton ? (
+                        <TableRowsSkeleton cols={SKELETON_COLS} />
+                      ) : null
+                    ) : (
+                      traceRows.map((t) => {
+                        const isOpen = expanded === t.traceId;
+                        return (
+                          <Fragment key={t.traceId}>
+                            <TableRow
+                              interactive
+                              aria-expanded={isOpen}
+                              className={cn(
+                                "group",
+                                // Open row + drawer read as one unit: no divider between them.
+                                isOpen && "border-b-0",
+                                t.traceId === activeTraceId &&
+                                  "bg-accent/60 dark:bg-accent/30",
+                                // Left accent bar on errored traces — scannable at a glance.
+                                t.errorCount > 0 &&
+                                  "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
+                              )}
+                              onClick={() => {
+                                // Row click both drives the flow above and
+                                // toggles the input/output preview.
+                                selectTrace(t.traceId);
+                                setExpanded(isOpen ? null : t.traceId);
+                              }}
+                            >
+                              <TableCell className="h-12 font-medium">
+                                <div className="flex items-center gap-2">
+                                  {/* Expand affordance: muted chevron that brightens on
 																    hover and turns when open. */}
-																<IconChevronRight
-																	className={cn(
-																		"size-3.5 shrink-0 text-muted-foreground/50 transition-[transform,color] group-hover:text-muted-foreground",
-																		isOpen && "rotate-90 text-muted-foreground",
-																	)}
-																/>
-																<span className="truncate">
-																	{t.traceName ?? (
-																		<span className="font-mono text-xs text-muted-foreground">
-																			{t.traceId}
-																		</span>
-																	)}
-																</span>
-																{/* Compact error count — colored text, no pill. */}
-																{t.errorCount > 0 && (
-																	<span
-																		title={`${t.errorCount} ${t.errorCount === 1 ? "error" : "errors"}`}
-																		className="flex shrink-0 items-center gap-0.75 font-sans text-sm text-red-600 dark:text-red-400"
-																	>
-																		<IconAlertTriangle className="size-3.5 fill-current/20" />
-																		{t.errorCount}
-																	</span>
-																)}
-															</div>
-														</TableCell>
-														<TableCell>
-															{t.workflowName ? (
-																<Link
-																	href={`/workflows/${encodeURIComponent(
-																		t.workflowName,
-																	)}`}
-																	onClick={(e) => e.stopPropagation()}
-																	title="View workflow"
-																>
-																	<Badge
-																		variant="secondary"
-																		className="transition-colors hover:bg-secondary/80"
-																	>
-																		{t.workflowName}
-																	</Badge>
-																</Link>
-															) : (
-																"—"
-															)}
-														</TableCell>
-														<TableCell className="text-right tabular-nums">
-															{formatCount(t.spanCount)}
-														</TableCell>
-														<TableCell className="text-right tabular-nums">
-															{formatTokens(t.totalTokens)}
-														</TableCell>
-														<HeatCell
-															value={t.durationMs}
-															thresholds={durationQuantiles}
-															metric="duration"
-														>
-															{formatSpanDuration(t.durationMs)}
-														</HeatCell>
-														<HeatCell
-															value={t.totalCost}
-															thresholds={costQuantiles}
-															metric="cost"
-															bold
-														>
-															{formatCost(t.totalCost)}
-														</HeatCell>
-														<TableCell className="text-right text-muted-foreground">
-															<RelativeTime value={t.startTime} />
-														</TableCell>
-													</TableRow>
-													{isOpen && (
-														<TracePreview
-															traceId={t.traceId}
-															projectId={projectId}
-															colSpan={8}
-														/>
-													)}
-												</Fragment>
-											);
-										})
-										)}
-									</TableBody>
-								</Table>
+                                  <IconChevronRight
+                                    className={cn(
+                                      "size-3.5 shrink-0 text-muted-foreground/50 transition-[transform,color] group-hover:text-muted-foreground",
+                                      isOpen &&
+                                        "rotate-90 text-muted-foreground"
+                                    )}
+                                  />
+                                  <span className="truncate">
+                                    {t.traceName ?? (
+                                      <span className="font-mono text-xs text-muted-foreground">
+                                        {t.traceId}
+                                      </span>
+                                    )}
+                                  </span>
+                                  {/* Compact error count — colored text, no pill. */}
+                                  {t.errorCount > 0 && (
+                                    <span
+                                      title={`${t.errorCount} ${t.errorCount === 1 ? "error" : "errors"}`}
+                                      className="flex shrink-0 items-center gap-0.75 font-sans text-sm text-red-600 dark:text-red-400"
+                                    >
+                                      <IconAlertTriangle className="size-3.5 fill-current/20" />
+                                      {t.errorCount}
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {t.workflowName ? (
+                                  <Link
+                                    href={`/workflows/${encodeURIComponent(
+                                      t.workflowName
+                                    )}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="View workflow"
+                                  >
+                                    <Badge
+                                      variant="secondary"
+                                      className="transition-colors hover:bg-secondary/80"
+                                    >
+                                      {t.workflowName}
+                                    </Badge>
+                                  </Link>
+                                ) : (
+                                  "—"
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {formatCount(t.spanCount)}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {formatTokens(t.totalTokens)}
+                              </TableCell>
+                              <HeatCell
+                                value={t.durationMs}
+                                thresholds={durationQuantiles}
+                                metric="duration"
+                              >
+                                {formatSpanDuration(t.durationMs)}
+                              </HeatCell>
+                              <HeatCell
+                                value={t.totalCost}
+                                thresholds={costQuantiles}
+                                metric="cost"
+                                bold
+                              >
+                                {formatCost(t.totalCost)}
+                              </HeatCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                <RelativeTime value={t.startTime} />
+                              </TableCell>
+                            </TableRow>
+                            {isOpen && (
+                              <TracePreview
+                                traceId={t.traceId}
+                                projectId={projectId}
+                                colSpan={8}
+                              />
+                            )}
+                          </Fragment>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
 
-								{!traces.isLoading && (
-									<PaginationFooter
-										page={page}
-										pageSize={pageSize}
-										total={totalTraces}
-										shown={traceRows.length}
-										noun={["trace", "traces"]}
-										isFetching={traces.isFetching}
-										onPageChange={setPage}
-										onPageSizeChange={(size) => {
-											setPageSize(size);
-											setPage(0);
-										}}
-										pageSizes={PAGE_SIZES}
-									/>
-								)}
-							</div>
-						)}
-					</div>
-				</>
-			)}
-		</>
-	);
+                {!traces.isLoading && (
+                  <PaginationFooter
+                    page={page}
+                    pageSize={pageSize}
+                    total={totalTraces}
+                    shown={traceRows.length}
+                    noun={["trace", "traces"]}
+                    isFetching={traces.isFetching}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setPage(0);
+                    }}
+                    pageSizes={PAGE_SIZES}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  );
 }
 
 /** Expanded row: lazy-fetches the trace and shows a glimpse of the run's
  * input/output (taken from the root span), plus a deep link into the full
  * trace. Mirrors the eval page's score preview. */
 function TracePreview({
-	traceId,
-	projectId,
-	colSpan,
+  traceId,
+  projectId,
+  colSpan,
 }: {
-	traceId: string;
-	projectId: string;
-	colSpan: number;
+  traceId: string;
+  projectId: string;
+  colSpan: number;
 }) {
-	const detail = useQuery(trpc.traces.get.queryOptions({ projectId, traceId }));
-	const spans = detail.data?.spans ?? [];
-	// The whole-run input/output lives on the root span (fall back to the first).
-	const root = spans.find((s) => !s.parentSpanId) ?? spans[0];
+  const detail = useQuery(trpc.traces.get.queryOptions({ projectId, traceId }));
+  const spans = detail.data?.spans ?? [];
+  // The whole-run input/output lives on the root span (fall back to the first).
+  const root = spans.find((s) => !s.parentSpanId) ?? spans[0];
 
-	return (
-		<TableRow className="hover:bg-transparent">
-			{/* px-8 matches the row cells' inset so the drawer's content lines up
+  return (
+    <TableRow className="hover:bg-transparent">
+      {/* px-8 matches the row cells' inset so the drawer's content lines up
 			    with the row text; the hairline + tint make it read as a drawer
 			    under the open row. */}
-			<TableCell
-				colSpan={colSpan}
-				className="border-t border-border/50 bg-muted/30 px-8 py-4 dark:border-border/40"
-			>
-				<div className="flex flex-col gap-3">
-					<div className="flex items-center justify-between gap-4">
-						<span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-							<IconAffiliateFilled className="size-3.5 shrink-0" />
-							Trace
-							<span className="font-mono">{traceId}</span>
-						</span>
-						<Button
-							size="sm"
-							variant="secondary"
-							className="shrink-0"
-							// biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
-							render={
-								<Link href={`/traces/${encodeURIComponent(traceId)}` as any} />
-							}
-						>
-							See full trace
-							<IconArrowUpRight />
-						</Button>
-					</div>
-					{detail.isLoading ? (
-						<span className="text-xs text-muted-foreground">
-							Loading trace…
-						</span>
-					) : !root ? (
-						<span className="text-xs text-muted-foreground">
-							Trace payload unavailable.
-						</span>
-					) : (
-						<div className="grid gap-3 sm:grid-cols-2">
-							<Glimpse label="Input" value={root.input} />
-							<Glimpse label="Output" value={root.output} />
-						</div>
-					)}
-				</div>
-			</TableCell>
-		</TableRow>
-	);
+      <TableCell
+        colSpan={colSpan}
+        className="border-t border-border/50 bg-muted/30 px-8 py-4 dark:border-border/40"
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <IconAffiliateFilled className="size-3.5 shrink-0" />
+              Trace
+              <span className="font-mono">{traceId}</span>
+            </span>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="shrink-0"
+              // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
+              render={
+                <Link href={`/traces/${encodeURIComponent(traceId)}` as any} />
+              }
+            >
+              See full trace
+              <IconArrowUpRight />
+            </Button>
+          </div>
+          {detail.isLoading ? (
+            <span className="text-xs text-muted-foreground">
+              Loading trace…
+            </span>
+          ) : !root ? (
+            <span className="text-xs text-muted-foreground">
+              Trace payload unavailable.
+            </span>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Glimpse label="Input" value={root.input} />
+              <Glimpse label="Output" value={root.output} />
+            </div>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 }
 
 function Glimpse({
-	label,
-	value,
+  label,
+  value,
 }: {
-	label: string;
-	value: string | null | undefined;
+  label: string;
+  value: string | null | undefined;
 }) {
-	return (
-		<div className="flex min-w-0 flex-col gap-1.5">
-			<span className="text-xs font-medium text-muted-foreground">{label}</span>
-			{value ? (
-				<div className="max-h-64 overflow-x-hidden overflow-y-auto shadow-(--custom-shadow) rounded-lg">
-					<PayloadView value={value} />
-				</div>
-			) : (
-				<span className="text-sm text-muted-foreground">—</span>
-			)}
-		</div>
-	);
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      {value ? (
+        <div className="max-h-64 overflow-x-hidden overflow-y-auto shadow-(--custom-shadow) rounded-lg">
+          <PayloadView value={value} />
+        </div>
+      ) : (
+        <span className="text-sm text-muted-foreground">—</span>
+      )}
+    </div>
+  );
 }

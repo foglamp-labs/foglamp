@@ -301,22 +301,23 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
           {/* Stat strip — totals over all runs in the window. */}
           <section
             className={cn(
-              "grid grid-cols-2 gap-4 md:grid-cols-4 px-8",
+              "grid grid-cols-2 gap-4 md:grid-cols-4 px-8 mt-2",
               entrance && "page-fade-in"
             )}
           >
             <StatCard
-              icon={IconBoltFilled}
-              iconClassName="text-orange-500 dark:text-orange-500"
+              icon={IconCoinFilled}
+              iconClassName="text-amber-400 dark:text-yellow-500"
               size="sm"
-              label="Runs"
-              value={stats?.runCount ?? 0}
-              formatValue={formatCount}
-              hint={`${formatCount(stats?.traceCount ?? 0)} traces`}
+              label="Total cost"
+              value={stats?.totalCost ?? "—"}
+              formatValue={(n) => formatCost(n, 4)}
+              hint={`${formatTokens(stats?.totalTokens ?? 0)} tokens`}
             />
+
             <StatCard
               icon={IconAlertTriangleFilled}
-              iconClassName="text-red-500 dark:text-red-600"
+              iconClassName="text-red-500/90 dark:text-red-600/95 mt-px"
               size="sm"
               label="Error rate"
               value={stats?.errorRate ?? "—"}
@@ -325,7 +326,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
             />
             <StatCard
               icon={IconClockFilled}
-              iconClassName="text-sky-500 dark:text-sky-500"
+              iconClassName="text-sky-400 dark:text-sky-500"
               size="sm"
               label="p95 duration"
               value={stats?.durationMs.p95 ?? 0}
@@ -333,13 +334,13 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
               hint={`p50 ${formatDuration(stats?.durationMs.p50 ?? 0)}`}
             />
             <StatCard
-              icon={IconCoinFilled}
-              iconClassName="text-yellow-400 dark:text-yellow-500"
+              icon={IconBoltFilled}
+              iconClassName="text-orange-500 dark:text-orange-500"
               size="sm"
-              label="Total cost"
-              value={stats?.totalCost ?? "—"}
-              formatValue={(n) => formatCost(n, 4)}
-              hint={`${formatTokens(stats?.totalTokens ?? 0)} tokens`}
+              label="Runs"
+              value={stats?.runCount ?? 0}
+              formatValue={formatCount}
+              hint={`${formatCount(stats?.traceCount ?? 0)} traces`}
             />
           </section>
 
