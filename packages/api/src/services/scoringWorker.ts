@@ -537,6 +537,7 @@ async function claimScoringWindow(
   since: Date,
   newWatermark: Date,
 ): Promise<boolean> {
+  const hasDeadJob = deadJobExists(evalId);
   const claimed = await db
     .update(evalState)
     .set({
@@ -545,9 +546,11 @@ async function claimScoringWindow(
       // clears `paused_no_key` (the planner owns that: a key exists now).
       // An `error` set by a dead job stays until a job actually completes
       // (see the executor's success path) — otherwise an erroring eval
-      // flips error → ok → error every sweep and the UI blinks.
-      status: sql`CASE WHEN ${evalState.status} = 'error' THEN ${evalState.status} ELSE 'ok'::eval_run_status END`,
-      lastError: sql`CASE WHEN ${evalState.status} = 'error' THEN ${evalState.lastError} ELSE NULL END`,
+      // flips error → ok → error every sweep and the UI blinks. An error with
+      // no dead job behind it came from the planner itself (a transient
+      // Postgres failure, say), and a successful claim is the proof it passed.
+      status: sql`CASE WHEN ${evalState.status} = 'error' AND ${hasDeadJob} THEN ${evalState.status} ELSE 'ok'::eval_run_status END`,
+      lastError: sql`CASE WHEN ${evalState.status} = 'error' AND ${hasDeadJob} THEN ${evalState.lastError} ELSE NULL END`,
     })
     .where(
       and(
@@ -557,6 +560,12 @@ async function claimScoringWindow(
     )
     .returning({ evalId: evalState.evalId });
   return claimed.length > 0;
+}
+
+// True when a job for this eval exhausted its attempts: the one kind of
+// `error` that must survive planner-side writes (see claimScoringWindow).
+function deadJobExists(evalId: string) {
+  return sql`EXISTS (SELECT 1 FROM ${evalJob} WHERE ${evalJob.evalId} = ${evalId} AND ${evalJob.status} = 'dead')`;
 }
 
 async function setState(
@@ -569,12 +578,13 @@ async function setState(
 ): Promise<void> {
   // `keepError`: planner-side "ok" writes (empty windows) must not clear an
   // executor-set `error` — same reasoning as claimScoringWindow.
+  const hasDeadJob = deadJobExists(evalId);
   const set = {
     status: opts.keepError
-      ? sql`CASE WHEN ${evalState.status} = 'error' THEN ${evalState.status} ELSE ${status}::eval_run_status END`
+      ? sql`CASE WHEN ${evalState.status} = 'error' AND ${hasDeadJob} THEN ${evalState.status} ELSE ${status}::eval_run_status END`
       : status,
     lastError: opts.keepError
-      ? sql`CASE WHEN ${evalState.status} = 'error' THEN ${evalState.lastError} ELSE ${lastError} END`
+      ? sql`CASE WHEN ${evalState.status} = 'error' AND ${hasDeadJob} THEN ${evalState.lastError} ELSE ${lastError} END`
       : lastError,
     ...(watermark ? { watermark } : {}),
     ...(status === "ok" && !opts.keepError ? { lastScoredAt: new Date() } : {}),
