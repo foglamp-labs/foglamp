@@ -57,7 +57,6 @@ const PAGE_SIZES = [25, 50, 100];
 
 type AgentSortKey =
   | "name"
-  | "spans"
   | "tokens"
   | "latency"
   | "errors"
@@ -66,7 +65,6 @@ type AgentSortKey =
 
 const AGENT_SORT_KEYS = [
   "name",
-  "spans",
   "tokens",
   "latency",
   "errors",
@@ -232,15 +230,6 @@ export function AgentsClient() {
                       Agent
                     </SortableHead>
                     <SortableHead
-                      sortKey="spans"
-                      sort={sort}
-                      onSort={toggle}
-                      align="right"
-                      className="w-32"
-                    >
-                      Spans
-                    </SortableHead>
-                    <SortableHead
                       sortKey="tokens"
                       sort={sort}
                       onSort={toggle}
@@ -312,12 +301,6 @@ export function AgentsClient() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell
-                          align="right"
-                          className="tabular-nums text-muted-foreground"
-                        >
-                          {formatCount(a.spanCount)}
-                        </TableCell>
                         <TableCell align="right" className="tabular-nums">
                           {formatTokens(a.totalTokens)}
                         </TableCell>
@@ -367,7 +350,6 @@ export function AgentsClient() {
 // Skeleton column spec for the loading body rows (see TableRowsSkeleton).
 const SKELETON_COLS = [
   { icon: true, w: "w-28" },
-  { align: "right", w: "w-10" },
   { align: "right", w: "w-12" },
   { align: "right", w: "w-14" },
   { align: "right", w: "w-16" },

@@ -59,7 +59,6 @@ export const UNGROUPED = "~ungrouped";
 
 type WorkflowSortKey =
   | "name"
-  | "traces"
   | "runs"
   | "tokens"
   | "errors"
@@ -68,7 +67,6 @@ type WorkflowSortKey =
 
 const WORKFLOW_SORT_KEYS = [
   "name",
-  "traces",
   "runs",
   "tokens",
   "errors",
@@ -234,15 +232,6 @@ export function WorkflowsClient() {
                       Workflow
                     </SortableHead>
                     <SortableHead
-                      sortKey="traces"
-                      sort={sort}
-                      onSort={toggle}
-                      align="right"
-                      className="w-32"
-                    >
-                      Traces
-                    </SortableHead>
-                    <SortableHead
                       sortKey="runs"
                       sort={sort}
                       onSort={toggle}
@@ -320,12 +309,6 @@ export function WorkflowsClient() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell
-                          align="right"
-                          className="tabular-nums text-muted-foreground"
-                        >
-                          {formatCount(w.traceCount)}
-                        </TableCell>
                         <TableCell align="right" className="tabular-nums">
                           {formatCount(w.runCount)}
                         </TableCell>
@@ -375,7 +358,6 @@ export function WorkflowsClient() {
 // Skeleton column spec for the loading body rows (see TableRowsSkeleton).
 const SKELETON_COLS = [
   { icon: true, w: "w-28" },
-  { align: "right", w: "w-10" },
   { align: "right", w: "w-10" },
   { align: "right", w: "w-12" },
   { align: "right", w: "w-16" },
