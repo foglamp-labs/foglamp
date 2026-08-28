@@ -259,7 +259,7 @@ export function StatCard({
 							// height matches the loaded card exactly.
 							<span className="inline-flex items-center">
 								{"\u200b"}
-								<Skeleton className={cn("h-4.5 w-20", placeholderClass)} />
+								<Skeleton className={cn("h-3 w-20", placeholderClass)} />
 							</span>
 						) : typeof value === "number" ? (
 							<>
