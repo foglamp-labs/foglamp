@@ -238,8 +238,9 @@ export function StatCard({
 	return (
 		<Card size={size}>
 			<CardHeader className="gap-1.5">
-				<div className="flex items-center justify-between gap-1.5">
-					<div className="flex items-center gap-1.5">
+				{/* Row 1: icon + label on the left, the value on the right. */}
+				<div className="flex items-center justify-between gap-2">
+					<div className="flex min-w-0 items-center gap-1.5">
 						{Icon && (
 							<Icon
 								className={cn(
@@ -248,17 +249,9 @@ export function StatCard({
 								)}
 							/>
 						)}
-						<CardDescription>{label}</CardDescription>
+						<CardDescription className="truncate">{label}</CardDescription>
 					</div>
-
-					{hold ? (
-						<Skeleton className={cn("h-3 w-9", placeholderClass)} />
-					) : (
-						delta && <DeltaBadge delta={delta} inverted={deltaInverted} />
-					)}
-				</div>
-				<div className="flex items-baseline justify-between gap-2">
-					<CardTitle className={cn("tracking-tight tabular-nums")}>
+					<CardTitle className="shrink-0 tracking-tight tabular-nums">
 						{hold ? (
 							// Zero-width text keeps the title's line box so the row
 							// height matches the loaded card exactly.
@@ -279,14 +272,25 @@ export function StatCard({
 							value
 						)}
 					</CardTitle>
+				</div>
+				{/* Row 2: hint and delta side by side, right-aligned under the
+				    value. Always rendered so the card height never depends on
+				    whether either is present. */}
+				<div className="flex h-4 items-center justify-end gap-2">
 					{hold ? (
-						<Skeleton className={cn("h-3 w-16", placeholderClass)} />
+						<>
+							<Skeleton className={cn("h-3 w-16", placeholderClass)} />
+							<Skeleton className={cn("h-3 w-9", placeholderClass)} />
+						</>
 					) : (
-						hint && (
-							<span className="min-w-0 truncate text-end text-xs text-muted-foreground/70">
-								{hint}
-							</span>
-						)
+						<>
+							{hint && (
+								<span className="min-w-0 truncate text-end text-xs text-muted-foreground/70">
+									{hint}
+								</span>
+							)}
+							{delta && <DeltaBadge delta={delta} inverted={deltaInverted} />}
+						</>
 					)}
 				</div>
 			</CardHeader>

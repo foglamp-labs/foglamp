@@ -188,12 +188,12 @@ function ChartLegend({
 }
 
 /** Loading rows for a breakdown list card — one blob per BreakdownRow slot
- * (icon + name, secondary metrics, value + share bar) at the real row height,
- * capped at the list's scroll height.
+ * (icon + name on the left, value + share bar on the right) at the real row
+ * height, capped at the list's scroll height.
  * Invisible until `skeleton` flips (see useDelayedLoading), so the card holds
  * its final height from the first paint and fast loads never flash shimmer. */
 function BreakdownRowsSkeleton({
-  rows = 4,
+  rows = 5,
   skeleton,
 }: {
   rows?: number;
@@ -213,17 +213,14 @@ function BreakdownRowsSkeleton({
             key={i}
             className="flex items-center justify-between gap-6 px-5 py-3"
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex h-5 items-center gap-1.5">
-                <Skeleton className="size-3.5 shrink-0 rounded-full squircle:rounded-full" />
-                <Skeleton className="h-3.5 w-28" />
-              </div>
-              <div className="mt-1 flex h-4 items-center">
-                <Skeleton className="h-3 w-20" />
-              </div>
+            <div className="flex min-w-0 flex-1 items-center gap-1.5">
+              <Skeleton className="size-3.5 shrink-0 rounded-full squircle:rounded-full" />
+              <Skeleton className="h-3.5 w-28" />
             </div>
-            <div className="flex shrink-0 flex-col items-end gap-2">
-              <Skeleton className="h-3.5 w-12" />
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <div className="flex h-5 items-center">
+                <Skeleton className="h-3.5 w-12" />
+              </div>
               <Skeleton className="h-0.5 w-14" />
             </div>
           </div>
@@ -284,7 +281,6 @@ function BreakdownRow({
   value,
   fraction,
   color,
-  metrics,
   href,
 }: {
   renderIcon: (className: string) => React.ReactNode;
@@ -292,7 +288,6 @@ function BreakdownRow({
   value: React.ReactNode;
   fraction: number;
   color: string;
-  metrics: React.ReactNode;
   href?: Route;
 }) {
   const rowClassName =
@@ -305,13 +300,10 @@ function BreakdownRow({
           {renderIcon("size-3.5 shrink-0")}
           <span className="truncate text-sm font-normal">{title}</span>
         </div>
-        <div className="mt-1 text-xs tabular-nums text-muted-foreground/70">
-          {metrics}
-        </div>
       </div>
       {/* Right: cost + share bar, both right-aligned. The column sizes to its
           content (never squeezing the value), with a fixed-width bar track. */}
-      <div className="flex shrink-0 flex-col items-end gap-2">
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
         <span className="text-sm tabular-nums">{value}</span>
         <div className="h-0.5 w-14 overflow-hidden rounded-full bg-muted-foreground/10">
           <div
@@ -839,7 +831,7 @@ export function OverviewClient() {
                 className="h-60 border-none py-0"
               />
             ) : (
-              <ScrollFade className="max-h-60  -mt-1">
+              <ScrollFade className="max-h-60 -mt-1">
                 <div className="divide-y divide-border/40">
                   {modelRows.map((m) => (
                     <BreakdownRow
@@ -863,7 +855,6 @@ export function OverviewClient() {
                       color={
                         modelBrandColor(null, m.modelId) ?? "var(--chart-2)"
                       }
-                      metrics={`${formatCount(m.spanCount)} req · ${formatTokens(m.totalTokens)} tok`}
                     />
                   ))}
                 </div>
@@ -908,7 +899,6 @@ export function OverviewClient() {
                       value={formatCost(a.totalCost, 3)}
                       fraction={(a.totalCost ?? 0) / maxAgentCost}
                       color={agentColor(a.agentName)}
-                      metrics={`${formatCount(a.spanCount)} req · ${formatCount(a.errorCount)} errors`}
                     />
                   ))}
                 </div>
@@ -957,7 +947,6 @@ export function OverviewClient() {
                       value={formatCost(w.totalCost, 3)}
                       fraction={(w.totalCost ?? 0) / maxWorkflowCost}
                       color="var(--color-emerald-500)"
-                      metrics={`${formatCount(w.runCount)} runs · ${formatCount(w.errorCount)} errors`}
                     />
                   ))}
                 </div>
@@ -1020,7 +1009,6 @@ export function OverviewClient() {
                           ? agentColor(c.customerId)
                           : "var(--muted-foreground)"
                       }
-                      metrics={`${formatCount(c.spanCount)} req · ${formatCount(c.errorCount)} errors`}
                     />
                   ))}
                 </div>
