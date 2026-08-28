@@ -122,9 +122,8 @@ export function PageHeader({
 				)}
 			</div>
 			{actions && (
-				// Breadcrumb titles sit a hair higher than plain ones; nudge the
-				// actions down so the picker lines up with the crumb text.
-				<div className={cn("flex items-center gap-2", back && "translate-y-1")}>
+				// Nudge actions down so the picker lines up with the title text.
+				<div className="flex items-center gap-2 translate-y-1">
 					{actions}
 				</div>
 			)}
