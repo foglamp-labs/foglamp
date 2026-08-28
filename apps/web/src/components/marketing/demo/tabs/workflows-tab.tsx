@@ -96,7 +96,7 @@ export function WorkflowsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-32"
+										className="w-36"
 									>
 										Runs
 									</SortableHead>
