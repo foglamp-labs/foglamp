@@ -288,7 +288,7 @@ function BreakdownRow({
   href?: Route;
 }) {
   const rowClassName =
-    "flex items-center justify-between gap-6 py-3 last:pb-0 px-5 last:pb-6";
+    "flex items-center justify-between gap-6 py-3 last:pb-0 px-5";
   const inner = (
     <>
       {/* Left: name + secondary metrics. */}
@@ -829,7 +829,14 @@ export function OverviewClient() {
                 {modelsLoading ? (
                   <BreakdownRowsSkeleton skeleton={modelsSkeleton} />
                 ) : (
-                  <div className="divide-y divide-border/40">
+                  <div
+                    // Only the overflowing lists get bottom padding so the
+                    // last row clears the scroll fade; short lists sit flush.
+                    className={cn(
+                      "divide-y divide-border/40",
+                      modelRows.length > 4 && "pb-6"
+                    )}
+                  >
                     {modelRows.map((m) => (
                       <BreakdownRow
                         key={m.modelId}
@@ -883,7 +890,14 @@ export function OverviewClient() {
                 {agentsLoading ? (
                   <BreakdownRowsSkeleton skeleton={agentsSkeleton} />
                 ) : (
-                  <div className="divide-y divide-border/40">
+                  <div
+                    // Only the overflowing lists get bottom padding so the
+                    // last row clears the scroll fade; short lists sit flush.
+                    className={cn(
+                      "divide-y divide-border/40",
+                      agentRows.length > 4 && "pb-6"
+                    )}
+                  >
                     {agentRows.map((a) => (
                       <BreakdownRow
                         key={a.agentName}
@@ -928,7 +942,14 @@ export function OverviewClient() {
                 {workflowsLoading ? (
                   <BreakdownRowsSkeleton skeleton={workflowsSkeleton} />
                 ) : (
-                  <div className="divide-y divide-border/40">
+                  <div
+                    // Only the overflowing lists get bottom padding so the
+                    // last row clears the scroll fade; short lists sit flush.
+                    className={cn(
+                      "divide-y divide-border/40",
+                      workflowRows.length > 4 && "pb-6"
+                    )}
+                  >
                     {workflowRows.map((w) => (
                       <BreakdownRow
                         key={w.workflowName ?? "~ungrouped"}
@@ -977,7 +998,14 @@ export function OverviewClient() {
                 {customersLoading ? (
                   <BreakdownRowsSkeleton skeleton={customersSkeleton} />
                 ) : (
-                  <div className="divide-y divide-border/40">
+                  <div
+                    // Only the overflowing lists get bottom padding so the
+                    // last row clears the scroll fade; short lists sit flush.
+                    className={cn(
+                      "divide-y divide-border/40",
+                      customerRows.length > 4 && "pb-6"
+                    )}
+                  >
                     {customerRows.map((c) => (
                       <BreakdownRow
                         key={c.customerId ?? "~unidentified"}
