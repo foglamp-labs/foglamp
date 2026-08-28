@@ -96,7 +96,7 @@ export function WorkflowsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-36"
+										className="w-28"
 									>
 										Runs
 									</SortableHead>
@@ -105,7 +105,7 @@ export function WorkflowsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-36"
+										className="w-28"
 									>
 										Tokens
 									</SortableHead>
@@ -114,7 +114,7 @@ export function WorkflowsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-40"
+										className="w-32"
 									>
 										Cost
 									</SortableHead>
@@ -123,7 +123,7 @@ export function WorkflowsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-40"
+										className="w-32"
 									>
 										Last run
 									</SortableHead>

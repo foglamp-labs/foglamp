@@ -102,7 +102,7 @@ export function AgentsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-36"
+										className="w-28"
 									>
 										Tokens
 									</SortableHead>
@@ -111,7 +111,7 @@ export function AgentsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-40"
+										className="w-32"
 									>
 										Latency p95
 									</SortableHead>
@@ -120,7 +120,7 @@ export function AgentsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-36"
+										className="w-28"
 									>
 										Cost
 									</SortableHead>
@@ -129,7 +129,7 @@ export function AgentsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-40"
+										className="w-32"
 									>
 										Last run
 									</SortableHead>

@@ -145,7 +145,7 @@ export function SessionsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-30"
+										className="w-24"
 									>
 										Turns
 									</SortableHead>
@@ -154,7 +154,7 @@ export function SessionsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-32"
+										className="w-26"
 									>
 										Tokens
 									</SortableHead>
@@ -163,7 +163,7 @@ export function SessionsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-36"
+										className="w-28"
 									>
 										Cost
 									</SortableHead>
@@ -172,7 +172,7 @@ export function SessionsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-40"
+										className="w-32"
 									>
 										Last activity
 									</SortableHead>
