@@ -107,7 +107,7 @@ import {
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
-import { formatCost, formatPercent } from "@/lib/format";
+import { formatCostFixed, formatPercent } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { EvalsHeader } from "./header";
 
@@ -830,15 +830,15 @@ export function EvalsClient() {
               <TableHeader>
                 <TableRow>
                   <SortableHead
-                    className="w-40 truncate"
+                    className="w-40  truncate"
                     sortKey="name"
                     sort={sort}
                     onSort={toggle}
                   >
                     Name
                   </SortableHead>
-                  <TableHead className="w-32">Check</TableHead>
-                  <TableHead className="w-60">Scope</TableHead>
+                  <TableHead className="w-36">Check</TableHead>
+                  <TableHead className="w-52">Scope</TableHead>
                   <SortableHead
                     sortKey="passRate"
                     sort={sort}
@@ -975,7 +975,7 @@ export function EvalsClient() {
                           mutedWhenZero
                         >
                           {r.cost > 0
-                            ? formatCost(r.cost, 4)
+                            ? formatCostFixed(r.cost, 4)
                             : r.scorerSource === "code"
                               ? "$0"
                               : "—"}

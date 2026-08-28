@@ -45,7 +45,7 @@ import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
 import {
-  formatCost,
+  formatCostFixed,
   formatCount,
   formatDuration,
   formatTokens,
@@ -326,7 +326,7 @@ export function AgentsClient() {
                           thresholds={costQuantiles}
                           bold
                         >
-                          {formatCost(a.totalCost, 4)}
+                          {formatCostFixed(a.totalCost, 4)}
                         </HeatCell>
                         <TableCell
                           align="right"

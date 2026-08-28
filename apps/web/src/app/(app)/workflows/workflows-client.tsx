@@ -47,7 +47,7 @@ import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
-import { formatCost, formatCount, formatTokens } from "@/lib/format";
+import { formatCostFixed, formatCount, formatTokens } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { WorkflowsHeader } from "./header";
 
@@ -334,7 +334,7 @@ export function WorkflowsClient() {
                           thresholds={costQuantiles}
                           bold
                         >
-                          {formatCost(w.totalCost, 4)}
+                          {formatCostFixed(w.totalCost, 4)}
                         </HeatCell>
                         <TableCell
                           align="right"

@@ -89,7 +89,7 @@ import { formatModelName, ModelLogo } from "@/components/model-logo";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
-import { formatCost, formatDateTime } from "@/lib/format";
+import { formatCost, formatCostFixed, formatDateTime } from "@/lib/format";
 import { type RouterOutputs, trpc } from "@/utils/trpc";
 
 import {
@@ -652,7 +652,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                           >
                             {s.cost == null || s.cost <= 0
                               ? "—"
-                              : formatCost(s.cost, 4)}
+                              : formatCostFixed(s.cost, 4)}
                           </HeatCell>
                           <TableCell className="text-right text-muted-foreground">
                             <RelativeTime value={s.scoredAt} />
