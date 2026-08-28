@@ -3,6 +3,61 @@ title: Changelog
 description: "What's new in Foglamp."
 ---
 
+<Update label="August 28, 2026">
+
+## New features
+
+**Edit setup decisions before approving.** When a coding agent submits an
+instrumentation plan, every decision on the review page is now editable
+before you approve. Rename agents, workflows, and conversation labels, change
+where the run, thread, and customer ids come from, and toggle customer
+attribution on or off. Edited rows show an **edited** badge with a one-click
+reset, and clearing a field falls back to the detected value. Your agent
+picks up the merged plan automatically, with no changes on the agent side.
+See [Instrument with an AI agent](/ai-instrument).
+
+**Verification report.** After your agent applies the plan, the review page
+turns into a receipt: instrumentation coverage (including skipped calls and
+notes), a before/after map diff, files changed, and any warnings the agent
+raised. Once the plan is verified, it also shows how quickly the first trace
+arrived in [Traces](/dashboard/traces).
+
+## Updates
+
+**Higher-quality architecture maps.** Foglamp now rejects degenerate maps at
+plan upload (no model nodes, everything drawn as an agent, disconnected
+groups) with actionable errors your agent can fix and retry. The setup prompt
+ends with a matching pre-upload checklist, so most maps pass on the first
+try.
+
+**A smoother review page.** Approving closes the tab when the browser allows
+it, and says the tab is safe to close when it doesn't. Rejecting takes a
+two-step confirm, so one stray click can't end a plan. The decision list uses
+the full viewport height, and the long "id comes from" fields wrap in an
+auto-growing textarea instead of hiding text in a single line.
+
+**Structured API errors.** The ingest and server APIs now return JSON error
+bodies with `error`, `code`, and `hint` fields instead of plain text, so both
+humans and agents get something they can act on.
+
+**Markdown for agents on foglamp.dev.** Every marketing page on
+[foglamp.dev](https://foglamp.dev) now has a markdown variant: send
+`Accept: text/markdown` or append `.md` to the path. 404 pages include
+recovery links instead of a bare shell.
+
+## Bug fixes
+
+**No more setup dead ends.** If your agent stops polling after you approve,
+the review page now tells you how to resume it (send the agent any message).
+A plan whose agent dies mid-apply now expires instead of hanging forever, and
+the page nudges you to check the agent's output after 10 minutes of applying.
+
+**Customer attribution can't be approved without an id source.** The Approve
+button is disabled with an inline hint instead of returning a validation
+error after the click.
+
+</Update>
+
 <Update label="August 26, 2026">
 
 ## Updates
