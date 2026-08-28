@@ -211,7 +211,7 @@ const DEFAULT_FORM = {
   promptOverride: "",
 };
 
-type EvalSortKey = "name" | "sample" | "passRate" | "avgScore" | "spend";
+type EvalSortKey = "name" | "passRate" | "avgScore" | "spend";
 
 /** The 20/40/60/80th percentile cost thresholds across the list, so each shade
  * holds ~1/5 of evals. Computed client-side (the eval list is small/unpaged). */
@@ -348,7 +348,6 @@ export function EvalsClient() {
     if (sourceFilter) f = f.filter((r) => r.scorerSource === sourceFilter);
     return sortRows(f, sort, {
       name: (r) => r.name,
-      sample: (r) => r.sampleRate,
       passRate: (r) => r.passRate ?? -1,
       avgScore: (r) => r.avgScore ?? -1,
       spend: (r) => r.cost,
@@ -839,16 +838,7 @@ export function EvalsClient() {
                     Name
                   </SortableHead>
                   <TableHead className="w-32">Check</TableHead>
-                  <TableHead className="w-32">Target</TableHead>
-                  <SortableHead
-                    sortKey="sample"
-                    sort={sort}
-                    onSort={toggle}
-                    align="right"
-                    className="w-20"
-                  >
-                    Sample
-                  </SortableHead>
+                  <TableHead className="w-40">Scope</TableHead>
                   <SortableHead
                     sortKey="passRate"
                     sort={sort}
@@ -938,16 +928,20 @@ export function EvalsClient() {
                             ) : (
                               <IconAffiliate className="size-3.5 shrink-0" />
                             )}
-                            <span className="truncate capitalize">
-                              {r.targetLevel}
+                            {/* Level, agent filter, and the sample rate in one
+                              line; a full sample is the norm and goes unsaid. */}
+                            <span className="truncate">
+                              <span className="capitalize">{r.targetLevel}</span>
                               {r.filters?.agentName
                                 ? ` · ${r.filters.agentName}`
                                 : ""}
+                              {r.sampleRate < 1 && (
+                                <span className="tabular-nums">
+                                  {` · ${Math.round(r.sampleRate * 100)}%`}
+                                </span>
+                              )}
                             </span>
                           </span>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">
-                          {Math.round(r.sampleRate * 100)}%
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {r.passRate == null ? (
@@ -1070,8 +1064,7 @@ function clean(obj: Record<string, string>): Record<string, string> {
 const SKELETON_COLS = [
   { w: "w-28" },
   { w: "w-24" },
-  { icon: true, w: "w-16" },
-  { align: "right", w: "w-8" },
+  { icon: true, w: "w-20" },
   { align: "right", w: "w-10" },
   { align: "right", w: "w-10" },
   { align: "right", w: "w-14" },
