@@ -570,7 +570,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
-                      className="w-32"
+                      className="w-28"
                     >
                       Spans
                     </SortableHead>

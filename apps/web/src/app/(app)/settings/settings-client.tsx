@@ -136,7 +136,6 @@ export function SettingsClient() {
             projectId &&
             !noKeys && (
               <Button
-                size="sm"
                 onClick={() => setKeyDialogOpen(true)}
                 variant="secondary"
               >
@@ -271,7 +270,7 @@ export function SettingsClient() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead className="w-44">Status</TableHead>
+                  <TableHead className="w-48">Status</TableHead>
                   <TableHead className="w-44">Last used</TableHead>
                   <TableHead className="w-44">Created</TableHead>
                   <TableHead className="w-28" />

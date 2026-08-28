@@ -453,7 +453,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                 ? "Scoring is paused"
                 : "Scoring is failing"}
             </AlertTitle>
-            <AlertDescription className="break-words">
+            <AlertDescription className="wrap-break-word">
               {ev.status === "paused_no_key"
                 ? "Add an API key for the judge model's provider in the organization settings to resume."
                 : (ev.lastError ??
@@ -470,14 +470,6 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
         )}
       >
         <StatCard
-          icon={IconBoltFilled}
-          iconClassName="text-orange-500 dark:text-orange-500"
-          size="sm"
-          label="Scored"
-          value={totals.count}
-          formatValue={(n) => Math.round(n).toLocaleString("en-US")}
-        />
-        <StatCard
           icon={IconCircleCheckFilled}
           iconClassName="text-emerald-500 dark:text-emerald-500"
           size="sm"
@@ -487,7 +479,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
         />
         <StatCard
           icon={IconGaugeFilled}
-          iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
+          iconClassName="text-fuchsia-400 dark:text-fuchsia-500"
           size="sm"
           label="Avg score"
           value={totals.avgScore ?? "—"}
@@ -495,11 +487,19 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
         />
         <StatCard
           icon={IconCoinFilled}
-          iconClassName="text-yellow-400 dark:text-yellow-500"
+          iconClassName="text-amber-400 dark:text-yellow-500"
           size="sm"
           label="Eval spend"
           value={totals.cost ?? "—"}
           formatValue={(n) => formatCost(n, 4)}
+        />
+        <StatCard
+          icon={IconBoltFilled}
+          iconClassName="text-orange-500 dark:text-orange-500"
+          size="sm"
+          label="Scored"
+          value={totals.count}
+          formatValue={(n) => Math.round(n).toLocaleString("en-US")}
         />
       </div>
 
@@ -905,7 +905,7 @@ function JudgeInput({ score }: { score: BaseScoreRow }) {
           <IconChevronRight className="size-3.5 transition-transform group-open/raw:rotate-90" />
           Raw prompt
         </summary>
-        <pre className="mt-3 max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-3 font-mono text-xs leading-relaxed">
+        <pre className="mt-3 max-h-128 overflow-auto whitespace-pre-wrap wrap-break-word rounded-lg border bg-muted/30 p-3 font-mono text-xs leading-relaxed">
           {d.prompt}
         </pre>
       </details>
@@ -983,7 +983,7 @@ function JudgeField({
     );
   }
   return (
-    <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/30 p-3 text-xs leading-relaxed">
+    <pre className="max-h-96 overflow-auto whitespace-pre-wrap wrap-break-word rounded-lg border bg-muted/30 p-3 text-xs leading-relaxed">
       {text}
     </pre>
   );

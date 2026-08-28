@@ -204,28 +204,25 @@ function BreakdownRowsSkeleton({
     // so the fade never remounts when the data lands. Invisible until the
     // skeleton delay elapses; the fade over a blank card is invisible too.
     <div
-      className={cn(
-        "divide-y divide-border/40 pb-6",
-        !skeleton && "invisible"
-      )}
+      className={cn("divide-y divide-border/40 pb-6", !skeleton && "invisible")}
     >
-        {Array.from({ length: rows }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between gap-6 px-5 py-3"
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-1.5">
-              <Skeleton className="size-3.5 shrink-0 rounded-full squircle:rounded-full" />
-              <Skeleton className="h-3.5 w-28" />
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-1.5">
-              <div className="flex h-5 items-center">
-                <Skeleton className="h-3.5 w-12" />
-              </div>
-              <Skeleton className="h-0.5 w-14" />
-            </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center justify-between gap-6 px-5 py-3"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <Skeleton className="size-3.5 shrink-0 rounded-full squircle:rounded-full" />
+            <Skeleton className="h-3.5 w-28" />
           </div>
-        ))}
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <div className="flex h-5 items-center">
+              <Skeleton className="h-3.5 w-12" />
+            </div>
+            <Skeleton className="h-0.5 w-14" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -724,7 +721,7 @@ export function OverviewClient() {
       >
         <StatCard
           icon={IconCirclesFilled}
-          iconClassName="text-blue-500 dark:text-blue-500"
+          iconClassName="text-sky-400 dark:text-sky-500"
           label="Tokens"
           size="sm"
           loading={statsLoading}
@@ -737,13 +734,13 @@ export function OverviewClient() {
           chart={
             <CardSparkline
               data={seriesData.map((d) => d.tokens)}
-              className="text-blue-400/50 dark:text-blue-600/50"
+              className="text-blue-400/50 dark:text-sky-600/40"
             />
           }
         />
         <StatCard
           icon={IconCoinFilled}
-          iconClassName="text-yellow-400 dark:text-yellow-500"
+          iconClassName="text-amber-400 dark:text-yellow-500"
           label="Total cost"
           size="sm"
           loading={statsLoading}
@@ -757,13 +754,13 @@ export function OverviewClient() {
           chart={
             <CardSparkline
               data={seriesData.map((d) => d.cost)}
-              className="text-yellow-400/50 dark:text-yellow-600/50"
+              className="text-yellow-400/50 dark:text-yellow-500/35"
             />
           }
         />
         <StatCard
           icon={IconGaugeFilled}
-          iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
+          iconClassName="text-fuchsia-400 dark:text-fuchsia-500"
           label="Eval pass rate"
           size="sm"
           loading={statsLoading}
@@ -786,7 +783,7 @@ export function OverviewClient() {
         />
         <StatCard
           icon={IconAlertTriangleFilled}
-          iconClassName="text-red-500 dark:text-red-600"
+          iconClassName="text-red-500/90 dark:text-red-600/95 mt-px"
           label="Error rate"
           size="sm"
           loading={statsLoading}
@@ -818,47 +815,46 @@ export function OverviewClient() {
           <CardHeader>
             <CardTitle>Models</CardTitle>
           </CardHeader>
-          <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+          <CardContent className="px-0 group-data-[size=sm]/card:px-0! min-h-58 max-h-58">
             {!modelsLoading && modelRows.length === 0 ? (
               // Sized to the list viewport (ScrollFade max-h-60) so an empty
               // card never stretches the grid row past its full siblings.
               <EmptyState
                 icon={IconCpu}
                 title="No model yet"
-                description="Models are picked up automatically."
-                className="h-60 border-none py-0"
+                className="h-59 border-none py-0 pb-8"
               />
             ) : (
               <ScrollFade className="max-h-60 -mt-1">
                 {modelsLoading ? (
                   <BreakdownRowsSkeleton skeleton={modelsSkeleton} />
                 ) : (
-                <div className="divide-y divide-border/40">
-                  {modelRows.map((m) => (
-                    <BreakdownRow
-                      key={m.modelId}
-                      href={
-                        // "(unknown)" isn't a real model id — the traces model
-                        // filter can't match it, so those rows stay inert.
-                        m.modelId === "(unknown)"
-                          ? undefined
-                          : (`/traces?model=${encodeURIComponent(m.modelId)}` as Route)
-                      }
-                      renderIcon={(cls) => (
-                        <ModelLogo
-                          modelId={m.modelId}
-                          className={cn(cls, "size-3")}
-                        />
-                      )}
-                      title={formatModelName(m.modelId)}
-                      value={formatCost(m.totalCost, 3)}
-                      fraction={(m.totalCost ?? 0) / maxModelCost}
-                      color={
-                        modelBrandColor(null, m.modelId) ?? "var(--chart-2)"
-                      }
-                    />
-                  ))}
-                </div>
+                  <div className="divide-y divide-border/40">
+                    {modelRows.map((m) => (
+                      <BreakdownRow
+                        key={m.modelId}
+                        href={
+                          // "(unknown)" isn't a real model id — the traces model
+                          // filter can't match it, so those rows stay inert.
+                          m.modelId === "(unknown)"
+                            ? undefined
+                            : (`/traces?model=${encodeURIComponent(m.modelId)}` as Route)
+                        }
+                        renderIcon={(cls) => (
+                          <ModelLogo
+                            modelId={m.modelId}
+                            className={cn(cls, "size-3")}
+                          />
+                        )}
+                        title={formatModelName(m.modelId)}
+                        value={formatCost(m.totalCost, 3)}
+                        fraction={(m.totalCost ?? 0) / maxModelCost}
+                        color={
+                          modelBrandColor(null, m.modelId) ?? "var(--chart-2)"
+                        }
+                      />
+                    ))}
+                  </div>
                 )}
               </ScrollFade>
             )}
@@ -875,36 +871,35 @@ export function OverviewClient() {
           <CardHeader>
             <CardTitle>Agents</CardTitle>
           </CardHeader>
-          <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+          <CardContent className="px-0 group-data-[size=sm]/card:px-0! min-h-58 max-h-58">
             {!agentsLoading && agentRows.length === 0 ? (
               <EmptyState
                 icon={IconGhostFilled}
                 title="No agent yet"
-                description="Set agentName on a call to group it under an agent."
-                className="h-60 border-none py-0"
+                className="h-59 border-none py-0 pb-8"
               />
             ) : (
               <ScrollFade className="max-h-60 -mt-1">
                 {agentsLoading ? (
                   <BreakdownRowsSkeleton skeleton={agentsSkeleton} />
                 ) : (
-                <div className="divide-y divide-border/40">
-                  {agentRows.map((a) => (
-                    <BreakdownRow
-                      key={a.agentName}
-                      href={
-                        `/agents/${encodeURIComponent(a.agentName)}` as Route
-                      }
-                      renderIcon={(cls) => (
-                        <AgentIcon name={a.agentName} className={cls} />
-                      )}
-                      title={a.agentName}
-                      value={formatCost(a.totalCost, 3)}
-                      fraction={(a.totalCost ?? 0) / maxAgentCost}
-                      color={agentColor(a.agentName)}
-                    />
-                  ))}
-                </div>
+                  <div className="divide-y divide-border/40">
+                    {agentRows.map((a) => (
+                      <BreakdownRow
+                        key={a.agentName}
+                        href={
+                          `/agents/${encodeURIComponent(a.agentName)}` as Route
+                        }
+                        renderIcon={(cls) => (
+                          <AgentIcon name={a.agentName} className={cls} />
+                        )}
+                        title={a.agentName}
+                        value={formatCost(a.totalCost, 3)}
+                        fraction={(a.totalCost ?? 0) / maxAgentCost}
+                        color={agentColor(a.agentName)}
+                      />
+                    ))}
+                  </div>
                 )}
               </ScrollFade>
             )}
@@ -921,40 +916,39 @@ export function OverviewClient() {
           <CardHeader>
             <CardTitle>Workflows</CardTitle>
           </CardHeader>
-          <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+          <CardContent className="px-0 group-data-[size=sm]/card:px-0! min-h-58 max-h-58">
             {!workflowsLoading && workflowRows.length === 0 ? (
               <EmptyState
                 icon={IconSitemapFilled}
                 title="No workflow yet"
-                description="Set workflowName to group it under a workflow."
-                className="h-60 border-none py-0"
+                className="h-59 border-none py-0 pb-8"
               />
             ) : (
               <ScrollFade className="max-h-60 -mt-1">
                 {workflowsLoading ? (
                   <BreakdownRowsSkeleton skeleton={workflowsSkeleton} />
                 ) : (
-                <div className="divide-y divide-border/40">
-                  {workflowRows.map((w) => (
-                    <BreakdownRow
-                      key={w.workflowName ?? "~ungrouped"}
-                      href={
-                        w.workflowName
-                          ? (`/workflows/${encodeURIComponent(w.workflowName)}` as Route)
-                          : undefined
-                      }
-                      renderIcon={(cls) => (
-                        <IconSitemapFilled
-                          className={cn(cls, "text-emerald-500")}
-                        />
-                      )}
-                      title={w.workflowName ?? "Ungrouped"}
-                      value={formatCost(w.totalCost, 3)}
-                      fraction={(w.totalCost ?? 0) / maxWorkflowCost}
-                      color="var(--color-emerald-500)"
-                    />
-                  ))}
-                </div>
+                  <div className="divide-y divide-border/40">
+                    {workflowRows.map((w) => (
+                      <BreakdownRow
+                        key={w.workflowName ?? "~ungrouped"}
+                        href={
+                          w.workflowName
+                            ? (`/workflows/${encodeURIComponent(w.workflowName)}` as Route)
+                            : undefined
+                        }
+                        renderIcon={(cls) => (
+                          <IconSitemapFilled
+                            className={cn(cls, "text-emerald-500")}
+                          />
+                        )}
+                        title={w.workflowName ?? "Ungrouped"}
+                        value={formatCost(w.totalCost, 3)}
+                        fraction={(w.totalCost ?? 0) / maxWorkflowCost}
+                        color="var(--color-emerald-500)"
+                      />
+                    ))}
+                  </div>
                 )}
               </ScrollFade>
             )}
@@ -971,54 +965,55 @@ export function OverviewClient() {
           <CardHeader>
             <CardTitle>Customers</CardTitle>
           </CardHeader>
-          <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+          <CardContent className="px-0 group-data-[size=sm]/card:px-0! min-h-58 max-h-58">
             {!customersLoading && customerRows.length === 0 ? (
               <EmptyState
                 icon={IconUserFilled}
                 title="No customer yet"
-                description="Set customer to attribute its cost."
-                className="h-60 border-none py-0"
+                className="h-59 border-none py-0 pb-8"
               />
             ) : (
               <ScrollFade className="max-h-60 -mt-1">
                 {customersLoading ? (
                   <BreakdownRowsSkeleton skeleton={customersSkeleton} />
                 ) : (
-                <div className="divide-y divide-border/40">
-                  {customerRows.map((c) => (
-                    <BreakdownRow
-                      key={c.customerId ?? "~unidentified"}
-                      href={
-                        c.customerId
-                          ? (`/traces?customer=${encodeURIComponent(c.customerId)}` as Route)
-                          : undefined
-                      }
-                      renderIcon={(cls) =>
-                        c.customerId ? (
-                          <CustomerAvatar
-                            customerId={c.customerId}
-                            customerName={c.customerName}
-                            imageUrl={c.customerImageUrl}
-                            filled
-                            className={cls}
-                          />
-                        ) : (
-                          <IconUserFilled
-                            className={cn(cls, "text-muted-foreground/60")}
-                          />
-                        )
-                      }
-                      title={c.customerName ?? c.customerId ?? "Not identified"}
-                      value={formatCost(c.totalCost, 3)}
-                      fraction={(c.totalCost ?? 0) / maxCustomerCost}
-                      color={
-                        c.customerId
-                          ? agentColor(c.customerId)
-                          : "var(--muted-foreground)"
-                      }
-                    />
-                  ))}
-                </div>
+                  <div className="divide-y divide-border/40">
+                    {customerRows.map((c) => (
+                      <BreakdownRow
+                        key={c.customerId ?? "~unidentified"}
+                        href={
+                          c.customerId
+                            ? (`/traces?customer=${encodeURIComponent(c.customerId)}` as Route)
+                            : undefined
+                        }
+                        renderIcon={(cls) =>
+                          c.customerId ? (
+                            <CustomerAvatar
+                              customerId={c.customerId}
+                              customerName={c.customerName}
+                              imageUrl={c.customerImageUrl}
+                              filled
+                              className={cls}
+                            />
+                          ) : (
+                            <IconUserFilled
+                              className={cn(cls, "text-muted-foreground/60")}
+                            />
+                          )
+                        }
+                        title={
+                          c.customerName ?? c.customerId ?? "Not identified"
+                        }
+                        value={formatCost(c.totalCost, 3)}
+                        fraction={(c.totalCost ?? 0) / maxCustomerCost}
+                        color={
+                          c.customerId
+                            ? agentColor(c.customerId)
+                            : "var(--muted-foreground)"
+                        }
+                      />
+                    ))}
+                  </div>
                 )}
               </ScrollFade>
             )}
