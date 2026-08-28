@@ -288,7 +288,7 @@ function BreakdownRow({
   href?: Route;
 }) {
   const rowClassName =
-    "flex items-center justify-between gap-6 py-3 last:pb-0 px-5";
+    "flex items-center justify-between gap-6 py-3 px-5";
   const inner = (
     <>
       {/* Left: name + secondary metrics. */}
