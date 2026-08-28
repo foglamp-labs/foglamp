@@ -69,7 +69,6 @@ import {
 	WORKFLOWS,
 	type WorkflowRun,
 } from "../mock-data";
-import { DemoToolBreakdownCard } from "./breakdown-cards";
 
 // The demo window is a fixed "Last 24 hours", so the bucket axis renders
 // time-of-day labels.
@@ -287,11 +286,6 @@ export function WorkflowDetail({ workflowName }: { workflowName: string }) {
 						</AreaChart.EvilAreaChart>
 					</CardContent>
 				</Card>
-			</section>
-
-			{/* Which tools this workflow's runs lean on. */}
-			<section className="px-8">
-				<DemoToolBreakdownCard />
 			</section>
 
 			{/* Step flow for the selected run. */}

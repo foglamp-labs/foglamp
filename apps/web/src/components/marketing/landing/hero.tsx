@@ -256,7 +256,8 @@ export function Hero() {
 				initial={reduce ? false : { opacity: 0, filter: "blur(0px)" }}
 				animate={reduce ? undefined : { opacity: 1, filter: "blur(0px)" }}
 				transition={{ duration: 0.55, ease: EASE, delay: 0.6 }}
-				className="mx-auto mt-16 hidden w-full max-w-7xl md:block"
+				// A touch wider than the copy's max-w-7xl so the dashboard breathes.
+				className="mx-auto mt-16 hidden w-full max-w-[86rem] md:block"
 			>
 				{/* Same house border beam as the pricing page's featured card. Its
             circular-arc corners are matched by corner-round! on the demo frame
