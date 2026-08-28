@@ -49,11 +49,7 @@ export function RouteHeader({
 	const composedActions =
 		withRange || actions ? (
 			<>
-				{withRange && (
-					<div className="translate-y-1">
-						<LiveRangePicker />
-					</div>
-				)}
+				{withRange && <LiveRangePicker />}
 				{actions}
 			</>
 		) : undefined;
