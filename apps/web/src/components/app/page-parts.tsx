@@ -291,14 +291,14 @@ export function StatCard({
 				// Held at the height of the tallest chart slot (PillMeter:
 				// 6 + 14 + 20px) so the chart appears without growing the card;
 				// the placeholder (if any) paints in the same box after the delay.
-				<div className="mt-auto -mb-6 group-data-[size=sm]/card:-mb-5">
+				<div className="mt-auto pt-1 -mb-6 group-data-[size=sm]/card:-mb-5">
 					<div className="flex h-10 w-full flex-col justify-end">
 						{hold === "skeleton" && chartPlaceholder}
 					</div>
 				</div>
 			) : (
 				chart && (
-					<div className="mt-auto -mb-6 group-data-[size=sm]/card:-mb-5">
+					<div className="mt-auto pt-1 -mb-6 group-data-[size=sm]/card:-mb-5">
 						{chart}
 					</div>
 				)
