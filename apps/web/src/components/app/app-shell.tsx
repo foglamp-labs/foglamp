@@ -315,17 +315,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         isActive={active}
-                        render={
-                          <Link
-                            href={item.href}
-                            onPointerEnter={() =>
-                              prefetchRoute(item.href, prefetchCtx)
-                            }
-                            onFocus={() =>
-                              prefetchRoute(item.href, prefetchCtx)
-                            }
-                          />
-                        }
+                        render={<Link href={item.href} prefetch />}
                       >
                         <NavIcon
                           icon={item.icon}
@@ -352,15 +342,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     isActive={active}
-                    render={
-                      <Link
-                        href={item.href}
-                        onPointerEnter={() =>
-                          prefetchRoute(item.href, prefetchCtx)
-                        }
-                        onFocus={() => prefetchRoute(item.href, prefetchCtx)}
-                      />
-                    }
+                    render={<Link href={item.href} prefetch />}
                   >
                     <NavIcon
                       icon={item.icon}
