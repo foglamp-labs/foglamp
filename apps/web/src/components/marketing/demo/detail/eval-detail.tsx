@@ -87,46 +87,46 @@ export function EvalDetail({ evalId }: { evalId: string }) {
             className="p-0.5"
           />
         }
-        actions={
-          <>
-            <DemoRange />
-            <Button variant="secondary">
-              <IconPencilFilled />
-              Edit
-            </Button>
-          </>
-        }
         onBack={closeDetail}
       />
 
       {/* Definition chips: the check, what it runs on, the sample rate, and
           (when scoped to one agent) a link to that agent's filter. */}
-      <div className="-mt-1 flex flex-wrap items-center gap-2 text-xs px-8">
-        <DemoContextChip
-          icon={CheckIcon}
-          iconClassName={FAMILY_ICON[family]}
-          label={ev.presetName}
-        />
-        <DemoContextChip
-          icon={ev.level === "span" ? IconStack2Filled : IconAffiliateFilled}
-          label={ev.level === "span" ? "Span" : "Trace"}
-        />
-        <DemoContextChip icon={IconPercentage} label={`${ev.sample}% sampled`} />
-        {ev.agentName && (
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs px-7">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <DemoContextChip
-            icon={(p) => (
-              <AgentIcon name={ev.agentName!} filled className={p.className} />
-            )}
-            label={ev.agentName}
-            onClick={() => openDetail({ type: "agent", id: ev.agentName! })}
+            icon={CheckIcon}
+            iconClassName={FAMILY_ICON[family]}
+            label={ev.presetName}
           />
-        )}
+          <DemoContextChip
+            icon={ev.level === "span" ? IconStack2Filled : IconAffiliateFilled}
+            label={ev.level === "span" ? "Span" : "Trace"}
+          />
+          <DemoContextChip icon={IconPercentage} label={`${ev.sample}% sampled`} />
+          {ev.agentName && (
+            <DemoContextChip
+              icon={(p) => (
+                <AgentIcon name={ev.agentName!} filled className={p.className} />
+              )}
+              label={ev.agentName}
+              onClick={() => openDetail({ type: "agent", id: ev.agentName! })}
+            />
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <DemoRange />
+          <Button variant="secondary">
+            <IconPencilFilled className="mb-px" />
+            Edit
+          </Button>
+        </div>
       </div>
 
       {/* Scoring health: when the eval can't score (dead jobs, no provider
           key) say so up front with the reason. */}
       {ev.status !== "ok" && (
-        <div className="px-8">
+        <div className="px-7">
           <Alert variant="destructive">
             <IconAlertTriangle />
             <AlertTitle>
@@ -143,7 +143,7 @@ export function EvalDetail({ evalId }: { evalId: string }) {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-8">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-7">
         <StatCard
           icon={IconCircleCheckFilled}
           iconClassName="text-emerald-500 dark:text-emerald-500"

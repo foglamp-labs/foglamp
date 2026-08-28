@@ -120,7 +120,7 @@ export function AgentsTab() {
 										sort={sort}
 										onSort={toggle}
 										align="right"
-										className="w-32"
+										className="w-36"
 									>
 										Cost
 									</SortableHead>
