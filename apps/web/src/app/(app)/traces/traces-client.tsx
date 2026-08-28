@@ -803,7 +803,7 @@ export function TracesClient() {
                             )}
                           </TableCell>
                         )}
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
                           {formatCount(t.spanCount)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">

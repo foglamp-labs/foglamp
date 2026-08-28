@@ -59,8 +59,8 @@ export const UNGROUPED = "~ungrouped";
 
 type WorkflowSortKey =
   | "name"
-  | "runs"
   | "traces"
+  | "runs"
   | "tokens"
   | "errors"
   | "cost"
@@ -68,8 +68,8 @@ type WorkflowSortKey =
 
 const WORKFLOW_SORT_KEYS = [
   "name",
-  "runs",
   "traces",
+  "runs",
   "tokens",
   "errors",
   "cost",
@@ -234,22 +234,22 @@ export function WorkflowsClient() {
                       Workflow
                     </SortableHead>
                     <SortableHead
-                      sortKey="runs"
+                      sortKey="traces"
                       sort={sort}
                       onSort={toggle}
                       align="right"
                       className="w-32"
                     >
-                      Runs
+                      Traces
                     </SortableHead>
                     <SortableHead
-                      sortKey="traces"
+                      sortKey="runs"
                       sort={sort}
                       onSort={toggle}
                       align="right"
                       className="w-36"
                     >
-                      Traces
+                      Runs
                     </SortableHead>
                     <SortableHead
                       sortKey="tokens"
@@ -320,11 +320,14 @@ export function WorkflowsClient() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell align="right" className="tabular-nums">
-                          {formatCount(w.runCount)}
+                        <TableCell
+                          align="right"
+                          className="tabular-nums text-muted-foreground"
+                        >
+                          {formatCount(w.traceCount)}
                         </TableCell>
                         <TableCell align="right" className="tabular-nums">
-                          {formatCount(w.traceCount)}
+                          {formatCount(w.runCount)}
                         </TableCell>
                         <TableCell align="right" className="tabular-nums">
                           {formatTokens(w.totalTokens)}

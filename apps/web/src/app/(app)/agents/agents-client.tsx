@@ -312,7 +312,10 @@ export function AgentsClient() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell align="right" className="tabular-nums">
+                        <TableCell
+                          align="right"
+                          className="tabular-nums text-muted-foreground"
+                        >
                           {formatCount(a.spanCount)}
                         </TableCell>
                         <TableCell align="right" className="tabular-nums">
