@@ -578,7 +578,7 @@ export function AlertsClient() {
                         >
                           <TableCell className="h-12">
                             <div className="flex min-w-0 items-center gap-2">
-                              <span className="truncate font-medium">
+                              <span className="truncate font-normal">
                                 {r.name}
                               </span>
                               {firing && (

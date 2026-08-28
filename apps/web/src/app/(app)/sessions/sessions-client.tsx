@@ -342,13 +342,13 @@ export function SessionsClient() {
                           )
                         }
                       >
-                        <TableCell>
+                        <TableCell className="h-16">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                               {/* Content-first title: the session's opening
                                   user message, falling back to the raw id —
                                   same treatment as the traces list. */}
-                              <span className="truncate font-medium text-[13px]">
+                              <span className="truncate font-normal text-[14px]">
                                 {s.userMessage ?? s.sessionId}
                               </span>
                               {/* Compact error count — colored text, no pill. */}
@@ -367,7 +367,9 @@ export function SessionsClient() {
                                   here since sessions have no model filter. */}
                               {s.models.length > 0 && (
                                 <span
-                                  title={s.models.map(formatModelName).join(", ")}
+                                  title={s.models
+                                    .map(formatModelName)
+                                    .join(", ")}
                                   className="inline-flex min-w-0 shrink items-center gap-1"
                                 >
                                   <ModelLogo

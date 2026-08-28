@@ -838,7 +838,7 @@ export function EvalsClient() {
                     Name
                   </SortableHead>
                   <TableHead className="w-32">Check</TableHead>
-                  <TableHead className="w-40">Scope</TableHead>
+                  <TableHead className="w-60">Scope</TableHead>
                   <SortableHead
                     sortKey="passRate"
                     sort={sort}
@@ -885,7 +885,9 @@ export function EvalsClient() {
                       >
                         <TableCell className="font-medium h-12">
                           <div className="flex min-w-0 items-center gap-2">
-                            <span className="truncate">{r.name}</span>
+                            <span className="truncate font-normal">
+                              {r.name}
+                            </span>
                             {(r.status === "error" ||
                               r.status === "paused_no_key") && (
                               <Tooltip>
@@ -928,18 +930,17 @@ export function EvalsClient() {
                             ) : (
                               <IconAffiliate className="size-3.5 shrink-0" />
                             )}
-                            {/* Level, agent filter, and the sample rate in one
-                              line; a full sample is the norm and goes unsaid. */}
+                            {/* Level, agent filter, and the sample rate in one line. */}
                             <span className="truncate">
-                              <span className="capitalize">{r.targetLevel}</span>
+                              <span className="capitalize">
+                                {r.targetLevel}
+                              </span>
                               {r.filters?.agentName
                                 ? ` · ${r.filters.agentName}`
                                 : ""}
-                              {r.sampleRate < 1 && (
-                                <span className="tabular-nums">
-                                  {` · ${Math.round(r.sampleRate * 100)}%`}
-                                </span>
-                              )}
+                              <span className="tabular-nums">
+                                {` · ${Math.round(r.sampleRate * 100)}%`}
+                              </span>
                             </span>
                           </span>
                         </TableCell>

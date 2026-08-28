@@ -288,7 +288,7 @@ export function SettingsClient() {
                 ) : (
                   keyRows.map((k) => (
                     <TableRow key={k.id}>
-                      <TableCell className="font-medium flex flex-col gap-0.75 py-2.5">
+                      <TableCell className="font-normal flex flex-col gap-1 py-2.5">
                         {k.name}{" "}
                         <span className="font-mono text-[11px] text-muted-foreground/50">
                           {k.keyPrefix}

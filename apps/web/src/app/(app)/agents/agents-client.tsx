@@ -297,7 +297,7 @@ export function AgentsClient() {
                         <TableCell className="h-12">
                           <div className="flex min-w-0 items-center gap-2">
                             <AgentIcon name={a.agentName} className="size-4" />
-                            <span className="truncate font-medium">
+                            <span className="truncate font-normal">
                               {a.agentName}
                             </span>
                             {/* Compact error count — colored text, no pill. */}

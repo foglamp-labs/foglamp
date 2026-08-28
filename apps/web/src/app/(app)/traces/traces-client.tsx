@@ -579,7 +579,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
-                      className="w-36"
+                      className="w-30"
                     >
                       Tokens
                     </SortableHead>
@@ -588,7 +588,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
-                      className="w-36"
+                      className="w-32"
                     >
                       Duration
                     </SortableHead>
@@ -597,7 +597,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
-                      className="w-40"
+                      className="w-38"
                     >
                       Cost
                     </SortableHead>
@@ -606,7 +606,7 @@ export function TracesClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
-                      className="w-40"
+                      className="w-36"
                     >
                       When
                     </SortableHead>
@@ -639,7 +639,7 @@ export function TracesClient() {
                           )
                         }
                       >
-                        <TableCell>
+                        <TableCell className="h-16">
                           <div className="min-w-0 flex justify-between items-center">
                             {/* min-w-0: flex items refuse to shrink below their content
 														    by default, so without it the meta line overflows into the
@@ -651,7 +651,7 @@ export function TracesClient() {
                                     SDK falls back to the agent name, which is
                                     just noise repeated down the column), then
                                     the raw id. */}
-                                <span className="truncate font-medium text-[13px]">
+                                <span className="truncate text-[14px]">
                                   {t.userMessage ??
                                     (t.traceName && t.traceName !== t.agentName
                                       ? t.traceName
