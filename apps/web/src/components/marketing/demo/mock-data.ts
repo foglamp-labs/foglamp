@@ -1384,6 +1384,8 @@ export type EvalRow = {
 	presetName: string;
 	type: "code" | "llm-judge";
 	level: "trace" | "span";
+	/** For span evals, which calls get scored. */
+	spanType?: "tool" | "llm";
 	/** Target agent name, or null for "all agents". */
 	agentName: string | null;
 	/** Sampling percentage, 0–100. */
@@ -1420,6 +1422,7 @@ export const EVALS: EvalRow[] = [
 		presetName: "Tool selection",
 		type: "llm-judge",
 		level: "span",
+		spanType: "tool",
 		agentName: "support-triage",
 		sample: 25,
 		scored: "1.2k",
@@ -1452,6 +1455,7 @@ export const EVALS: EvalRow[] = [
 		presetName: "Regex match",
 		type: "code",
 		level: "span",
+		spanType: "llm",
 		agentName: null,
 		sample: 100,
 		scored: "2.1k",

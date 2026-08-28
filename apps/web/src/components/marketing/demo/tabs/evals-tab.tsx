@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import { Switch } from "@foglamp/ui/components/switch";
 import {
@@ -25,11 +24,12 @@ import {
 	IconProgress,
 	IconSparkles,
 	IconStack2,
+	IconTool,
 	IconTrashFilled,
 } from "@tabler/icons-react";
 import { useState } from "react";
 
-import { presetMeta } from "@/app/(app)/evals/preset-meta";
+import { FAMILY_ICON, presetMeta } from "@/app/(app)/evals/preset-meta";
 import {
 	ClearFiltersButton,
 	FilterSelect,
@@ -156,7 +156,6 @@ export function EvalsTab() {
 								>
 									Name
 								</SortableHead>
-								<TableHead className="w-36">Check</TableHead>
 								<TableHead className="w-52">Scope</TableHead>
 								<SortableHead
 									sortKey="passRate"
@@ -190,16 +189,26 @@ export function EvalsTab() {
 						</TableHeader>
 						<TableBody>
 							{visible.map((r) => {
-								const CheckIcon = presetMeta(r.presetId).outline;
+								const { icon: CheckIcon, family } = presetMeta(r.presetId);
+								// Trace evals score the whole run; span evals score every
+								// tool or LLM call individually (mirrors the app's targets).
+								const target =
+									r.level === "trace"
+										? { icon: IconAffiliate, label: "Whole trace" }
+										: r.spanType === "llm"
+											? { icon: IconStack2, label: "LLM calls" }
+											: { icon: IconTool, label: "Tool calls" };
+								const TargetIcon = target.icon;
 								return (
 									<TableRow
 										key={r.id}
 										interactive
 										onClick={() => openDetail({ type: "eval", id: r.id })}
 									>
-										<TableCell className="font-medium">
-											<div className="flex min-w-0 items-center gap-2">
-												<span className="truncate">{r.name}</span>
+										<TableCell className="h-16">
+											<div className="flex min-w-0 flex-col gap-1">
+												<div className="flex min-w-0 items-center gap-2">
+													<span className="truncate text-[14px]">{r.name}</span>
 												{(r.status === "error" ||
 													r.status === "paused_no_key") && (
 													<span
@@ -213,31 +222,24 @@ export function EvalsTab() {
 														<IconAlertTriangle className="size-3.5 fill-current/20" />
 													</span>
 												)}
+												</div>
+												<div
+													className={cn(
+														"flex min-w-0 items-center gap-1 text-xs",
+														FAMILY_ICON[family]
+													)}
+												>
+													<CheckIcon className="size-3 shrink-0" />
+													<span className="truncate">{r.presetName}</span>
+												</div>
 											</div>
-										</TableCell>
-										<TableCell>
-											<Badge
-												variant={
-													r.type === "llm-judge" ? "violet" : "secondary"
-												}
-												className="min-w-0 max-w-full"
-											>
-												<CheckIcon />
-												<span className="min-w-0 truncate">
-													{r.presetName}
-												</span>
-											</Badge>
 										</TableCell>
 										<TableCell className="text-muted-foreground">
 											<span className="flex min-w-0 items-center gap-1.5">
-												{r.level === "span" ? (
-													<IconStack2 className="size-3.5 shrink-0" />
-												) : (
-													<IconAffiliate className="size-3.5 shrink-0" />
-												)}
+												<TargetIcon className="size-3.5 shrink-0" />
 												{/* Level, agent filter, and the sample rate in one line. */}
 												<span className="truncate">
-													<span className="capitalize">{r.level}</span>
+													{target.label}
 													{r.agentName ? ` · ${r.agentName}` : ""}
 													<span className="tabular-nums">{` · ${r.sample}%`}</span>
 												</span>
