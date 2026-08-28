@@ -118,6 +118,7 @@ const PAGE_SIZES = [25, 50, 100];
 const SKELETON_COLS = [
   { icon: true, w: "w-64" },
   { w: "w-10" },
+  { align: "right", w: "w-8" },
   { w: "w-72" },
   { align: "right", w: "w-12" },
   { align: "right", w: "w-14" },
@@ -535,13 +536,14 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-96">Run</TableHead>
+                  <TableHead className="w-20">Verdict</TableHead>
                   <SortableHead
                     sortKey="score"
                     sort={sort}
                     onSort={toggle}
-                    className="w-24"
+                    className="w-20 text-right"
                   >
-                    Verdict
+                    Score
                   </SortableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead className="w-24 text-right">Cost</TableHead>
@@ -609,27 +611,29 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                                   <IconForbidFilled className="size-3.25" />
                                 )}
                                 {s.passed ? "Pass" : "Fail"}
-                                {s.score !== null && (
-                                  <span className="ml-1 font-normal tabular-nums text-muted-foreground">
-                                    {s.score.toFixed(2)}
-                                  </span>
-                                )}
-                              </span>
-                            ) : s.score !== null ? (
-                              <span
-                                className={cn(
-                                  "tabular-nums",
-                                  s.score >= 0.9
-                                    ? "text-emerald-600 dark:text-emerald-400"
-                                    : s.score < 0.5 &&
-                                        "text-rose-600 dark:text-rose-400"
-                                )}
-                              >
-                                {s.score.toFixed(2)}
                               </span>
                             ) : s.label === "skipped" ? (
                               <span className="text-sm text-muted-foreground">
                                 Skipped
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground/40">
+                                —
+                              </span>
+                            )}
+                          </TableCell>
+                          {/* The judge's number on its own, so the verdict reads
+                            the same for scored and pass/fail-only evals. */}
+                          <TableCell className="text-right tabular-nums">
+                            {s.score !== null ? (
+                              <span
+                                className={cn(
+                                  s.passed !== null && !s.passed
+                                    ? "text-rose-600 dark:text-rose-400"
+                                    : "text-muted-foreground"
+                                )}
+                              >
+                                {s.score.toFixed(2)}
                               </span>
                             ) : (
                               <span className="text-muted-foreground/40">
@@ -658,7 +662,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                           <ScoreDetail
                             score={s}
                             projectId={projectId}
-                            colSpan={5}
+                            colSpan={6}
                           />
                         )}
                       </Fragment>
