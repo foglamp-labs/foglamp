@@ -188,6 +188,8 @@ export function StatCard({
 	prefix,
 	suffix,
 	formatValue,
+	loading = false,
+	skeleton = false,
 }: {
 	label: string;
 	/** A `number` gets the ticker treatment — on change the digits animate to
@@ -217,7 +219,16 @@ export function StatCard({
 	/** Full-bleed visual pinned to the card's bottom edge — e.g. a
 	 * `CardSparkline` or `PillMeter`. Bleeds past the card's vertical padding. */
 	chart?: React.ReactNode;
+	/** While true the static shell (icon + label) stays put and the value,
+	 * hint, delta, and chart slots are held empty at their final heights, so
+	 * the data drops into place without shifting the card. */
+	loading?: boolean;
+	/** With `loading`, paints shimmer blobs in the held slots (pair with
+	 * `useDelayedLoading` so fast loads never flash them). */
+	skeleton?: boolean;
 }) {
+	const hold = loading ? (skeleton ? "skeleton" : "blank") : null;
+	const placeholderClass = hold === "blank" ? "invisible" : undefined;
 	return (
 		<Card size={size}>
 			<CardHeader className="gap-1.5">
@@ -234,11 +245,22 @@ export function StatCard({
 						<CardDescription>{label}</CardDescription>
 					</div>
 
-					{delta && <DeltaBadge delta={delta} inverted={deltaInverted} />}
+					{hold ? (
+						<Skeleton className={cn("h-3 w-9", placeholderClass)} />
+					) : (
+						delta && <DeltaBadge delta={delta} inverted={deltaInverted} />
+					)}
 				</div>
 				<div className="flex items-baseline justify-between gap-2">
 					<CardTitle className={cn("tracking-tight tabular-nums")}>
-						{typeof value === "number" ? (
+						{hold ? (
+							// Zero-width text keeps the title's line box so the row
+							// height matches the loaded card exactly.
+							<span className="inline-flex items-center">
+								{"\u200b"}
+								<Skeleton className={cn("h-6 w-20", placeholderClass)} />
+							</span>
+						) : typeof value === "number" ? (
 							<>
 								{prefix}
 								<TickerValue
@@ -251,18 +273,35 @@ export function StatCard({
 							value
 						)}
 					</CardTitle>
-					{hint && (
-						<span className="min-w-0 truncate text-end text-xs text-muted-foreground/70">
-							{hint}
-						</span>
+					{hold ? (
+						<Skeleton className={cn("h-3 w-16", placeholderClass)} />
+					) : (
+						hint && (
+							<span className="min-w-0 truncate text-end text-xs text-muted-foreground/70">
+								{hint}
+							</span>
+						)
 					)}
 				</div>
 			</CardHeader>
 
-			{chart && (
+			{hold && chart ? (
+				// Same 32px strip as CardSparkline / PillMeter, bleeding to the
+				// card edge like the real chart does.
 				<div className="mt-auto -mb-6 group-data-[size=sm]/card:-mb-5">
-					{chart}
+					<Skeleton
+						className={cn(
+							"h-8 w-full rounded-b-none squircle:rounded-b-none",
+							placeholderClass,
+						)}
+					/>
 				</div>
+			) : (
+				chart && (
+					<div className="mt-auto -mb-6 group-data-[size=sm]/card:-mb-5">
+						{chart}
+					</div>
+				)
 			)}
 		</Card>
 	);

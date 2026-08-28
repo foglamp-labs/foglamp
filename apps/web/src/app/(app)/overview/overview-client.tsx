@@ -41,7 +41,6 @@ import { CustomerAvatar } from "@/components/app/customer-avatar";
 import {
   useDelayedLoading,
   useEntranceOnce,
-  useSkeletonShown,
 } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import { OnboardingPanel } from "@/components/app/onboarding-panel";
@@ -53,7 +52,6 @@ import {
   PillMeter,
   ScrollFade,
   StatCard,
-  TableSkeleton,
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import {
@@ -191,74 +189,40 @@ function ChartLegend({
   );
 }
 
-/** Loading placeholder for the KPI row — built from the real Card shell so its
- * grid and heights match the loaded cards exactly (no layout shift). */
-function StatCardsSkeleton({
-  count = 4,
-  className,
+/** Loading rows for a breakdown list card — one blob per BreakdownRow slot
+ * (icon + name, secondary metrics, value + share bar) at the real row height.
+ * Invisible until `skeleton` flips (see useDelayedLoading), so the card holds
+ * its final height from the first paint and fast loads never flash shimmer. */
+function BreakdownRowsSkeleton({
+  rows = 4,
+  skeleton,
 }: {
-  count?: number;
-  className?: string;
+  rows?: number;
+  skeleton: boolean;
 }) {
   return (
-    <section
-      className={cn("grid gap-4 md:grid-cols-2 xl:grid-cols-4", className)}
-    >
-      {Array.from({ length: count }).map((_, i) => (
-        <Card key={i} size="sm">
-          <CardHeader className="gap-1.5">
-            {/* Icon + label row, mirroring the real StatCard header. */}
-            <div className="flex items-center justify-between gap-1.5">
-              <div className="flex items-center gap-1.5">
-                <Skeleton className="size-3.25 rounded-full squircle:rounded-full" />
-                <Skeleton className="h-3 w-14" />
-              </div>
-              <Skeleton className="h-3 w-9" />
+    <div className={cn("divide-y divide-border/40 pb-6", !skeleton && "invisible")}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center justify-between gap-6 px-5 py-3"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex h-5 items-center gap-1.5">
+              <Skeleton className="size-3.5 shrink-0 rounded-full squircle:rounded-full" />
+              <Skeleton className="h-3.5 w-28" />
             </div>
-            {/* Value + hint row. */}
-            <div className="flex items-baseline justify-between gap-2">
-              <Skeleton className="h-6 w-20" />
-              <Skeleton className="h-3 w-16" />
+            <div className="mt-1 flex h-4 items-center">
+              <Skeleton className="h-3 w-20" />
             </div>
-          </CardHeader>
-          {/* Bottom chart strip — bleeds to the card edge like the real chart. */}
-          <div className="mt-3 -mb-5">
-            <Skeleton className="h-8 w-full rounded-b-none squircle:rounded-b-none" />
           </div>
-        </Card>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <Skeleton className="h-3.5 w-12" />
+            <Skeleton className="h-0.5 w-14" />
+          </div>
+        </div>
       ))}
-    </section>
-  );
-}
-
-/** Loading placeholder for a chart card — same Card shell, header, and 260px
- * plot height as the real charts, so swapping it in causes no layout shift. */
-function ChartCardSkeleton({ className }: { className?: string }) {
-  return (
-    <Card size="sm" className={className}>
-      <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-4 w-24" />
-      </CardHeader>
-      <CardContent className="mt-3">
-        <Skeleton className="h-65 w-full" />
-      </CardContent>
-    </Card>
-  );
-}
-
-/** Loading placeholder for a breakdown list card (Models / Agents / Workflows) —
- * same Card shell and header as the real cards so swapping it in causes no shift. */
-function ListCardSkeleton({ className }: { className?: string }) {
-  return (
-    <Card
-      size="sm"
-      className={cn("pb-0! group-data-[size=sm]/card:pb-0!", className)}
-    >
-      <CardContent>
-        <TableSkeleton rows={4} />
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
@@ -331,8 +295,8 @@ function BreakdownRow({
       {/* Left: name + secondary metrics. */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          {renderIcon("size-4 shrink-0")}
-          <span className="truncate text-sm font-medium">{title}</span>
+          {renderIcon("size-3.5 shrink-0")}
+          <span className="truncate text-sm font-normal">{title}</span>
         </div>
         <div className="mt-1 text-xs tabular-nums text-muted-foreground/70">
           {metrics}
@@ -451,27 +415,21 @@ export function OverviewClient() {
     ...trpc.traces.list.queryOptions({ projectId: projectId!, limit: 1 }),
     enabled,
   });
-  // The whole page loads as one unit: every slot gates on this shared flag, so
-  // a fast query (the models list, typically) can never paint its card alone
-  // and then jump around as slower siblings land. `isLoading` is only true on
-  // the first fetch — range changes keep placeholderData on screen, so this
-  // never regresses a loaded page back to skeletons.
-  const pageLoading =
-    summary.isLoading ||
-    timeseries.isLoading ||
-    models.isLoading ||
-    costByModel.isLoading ||
-    agents.isLoading ||
-    workflows.isLoading ||
-    customers.isLoading ||
-    everReceived.isLoading;
-  // Delay the loading treatment so fast loads never flash it: the whole page
-  // (KPI cards, charts, and lists) stays blank until the load has run long
-  // enough to be worth skeletons, then every slot reveals in step.
-  const showSkeleton = useDelayedLoading(pageLoading);
-  // Latch for the entrance fade (see useSkeletonShown): cards only fade in if
-  // the page never painted skeletons first.
-  const skeletonShown = useSkeletonShown(showSkeleton);
+  // Every card shell mounts immediately; only the data slots wait. Each slot
+  // gates on its own queries, and the skeleton treatment is delayed per slot
+  // (see useDelayedLoading) so fast loads paint data straight into the shell
+  // while slow ones shimmer. `isLoading` is only true on the first fetch, so a
+  // range change keeps placeholderData on screen instead of regressing.
+  const statsLoading = summary.isLoading || timeseries.isLoading;
+  const modelsLoading = models.isLoading;
+  const agentsLoading = agents.isLoading;
+  const workflowsLoading = workflows.isLoading;
+  const customersLoading = customers.isLoading;
+  const statsSkeleton = useDelayedLoading(statsLoading);
+  const modelsSkeleton = useDelayedLoading(modelsLoading);
+  const agentsSkeleton = useDelayedLoading(agentsLoading);
+  const workflowsSkeleton = useDelayedLoading(workflowsLoading);
+  const customersSkeleton = useDelayedLoading(customersLoading);
 
   // p50/p95/p99 latency + requests/errors per bucket. Keeps the raw bucket as
   // the x value (formatted on the axis) so we can thin the ticks.
@@ -697,8 +655,8 @@ export function OverviewClient() {
     1,
     ...customerRows.map((c) => c.totalCost ?? 0)
   );
-  // Raw load flags for empty-state detection: a chart is only "empty" once its
-  // own queries have actually resolved (rendering is gated on pageLoading).
+  // Chart load flags: drive each chart's own loading treatment, and gate the
+  // empty state so a chart is only "empty" once its queries have resolved.
   const costLoading = costByModel.isLoading || models.isLoading;
   const seriesLoading = timeseries.isLoading;
 
@@ -753,32 +711,27 @@ export function OverviewClient() {
       {/* Onboarding — shown until this project has ever received a trace.
           Gated on pageLoading so it mounts with the rest of the page instead
           of popping in and pushing content down. */}
-      {!pageLoading && (everReceived.data?.traces ?? []).length === 0 && (
+      {!everReceived.isLoading &&
+        (everReceived.data?.traces ?? []).length === 0 && (
         <OnboardingPanel />
       )}
 
-      {/* KPIs — skeleton waits out the shared delay (see showSkeleton), so
-          fast loads render nothing until the data lands. `isLoading` is
-          already false for cached data, so normal navigation never flashes it. */}
-      {pageLoading ? (
-        showSkeleton ? (
-          <StatCardsSkeleton
-            count={4}
-            className={cn(entrance && "page-fade-in", "px-8 mt-2")}
-          />
-        ) : null
-      ) : (
-        <section
-          className={cn(
-            "grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8 mt-2",
-            entrance && !skeletonShown && "page-fade-in"
-          )}
-        >
+      {/* KPIs — the icon + label shell is always on screen; the value, hint,
+          delta, and chart slots fill in when the summary lands (or shimmer
+          once the load outruns the skeleton delay). */}
+      <section
+        className={cn(
+          "grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8 mt-2",
+          entrance && "page-fade-in"
+        )}
+      >
           <StatCard
             icon={IconCirclesFilled}
             iconClassName="text-blue-500 dark:text-blue-500"
             label="Tokens"
             size="sm"
+            loading={statsLoading}
+            skeleton={statsSkeleton}
             value={cur?.totalTokens ?? 0}
             formatValue={formatTokens}
             delta={formatDelta(cur?.totalTokens, prev?.totalTokens)}
@@ -795,6 +748,8 @@ export function OverviewClient() {
             iconClassName="text-yellow-400 dark:text-yellow-500"
             label="Total cost"
             size="sm"
+            loading={statsLoading}
+            skeleton={statsSkeleton}
             value={cur?.totalCost ?? "—"}
             formatValue={(n) => formatCost(n, 2)}
             delta={formatDelta(cur?.totalCost, prev?.totalCost)}
@@ -812,6 +767,8 @@ export function OverviewClient() {
             iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
             label="Eval pass rate"
             size="sm"
+            loading={statsLoading}
+            skeleton={statsSkeleton}
             value={cur?.passRate ?? "—"}
             formatValue={formatPercent}
             delta={formatDelta(cur?.passRate, prev?.passRate)}
@@ -832,6 +789,8 @@ export function OverviewClient() {
             iconClassName="text-red-500 dark:text-red-600"
             label="Error rate"
             size="sm"
+            loading={statsLoading}
+            skeleton={statsSkeleton}
             value={cur?.errorRate ?? "—"}
             formatValue={formatPercent}
             delta={formatDelta(cur?.errorRate, prev?.errorRate)}
@@ -844,28 +803,24 @@ export function OverviewClient() {
               />
             }
           />
-        </section>
-      )}
+      </section>
 
       {/* By model + by agent + by workflow + by customer, side by side */}
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4 px-8">
-        {pageLoading ? (
-          showSkeleton ? (
-            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
           <Card
             size="sm"
             className={cn(
-              "pb-0! group-data-[size=sm]/card:pb-0",
-              entrance && !skeletonShown && "page-fade-in"
+              "pb-0! group-data-[size=sm]/card:pb-0!",
+              entrance && "page-fade-in"
             )}
           >
             <CardHeader>
               <CardTitle>Models</CardTitle>
             </CardHeader>
             <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-              {modelRows.length === 0 ? (
+              {modelsLoading ? (
+                <BreakdownRowsSkeleton skeleton={modelsSkeleton} />
+              ) : modelRows.length === 0 ? (
                 <EmptyState
                   icon={IconCpu}
                   title="No model yet"
@@ -874,7 +829,7 @@ export function OverviewClient() {
                 />
               ) : (
                 <ScrollFade className="max-h-60">
-                  <div className="divide-y divide-border/40 pb-6">
+                  <div className="divide-y divide-border/40">
                     {modelRows.map((m) => (
                       <BreakdownRow
                         key={m.modelId}
@@ -905,25 +860,21 @@ export function OverviewClient() {
               )}
             </CardContent>
           </Card>
-        )}
 
-        {pageLoading ? (
-          showSkeleton ? (
-            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
           <Card
             size="sm"
             className={cn(
               "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && !skeletonShown && "page-fade-in"
+              entrance && "page-fade-in"
             )}
           >
             <CardHeader>
               <CardTitle>Agents</CardTitle>
             </CardHeader>
             <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-              {agentRows.length === 0 ? (
+              {agentsLoading ? (
+                <BreakdownRowsSkeleton skeleton={agentsSkeleton} />
+              ) : agentRows.length === 0 ? (
                 <EmptyState
                   icon={IconGhostFilled}
                   title="No agent yet"
@@ -932,7 +883,7 @@ export function OverviewClient() {
                 />
               ) : (
                 <ScrollFade className="max-h-60">
-                  <div className="divide-y divide-border/40 pb-6">
+                  <div className="divide-y divide-border/40">
                     {agentRows.map((a) => (
                       <BreakdownRow
                         key={a.agentName}
@@ -954,25 +905,21 @@ export function OverviewClient() {
               )}
             </CardContent>
           </Card>
-        )}
 
-        {pageLoading ? (
-          showSkeleton ? (
-            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
           <Card
             size="sm"
             className={cn(
               "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && !skeletonShown && "page-fade-in"
+              entrance && "page-fade-in"
             )}
           >
             <CardHeader>
               <CardTitle>Workflows</CardTitle>
             </CardHeader>
             <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-              {workflowRows.length === 0 ? (
+              {workflowsLoading ? (
+                <BreakdownRowsSkeleton skeleton={workflowsSkeleton} />
+              ) : workflowRows.length === 0 ? (
                 <EmptyState
                   icon={IconSitemapFilled}
                   title="No workflow yet"
@@ -981,7 +928,7 @@ export function OverviewClient() {
                 />
               ) : (
                 <ScrollFade className="max-h-60">
-                  <div className="divide-y divide-border/40 pb-6">
+                  <div className="divide-y divide-border/40">
                     {workflowRows.map((w) => (
                       <BreakdownRow
                         key={w.workflowName ?? "~ungrouped"}
@@ -1007,25 +954,21 @@ export function OverviewClient() {
               )}
             </CardContent>
           </Card>
-        )}
 
-        {pageLoading ? (
-          showSkeleton ? (
-            <ListCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
           <Card
             size="sm"
             className={cn(
               "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && !skeletonShown && "page-fade-in"
+              entrance && "page-fade-in"
             )}
           >
             <CardHeader>
               <CardTitle>Customers</CardTitle>
             </CardHeader>
             <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-              {customerRows.length === 0 ? (
+              {customersLoading ? (
+                <BreakdownRowsSkeleton skeleton={customersSkeleton} />
+              ) : customerRows.length === 0 ? (
                 <EmptyState
                   icon={IconUserFilled}
                   title="No customer yet"
@@ -1076,20 +1019,11 @@ export function OverviewClient() {
               )}
             </CardContent>
           </Card>
-        )}
       </section>
 
       {/* Cost over time, stacked by model */}
       <div className="px-8">
-        {pageLoading ? (
-          showSkeleton ? (
-            <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
-          <Card
-            size="sm"
-            className={cn(entrance && !skeletonShown && "page-fade-in")}
-          >
+          <Card size="sm" className={cn(entrance && "page-fade-in")}>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle>Cost over time</CardTitle>
               {costItems.length > 0 && (
@@ -1105,6 +1039,7 @@ export function OverviewClient() {
                 <BarChart.EvilBarChart
                   config={costChartConfig}
                   data={costChartData}
+                  isLoading={costLoading}
                   stackType="stacked"
                   selectedDataKey={costSelected}
                   onSelectionChange={setCostSelected}
@@ -1146,21 +1081,12 @@ export function OverviewClient() {
               </MaybeEmptyOverlay>
             </CardContent>
           </Card>
-        )}
       </div>
 
-      {/* Volume + errors and latency, side by side. Each card mirrors the KPI
-          gate: nothing pre-delay, a card skeleton after it, the chart once loaded. */}
+      {/* Volume + errors and latency, side by side. The cards mount at once;
+          each chart shows its own loading treatment until the series lands. */}
       <section className="grid gap-4 lg:grid-cols-2 px-8">
-        {pageLoading ? (
-          showSkeleton ? (
-            <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
-          <Card
-            size="sm"
-            className={cn(entrance && !skeletonShown && "page-fade-in")}
-          >
+          <Card size="sm" className={cn(entrance && "page-fade-in")}>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle>Requests & errors</CardTitle>
               <ChartLegend
@@ -1174,6 +1100,7 @@ export function OverviewClient() {
                 <AreaChart.EvilAreaChart
                   config={volumeConfig}
                   data={volumeChartData}
+                  isLoading={seriesLoading}
                   xDataKey="bucket"
                   selectedDataKey={volumeSelected}
                   onSelectionChange={setVolumeSelected}
@@ -1214,17 +1141,8 @@ export function OverviewClient() {
               </MaybeEmptyOverlay>
             </CardContent>
           </Card>
-        )}
 
-        {pageLoading ? (
-          showSkeleton ? (
-            <ChartCardSkeleton className={cn(entrance && "page-fade-in")} />
-          ) : null
-        ) : (
-          <Card
-            size="sm"
-            className={cn(entrance && !skeletonShown && "page-fade-in")}
-          >
+          <Card size="sm" className={cn(entrance && "page-fade-in")}>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <CardTitle>Latency</CardTitle>
               <ChartLegend
@@ -1238,6 +1156,7 @@ export function OverviewClient() {
                 <AreaChart.EvilAreaChart
                   config={latencyConfig}
                   data={latencyChartData}
+                  isLoading={seriesLoading}
                   xDataKey="bucket"
                   stackType="stacked"
                   selectedDataKey={latencySelected}
@@ -1290,7 +1209,6 @@ export function OverviewClient() {
               </MaybeEmptyOverlay>
             </CardContent>
           </Card>
-        )}
       </section>
     </>
   );
