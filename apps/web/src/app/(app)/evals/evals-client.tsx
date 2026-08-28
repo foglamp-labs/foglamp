@@ -15,7 +15,6 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@foglamp/ui/components/alert";
-import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
   Combobox,
@@ -72,6 +71,7 @@ import {
   IconProgress,
   IconSparkles,
   IconStack2,
+  IconTool,
   IconTrashFilled,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -120,32 +120,65 @@ import {
 } from "./eval-settings-fields";
 import {
   FAMILY_CHIP,
+  FAMILY_ICON,
   familyRank,
-  presetBadgeVariant,
   presetMeta,
 } from "./preset-meta";
 
-// What an eval runs on. Surfaced as an icon'd Select so the two levels read at
-// a glance.
-const LEVELS: {
-  value: "trace" | "span";
+// What an eval runs on. The user picks a target; the trace/span level and the
+// span-type filter are derived from it so nobody has to reason about "levels".
+type TargetId = "trace" | "tool" | "llm";
+const TARGETS: {
+  value: TargetId;
   label: string;
   description: string;
   icon: Icon;
+  level: "trace" | "span";
+  spanType: string;
 }[] = [
   {
     value: "trace",
-    label: "Traces",
-    description: "The whole agent run",
+    label: "Whole trace",
+    description: "The agent's final answer for a run",
     icon: IconAffiliate,
+    level: "trace",
+    spanType: "",
   },
   {
-    value: "span",
-    label: "Spans",
-    description: "Individual steps",
+    value: "tool",
+    label: "Tool calls",
+    description: "Every tool call, scored individually",
+    icon: IconTool,
+    level: "span",
+    spanType: "tool",
+  },
+  {
+    value: "llm",
+    label: "LLM calls",
+    description: "Every model call, scored individually",
     icon: IconStack2,
+    level: "span",
+    spanType: "llm",
   },
 ];
+const targetOf = (id: TargetId) =>
+  TARGETS.find((t) => t.value === id) ?? TARGETS[0];
+/** Recover the target from a saved eval's level + span-type filter. */
+const targetFor = (level: "trace" | "span", spanType?: string | null) =>
+  level === "trace"
+    ? targetOf("trace")
+    : (TARGETS.find((t) => t.level === "span" && t.spanType === spanType) ??
+      TARGETS[1]);
+/** Whether a preset can run on the chosen target. */
+const presetFits = (
+  preset: { level: "trace" | "span" | "both"; spanType?: string | null },
+  target: TargetId
+) => {
+  const t = targetOf(target);
+  if (preset.level === "both") return true;
+  if (preset.level !== t.level) return false;
+  return !preset.spanType || preset.spanType === t.spanType;
+};
 
 const MORPH = { type: "spring", stiffness: 400, damping: 38 } as const;
 
@@ -195,10 +228,9 @@ function AutoHeight({ children }: { children: React.ReactNode }) {
 }
 
 const DEFAULT_FORM = {
-  targetLevel: "trace" as "trace" | "span",
+  target: "trace" as TargetId,
   agentName: "",
   workflowName: "",
-  spanType: "",
   status: "",
   presetId: "",
   judgeProvider: "google" as Provider,
@@ -381,7 +413,6 @@ export function EvalsClient() {
     const p = presets.data?.find((x) => x.id === id);
     set({
       presetId: id,
-      targetLevel: p?.level === "span" ? "span" : form.targetLevel,
       judgeProvider: (p?.defaultModel?.provider as Provider) ?? "google",
       judgeModel: p?.defaultModel?.modelId ?? "gemini-3.5-flash-lite",
       // Prefill the prompt editor with the preset default so it's editable.
@@ -394,7 +425,7 @@ export function EvalsClient() {
     const filters = clean({
       agentName: form.agentName,
       workflowName: form.workflowName,
-      spanType: form.targetLevel === "span" ? form.spanType : "",
+      spanType: targetOf(form.target).spanType,
       status: form.status,
     });
     const params: Record<string, unknown> = {};
@@ -423,7 +454,7 @@ export function EvalsClient() {
     create.mutate({
       projectId,
       presetId: form.presetId,
-      targetLevel: form.targetLevel,
+      targetLevel: targetOf(form.target).level,
       filters: Object.keys(filters).length ? filters : undefined,
       sampleRate: Number(form.sampleRate),
       passThreshold: isJudge ? Number(form.passThreshold) : undefined,
@@ -510,27 +541,25 @@ export function EvalsClient() {
                   {step === 1 && (
                     <div className="flex flex-col gap-4">
                       <Field>
-                        <FieldLabel>Level</FieldLabel>
+                        <FieldLabel>What to score</FieldLabel>
                         <Select
-                          value={form.targetLevel}
-                          onValueChange={(v) =>
-                            set({ targetLevel: v as "trace" | "span" })
-                          }
+                          value={form.target}
+                          onValueChange={(v) => set({ target: v as TargetId })}
                         >
                           <SelectTrigger className="w-full">
                             <SelectValue>
                               {(value) => {
-                                const lvl = LEVELS.find(
-                                  (l) => l.value === value
+                                const t = TARGETS.find(
+                                  (x) => x.value === value
                                 );
-                                if (!lvl) return null;
-                                const LIcon = lvl.icon;
+                                if (!t) return null;
+                                const TIcon = t.icon;
                                 return (
                                   <span className="flex items-center gap-1.5">
-                                    <LIcon className="size-4 text-muted-foreground" />
-                                    {lvl.label}
+                                    <TIcon className="size-4 text-muted-foreground" />
+                                    {t.label}
                                     <span className="text-muted-foreground">
-                                      · {lvl.description}
+                                      · {t.description}
                                     </span>
                                   </span>
                                 );
@@ -538,19 +567,19 @@ export function EvalsClient() {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {LEVELS.map((l) => {
-                              const LIcon = l.icon;
+                            {TARGETS.map((t) => {
+                              const TIcon = t.icon;
                               return (
                                 <SelectItem
-                                  key={l.value}
-                                  value={l.value}
-                                  label={l.label}
+                                  key={t.value}
+                                  value={t.value}
+                                  label={t.label}
                                 >
-                                  <LIcon className="size-4 text-muted-foreground mt-0.5" />
+                                  <TIcon className="size-4 text-muted-foreground mt-0.5" />
                                   <span className="flex flex-col">
-                                    <span>{l.label}</span>
+                                    <span>{t.label}</span>
                                     <span className="text-xs text-muted-foreground">
-                                      {l.description}
+                                      {t.description}
                                     </span>
                                   </span>
                                 </SelectItem>
@@ -597,29 +626,6 @@ export function EvalsClient() {
                           </ComboboxContent>
                         </Combobox>
                       </Field>
-                      {form.targetLevel === "span" && (
-                        <Field>
-                          <FieldLabel>Span type (optional)</FieldLabel>
-                          <Select
-                            value={form.spanType}
-                            onValueChange={(v) =>
-                              set({ spanType: v as string })
-                            }
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="any" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="">any</SelectItem>
-                              <SelectItem value="llm">llm</SelectItem>
-                              <SelectItem value="tool">tool</SelectItem>
-                              <SelectItem value="embedding">
-                                embedding
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </Field>
-                      )}
                     </div>
                   )}
 
@@ -647,7 +653,11 @@ export function EvalsClient() {
                             </p>
                             <div className="grid grid-cols-2 gap-2">
                               {(presets.data ?? [])
-                                .filter((p) => p.source === group.source)
+                                .filter(
+                                  (p) =>
+                                    p.source === group.source &&
+                                    presetFits(p, form.target)
+                                )
                                 .sort(
                                   (a, b) => familyRank(a.id) - familyRank(b.id)
                                 )
@@ -692,12 +702,11 @@ export function EvalsClient() {
                     <PreflightNotice
                       projectId={projectId}
                       presetId={selectedPreset.id}
-                      targetLevel={form.targetLevel}
+                      targetLevel={targetOf(form.target).level}
                       filters={clean({
                         agentName: form.agentName,
                         workflowName: form.workflowName,
-                        spanType:
-                          form.targetLevel === "span" ? form.spanType : "",
+                        spanType: targetOf(form.target).spanType,
                         status: form.status,
                       })}
                     />
@@ -837,7 +846,6 @@ export function EvalsClient() {
                   >
                     Name
                   </SortableHead>
-                  <TableHead className="w-36">Check</TableHead>
                   <TableHead className="w-52">Scope</TableHead>
                   <SortableHead
                     sortKey="passRate"
@@ -876,65 +884,71 @@ export function EvalsClient() {
                   ) : null
                 ) : (
                   visible.map((r) => {
-                    const CheckIcon = presetMeta(r.presetId).icon;
+                    const { icon: CheckIcon, family } = presetMeta(r.presetId);
                     return (
                       <TableRow
                         key={r.id}
                         interactive
                         onClick={() => router.push(`/evals/${r.id}`)}
                       >
-                        <TableCell className="font-medium h-12">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span className="truncate font-normal">
-                              {r.name}
-                            </span>
-                            {(r.status === "error" ||
-                              r.status === "paused_no_key") && (
-                              <Tooltip>
-                                <TooltipTrigger
-                                  render={
-                                    <span className="flex shrink-0 items-center font-sans text-sm text-red-600 dark:text-red-400" />
-                                  }
-                                >
-                                  <IconAlertTriangle className="size-3.5 fill-current/20" />
-                                </TooltipTrigger>
-                                <TooltipContent
-                                  side="bottom"
-                                  className="max-w-sm items-start"
-                                >
-                                  <span className="wrap-break-word">
-                                    {r.status === "paused_no_key"
-                                      ? "Paused: add an API key for the judge model's provider."
-                                      : (r.lastError ?? "Scoring is failing.")}
-                                  </span>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
+                        <TableCell className="h-16">
+                          <div className="flex min-w-0 flex-col gap-1">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="truncate text-[14px]">
+                                {r.name}
+                              </span>
+                              {(r.status === "error" ||
+                                r.status === "paused_no_key") && (
+                                <Tooltip>
+                                  <TooltipTrigger
+                                    render={
+                                      <span className="flex shrink-0 items-center font-sans text-sm text-red-600 dark:text-red-400" />
+                                    }
+                                  >
+                                    <IconAlertTriangle className="size-3.5 fill-current/20" />
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="bottom"
+                                    className="max-w-sm items-start"
+                                  >
+                                    <span className="wrap-break-word">
+                                      {r.status === "paused_no_key"
+                                        ? "Paused: add an API key for the judge model's provider."
+                                        : (r.lastError ??
+                                          "Scoring is failing.")}
+                                    </span>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                            <div
+                              className={cn(
+                                "flex min-w-0 items-center gap-1 text-xs",
+                                FAMILY_ICON[family]
+                              )}
+                            >
+                              <CheckIcon className="size-3 shrink-0" />
+                              <span className="truncate">
+                                {presetName(r.presetId)}
+                              </span>
+                            </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={presetBadgeVariant(r.presetId)}
-                            className="min-w-0 max-w-full"
-                          >
-                            <CheckIcon className="opacity-80 mb-px" />
-                            <span className="min-w-0 truncate">
-                              {presetName(r.presetId)}
-                            </span>
-                          </Badge>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           <span className="flex min-w-0 items-center gap-1.5">
-                            {r.targetLevel === "span" ? (
-                              <IconStack2 className="size-3.5 shrink-0" />
-                            ) : (
-                              <IconAffiliate className="size-3.5 shrink-0" />
-                            )}
+                            {(() => {
+                              const TIcon = targetFor(
+                                r.targetLevel,
+                                r.filters?.spanType
+                              ).icon;
+                              return <TIcon className="size-3.5 shrink-0" />;
+                            })()}
                             {/* Level, agent filter, and the sample rate in one line. */}
                             <span className="truncate">
-                              <span className="capitalize">
-                                {r.targetLevel}
-                              </span>
+                              {
+                                targetFor(r.targetLevel, r.filters?.spanType)
+                                  .label
+                              }
                               {r.filters?.agentName
                                 ? ` · ${r.filters.agentName}`
                                 : ""}
@@ -1063,7 +1077,6 @@ function clean(obj: Record<string, string>): Record<string, string> {
 // Skeleton column spec for the loading body rows (see TableRowsSkeleton).
 const SKELETON_COLS = [
   { w: "w-28" },
-  { w: "w-24" },
   { icon: true, w: "w-20" },
   { align: "right", w: "w-10" },
   { align: "right", w: "w-10" },

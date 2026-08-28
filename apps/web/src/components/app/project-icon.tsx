@@ -53,8 +53,8 @@ export function ProjectIcon({
     size === "md"
       ? "size-5 rounded-lg corner-squircle shadow-(--custom-shadow)"
       : size === "sm"
-        ? "size-5 rounded-lg corner-squircle"
-        : "size-3.25 rounded-md corner-squircle";
+        ? "size-5 rounded-lg corner-squircle shadow-(--custom-shadow)"
+        : "size-3.25 rounded-md corner-squircle shadow-(--custom-shadow)";
   if (url) {
     return (
       <Image
@@ -69,7 +69,7 @@ export function ProjectIcon({
   const PlaceholderIcon = placeholderIcon(name);
   return (
     <div
-      className={`flex aspect-square items-center justify-center bg-primary/10 text-primary ${box}`}
+      className={`flex aspect-square items-center justify-center shadow-(--custom-shadow) bg-primary/10 text-primary ${box}`}
     >
       <PlaceholderIcon
         className={
