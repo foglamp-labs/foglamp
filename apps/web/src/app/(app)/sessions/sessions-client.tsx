@@ -329,7 +329,7 @@ export function SessionsClient() {
                 <TableBody>
                   {sessions.isLoading ? (
                     showSkeleton ? (
-                      <TableRowsSkeleton cols={SKELETON_COLS} />
+                      <TableRowsSkeleton cols={SKELETON_COLS} rowHeight="h-16" />
                     ) : null
                   ) : (
                     rows.map((s) => (

@@ -626,6 +626,7 @@ export function TracesClient() {
                               ]
                             : SKELETON_COLS
                         }
+                        rowHeight="h-16"
                       />
                     ) : null
                   ) : (
