@@ -579,7 +579,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                         >
                           {/* Content-first, like the traces list: the trace's user
                             message, falling back to the id. */}
-                          <TableCell className="h-12 font-medium">
+                          <TableCell className="h-12 font-normal">
                             <div className="flex items-center gap-2">
                               {/* Expand affordance (agents page convention): muted chevron
                                 that brightens on hover and turns when open. */}

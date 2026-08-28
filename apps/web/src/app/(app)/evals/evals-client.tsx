@@ -944,7 +944,7 @@ export function EvalsClient() {
                             </span>
                           </span>
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell className="text-right tabular-nums font-medium">
                           {r.passRate == null ? (
                             <span className="text-muted-foreground/40">—</span>
                           ) : (
@@ -971,7 +971,6 @@ export function EvalsClient() {
                           value={r.cost}
                           thresholds={spendThresholds}
                           metric="spend"
-                          bold
                           mutedWhenZero
                         >
                           {r.cost > 0

@@ -293,7 +293,7 @@ export function SessionsClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
-                      className="w-36"
+                      className="w-30"
                     >
                       Turns
                     </SortableHead>
@@ -302,7 +302,7 @@ export function SessionsClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
-                      className="w-36"
+                      className="w-32"
                     >
                       Tokens
                     </SortableHead>
@@ -311,7 +311,7 @@ export function SessionsClient() {
                       sort={sort}
                       onSort={toggle}
                       align="right"
-                      className="w-40"
+                      className="w-36"
                     >
                       Cost
                     </SortableHead>
