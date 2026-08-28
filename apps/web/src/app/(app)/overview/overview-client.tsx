@@ -38,10 +38,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
-import {
-  useDelayedLoading,
-  useEntranceOnce,
-} from "@/components/app/hooks";
+import { useDelayedLoading, useEntranceOnce } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import { OnboardingPanel } from "@/components/app/onboarding-panel";
 import {
@@ -206,30 +203,30 @@ function BreakdownRowsSkeleton({
     // tall while loading as once the rows land, and the bottom fade already
     // reads as "more below" during the shimmer.
     <ScrollFade
-      className="max-h-60"
+      className="max-h-60  -mt-1"
       containerClassName={cn(!skeleton && "invisible")}
     >
       <div className="divide-y divide-border/40 pb-6">
-      {Array.from({ length: rows }).map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center justify-between gap-6 px-5 py-3"
-        >
-          <div className="min-w-0 flex-1">
-            <div className="flex h-5 items-center gap-1.5">
-              <Skeleton className="size-3.5 shrink-0 rounded-full squircle:rounded-full" />
-              <Skeleton className="h-3.5 w-28" />
+        {Array.from({ length: rows }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between gap-6 px-5 py-3"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex h-5 items-center gap-1.5">
+                <Skeleton className="size-3.5 shrink-0 rounded-full squircle:rounded-full" />
+                <Skeleton className="h-3.5 w-28" />
+              </div>
+              <div className="mt-1 flex h-4 items-center">
+                <Skeleton className="h-3 w-20" />
+              </div>
             </div>
-            <div className="mt-1 flex h-4 items-center">
-              <Skeleton className="h-3 w-20" />
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <Skeleton className="h-3.5 w-12" />
+              <Skeleton className="h-0.5 w-14" />
             </div>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-2">
-            <Skeleton className="h-3.5 w-12" />
-            <Skeleton className="h-0.5 w-14" />
-          </div>
-        </div>
-      ))}
+        ))}
       </div>
     </ScrollFade>
   );
@@ -721,9 +718,7 @@ export function OverviewClient() {
           Gated on pageLoading so it mounts with the rest of the page instead
           of popping in and pushing content down. */}
       {!everReceived.isLoading &&
-        (everReceived.data?.traces ?? []).length === 0 && (
-        <OnboardingPanel />
-      )}
+        (everReceived.data?.traces ?? []).length === 0 && <OnboardingPanel />}
 
       {/* KPIs — the icon + label shell is always on screen; the value, hint,
           delta, and chart slots fill in when the summary lands (or shimmer
@@ -734,490 +729,488 @@ export function OverviewClient() {
           entrance && "page-fade-in"
         )}
       >
-          <StatCard
-            icon={IconCirclesFilled}
-            iconClassName="text-blue-500 dark:text-blue-500"
-            label="Tokens"
-            size="sm"
-            loading={statsLoading}
-            skeleton={statsSkeleton}
-            value={cur?.totalTokens ?? 0}
-            formatValue={formatTokens}
-            delta={formatDelta(cur?.totalTokens, prev?.totalTokens)}
-            hint={`${formatTokens(cur?.inputTokens ?? 0)} in · ${formatTokens(cur?.outputTokens ?? 0)} out`}
-            chart={
-              <CardSparkline
-                data={seriesData.map((d) => d.tokens)}
-                className="text-blue-400/50 dark:text-blue-600/50"
-              />
-            }
-          />
-          <StatCard
-            icon={IconCoinFilled}
-            iconClassName="text-yellow-400 dark:text-yellow-500"
-            label="Total cost"
-            size="sm"
-            loading={statsLoading}
-            skeleton={statsSkeleton}
-            value={cur?.totalCost ?? "—"}
-            formatValue={(n) => formatCost(n, 2)}
-            delta={formatDelta(cur?.totalCost, prev?.totalCost)}
-            deltaInverted
-            hint={`~${formatCost(projectMonthlyCost(cur?.totalCost ?? null, windowMs), 2)}/mo`}
-            chart={
-              <CardSparkline
-                data={seriesData.map((d) => d.cost)}
-                className="text-yellow-400/50 dark:text-yellow-600/50"
-              />
-            }
-          />
-          <StatCard
-            icon={IconGaugeFilled}
-            iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
-            label="Eval pass rate"
-            size="sm"
-            loading={statsLoading}
-            skeleton={statsSkeleton}
-            value={cur?.passRate ?? "—"}
-            formatValue={formatPercent}
-            delta={formatDelta(cur?.passRate, prev?.passRate)}
-            hint={
-              cur?.checkCount
-                ? `${formatCount(cur.checkCount)} checks`
-                : "No checks scored yet"
-            }
-            chart={
-              <PillMeter
-                fraction={cur?.passRate ?? null}
-                className="text-fuchsia-400 dark:text-fuchsia-700"
-              />
-            }
-          />
-          <StatCard
-            icon={IconAlertTriangleFilled}
-            iconClassName="text-red-500 dark:text-red-600"
-            label="Error rate"
-            size="sm"
-            loading={statsLoading}
-            skeleton={statsSkeleton}
-            value={cur?.errorRate ?? "—"}
-            formatValue={formatPercent}
-            delta={formatDelta(cur?.errorRate, prev?.errorRate)}
-            deltaInverted
-            hint={`${formatCount(cur?.errorCount ?? 0)} of ${formatCount(cur?.spanCount ?? 0)} spans`}
-            chart={
-              <PillMeter
-                fraction={cur?.errorRate ?? null}
-                className="text-red-400 dark:text-red-700"
-              />
-            }
-          />
+        <StatCard
+          icon={IconCirclesFilled}
+          iconClassName="text-blue-500 dark:text-blue-500"
+          label="Tokens"
+          size="sm"
+          loading={statsLoading}
+          skeleton={statsSkeleton}
+          value={cur?.totalTokens ?? 0}
+          formatValue={formatTokens}
+          delta={formatDelta(cur?.totalTokens, prev?.totalTokens)}
+          hint={`${formatTokens(cur?.inputTokens ?? 0)} in · ${formatTokens(cur?.outputTokens ?? 0)} out`}
+          chart={
+            <CardSparkline
+              data={seriesData.map((d) => d.tokens)}
+              className="text-blue-400/50 dark:text-blue-600/50"
+            />
+          }
+        />
+        <StatCard
+          icon={IconCoinFilled}
+          iconClassName="text-yellow-400 dark:text-yellow-500"
+          label="Total cost"
+          size="sm"
+          loading={statsLoading}
+          skeleton={statsSkeleton}
+          value={cur?.totalCost ?? "—"}
+          formatValue={(n) => formatCost(n, 2)}
+          delta={formatDelta(cur?.totalCost, prev?.totalCost)}
+          deltaInverted
+          hint={`~${formatCost(projectMonthlyCost(cur?.totalCost ?? null, windowMs), 2)}/mo`}
+          chart={
+            <CardSparkline
+              data={seriesData.map((d) => d.cost)}
+              className="text-yellow-400/50 dark:text-yellow-600/50"
+            />
+          }
+        />
+        <StatCard
+          icon={IconGaugeFilled}
+          iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
+          label="Eval pass rate"
+          size="sm"
+          loading={statsLoading}
+          skeleton={statsSkeleton}
+          value={cur?.passRate ?? "—"}
+          formatValue={formatPercent}
+          delta={formatDelta(cur?.passRate, prev?.passRate)}
+          hint={
+            cur?.checkCount
+              ? `${formatCount(cur.checkCount)} checks`
+              : "No checks scored yet"
+          }
+          chart={
+            <PillMeter
+              fraction={cur?.passRate ?? null}
+              className="text-fuchsia-400 dark:text-fuchsia-700"
+            />
+          }
+        />
+        <StatCard
+          icon={IconAlertTriangleFilled}
+          iconClassName="text-red-500 dark:text-red-600"
+          label="Error rate"
+          size="sm"
+          loading={statsLoading}
+          skeleton={statsSkeleton}
+          value={cur?.errorRate ?? "—"}
+          formatValue={formatPercent}
+          delta={formatDelta(cur?.errorRate, prev?.errorRate)}
+          deltaInverted
+          hint={`${formatCount(cur?.errorCount ?? 0)} of ${formatCount(cur?.spanCount ?? 0)} spans`}
+          chart={
+            <PillMeter
+              fraction={cur?.errorRate ?? null}
+              className="text-red-400 dark:text-red-700"
+            />
+          }
+        />
       </section>
 
       {/* By model + by agent + by workflow + by customer, side by side */}
       <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4 px-8">
-          <Card
-            size="sm"
-            className={cn(
-              "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && "page-fade-in"
+        <Card
+          size="sm"
+          className={cn(
+            "pb-0! group-data-[size=sm]/card:pb-0!",
+            entrance && "page-fade-in"
+          )}
+        >
+          <CardHeader>
+            <CardTitle>Models</CardTitle>
+          </CardHeader>
+          <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+            {modelsLoading ? (
+              <BreakdownRowsSkeleton skeleton={modelsSkeleton} />
+            ) : modelRows.length === 0 ? (
+              <EmptyState
+                icon={IconCpu}
+                title="No model yet"
+                description="Models are picked up automatically."
+                className="border-none mb-6"
+              />
+            ) : (
+              <ScrollFade className="max-h-60  -mt-1">
+                <div className="divide-y divide-border/40">
+                  {modelRows.map((m) => (
+                    <BreakdownRow
+                      key={m.modelId}
+                      href={
+                        // "(unknown)" isn't a real model id — the traces model
+                        // filter can't match it, so those rows stay inert.
+                        m.modelId === "(unknown)"
+                          ? undefined
+                          : (`/traces?model=${encodeURIComponent(m.modelId)}` as Route)
+                      }
+                      renderIcon={(cls) => (
+                        <ModelLogo
+                          modelId={m.modelId}
+                          className={cn(cls, "size-3")}
+                        />
+                      )}
+                      title={formatModelName(m.modelId)}
+                      value={formatCost(m.totalCost, 3)}
+                      fraction={(m.totalCost ?? 0) / maxModelCost}
+                      color={
+                        modelBrandColor(null, m.modelId) ?? "var(--chart-2)"
+                      }
+                      metrics={`${formatCount(m.spanCount)} req · ${formatTokens(m.totalTokens)} tok`}
+                    />
+                  ))}
+                </div>
+              </ScrollFade>
             )}
-          >
-            <CardHeader>
-              <CardTitle>Models</CardTitle>
-            </CardHeader>
-            <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-              {modelsLoading ? (
-                <BreakdownRowsSkeleton skeleton={modelsSkeleton} />
-              ) : modelRows.length === 0 ? (
-                <EmptyState
-                  icon={IconCpu}
-                  title="No model yet"
-                  description="Models are picked up automatically."
-                  className="border-none mb-6"
-                />
-              ) : (
-                <ScrollFade className="max-h-60">
-                  <div className="divide-y divide-border/40">
-                    {modelRows.map((m) => (
-                      <BreakdownRow
-                        key={m.modelId}
-                        href={
-                          // "(unknown)" isn't a real model id — the traces model
-                          // filter can't match it, so those rows stay inert.
-                          m.modelId === "(unknown)"
-                            ? undefined
-                            : (`/traces?model=${encodeURIComponent(m.modelId)}` as Route)
-                        }
-                        renderIcon={(cls) => (
-                          <ModelLogo
-                            modelId={m.modelId}
-                            className={cn(cls, "size-3")}
+          </CardContent>
+        </Card>
+
+        <Card
+          size="sm"
+          className={cn(
+            "pb-0! group-data-[size=sm]/card:pb-0!",
+            entrance && "page-fade-in"
+          )}
+        >
+          <CardHeader>
+            <CardTitle>Agents</CardTitle>
+          </CardHeader>
+          <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+            {agentsLoading ? (
+              <BreakdownRowsSkeleton skeleton={agentsSkeleton} />
+            ) : agentRows.length === 0 ? (
+              <EmptyState
+                icon={IconGhostFilled}
+                title="No agent yet"
+                description="Set agentName on a call to group it under an agent."
+                className="border-none mb-6"
+              />
+            ) : (
+              <ScrollFade className="max-h-60  -mt-1">
+                <div className="divide-y divide-border/40">
+                  {agentRows.map((a) => (
+                    <BreakdownRow
+                      key={a.agentName}
+                      href={
+                        `/agents/${encodeURIComponent(a.agentName)}` as Route
+                      }
+                      renderIcon={(cls) => (
+                        <AgentIcon name={a.agentName} className={cls} />
+                      )}
+                      title={a.agentName}
+                      value={formatCost(a.totalCost, 3)}
+                      fraction={(a.totalCost ?? 0) / maxAgentCost}
+                      color={agentColor(a.agentName)}
+                      metrics={`${formatCount(a.spanCount)} req · ${formatCount(a.errorCount)} errors`}
+                    />
+                  ))}
+                </div>
+              </ScrollFade>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card
+          size="sm"
+          className={cn(
+            "pb-0! group-data-[size=sm]/card:pb-0!",
+            entrance && "page-fade-in"
+          )}
+        >
+          <CardHeader>
+            <CardTitle>Workflows</CardTitle>
+          </CardHeader>
+          <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+            {workflowsLoading ? (
+              <BreakdownRowsSkeleton skeleton={workflowsSkeleton} />
+            ) : workflowRows.length === 0 ? (
+              <EmptyState
+                icon={IconSitemapFilled}
+                title="No workflow yet"
+                description="Set workflowName to group it under a workflow."
+                className="border-none mb-6"
+              />
+            ) : (
+              <ScrollFade className="max-h-60  -mt-1">
+                <div className="divide-y divide-border/40">
+                  {workflowRows.map((w) => (
+                    <BreakdownRow
+                      key={w.workflowName ?? "~ungrouped"}
+                      href={
+                        w.workflowName
+                          ? (`/workflows/${encodeURIComponent(w.workflowName)}` as Route)
+                          : undefined
+                      }
+                      renderIcon={(cls) => (
+                        <IconSitemapFilled
+                          className={cn(cls, "text-emerald-500")}
+                        />
+                      )}
+                      title={w.workflowName ?? "Ungrouped"}
+                      value={formatCost(w.totalCost, 3)}
+                      fraction={(w.totalCost ?? 0) / maxWorkflowCost}
+                      color="var(--color-emerald-500)"
+                      metrics={`${formatCount(w.runCount)} runs · ${formatCount(w.errorCount)} errors`}
+                    />
+                  ))}
+                </div>
+              </ScrollFade>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card
+          size="sm"
+          className={cn(
+            "pb-0! group-data-[size=sm]/card:pb-0!",
+            entrance && "page-fade-in"
+          )}
+        >
+          <CardHeader>
+            <CardTitle>Customers</CardTitle>
+          </CardHeader>
+          <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
+            {customersLoading ? (
+              <BreakdownRowsSkeleton skeleton={customersSkeleton} />
+            ) : customerRows.length === 0 ? (
+              <EmptyState
+                icon={IconUserFilled}
+                title="No customer yet"
+                description="Set customer to attribute its cost."
+                className="border-none mb-6"
+              />
+            ) : (
+              <ScrollFade className="max-h-60  -mt-1">
+                <div className="divide-y divide-border/40">
+                  {customerRows.map((c) => (
+                    <BreakdownRow
+                      key={c.customerId ?? "~unidentified"}
+                      href={
+                        c.customerId
+                          ? (`/traces?customer=${encodeURIComponent(c.customerId)}` as Route)
+                          : undefined
+                      }
+                      renderIcon={(cls) =>
+                        c.customerId ? (
+                          <CustomerAvatar
+                            customerId={c.customerId}
+                            customerName={c.customerName}
+                            imageUrl={c.customerImageUrl}
+                            filled
+                            className={cls}
                           />
-                        )}
-                        title={formatModelName(m.modelId)}
-                        value={formatCost(m.totalCost, 3)}
-                        fraction={(m.totalCost ?? 0) / maxModelCost}
-                        color={
-                          modelBrandColor(null, m.modelId) ?? "var(--chart-2)"
-                        }
-                        metrics={`${formatCount(m.spanCount)} req · ${formatTokens(m.totalTokens)} tok`}
-                      />
-                    ))}
-                  </div>
-                </ScrollFade>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card
-            size="sm"
-            className={cn(
-              "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && "page-fade-in"
-            )}
-          >
-            <CardHeader>
-              <CardTitle>Agents</CardTitle>
-            </CardHeader>
-            <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-              {agentsLoading ? (
-                <BreakdownRowsSkeleton skeleton={agentsSkeleton} />
-              ) : agentRows.length === 0 ? (
-                <EmptyState
-                  icon={IconGhostFilled}
-                  title="No agent yet"
-                  description="Set agentName on a call to group it under an agent."
-                  className="border-none mb-6"
-                />
-              ) : (
-                <ScrollFade className="max-h-60">
-                  <div className="divide-y divide-border/40">
-                    {agentRows.map((a) => (
-                      <BreakdownRow
-                        key={a.agentName}
-                        href={
-                          `/agents/${encodeURIComponent(a.agentName)}` as Route
-                        }
-                        renderIcon={(cls) => (
-                          <AgentIcon name={a.agentName} className={cls} />
-                        )}
-                        title={a.agentName}
-                        value={formatCost(a.totalCost, 3)}
-                        fraction={(a.totalCost ?? 0) / maxAgentCost}
-                        color={agentColor(a.agentName)}
-                        metrics={`${formatCount(a.spanCount)} req · ${formatCount(a.errorCount)} errors`}
-                      />
-                    ))}
-                  </div>
-                </ScrollFade>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card
-            size="sm"
-            className={cn(
-              "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && "page-fade-in"
-            )}
-          >
-            <CardHeader>
-              <CardTitle>Workflows</CardTitle>
-            </CardHeader>
-            <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-              {workflowsLoading ? (
-                <BreakdownRowsSkeleton skeleton={workflowsSkeleton} />
-              ) : workflowRows.length === 0 ? (
-                <EmptyState
-                  icon={IconSitemapFilled}
-                  title="No workflow yet"
-                  description="Set workflowName to group it under a workflow."
-                  className="border-none mb-6"
-                />
-              ) : (
-                <ScrollFade className="max-h-60">
-                  <div className="divide-y divide-border/40">
-                    {workflowRows.map((w) => (
-                      <BreakdownRow
-                        key={w.workflowName ?? "~ungrouped"}
-                        href={
-                          w.workflowName
-                            ? (`/workflows/${encodeURIComponent(w.workflowName)}` as Route)
-                            : undefined
-                        }
-                        renderIcon={(cls) => (
-                          <IconSitemapFilled
-                            className={cn(cls, "text-emerald-500")}
+                        ) : (
+                          <IconUserFilled
+                            className={cn(cls, "text-muted-foreground/60")}
                           />
-                        )}
-                        title={w.workflowName ?? "Ungrouped"}
-                        value={formatCost(w.totalCost, 3)}
-                        fraction={(w.totalCost ?? 0) / maxWorkflowCost}
-                        color="var(--color-emerald-500)"
-                        metrics={`${formatCount(w.runCount)} runs · ${formatCount(w.errorCount)} errors`}
-                      />
-                    ))}
-                  </div>
-                </ScrollFade>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card
-            size="sm"
-            className={cn(
-              "pb-0! group-data-[size=sm]/card:pb-0!",
-              entrance && "page-fade-in"
+                        )
+                      }
+                      title={c.customerName ?? c.customerId ?? "Not identified"}
+                      value={formatCost(c.totalCost, 3)}
+                      fraction={(c.totalCost ?? 0) / maxCustomerCost}
+                      color={
+                        c.customerId
+                          ? agentColor(c.customerId)
+                          : "var(--muted-foreground)"
+                      }
+                      metrics={`${formatCount(c.spanCount)} req · ${formatCount(c.errorCount)} errors`}
+                    />
+                  ))}
+                </div>
+              </ScrollFade>
             )}
-          >
-            <CardHeader>
-              <CardTitle>Customers</CardTitle>
-            </CardHeader>
-            <CardContent className="px-0 group-data-[size=sm]/card:px-0!">
-              {customersLoading ? (
-                <BreakdownRowsSkeleton skeleton={customersSkeleton} />
-              ) : customerRows.length === 0 ? (
-                <EmptyState
-                  icon={IconUserFilled}
-                  title="No customer yet"
-                  description="Set customer to attribute its cost."
-                  className="border-none mb-6"
-                />
-              ) : (
-                <ScrollFade className="max-h-60">
-                  <div className="divide-y divide-border/40">
-                    {customerRows.map((c) => (
-                      <BreakdownRow
-                        key={c.customerId ?? "~unidentified"}
-                        href={
-                          c.customerId
-                            ? (`/traces?customer=${encodeURIComponent(c.customerId)}` as Route)
-                            : undefined
-                        }
-                        renderIcon={(cls) =>
-                          c.customerId ? (
-                            <CustomerAvatar
-                              customerId={c.customerId}
-                              customerName={c.customerName}
-                              imageUrl={c.customerImageUrl}
-                              filled
-                              className={cls}
-                            />
-                          ) : (
-                            <IconUserFilled
-                              className={cn(cls, "text-muted-foreground/60")}
-                            />
-                          )
-                        }
-                        title={
-                          c.customerName ?? c.customerId ?? "Not identified"
-                        }
-                        value={formatCost(c.totalCost, 3)}
-                        fraction={(c.totalCost ?? 0) / maxCustomerCost}
-                        color={
-                          c.customerId
-                            ? agentColor(c.customerId)
-                            : "var(--muted-foreground)"
-                        }
-                        metrics={`${formatCount(c.spanCount)} req · ${formatCount(c.errorCount)} errors`}
-                      />
-                    ))}
-                  </div>
-                </ScrollFade>
-              )}
-            </CardContent>
-          </Card>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Cost over time, stacked by model */}
       <div className="px-8">
-          <Card size="sm" className={cn(entrance && "page-fade-in")}>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
-              <CardTitle>Cost over time</CardTitle>
-              {costItems.length > 0 && (
-                <ChartLegend
-                  items={costItems}
-                  selected={costSelected}
-                  onSelect={setCostSelected}
+        <Card size="sm" className={cn(entrance && "page-fade-in")}>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardTitle>Cost over time</CardTitle>
+            {costItems.length > 0 && (
+              <ChartLegend
+                items={costItems}
+                selected={costSelected}
+                onSelect={setCostSelected}
+              />
+            )}
+          </CardHeader>
+          <CardContent className="mt-3">
+            <MaybeEmptyOverlay empty={costEmpty}>
+              <BarChart.EvilBarChart
+                config={costChartConfig}
+                data={costChartData}
+                isLoading={costLoading}
+                stackType="stacked"
+                selectedDataKey={costSelected}
+                onSelectionChange={setCostSelected}
+                className="h-65 w-full"
+                chartProps={{
+                  // left: 2 (vs Recharts' default 5) tucks the auto-width
+                  // y-axis labels closer to the card content edge.
+                  margin: { top: 5, right: 5, bottom: 5, left: 2 },
+                  // Wider gap between buckets (Recharts default: 10%) keeps
+                  // the bars slim at any bucket count.
+                  barCategoryGap: "40%",
+                }}
+              >
+                <BarChart.Grid />
+                <BarChart.XAxis
+                  dataKey="bucket"
+                  ticks={costChartTicks}
+                  tickFormatter={bucketLabel}
+                  interval={0}
+                  tick={edgeTick}
                 />
-              )}
-            </CardHeader>
-            <CardContent className="mt-3">
-              <MaybeEmptyOverlay empty={costEmpty}>
-                <BarChart.EvilBarChart
-                  config={costChartConfig}
-                  data={costChartData}
-                  isLoading={costLoading}
-                  stackType="stacked"
-                  selectedDataKey={costSelected}
-                  onSelectionChange={setCostSelected}
-                  className="h-65 w-full"
-                  chartProps={{
-                    // left: 2 (vs Recharts' default 5) tucks the auto-width
-                    // y-axis labels closer to the card content edge.
-                    margin: { top: 5, right: 5, bottom: 5, left: 2 },
-                    // Wider gap between buckets (Recharts default: 10%) keeps
-                    // the bars slim at any bucket count.
-                    barCategoryGap: "40%",
-                  }}
-                >
-                  <BarChart.Grid />
-                  <BarChart.XAxis
-                    dataKey="bucket"
-                    ticks={costChartTicks}
-                    tickFormatter={bucketLabel}
-                    interval={0}
-                    tick={edgeTick}
+                <BarChart.YAxis
+                  tickFormatter={(v) => costAxisUsd.format(Number(v))}
+                />
+                <BarChart.Tooltip
+                  labelFormatter={(v) => formatBucketFull(String(v))}
+                  valueFormatter={(v) => formatCost(Number(v))}
+                  reverse
+                />
+                {costChartKeys.map((k) => (
+                  <BarChart.Bar
+                    key={k}
+                    dataKey={k}
+                    isClickable
+                    bufferBar={costBuffer}
                   />
-                  <BarChart.YAxis
-                    tickFormatter={(v) => costAxisUsd.format(Number(v))}
-                  />
-                  <BarChart.Tooltip
-                    labelFormatter={(v) => formatBucketFull(String(v))}
-                    valueFormatter={(v) => formatCost(Number(v))}
-                    reverse
-                  />
-                  {costChartKeys.map((k) => (
-                    <BarChart.Bar
-                      key={k}
-                      dataKey={k}
-                      isClickable
-                      bufferBar={costBuffer}
-                    />
-                  ))}
-                </BarChart.EvilBarChart>
-              </MaybeEmptyOverlay>
-            </CardContent>
-          </Card>
+                ))}
+              </BarChart.EvilBarChart>
+            </MaybeEmptyOverlay>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Volume + errors and latency, side by side. The cards mount at once;
           each chart shows its own loading treatment until the series lands. */}
       <section className="grid gap-4 lg:grid-cols-2 px-8">
-          <Card size="sm" className={cn(entrance && "page-fade-in")}>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
-              <CardTitle>Requests & errors</CardTitle>
-              <ChartLegend
-                items={volumeItems}
-                selected={volumeSelected}
-                onSelect={setVolumeSelected}
-              />
-            </CardHeader>
-            <CardContent className="mt-3">
-              <MaybeEmptyOverlay empty={seriesEmpty}>
-                <AreaChart.EvilAreaChart
-                  config={volumeConfig}
-                  data={volumeChartData}
-                  isLoading={seriesLoading}
-                  xDataKey="bucket"
-                  selectedDataKey={volumeSelected}
-                  onSelectionChange={setVolumeSelected}
-                  className="h-65 w-full"
-                  chartProps={{
-                    // left: 2 (vs Recharts' default 5) tucks the auto-width
-                    // y-axis labels closer to the card content edge.
-                    margin: { top: 5, right: 5, bottom: 5, left: 2 },
-                  }}
-                >
-                  <AreaChart.Grid />
-                  <AreaChart.XAxis
-                    dataKey="bucket"
-                    ticks={seriesChartTicks}
-                    tickFormatter={bucketLabel}
-                    interval={0}
-                    tick={edgeTick}
-                  />
-                  <AreaChart.YAxis
-                    allowDecimals={false}
-                    tickFormatter={(v) => formatCount(Number(v))}
-                  />
-                  <AreaChart.Tooltip
-                    labelFormatter={(v) => formatBucketFull(String(v))}
-                  />
-                  <AreaChart.Area
-                    dataKey="requests"
-                    strokeVariant="solid"
-                    enableBufferLine={seriesBuffer}
-                  />
-                  <AreaChart.Area
-                    dataKey="errors"
-                    strokeVariant="solid"
-                    variant="lines"
-                    enableBufferLine={seriesBuffer}
-                  />
-                </AreaChart.EvilAreaChart>
-              </MaybeEmptyOverlay>
-            </CardContent>
-          </Card>
+        <Card size="sm" className={cn(entrance && "page-fade-in")}>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardTitle>Requests & errors</CardTitle>
+            <ChartLegend
+              items={volumeItems}
+              selected={volumeSelected}
+              onSelect={setVolumeSelected}
+            />
+          </CardHeader>
+          <CardContent className="mt-3">
+            <MaybeEmptyOverlay empty={seriesEmpty}>
+              <AreaChart.EvilAreaChart
+                config={volumeConfig}
+                data={volumeChartData}
+                isLoading={seriesLoading}
+                xDataKey="bucket"
+                selectedDataKey={volumeSelected}
+                onSelectionChange={setVolumeSelected}
+                className="h-65 w-full"
+                chartProps={{
+                  // left: 2 (vs Recharts' default 5) tucks the auto-width
+                  // y-axis labels closer to the card content edge.
+                  margin: { top: 5, right: 5, bottom: 5, left: 2 },
+                }}
+              >
+                <AreaChart.Grid />
+                <AreaChart.XAxis
+                  dataKey="bucket"
+                  ticks={seriesChartTicks}
+                  tickFormatter={bucketLabel}
+                  interval={0}
+                  tick={edgeTick}
+                />
+                <AreaChart.YAxis
+                  allowDecimals={false}
+                  tickFormatter={(v) => formatCount(Number(v))}
+                />
+                <AreaChart.Tooltip
+                  labelFormatter={(v) => formatBucketFull(String(v))}
+                />
+                <AreaChart.Area
+                  dataKey="requests"
+                  strokeVariant="solid"
+                  enableBufferLine={seriesBuffer}
+                />
+                <AreaChart.Area
+                  dataKey="errors"
+                  strokeVariant="solid"
+                  variant="lines"
+                  enableBufferLine={seriesBuffer}
+                />
+              </AreaChart.EvilAreaChart>
+            </MaybeEmptyOverlay>
+          </CardContent>
+        </Card>
 
-          <Card size="sm" className={cn(entrance && "page-fade-in")}>
-            <CardHeader className="flex flex-row items-center justify-between gap-4">
-              <CardTitle>Latency</CardTitle>
-              <ChartLegend
-                items={latencyItems}
-                selected={latencySelected}
-                onSelect={setLatencySelected}
-              />
-            </CardHeader>
-            <CardContent className="mt-3">
-              <MaybeEmptyOverlay empty={seriesEmpty}>
-                <AreaChart.EvilAreaChart
-                  config={latencyConfig}
-                  data={latencyChartData}
-                  isLoading={seriesLoading}
-                  xDataKey="bucket"
-                  stackType="stacked"
-                  selectedDataKey={latencySelected}
-                  onSelectionChange={setLatencySelected}
-                  className="h-65 w-full"
-                  chartProps={{
-                    // left: 2 (vs Recharts' default 5) tucks the auto-width
-                    // y-axis labels closer to the card content edge.
-                    margin: { top: 5, right: 5, bottom: 5, left: 2 },
-                  }}
-                >
-                  <AreaChart.Grid />
-                  <AreaChart.XAxis
-                    dataKey="bucket"
-                    ticks={seriesChartTicks}
-                    tickFormatter={bucketLabel}
-                    interval={0}
-                    tick={edgeTick}
-                  />
-                  {/* width defaults to "auto": sized to the rendered tick labels,
+        <Card size="sm" className={cn(entrance && "page-fade-in")}>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
+            <CardTitle>Latency</CardTitle>
+            <ChartLegend
+              items={latencyItems}
+              selected={latencySelected}
+              onSelect={setLatencySelected}
+            />
+          </CardHeader>
+          <CardContent className="mt-3">
+            <MaybeEmptyOverlay empty={seriesEmpty}>
+              <AreaChart.EvilAreaChart
+                config={latencyConfig}
+                data={latencyChartData}
+                isLoading={seriesLoading}
+                xDataKey="bucket"
+                stackType="stacked"
+                selectedDataKey={latencySelected}
+                onSelectionChange={setLatencySelected}
+                className="h-65 w-full"
+                chartProps={{
+                  // left: 2 (vs Recharts' default 5) tucks the auto-width
+                  // y-axis labels closer to the card content edge.
+                  margin: { top: 5, right: 5, bottom: 5, left: 2 },
+                }}
+              >
+                <AreaChart.Grid />
+                <AreaChart.XAxis
+                  dataKey="bucket"
+                  ticks={seriesChartTicks}
+                  tickFormatter={bucketLabel}
+                  interval={0}
+                  tick={edgeTick}
+                />
+                {/* width defaults to "auto": sized to the rendered tick labels,
                     so long durations ("1m 20s") never get cropped. */}
-                  <AreaChart.YAxis
-                    tickFormatter={(v) => formatDuration(Number(v))}
-                  />
-                  <AreaChart.Tooltip
-                    labelFormatter={(v) => formatBucketFull(String(v))}
-                    valueFormatter={(_v, key, row) =>
-                      formatDuration(Number(row[`${key}Abs`] ?? _v))
-                    }
-                    reverse
-                  />
-                  {/* Stacked deltas (see latencyData): draw bottom band → top so
+                <AreaChart.YAxis
+                  tickFormatter={(v) => formatDuration(Number(v))}
+                />
+                <AreaChart.Tooltip
+                  labelFormatter={(v) => formatBucketFull(String(v))}
+                  valueFormatter={(_v, key, row) =>
+                    formatDuration(Number(row[`${key}Abs`] ?? _v))
+                  }
+                  reverse
+                />
+                {/* Stacked deltas (see latencyData): draw bottom band → top so
                     the stack reads p50, then p95−p50, then p99−p95. */}
-                  <AreaChart.Area
-                    dataKey="p50"
-                    strokeVariant="solid"
-                    enableBufferLine={seriesBuffer}
-                  />
-                  <AreaChart.Area
-                    dataKey="p95"
-                    strokeVariant="solid"
-                    enableBufferLine={seriesBuffer}
-                  />
-                  <AreaChart.Area
-                    dataKey="p99"
-                    strokeVariant="solid"
-                    enableBufferLine={seriesBuffer}
-                  />
-                </AreaChart.EvilAreaChart>
-              </MaybeEmptyOverlay>
-            </CardContent>
-          </Card>
+                <AreaChart.Area
+                  dataKey="p50"
+                  strokeVariant="solid"
+                  enableBufferLine={seriesBuffer}
+                />
+                <AreaChart.Area
+                  dataKey="p95"
+                  strokeVariant="solid"
+                  enableBufferLine={seriesBuffer}
+                />
+                <AreaChart.Area
+                  dataKey="p99"
+                  strokeVariant="solid"
+                  enableBufferLine={seriesBuffer}
+                />
+              </AreaChart.EvilAreaChart>
+            </MaybeEmptyOverlay>
+          </CardContent>
+        </Card>
       </section>
     </>
   );

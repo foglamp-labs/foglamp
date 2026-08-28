@@ -287,10 +287,11 @@ export function StatCard({
 			</CardHeader>
 
 			{hold && chart ? (
-				// Same 32px strip as CardSparkline / PillMeter, held blank (never
-				// shimmered) so the chart simply appears when the data lands.
+				// Held blank (never shimmered) at the height of the tallest chart
+				// slot (PillMeter: 6 + 14 + 20px) so the chart simply appears when
+				// the data lands without growing the card.
 				<div className="mt-auto -mb-6 group-data-[size=sm]/card:-mb-5">
-					<div className="h-8 w-full" />
+					<div className="h-10 w-full" />
 				</div>
 			) : (
 				chart && (
