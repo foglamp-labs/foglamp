@@ -77,7 +77,7 @@ function Table({
             // the screen edge so right-aligned values are easier to scan.
             // Applied here (not on TableHead/TableCell) so it wins over their
             // px-8 and covers any cell component in the last slot.
-            "[&_th:last-child]:pr-12 [&_td:last-child]:pr-12",
+            "[&_th:last-child]:pr-9 [&_td:last-child]:pr-9",
             className
           )}
           {...props}
