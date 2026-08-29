@@ -2,10 +2,16 @@
 
 import { Button } from "@foglamp/ui/components/button";
 import { cn } from "@foglamp/ui/lib/utils";
-import { IconArrowUpRight, IconChevronRight, IconCpu } from "@tabler/icons-react";
+import {
+	IconArrowUpRight,
+	IconChevronRight,
+	IconCpu,
+	IconMessage2Filled,
+} from "@tabler/icons-react";
 import type { Route } from "next";
 import { useState } from "react";
 
+import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import { navItem } from "@/components/app/nav";
 import { PageHeader } from "@/components/app/page-parts";
 import { RangeControl } from "@/components/app/range-picker";
@@ -99,9 +105,7 @@ export function DetailHeader({
 			</div>
 			{actions && (
 				// Nudge actions down so they line up with the title text.
-				<div className="flex items-center gap-2 translate-y-1">
-					{actions}
-				</div>
+				<div className="flex items-center gap-2 translate-y-1">{actions}</div>
 			)}
 		</div>
 	);
@@ -129,6 +133,23 @@ export function DemoContextChip({
 			<ChipIcon className={cn("size-3.5 shrink-0", iconClassName)} />
 			<span className="truncate">{label}</span>
 			<IconArrowUpRight className="size-3.5 shrink-0 -ml-0.5 mt-px text-muted-foreground" />
+		</Button>
+	);
+}
+
+/** The runs drawers' "See session" button — the real `SessionButton` with
+ * the demo's in-app navigation instead of a link. */
+export function DemoSessionButton({ onClick }: { onClick: () => void }) {
+	return (
+		<Button
+			size="sm"
+			variant="secondary"
+			className={cn("w-fit", DRAWER_BUTTON_CLASS)}
+			onClick={onClick}
+		>
+			<IconMessage2Filled className="text-sky-500" />
+			See session
+			<IconArrowUpRight className="mt-px" />
 		</Button>
 	);
 }

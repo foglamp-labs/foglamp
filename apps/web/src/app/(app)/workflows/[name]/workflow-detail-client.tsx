@@ -1,15 +1,14 @@
 "use client";
 
 import { Badge } from "@foglamp/ui/components/badge";
+import { Button } from "@foglamp/ui/components/button";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@foglamp/ui/components/card";
-import {} from "@foglamp/ui/components/pagination";
 import {
   Table,
   TableBody,
@@ -21,17 +20,21 @@ import {
 import {
   IconAlertTriangle,
   IconAlertTriangleFilled,
+  IconArrowUpRight,
   IconBoltFilled,
   IconChartAreaFilled,
   IconClockFilled,
   IconCoinFilled,
-  IconGhost,
   IconSitemapFilled,
+  IconAffiliateFilled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
+import { AgentIcon } from "@/components/app/agent-icon";
+import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import {
   PaginationFooter,
   SortableHead,
@@ -61,6 +64,21 @@ import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
 import {
+  Conversation,
+  ConversationSkeleton,
+  DrawerColumns,
+  CustomerValue,
+  DrawerRow,
+  ExpandChevron,
+  FOCUSED_ROW_CLASS,
+  Meta,
+  MetaEmpty,
+  ModelsValue,
+  OPEN_ROW_CLASS,
+  SessionButton,
+  emptyOutputHint,
+} from "@/components/app/run-exchange";
+import {
   ChartLegend,
   formatBucketFull,
   makeBucketLabel,
@@ -73,13 +91,16 @@ import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import {
   formatCost,
   formatCount,
+  formatDateTime,
   formatDuration,
   formatSpanDuration,
   formatPercent,
   formatTokens,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/utils/trpc";
+import { type RouterOutputs, trpc } from "@/utils/trpc";
+
+type RunRow = RouterOutputs["workflowRuns"]["list"][number];
 
 import { UNGROUPED } from "../workflows-client";
 
@@ -87,7 +108,7 @@ const PAGE_SIZES = [25, 50, 100];
 
 // Skeleton column spec for the loading body rows (see TableRowsSkeleton).
 const SKELETON_COLS = [
-  { w: "w-48" },
+  { icon: true, w: "w-64" },
   { align: "right", w: "w-8" },
   { align: "right", w: "w-12" },
   { align: "right", w: "w-14" },
@@ -115,10 +136,17 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   const searchParams = useSearchParams();
   // Shared time window drives the stats, trend charts, and runs table.
   const { range, setRange } = useRange();
-  // Selected run mirrors the `?run=` query param so the flow is deep-linkable.
-  const [selected, setSelected] = useState<string | null>(() =>
-    searchParams.get("run")
-  );
+  // A `?run=` deep link focuses one run: its row opens and is tinted.
+  const focusRun = searchParams.get("run");
+  // Which run row is expanded (agent flow + exchange drawer). Mirrors `?run=`
+  // so an open drawer is deep-linkable.
+  const [expanded, setExpanded] = useState<string | null>(focusRun);
+  // The row the page was *opened on* (deep link) gets the focused tint and a
+  // scroll-into-view; rows the user expands themselves are plain card, like
+  // the evals table. Cleared on the first toggle so the tint doesn't follow
+  // the `?run=` mirror around.
+  const [deepLinked, setDeepLinked] = useState<string | null>(focusRun);
+  const focusRef = useRef<HTMLTableRowElement>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
   // Selected series for each trend chart, driven by the header legends.
@@ -169,34 +197,40 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
     placeholderData: (prev) => prev,
   });
 
-  // Reset paging when the query that defines the result set changes.
-  useEffect(() => setPage(0), [range, projectId, sort]);
+  // Reset paging + any open drawer when the query that defines the result set
+  // changes (skipping mount, so a deep-linked drawer survives the first render).
+  const mounted = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on filter changes only
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    setPage(0);
+    setExpanded(null);
+  }, [range, projectId, sort]);
 
   const runRows = runs.data ?? [];
-  // Default the flow to the most recent run on the page (list is newest-first).
-  const activeRunId = selected ?? runRows[0]?.workflowRunId ?? null;
 
-  const selectRun = (id: string) => {
-    setSelected(id);
+  // Toggle a row's drawer and mirror it in the URL (`?run=`), so the open run
+  // can be shared and survives a reload.
+  const toggleRun = (id: string) => {
+    const next = expanded === id ? null : id;
+    setExpanded(next);
+    setDeepLinked(null);
     const sp = new URLSearchParams(Array.from(searchParams.entries()));
-    sp.set("run", id);
-    router.replace(`?${sp.toString()}`, { scroll: false });
+    if (next) sp.set("run", next);
+    else sp.delete("run");
+    const qs = sp.toString();
+    router.replace(qs ? `?${qs}` : "?", { scroll: false });
   };
-
-  const runDetail = useQuery({
-    ...trpc.workflowRuns.get.queryOptions({
-      projectId: projectId!,
-      workflowRunId: activeRunId!,
-    }),
-    enabled: !!projectId && !!activeRunId,
-  });
-  // Skeleton whenever the selected run's flow isn't loaded yet — on first
-  // load and on every row switch (no placeholderData, so a different run's
-  // flow never lingers under the new selection).
-  const flowLoading = !activeRunId || runDetail.isPending;
-
-  // The selected run's row (for the flow header chips + skeleton sizing).
-  const activeRun = runRows.find((r) => r.workflowRunId === activeRunId);
+  // Once the deep-linked run is on the loaded page, scroll it into view.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run as runs load
+  useEffect(() => {
+    if (deepLinked && focusRef.current) {
+      focusRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [deepLinked, runs.data]);
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showRunsSkeleton = useDelayedLoading(runs.isLoading);
   // Latch for the entrance fade: the runs table only fades in if this slot
@@ -218,7 +252,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
         p95: r.durationMs.p95,
         p99: r.durationMs.p99,
       })),
-    [series.data]
+    [series.data],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between
@@ -235,15 +269,15 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
         p95Abs: r.p95,
         p99Abs: r.p99,
       })),
-    [seriesData]
+    [seriesData],
   );
   const seriesTicks = useMemo(
     () =>
       thinTicks(
         seriesData.map((d) => d.bucket),
-        bucketLabel
+        bucketLabel,
       ),
-    [seriesData, bucketLabel]
+    [seriesData, bucketLabel],
   );
 
   const back = navItem("/workflows");
@@ -256,15 +290,6 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
       </>
     );
   }
-
-  const nodes: FlowNode[] = (runDetail.data?.traces ?? []).map((t) => ({
-    id: t.traceId,
-    icon: <IconGhost className="size-5" />,
-    label: t.traceName ?? t.agentName ?? "trace",
-    status: t.errorCount > 0 ? "error" : "ok",
-    timestamp: t.startTime,
-    durationMs: t.durationMs,
-  }));
 
   const stats = summary.data;
   // Global 20/40/60/80th-percentile thresholds for the heat-tinted cells,
@@ -302,7 +327,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
           <section
             className={cn(
               "grid grid-cols-2 gap-4 md:grid-cols-4 px-8 mt-1",
-              entrance && "page-fade-in"
+              entrance && "page-fade-in",
             )}
           >
             <StatCard
@@ -462,69 +487,13 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
             </Card>
           </section>
 
-          {/* Step flow for the selected run. Mounted while the runs list
-              loads too (skeleton body), since the selection defaults to the
-              first row — otherwise the card pops in below the stats. */}
-          {(activeRunId || runs.isLoading) && (
-            <div className="px-8">
-              <Card
-                size="sm"
-                className={cn("pb-4", entrance && "page-fade-in")}
-              >
-                <CardHeader>
-                  <CardTitle className="flex flex-wrap items-center gap-2">
-                    Run flow
-                  </CardTitle>
-                  {activeRun ? (
-                    <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
-                      <span>{formatCount(activeRun.traceCount)} traces</span>
-                      <span>·</span>
-                      <span>{formatSpanDuration(activeRun.durationMs)}</span>
-                      <span>·</span>
-                      <span>{formatCost(activeRun.totalCost)}</span>
-                      <span>·</span>
-                      <span>{formatTokens(activeRun.totalTokens)} tokens</span>
-                      {activeRun.errorCount > 0 && (
-                        <Badge variant="rose" className="font-sans">
-                          <IconAlertTriangle />
-                          {formatCount(activeRun.errorCount)}
-                          {activeRun.errorCount === 1 ? "error" : "errors"}
-                        </Badge>
-                      )}
-                    </CardDescription>
-                  ) : (
-                    <CardDescription className="flex h-5 items-center">
-                      <Skeleton className="h-3.5 w-56" />
-                    </CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent className="px-4 mt-3">
-                  {flowLoading ? (
-                    <NodeFlowSkeleton count={activeRun?.traceCount} />
-                  ) : nodes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No traces in this run.
-                    </p>
-                  ) : (
-                    <NodeFlow
-                      nodes={nodes}
-                      onNodeClick={(id) =>
-                        router.push(`/traces/${encodeURIComponent(id)}`)
-                      }
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Runs table — click a row to drive the flow above. */}
+          {/* Runs table — click a row to open its agent flow + exchange. */}
           <div className="flex flex-col gap-3 mt-4">
             {!runs.isLoading && runRows.length === 0 ? (
               <div
                 className={cn(
                   entrance && !runsSkeletonShown && "page-fade-in",
-                  "px-8"
+                  "px-8",
                 )}
               >
                 <EmptyState
@@ -539,10 +508,10 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
               <div
                 className={cn(
                   "flex flex-col",
-                  entrance && !runsSkeletonShown && "page-fade-in"
+                  entrance && !runsSkeletonShown && "page-fade-in",
                 )}
               >
-                <Table stickyHeader>
+                <Table className="table-fixed" stickyHeader>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Run</TableHead>
@@ -551,7 +520,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                         sort={sort}
                         onSort={toggle}
                         align="right"
-                        className="w-28"
+                        className="w-24"
                       >
                         Traces
                       </SortableHead>
@@ -560,7 +529,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                         sort={sort}
                         onSort={toggle}
                         align="right"
-                        className="w-32"
+                        className="w-28"
                       >
                         Duration
                       </SortableHead>
@@ -569,7 +538,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                         sort={sort}
                         onSort={toggle}
                         align="right"
-                        className="w-32"
+                        className="w-28"
                       >
                         Cost
                       </SortableHead>
@@ -590,56 +559,80 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                         <TableRowsSkeleton cols={SKELETON_COLS} />
                       ) : null
                     ) : (
-                      runRows.map((r) => (
-                        <TableRow
-                          key={r.workflowRunId}
-                          interactive
-                          className={cn(
-                            r.workflowRunId === activeRunId &&
-                              "bg-accent/60 dark:bg-accent/30"
-                          )}
-                          onClick={() => selectRun(r.workflowRunId)}
-                        >
-                          <TableCell className="h-12 max-w-96 font-medium">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate font-mono text-xs text-muted-foreground">
-                                {r.workflowRunId}
-                              </span>
-                              {/* Compact error count — colored text, no pill. */}
-                              {r.errorCount > 0 && (
-                                <span
-                                  title={`${r.errorCount} ${r.errorCount === 1 ? "error" : "errors"}`}
-                                  className="flex shrink-0 items-center gap-0.75 font-sans text-sm text-red-600 dark:text-red-400"
-                                >
-                                  <IconAlertTriangle className="size-3.5 fill-current/20" />
-                                  {r.errorCount}
-                                </span>
+                      runRows.map((r) => {
+                        const isOpen = expanded === r.workflowRunId;
+                        const isFocused = r.workflowRunId === deepLinked;
+                        return (
+                          <Fragment key={r.workflowRunId}>
+                            <TableRow
+                              ref={isFocused ? focusRef : undefined}
+                              interactive
+                              aria-expanded={isOpen}
+                              onClick={() => toggleRun(r.workflowRunId)}
+                              className={cn(
+                                "group",
+                                isOpen && OPEN_ROW_CLASS,
+                                isFocused && FOCUSED_ROW_CLASS,
                               )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {formatCount(r.traceCount)}
-                          </TableCell>
-                          <HeatCell
-                            value={r.durationMs}
-                            thresholds={durationQuantiles}
-                            metric="duration"
-                          >
-                            {formatSpanDuration(r.durationMs)}
-                          </HeatCell>
-                          <HeatCell
-                            value={r.totalCost}
-                            thresholds={costQuantiles}
-                            metric="cost"
-                            bold
-                          >
-                            {formatCost(r.totalCost)}
-                          </HeatCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            <RelativeTime value={r.startTime} />
-                          </TableCell>
-                        </TableRow>
-                      ))
+                            >
+                              {/* Content-first: the run's opening user message
+                                  (from its first trace), falling back to the
+                                  id; the agents involved trail on the right. */}
+                              <TableCell className="h-12 font-normal">
+                                <div className="flex items-center gap-2">
+                                  <ExpandChevron open={isOpen} />
+                                  <span className="truncate">
+                                    {r.userMessage ?? (
+                                      <span className="font-mono text-xs text-muted-foreground">
+                                        {r.workflowRunId}
+                                      </span>
+                                    )}
+                                  </span>
+                                  {/* Compact error count — colored text, no pill. */}
+                                  {r.errorCount > 0 && (
+                                    <span
+                                      title={`${r.errorCount} ${r.errorCount === 1 ? "error" : "errors"}`}
+                                      className="flex shrink-0 items-center gap-0.75 font-sans text-sm text-red-600 dark:text-red-400"
+                                    >
+                                      <IconAlertTriangle className="size-3.5 fill-current/20" />
+                                      {r.errorCount}
+                                    </span>
+                                  )}
+                                  <AgentStack names={r.agentNames} />
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {formatCount(r.traceCount)}
+                              </TableCell>
+                              <HeatCell
+                                value={r.durationMs}
+                                thresholds={durationQuantiles}
+                                metric="duration"
+                              >
+                                {formatSpanDuration(r.durationMs)}
+                              </HeatCell>
+                              <HeatCell
+                                value={r.totalCost}
+                                thresholds={costQuantiles}
+                                metric="cost"
+                                bold
+                              >
+                                {formatCost(r.totalCost)}
+                              </HeatCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                <RelativeTime value={r.startTime} />
+                              </TableCell>
+                            </TableRow>
+                            {isOpen && (
+                              <RunDrawer
+                                run={r}
+                                projectId={projectId}
+                                colSpan={5}
+                              />
+                            )}
+                          </Fragment>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -666,5 +659,226 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
         </>
       )}
     </>
+  );
+}
+
+/** The agents a run touched, in first-run order: a tight stack of their
+ * tinted ghosts (up to four, then "+n"), each named on hover. Sits at the end
+ * of the Run cell so the message text truncates before the agents do. */
+function AgentStack({ names }: { names: string[] }) {
+  if (names.length === 0) return null;
+  const shown = names.slice(0, 4);
+  const rest = names.length - shown.length;
+  return (
+    <span
+      className="ml-auto flex shrink-0 items-center gap-1 pl-2"
+      title={names.join(" → ")}
+    >
+      {shown.map((n) => (
+        <AgentIcon key={n} name={n} className="size-3.5" />
+      ))}
+      {rest > 0 && (
+        <span className="text-xs text-muted-foreground tabular-nums">
+          +{rest}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** Expanded row: the run's overview on the left (timing, size, cost), its
+ * agent hand-offs as a flow and the whole run's exchange — the first trace's
+ * opening message to the last trace's answer — on the right. Lazy-fetches the
+ * run's traces and the two traces that bracket it. */
+function RunDrawer({
+  run,
+  projectId,
+  colSpan,
+}: {
+  run: RunRow;
+  projectId: string;
+  colSpan: number;
+}) {
+  const router = useRouter();
+  const detail = useQuery(
+    trpc.workflowRuns.get.queryOptions({
+      projectId,
+      workflowRunId: run.workflowRunId,
+    }),
+  );
+  const traces = detail.data?.traces ?? [];
+  // The run's traces come start-ordered; prefer the ids the list already
+  // resolved so the exchange can load alongside the flow.
+  const firstId = run.firstTraceId ?? traces[0]?.traceId ?? null;
+  const lastId = run.lastTraceId ?? traces[traces.length - 1]?.traceId ?? null;
+  const first = useQuery({
+    ...trpc.traces.get.queryOptions({ projectId, traceId: firstId ?? "" }),
+    enabled: !!firstId,
+  });
+  const last = useQuery({
+    ...trpc.traces.get.queryOptions({ projectId, traceId: lastId ?? "" }),
+    enabled: !!lastId && lastId !== firstId,
+  });
+  type Span = NonNullable<typeof first.data>["spans"][number];
+  const rootOf = (spans: Span[] | undefined) =>
+    spans?.find((s) => !s.parentSpanId) ?? spans?.[0];
+  const firstRoot = rootOf(first.data?.spans);
+  const lastRoot = lastId === firstId ? firstRoot : rootOf(last.data?.spans);
+  const exchangeLoading =
+    first.isLoading || (lastId !== firstId && last.isLoading);
+
+  // Run-level context from its traces: the first trace's customer/session
+  // (a run belongs to one conversation), and every model any trace used, in
+  // first-use order.
+  const customer = traces.find((t) => t.customerId) ?? null;
+  const sessionId = traces.find((t) => t.sessionId)?.sessionId ?? null;
+  const models = [...new Set(traces.flatMap((t) => t.models))];
+
+  const nodes: FlowNode[] = traces.map((t) => ({
+    id: t.traceId,
+    icon: <AgentIcon name={t.agentName} className="size-5" />,
+    label: t.agentName ?? t.traceName ?? "trace",
+    sublabel: t.agentName && t.traceName !== t.agentName ? t.traceName : null,
+    status: t.errorCount > 0 ? "error" : t.abortedCount > 0 ? "aborted" : "ok",
+    timestamp: t.startTime,
+    durationMs: t.durationMs,
+  }));
+
+  return (
+    <DrawerRow colSpan={colSpan} className="pt-6">
+      <DrawerColumns
+        overview={
+          <>
+            {run.errorCount > 0 && (
+              <div className="flex h-5 items-center">
+                <Badge variant="rose" className="font-sans">
+                  <IconAlertTriangle />
+                  {formatCount(run.errorCount)}
+                  {run.errorCount === 1 ? " error" : " errors"}
+                </Badge>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <Meta label="Started" value={formatDateTime(run.startTime)} />
+              <Meta
+                label="Duration"
+                value={formatSpanDuration(run.durationMs)}
+              />
+              <Meta label="Traces" value={formatCount(run.traceCount)} />
+              <Meta label="Tokens" value={formatTokens(run.totalTokens)} />
+              <Meta
+                label="Cost"
+                value={
+                  run.totalCost == null ? (
+                    <MetaEmpty />
+                  ) : (
+                    formatCost(run.totalCost, 4)
+                  )
+                }
+              />
+              <Meta
+                label="Customer"
+                value={
+                  detail.isLoading ? (
+                    <Skeleton className="h-3.5 w-20" />
+                  ) : (
+                    <CustomerValue
+                      customerId={customer?.customerId ?? null}
+                      customerName={customer?.customerName}
+                      imageUrl={customer?.customerImageUrl}
+                    />
+                  )
+                }
+              />
+
+              <Meta
+                label={models.length === 1 ? "Model" : "Models"}
+                className="col-span-2"
+                value={
+                  detail.isLoading ? (
+                    <Skeleton className="h-3.5 w-24" />
+                  ) : (
+                    <ModelsValue models={models} />
+                  )
+                }
+              />
+            </div>
+            <div className="flex flex-wrap gap-2.5 mt-3">
+              {firstId && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className={cn("w-fit", DRAWER_BUTTON_CLASS)}
+                  render={
+                    // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
+                    <Link
+                      href={`/traces/${encodeURIComponent(firstId)}` as any}
+                    />
+                  }
+                >
+                  <IconAffiliateFilled className="text-[#8b5e34] dark:text-[#c9a888]" />
+                  See first trace
+                  <IconArrowUpRight className="mt-px" />
+                </Button>
+              )}
+              {sessionId && <SessionButton sessionId={sessionId} />}
+            </div>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-5">
+          <DrawerSection label="Agents">
+            {detail.isLoading ? (
+              <NodeFlowSkeleton count={Math.min(run.traceCount, 6)} />
+            ) : nodes.length === 0 ? (
+              <span className="text-xs text-muted-foreground">
+                No traces in this run.
+              </span>
+            ) : (
+              <NodeFlow
+                nodes={nodes}
+                onNodeClick={(id) =>
+                  router.push(`/traces/${encodeURIComponent(id)}`)
+                }
+              />
+            )}
+          </DrawerSection>
+          <DrawerSection label="Exchange">
+            {exchangeLoading ? (
+              <ConversationSkeleton />
+            ) : !firstRoot ? (
+              <span className="text-xs text-muted-foreground">
+                Trace payload unavailable.
+              </span>
+            ) : (
+              <Conversation
+                input={firstRoot.input}
+                output={lastRoot?.output ?? null}
+                emptyHint={emptyOutputHint(
+                  (lastId === firstId ? first.data?.spans : last.data?.spans) ??
+                    [],
+                )}
+                clamp={320}
+              />
+            )}
+          </DrawerSection>
+        </div>
+      </DrawerColumns>
+    </DrawerRow>
+  );
+}
+
+function DrawerSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {children}
+    </div>
   );
 }

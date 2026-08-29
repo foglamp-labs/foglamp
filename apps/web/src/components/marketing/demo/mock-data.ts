@@ -864,12 +864,20 @@ export const AGENT_SERIES: AgentSeriesPoint[] = OV_BUCKETS.map((bucket, i) => {
 export type AgentTrace = {
 	traceId: string;
 	name: string;
+	/** Opening user message — the content-first title the real table leads with. */
+	userMessage: string;
 	workflow: string | null;
 	spans: number;
 	tokens: number;
 	durationMs: number;
 	cost: number;
 	when: string;
+	/** Absolute start (ClickHouse datetime) for the drawer's "Started" field. */
+	startedAt: string;
+	customer: string | null;
+	sessionId: string | null;
+	/** Models the trace ran on, in order of first use. */
+	models: string[];
 	errors?: number;
 };
 
@@ -877,63 +885,99 @@ export const AGENT_TRACES: AgentTrace[] = [
 	{
 		traceId: "tr_9f2a4c8e",
 		name: "classify + resolve",
+		userMessage:
+			'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
 		workflow: "onboard-customer",
 		spans: 8,
 		tokens: 4200,
 		durationMs: 5840,
 		cost: 0.0418,
 		when: "12s ago",
+		startedAt: T(-12),
+		customer: "Acme Inc",
+		sessionId: "ses_a91f",
+		models: ["gemini-3.5-flash", "gpt-5.6-sol"],
 	},
 	{
 		traceId: "tr_3b8e1d6a",
 		name: "multi-hop lookup",
+		userMessage:
+			"Which of my three open tickets are blocked on the billing team?",
 		workflow: null,
 		spans: 11,
 		tokens: 8100,
 		durationMs: 7320,
 		cost: 0.082,
 		when: "1m ago",
+		startedAt: T(-60),
+		customer: "Hooli",
+		sessionId: "ses_3c7d",
+		models: ["gpt-5.6-sol", "claude-sonnet-5", "gemini-3.5-flash"],
 	},
 	{
 		traceId: "tr_7c1f5a2b",
 		name: "refund policy",
+		userMessage:
+			"Can I get a refund on a subscription I forgot to cancel last month?",
 		workflow: "incident-summary",
 		spans: 6,
 		tokens: 5100,
 		durationMs: 4360,
 		cost: 0.0521,
 		when: "3m ago",
+		startedAt: T(-180),
+		customer: "Initech",
+		sessionId: null,
+		models: ["gpt-5.6-sol"],
 		errors: 1,
 	},
 	{
 		traceId: "tr_2d9a6c3f",
 		name: "address update",
+		userMessage:
+			"Please update the shipping address on my account to 14 Harbor St.",
 		workflow: null,
 		spans: 4,
 		tokens: 2100,
 		durationMs: 3120,
 		cost: 0.0194,
 		when: "5m ago",
+		startedAt: T(-300),
+		customer: "Acme Inc",
+		sessionId: "ses_a91f",
+		models: ["gemini-3.5-flash"],
 	},
 	{
 		traceId: "tr_5e0b8d4a",
 		name: "order status",
+		userMessage:
+			"Where is order #48190? The tracking link hasn't moved since Monday.",
 		workflow: "onboard-customer",
 		spans: 9,
 		tokens: 4800,
 		durationMs: 6210,
 		cost: 0.0472,
 		when: "8m ago",
+		startedAt: T(-480),
+		customer: "Globex",
+		sessionId: "ses_8e2b",
+		models: ["gemini-3.5-flash", "gpt-5.6-sol"],
 	},
 	{
 		traceId: "tr_8a3f1c6b",
 		name: "escalation",
+		userMessage:
+			"I've been charged twice this month and support chat keeps timing out.",
 		workflow: null,
 		spans: 12,
 		tokens: 10200,
 		durationMs: 8740,
 		cost: 0.108,
 		when: "11m ago",
+		startedAt: T(-660),
+		customer: null,
+		sessionId: null,
+		models: ["claude-sonnet-5"],
 	},
 ];
 
@@ -1069,10 +1113,21 @@ export const WORKFLOW_SERIES: WorkflowSeriesPoint[] = OV_BUCKETS.map(
 export type WorkflowRun = {
 	runId: string;
 	displayName: string | null;
+	/** Opening user message of the run's first trace (null when the run had no
+	 * conversational input — the table falls back to the id). */
+	userMessage: string | null;
+	/** Agents involved, in hand-off order. */
+	agentNames: string[];
 	traces: number;
+	spans: number;
+	tokens: number;
 	durationMs: number;
 	cost: number;
 	when: string;
+	startedAt: string;
+	customer: string | null;
+	sessionId: string | null;
+	models: string[];
 	errorCount: number;
 	status: "ok" | "error";
 };
@@ -1081,60 +1136,120 @@ export const WORKFLOW_RUNS: WorkflowRun[] = [
 	{
 		runId: "run_8f21ac",
 		displayName: "acme-corp",
+		userMessage:
+			"Onboard Acme Corp — 40 seats, SSO via Okta, EU data residency",
+		agentNames: ["research-planner", "email-drafter"],
+		spans: 31,
+		tokens: 12400,
 		traces: 5,
 		durationMs: 11200,
 		cost: 0.142,
 		when: "2m ago",
+		startedAt: T(-120),
+		customer: "Acme Inc",
+		sessionId: "ses_a91f",
+		models: ["gpt-5.6-sol", "gemini-3.5-flash"],
 		errorCount: 0,
 		status: "ok",
 	},
 	{
 		runId: "run_3b90fe",
 		displayName: "globex",
+		userMessage:
+			"Set up Globex on the enterprise plan and migrate their Zendesk macros",
+		agentNames: ["research-planner", "support-triage", "email-drafter"],
+		spans: 38,
+		tokens: 15900,
 		traces: 6,
 		durationMs: 14800,
 		cost: 0.198,
 		when: "8m ago",
+		startedAt: T(-480),
+		customer: "Globex",
+		sessionId: "ses_8e2b",
+		models: ["gpt-5.6-sol", "claude-sonnet-5"],
 		errorCount: 1,
 		status: "error",
 	},
 	{
 		runId: "run_c712da",
 		displayName: null,
+		userMessage:
+			"Research Vandelay Industries and draft an intro email to their VP of Sales",
+		agentNames: ["research-planner", "email-drafter"],
+		spans: 22,
+		tokens: 8100,
 		traces: 4,
 		durationMs: 9400,
 		cost: 0.094,
 		when: "15m ago",
+		startedAt: T(-900),
+		customer: null,
+		sessionId: null,
+		models: ["gemini-3.5-flash"],
 		errorCount: 0,
 		status: "ok",
 	},
 	{
 		runId: "run_5de034",
 		displayName: "initech",
+		userMessage:
+			"Onboard Initech: import 1.2k contacts and schedule the kickoff",
+		agentNames: ["research-planner", "email-drafter"],
+		spans: 29,
+		tokens: 11300,
 		traces: 5,
 		durationMs: 12600,
 		cost: 0.131,
 		when: "23m ago",
+		startedAt: T(-1380),
+		customer: "Initech",
+		sessionId: null,
+		models: ["gpt-5.6-sol"],
 		errorCount: 0,
 		status: "ok",
 	},
 	{
 		runId: "run_9a14bb",
 		displayName: "umbrella",
+		userMessage:
+			"Umbrella needs a HIPAA addendum before the pilot starts on Monday",
+		agentNames: [
+			"research-planner",
+			"support-triage",
+			"email-drafter",
+			"compliance-check",
+			"billing-sync",
+		],
+		spans: 46,
+		tokens: 19800,
 		traces: 7,
 		durationMs: 18200,
 		cost: 0.221,
 		when: "31m ago",
+		startedAt: T(-1860),
+		customer: "Umbrella Corp",
+		sessionId: "ses_3c7d",
+		models: ["gpt-5.6-sol", "claude-sonnet-5", "gemini-3.5-flash"],
 		errorCount: 2,
 		status: "error",
 	},
 	{
 		runId: "run_2c88ef",
 		displayName: null,
+		userMessage:
+			"Find the latest funding news on Stark Labs and draft a follow-up for the AE",
+		agentNames: ["research-planner", "email-drafter"],
+		spans: 21,
+		tokens: 7600,
 		traces: 4,
 		durationMs: 8800,
 		cost: 0.087,
 		when: "44m ago",
+		startedAt: T(-2640),
+		customer: null,
+		sessionId: null,
+		models: ["gemini-3.5-flash"],
 		errorCount: 0,
 		status: "ok",
 	},

@@ -1,12 +1,10 @@
 "use client";
 
 import { Badge } from "@foglamp/ui/components/badge";
-import { Skeleton } from "@foglamp/ui/components/skeleton";
 import { Button } from "@foglamp/ui/components/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@foglamp/ui/components/card";
@@ -20,25 +18,25 @@ import {
   TableRow,
 } from "@foglamp/ui/components/table";
 import {
-  IconAffiliateFilled,
   IconAlertTriangle,
   IconAlertTriangleFilled,
   IconArrowUpRight,
   IconBoltFilled,
   IconChartAreaFilled,
-  IconChevronRight,
   IconClockFilled,
   IconCoinFilled,
-  IconCpu,
   IconGhostFilled,
+  IconSitemapFilled,
   IconTool,
+  IconAffiliateFilled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
+import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import { CostBreakdownCard } from "@/components/app/cost-breakdown-card";
 import {
   PaginationFooter,
@@ -64,11 +62,26 @@ import {
   StatCard,
   TableRowsSkeleton,
 } from "@/components/app/page-parts";
-import { PayloadView } from "@/components/app/payload-view";
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
+import {
+  Conversation,
+  ConversationSkeleton,
+  CustomerValue,
+  DrawerColumns,
+  DrawerRow,
+  ExpandChevron,
+  FOCUSED_ROW_CLASS,
+  Meta,
+  MetaEmpty,
+  ModelsValue,
+  OPEN_ROW_CLASS,
+  SessionButton,
+  emptyOutputHint,
+} from "@/components/app/run-exchange";
+import { spanTypeIcon } from "@/components/app/span-type";
 import { ToolBreakdownCard } from "@/components/app/tool-breakdown-card";
 import {
   ChartLegend,
@@ -84,22 +97,24 @@ import { ModelLogo } from "@/components/model-logo";
 import {
   formatCost,
   formatCount,
+  formatDateTime,
   formatDuration,
   formatPercent,
   formatSpanDuration,
   formatTokens,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/utils/trpc";
+import { type RouterOutputs, trpc } from "@/utils/trpc";
+
+type TraceRow = RouterOutputs["traces"]["list"]["traces"][number];
 
 const PAGE_SIZES = [25, 50, 100];
 
 // Skeleton column spec for the loading body rows (see TableRowsSkeleton).
 const SKELETON_COLS = [
-  { icon: true, w: "w-48" },
+  { icon: true, w: "w-64" },
   { w: "w-20" },
   { align: "right", w: "w-8" },
-  { align: "right", w: "w-10" },
   { align: "right", w: "w-12" },
   { align: "right", w: "w-14" },
   { align: "right", w: "w-16" },
@@ -119,12 +134,21 @@ const latencyConfig = {
   p99: { label: "p99", colors: themed("#FF5513") },
 } satisfies ChartConfig;
 
-function stepIcon(spanType: string, modelId: string | null) {
-  if (spanType === "llm")
-    return <ModelLogo modelId={modelId} className="size-5" />;
+function stepIcon(
+  spanType: string,
+  modelId: string | null,
+  name: string | null,
+) {
+  if (spanType === "llm" && modelId)
+    return <ModelLogo modelId={modelId} className="size-3.25" />;
+  if (spanType === "agent")
+    return <AgentIcon name={name} className="size-3.25" />;
   if (spanType === "tool")
-    return <IconTool className="size-5 text-muted-foreground" />;
-  return <IconCpu className="size-5 text-muted-foreground" />;
+    return (
+      <IconTool className="size-3 shrink-0 fill-current stroke-1 text-blue-500 mb-px" />
+    );
+  const Icon = spanTypeIcon(spanType);
+  return <Icon className="size-3.25 text-muted-foreground" />;
 }
 
 export function AgentDetailClient({ agentName }: { agentName: string }) {
@@ -133,14 +157,19 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { range, setRange } = useRange();
-  // Selected trace mirrors the `?trace=` query param so the flow is deep-linkable.
-  const [selected, setSelected] = useState<string | null>(() =>
-    searchParams.get("trace")
-  );
+  // A `?trace=` deep link focuses one trace: its row opens and is tinted.
+  const focusTrace = searchParams.get("trace");
+  // Which trace row is expanded (steps + input/output drawer). Mirrors `?trace=`
+  // so an open drawer is deep-linkable.
+  const [expanded, setExpanded] = useState<string | null>(focusTrace);
+  // The row the page was *opened on* (deep link) gets the focused tint and a
+  // scroll-into-view; rows the user expands themselves are plain card, like
+  // the evals table. Cleared on the first toggle so the tint doesn't follow
+  // the `?trace=` mirror around.
+  const [deepLinked, setDeepLinked] = useState<string | null>(focusTrace);
+  const focusRef = useRef<HTMLTableRowElement>(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
-  // Which trace row is expanded to glimpse its input/output (by traceId).
-  const [expanded, setExpanded] = useState<string | null>(null);
   // Selected series for each trend chart, driven by the header legends.
   const [volumeSelected, setVolumeSelected] = useState<string | null>(null);
   const [latencySelected, setLatencySelected] = useState<string | null>(null);
@@ -148,7 +177,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
 
   const { from, to } = useMemo(
     () => ({ from: range.from.toISOString(), to: range.to.toISOString() }),
-    [range]
+    [range],
   );
   const enabled = !!projectId;
 
@@ -191,9 +220,15 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
     placeholderData: (prev) => prev,
   });
 
-  // Reset paging + any open preview when the query that defines the result set
-  // changes.
+  // Reset paging + any open drawer when the query that defines the result set
+  // changes (skipping mount, so a deep-linked drawer survives the first render).
+  const mounted = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on filter changes only
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     setPage(0);
     setExpanded(null);
   }, [range, projectId, sort]);
@@ -203,30 +238,26 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
   // computed server-side over the whole filtered window (not just this page).
   const costQuantiles = traces.data?.costQuantiles ?? [];
   const durationQuantiles = traces.data?.durationQuantiles ?? [];
-  // Default the flow to the most recent trace on the page (list is newest-first).
-  const activeTraceId = selected ?? traceRows[0]?.traceId ?? null;
 
-  const selectTrace = (id: string) => {
-    setSelected(id);
+  // Toggle a row's drawer and mirror it in the URL (`?trace=`), so the open
+  // trace can be shared and survives a reload.
+  const toggleTrace = (id: string) => {
+    const next = expanded === id ? null : id;
+    setExpanded(next);
+    setDeepLinked(null);
     const sp = new URLSearchParams(Array.from(searchParams.entries()));
-    sp.set("trace", id);
-    router.replace(`?${sp.toString()}`, { scroll: false });
+    if (next) sp.set("trace", next);
+    else sp.delete("trace");
+    const qs = sp.toString();
+    router.replace(qs ? `?${qs}` : "?", { scroll: false });
   };
-
-  const traceDetail = useQuery({
-    ...trpc.traces.get.queryOptions({
-      projectId: projectId!,
-      traceId: activeTraceId!,
-    }),
-    enabled: enabled && !!activeTraceId,
-  });
-  // Skeleton whenever the selected trace's flow isn't loaded yet — on first
-  // load and on every row switch (no placeholderData, so a different trace's
-  // flow never lingers under the new selection).
-  const flowLoading = !activeTraceId || traceDetail.isPending;
-
-  // The selected trace's row (for the flow header chips + skeleton sizing).
-  const activeTrace = traceRows.find((t) => t.traceId === activeTraceId);
+  // Once the deep-linked trace is on the loaded page, scroll it into view.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run as traces load
+  useEffect(() => {
+    if (deepLinked && focusRef.current) {
+      focusRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [deepLinked, traces.data]);
   // Delay the skeleton so fast loads don't flash it (see useDelayedLoading).
   const showTracesSkeleton = useDelayedLoading(traces.isLoading);
   // Latch for the entrance fade: the traces table only fades in if this slot
@@ -248,7 +279,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
         p95: r.latencyMs.p95,
         p99: r.latencyMs.p99,
       })),
-    [series.data]
+    [series.data],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between two
@@ -265,16 +296,16 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
         p95Abs: r.p95,
         p99Abs: r.p99,
       })),
-    [seriesData]
+    [seriesData],
   );
 
   const seriesTicks = useMemo(
     () =>
       thinTicks(
         seriesData.map((d) => d.bucket),
-        bucketLabel
+        bucketLabel,
       ),
-    [seriesData, bucketLabel]
+    [seriesData, bucketLabel],
   );
 
   const back = navItem("/agents");
@@ -295,21 +326,6 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
   const stats = detail.data?.stats ?? null;
   const errorRate =
     stats && stats.spanCount > 0 ? stats.errorCount / stats.spanCount : null;
-
-  const nodes: FlowNode[] = (traceDetail.data?.spans ?? []).map((s) => ({
-    id: s.spanId,
-    icon: stepIcon(s.spanType, s.modelId),
-    label: s.name,
-    sublabel: s.modelId,
-    status:
-      s.status === "error"
-        ? "error"
-        : s.status === "aborted"
-          ? "aborted"
-          : "ok",
-    timestamp: s.startTime,
-    durationMs: s.durationMs,
-  }));
 
   const totalTraces = traces.data?.summary.traceCount ?? 0;
   // No activity for this agent at all (not just filtered away). Wait for the
@@ -342,7 +358,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
           <section
             className={cn(
               "grid grid-cols-2 gap-4 md:grid-cols-4 px-8 mt-1",
-              entrance && "page-fade-in"
+              entrance && "page-fade-in",
             )}
           >
             <StatCard
@@ -515,73 +531,13 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
             />
           </section>
 
-          {/* Step flow for the selected trace. Mounted while the traces list
-					    loads too (skeleton body), since the selection defaults to the
-					    first row — otherwise the card pops in below the stats. */}
-          {(activeTraceId || traces.isLoading) && (
-            <div className="px-8">
-              <Card
-                size="sm"
-                className={cn("pb-4", entrance && "page-fade-in")}
-              >
-                <CardHeader>
-                  <CardTitle className="flex flex-wrap items-center gap-2">
-                    Trace flow
-                  </CardTitle>
-                  {activeTrace ? (
-                    <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
-                      <span>{formatCount(activeTrace.spanCount)} spans</span>
-                      <span>·</span>
-                      <span>{formatSpanDuration(activeTrace.durationMs)}</span>
-                      <span>·</span>
-                      <span>{formatCost(activeTrace.totalCost)}</span>
-                      <span>·</span>
-                      <span>
-                        {formatTokens(activeTrace.totalTokens)} tokens
-                      </span>
-                      {activeTrace.errorCount > 0 && (
-                        <Badge variant="rose" className="font-sans">
-                          <IconAlertTriangle />
-                          {formatCount(activeTrace.errorCount)}
-                          {activeTrace.errorCount === 1 ? "error" : "errors"}
-                        </Badge>
-                      )}
-                    </CardDescription>
-                  ) : (
-                    <CardDescription className="flex h-5 items-center">
-                      <Skeleton className="h-3.5 w-56" />
-                    </CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent className="px-4 mt-3">
-                  {flowLoading ? (
-                    <NodeFlowSkeleton count={activeTrace?.spanCount} />
-                  ) : nodes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No steps in this trace.
-                    </p>
-                  ) : (
-                    <NodeFlow
-                      nodes={nodes}
-                      onNodeClick={(spanId) =>
-                        router.push(
-                          `/traces/${encodeURIComponent(activeTraceId ?? "")}?span=${encodeURIComponent(spanId)}`
-                        )
-                      }
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Traces table — click a row to drive the flow above. */}
+          {/* Traces table — click a row to open its steps + exchange. */}
           <div className="flex flex-col gap-3 mt-4">
             {!traces.isLoading && traceRows.length === 0 ? (
               <div
                 className={cn(
                   entrance && !tracesSkeletonShown && "page-fade-in",
-                  "px-8"
+                  "px-8",
                 )}
               >
                 <EmptyState
@@ -596,31 +552,22 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
               <div
                 className={cn(
                   "flex flex-col",
-                  entrance && !tracesSkeletonShown && "page-fade-in"
+                  entrance && !tracesSkeletonShown && "page-fade-in",
                 )}
               >
                 <Table className="table-fixed" stickyHeader>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-96">Trace</TableHead>
-                      <TableHead>Workflow</TableHead>
+                      <TableHead>Trace</TableHead>
+                      <TableHead className="w-44">Workflow</TableHead>
                       <SortableHead
                         sortKey="spans"
                         sort={sort}
                         onSort={toggle}
                         align="right"
-                        className="w-24"
+                        className="w-20"
                       >
                         Spans
-                      </SortableHead>
-                      <SortableHead
-                        sortKey="tokens"
-                        sort={sort}
-                        onSort={toggle}
-                        align="right"
-                        className="w-28"
-                      >
-                        Tokens
                       </SortableHead>
                       <SortableHead
                         sortKey="duration"
@@ -659,41 +606,28 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     ) : (
                       traceRows.map((t) => {
                         const isOpen = expanded === t.traceId;
+                        const isFocused = t.traceId === deepLinked;
                         return (
                           <Fragment key={t.traceId}>
                             <TableRow
+                              ref={isFocused ? focusRef : undefined}
                               interactive
                               aria-expanded={isOpen}
+                              onClick={() => toggleTrace(t.traceId)}
                               className={cn(
                                 "group",
-                                // Open row + drawer read as one unit: no divider between them.
-                                isOpen && "border-b-0",
-                                t.traceId === activeTraceId &&
-                                  "bg-accent/60 dark:bg-accent/30",
-                                // Left accent bar on errored traces — scannable at a glance.
-                                t.errorCount > 0 &&
-                                  "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
+                                isOpen && OPEN_ROW_CLASS,
+                                isFocused && FOCUSED_ROW_CLASS,
                               )}
-                              onClick={() => {
-                                // Row click both drives the flow above and
-                                // toggles the input/output preview.
-                                selectTrace(t.traceId);
-                                setExpanded(isOpen ? null : t.traceId);
-                              }}
                             >
-                              <TableCell className="h-12 font-medium">
+                              {/* Content-first, like the traces list: the
+                                  trace's user message, then its name, then
+                                  the id. */}
+                              <TableCell className="h-12 font-normal">
                                 <div className="flex items-center gap-2">
-                                  {/* Expand affordance: muted chevron that brightens on
-																    hover and turns when open. */}
-                                  <IconChevronRight
-                                    className={cn(
-                                      "size-3.5 shrink-0 text-muted-foreground/50 transition-[transform,color] group-hover:text-muted-foreground",
-                                      isOpen &&
-                                        "rotate-90 text-muted-foreground"
-                                    )}
-                                  />
+                                  <ExpandChevron open={isOpen} />
                                   <span className="truncate">
-                                    {t.traceName ?? (
+                                    {t.userMessage ?? t.traceName ?? (
                                       <span className="font-mono text-xs text-muted-foreground">
                                         {t.traceId}
                                       </span>
@@ -711,31 +645,26 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="max-w-0">
                                 {t.workflowName ? (
                                   <Link
                                     href={`/workflows/${encodeURIComponent(
-                                      t.workflowName
+                                      t.workflowName,
                                     )}`}
                                     onClick={(e) => e.stopPropagation()}
                                     title="View workflow"
+                                    className="block truncate text-muted-foreground transition-colors hover:text-foreground"
                                   >
-                                    <Badge
-                                      variant="secondary"
-                                      className="transition-colors hover:bg-secondary/80"
-                                    >
-                                      {t.workflowName}
-                                    </Badge>
+                                    {t.workflowName}
                                   </Link>
                                 ) : (
-                                  "—"
+                                  <span className="text-muted-foreground/40">
+                                    —
+                                  </span>
                                 )}
                               </TableCell>
                               <TableCell className="text-right tabular-nums">
                                 {formatCount(t.spanCount)}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {formatTokens(t.totalTokens)}
                               </TableCell>
                               <HeatCell
                                 value={t.durationMs}
@@ -757,10 +686,10 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                               </TableCell>
                             </TableRow>
                             {isOpen && (
-                              <TracePreview
-                                traceId={t.traceId}
+                              <TraceDrawer
+                                trace={t}
                                 projectId={projectId}
-                                colSpan={8}
+                                colSpan={6}
                               />
                             )}
                           </Fragment>
@@ -795,89 +724,174 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
   );
 }
 
-/** Expanded row: lazy-fetches the trace and shows a glimpse of the run's
- * input/output (taken from the root span), plus a deep link into the full
- * trace. Mirrors the eval page's score preview. */
-function TracePreview({
-  traceId,
+/** Expanded row: the trace's overview on the left (timing, size, cost and
+ * where it belongs), its step flow and the run's exchange on the right — the
+ * same drawer the eval page opens under a scored run. Lazy-fetches the trace. */
+function TraceDrawer({
+  trace,
   projectId,
   colSpan,
 }: {
-  traceId: string;
+  trace: TraceRow;
   projectId: string;
   colSpan: number;
 }) {
-  const detail = useQuery(trpc.traces.get.queryOptions({ projectId, traceId }));
+  const router = useRouter();
+  const detail = useQuery(
+    trpc.traces.get.queryOptions({ projectId, traceId: trace.traceId }),
+  );
   const spans = detail.data?.spans ?? [];
   // The whole-run input/output lives on the root span (fall back to the first).
   const root = spans.find((s) => !s.parentSpanId) ?? spans[0];
+  const nodes: FlowNode[] = spans.map((s) => ({
+    id: s.spanId,
+    icon: stepIcon(s.spanType, s.modelId, s.name),
+    label: s.name,
+    sublabel: s.modelId,
+    status:
+      s.status === "error"
+        ? "error"
+        : s.status === "aborted"
+          ? "aborted"
+          : "ok",
+    timestamp: s.startTime,
+    durationMs: s.durationMs,
+  }));
+  const traceHref = `/traces/${encodeURIComponent(trace.traceId)}`;
 
   return (
-    <TableRow className="hover:bg-transparent">
-      {/* px-8 matches the row cells' inset so the drawer's content lines up
-			    with the row text; the hairline + tint make it read as a drawer
-			    under the open row. */}
-      <TableCell
-        colSpan={colSpan}
-        className="border-t border-border/50 bg-muted/30 px-8 py-4 dark:border-border/40"
-      >
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-4">
-            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <IconAffiliateFilled className="size-3.5 shrink-0" />
-              Trace
-              <span className="font-mono">{traceId}</span>
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="shrink-0"
-              // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
-              render={
-                <Link href={`/traces/${encodeURIComponent(traceId)}` as any} />
-              }
-            >
-              See full trace
-              <IconArrowUpRight />
-            </Button>
-          </div>
-          {detail.isLoading ? (
-            <span className="text-xs text-muted-foreground">
-              Loading trace…
-            </span>
-          ) : !root ? (
-            <span className="text-xs text-muted-foreground">
-              Trace payload unavailable.
-            </span>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Glimpse label="Input" value={root.input} />
-              <Glimpse label="Output" value={root.output} />
+    <DrawerRow colSpan={colSpan} className="pt-6">
+      <DrawerColumns
+        overview={
+          <>
+            {trace.errorCount > 0 && (
+              <div className="flex h-5 items-center">
+                <Badge variant="rose" className="font-sans">
+                  <IconAlertTriangle />
+                  {formatCount(trace.errorCount)}
+                  {trace.errorCount === 1 ? " error" : " errors"}
+                </Badge>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <Meta label="Started" value={formatDateTime(trace.startTime)} />
+              <Meta
+                label="Duration"
+                value={formatSpanDuration(trace.durationMs)}
+              />
+              <Meta label="Spans" value={formatCount(trace.spanCount)} />
+              <Meta label="Tokens" value={formatTokens(trace.totalTokens)} />
+              <Meta
+                label="Cost"
+                value={
+                  trace.totalCost == null ? (
+                    <MetaEmpty />
+                  ) : (
+                    formatCost(trace.totalCost, 4)
+                  )
+                }
+              />
+              <Meta
+                label="Customer"
+                value={
+                  <CustomerValue
+                    customerId={trace.customerId}
+                    customerName={trace.customerName}
+                    imageUrl={trace.customerImageUrl}
+                  />
+                }
+              />
+              <Meta
+                label={trace.models.length === 1 ? "Model" : "Models"}
+                className="col-span-2"
+                value={<ModelsValue models={trace.models} />}
+              />
+              {trace.workflowName && (
+                <Meta
+                  label="Workflow"
+                  className="col-span-2"
+                  value={
+                    <Link
+                      href={`/workflows/${encodeURIComponent(trace.workflowName)}`}
+                      className="flex min-w-0 items-center gap-1.5 group"
+                    >
+                      <IconSitemapFilled className="size-3.5 shrink-0 text-emerald-500 mt-px" />
+                      <span className="truncate">{trace.workflowName}</span>
+                      <IconArrowUpRight className="size-3.5 shrink-0 text-muted-foreground  transition-colors mt-0.75 group-hover:text-foreground" />
+                    </Link>
+                  }
+                />
+              )}
             </div>
-          )}
+            <div className="flex flex-wrap gap-2.5 mt-3">
+              <Button
+                size="sm"
+                variant="secondary"
+                className={cn("w-fit", DRAWER_BUTTON_CLASS)}
+                // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
+                render={<Link href={traceHref as any} />}
+              >
+                <IconAffiliateFilled className="text-[#8b5e34] dark:text-[#c9a888]" />
+                See trace
+                <IconArrowUpRight className="mt-px" />
+              </Button>
+              {trace.sessionId && <SessionButton sessionId={trace.sessionId} />}
+            </div>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-5">
+          <DrawerSection label="Steps">
+            {detail.isLoading ? (
+              <NodeFlowSkeleton count={Math.min(trace.spanCount, 6)} />
+            ) : nodes.length === 0 ? (
+              <span className="text-xs text-muted-foreground">
+                No steps in this trace.
+              </span>
+            ) : (
+              <NodeFlow
+                nodes={nodes}
+                onNodeClick={(spanId) =>
+                  router.push(
+                    `/traces/${encodeURIComponent(trace.traceId)}?span=${encodeURIComponent(spanId)}`,
+                  )
+                }
+              />
+            )}
+          </DrawerSection>
+          <DrawerSection label="Exchange">
+            {detail.isLoading ? (
+              <ConversationSkeleton />
+            ) : !root ? (
+              <span className="text-xs text-muted-foreground">
+                Trace payload unavailable.
+              </span>
+            ) : (
+              <Conversation
+                input={root.input}
+                output={root.output}
+                emptyHint={emptyOutputHint(spans)}
+                clamp={320}
+              />
+            )}
+          </DrawerSection>
         </div>
-      </TableCell>
-    </TableRow>
+      </DrawerColumns>
+    </DrawerRow>
   );
 }
 
-function Glimpse({
+function DrawerSection({
   label,
-  value,
+  children,
 }: {
   label: string;
-  value: string | null | undefined;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      {value ? (
-        <div className="max-h-64 overflow-x-hidden overflow-y-auto shadow-(--custom-shadow) rounded-lg">
-          <PayloadView value={value} />
-        </div>
-      ) : (
-        <span className="text-sm text-muted-foreground">—</span>
-      )}
+    <div className="flex flex-col gap-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {children}
     </div>
   );
 }

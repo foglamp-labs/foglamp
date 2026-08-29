@@ -20,7 +20,7 @@ import { Streamdown } from "streamdown";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CopyButton } from "@/components/app/copy-button";
-import { ContextChip } from "@/components/app/context-chip";
+import { Chip, ContextChip } from "@/components/app/context-chip";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { HEAT_SHADES } from "@/components/app/heat-cell";
 import {
@@ -142,7 +142,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
         <div
           className={cn(
             "mt-1 flex flex-wrap items-center gap-2 px-7",
-            entrance && "page-fade-in"
+            entrance && "page-fade-in",
           )}
         >
           {/* Plain divs, not <Skeleton> — its base corner-squircle squares off
@@ -159,13 +159,13 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
         <div
           className={cn(
             "mt-1 flex flex-wrap items-center gap-2 text-xs px-7",
-            entrance && !skeletonShown && "page-fade-in"
+            entrance && !skeletonShown && "page-fade-in",
           )}
         >
           {data.customer && (
             <ContextChip
               href={`/traces?customer=${encodeURIComponent(
-                data.customer.customerId
+                data.customer.customerId,
               )}`}
               icon={(p) => (
                 <CustomerAvatar
@@ -221,7 +221,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
         <div
           className={cn(
             "flex flex-col gap-6 mt-1",
-            entrance && !skeletonShown && "page-fade-in"
+            entrance && !skeletonShown && "page-fade-in",
           )}
         >
           <div className="grid gap-8 lg:grid-cols-[180px_minmax(0,1fr)] mt-2 px-8">
@@ -271,7 +271,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
                         className={cn(
                           "ml-auto tabular-nums",
                           costShade(t.totalCost, costThresholds) ??
-                            "text-muted-foreground"
+                            "text-muted-foreground",
                         )}
                       >
                         {formatCost(t.totalCost)}
@@ -388,7 +388,7 @@ function TurnBlock({
           ? "border-rose-500"
           : isAborted
             ? "border-amber-500"
-            : "border-transparent"
+            : "border-transparent",
       )}
     >
       {/* Turn header: index, time, status, and a link to the full trace. */}
@@ -441,22 +441,22 @@ function TurnBlock({
       {turn.toolCalls.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pl-9">
           {turn.toolCalls.map((tc) => (
-            <Link
+            <Chip
               key={tc.name}
               href={`/traces/${encodeURIComponent(turn.traceId)}`}
               title={`View ${tc.name} in the trace`}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border bg-card/40 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground",
-                tc.errorCount > 0 &&
-                  "border-rose-500/40 text-rose-600 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-400"
-              )}
-            >
-              <IconTool className="size-3 shrink-0" />
-              <span className="truncate max-w-40 font-mono">{tc.name}</span>
-              {tc.count > 1 && (
-                <span className="tabular-nums">×{tc.count}</span>
-              )}
-            </Link>
+              tone={tc.errorCount > 0 ? "error" : "ok"}
+              icon={
+                <IconTool
+                  className={cn(
+                    "size-3 shrink-0 fill-current stroke-1 mb-px",
+                    tc.errorCount > 0 ? "text-current" : "text-blue-500",
+                  )}
+                />
+              }
+              label={<span className="font-mono">{tc.name}</span>}
+              trailing={tc.count > 1 ? `×${tc.count}` : undefined}
+            />
           ))}
         </div>
       )}
@@ -494,7 +494,7 @@ function Bubble({
       <div
         className={
           isUser
-            ? "min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl bg-card dark:bg-muted-foreground/20 shadow-(--custom-shadow) px-3 py-2.5"
+            ? "min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl bg-card dark:bg-muted-foreground/10 shadow-(--custom-shadow) px-3 py-2.5"
             : "min-w-0 flex-1 px-1 py-0"
         }
       >
@@ -613,7 +613,7 @@ function TurnSkeleton({ lines = 3 }: { lines?: number }) {
               key={i}
               className={cn(
                 "h-3.5",
-                i === lines - 1 ? "w-2/3" : i % 2 ? "w-11/12" : "w-full"
+                i === lines - 1 ? "w-2/3" : i % 2 ? "w-11/12" : "w-full",
               )}
             />
           ))}

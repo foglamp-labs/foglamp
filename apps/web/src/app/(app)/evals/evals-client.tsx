@@ -927,7 +927,7 @@ export function EvalsClient() {
                                 FAMILY_ICON[family]
                               )}
                             >
-                              <CheckIcon className="size-3 shrink-0" />
+                              <CheckIcon className="size-3 shrink-0 mb-px" />
                               <span className="truncate">
                                 {presetName(r.presetId)}
                               </span>

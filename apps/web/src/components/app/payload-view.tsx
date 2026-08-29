@@ -58,7 +58,7 @@ function JsonBlock({ data, className }: { data: unknown; className?: string }) {
       className={cn(
         base,
         "[&_pre]:m-0 [&_pre]:bg-transparent! [&_pre]:p-0 [&_pre]:whitespace-pre-wrap [&_pre]:wrap-anywhere",
-        className
+        className,
       )}
       // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted Shiki output
       dangerouslySetInnerHTML={{ __html: html }}
@@ -97,7 +97,7 @@ function ToolPart({
         // The top margin (on top of the parts container's gap) sets tool
         // traffic slightly apart from the prose that precedes it.
         "rounded-lg border bg-background/50 not-first:mt-1",
-        failed ? "border-rose-500/40 bg-rose-500/5" : "border-border/60"
+        failed ? "border-rose-500/40 bg-rose-500/5" : "border-border/60",
       )}
     >
       <button
@@ -107,13 +107,13 @@ function ToolPart({
           "flex w-full cursor-pointer items-center gap-1.5 px-2 py-1.5 text-left text-xs transition-colors",
           failed
             ? "text-rose-600 dark:text-rose-400"
-            : "text-muted-foreground hover:text-foreground"
+            : "text-muted-foreground hover:text-foreground",
         )}
       >
         <IconChevronRight
           className={cn(
             "size-3.5 shrink-0 transition-transform",
-            open && "rotate-90"
+            open && "rotate-90",
           )}
         />
         {failed ? (
@@ -127,7 +127,7 @@ function ToolPart({
         <span
           className={cn(
             "truncate font-medium",
-            failed ? "text-rose-600 dark:text-rose-400" : "text-foreground"
+            failed ? "text-rose-600 dark:text-rose-400" : "text-foreground",
           )}
         >
           {name}
@@ -138,7 +138,7 @@ function ToolPart({
           data={data}
           className={cn(
             "border-t",
-            failed ? "border-rose-500/30" : "border-border/60"
+            failed ? "border-rose-500/30" : "border-border/60",
           )}
         />
       )}
@@ -219,7 +219,7 @@ function MessageBlock({ message }: { message: Message }) {
       p.kind === "tool-call" ||
       p.kind === "tool-result" ||
       p.kind === "tool-error" ||
-      p.kind === "file"
+      p.kind === "file",
   );
   const body = (
     <div className="flex flex-col gap-1.5">
@@ -240,7 +240,7 @@ function MessageBlock({ message }: { message: Message }) {
           <IconChevronRight
             className={cn(
               "size-3 shrink-0 transition-transform",
-              expanded && "rotate-90"
+              expanded && "rotate-90",
             )}
           />
           {RoleIcon && (
@@ -256,7 +256,18 @@ function MessageBlock({ message }: { message: Message }) {
 
 /** Caps its content's height behind a "Show more". Without this a single 40k-token
  * system prompt renders in full and buries every message after it. */
-function ClampedBody({ children }: { children: React.ReactNode }) {
+export function ClampedBody({
+  children,
+  maxHeight = CLAMP_HEIGHT,
+  buttonClassName,
+}: {
+  children: React.ReactNode;
+  /** Pixel height past which the content folds behind "Show more". */
+  maxHeight?: number;
+  /** Extra classes for the fold button — e.g. `DRAWER_BUTTON_CLASS` when
+   * the body sits on a run drawer. */
+  buttonClassName?: string;
+}) {
   const [full, setFull] = useState(false);
   const [clamped, setClamped] = useState(false);
   const [inner, setInner] = useState<HTMLDivElement | null>(null);
@@ -264,17 +275,19 @@ function ClampedBody({ children }: { children: React.ReactNode }) {
     if (!inner) return;
     // Markdown and syntax highlighting both resolve asynchronously, so the
     // content's height isn't final on mount — watch it instead of measuring once.
-    const check = () => setClamped(inner.scrollHeight > CLAMP_HEIGHT + 8);
+    const check = () => setClamped(inner.scrollHeight > maxHeight + 8);
     check();
     const observer = new ResizeObserver(check);
     observer.observe(inner);
     return () => observer.disconnect();
-  }, [inner]);
+  }, [inner, maxHeight]);
   return (
     <div className="flex flex-col gap-1">
       <div
-        className="overflow-hidden"
-        style={full ? undefined : { maxHeight: CLAMP_HEIGHT }}
+        // The bleed (-m/p) keeps the children's outer shadow — the user
+        // bubble's 0.5px ring in light — from being clipped at the edges.
+        className="-m-1 overflow-hidden p-1"
+        style={full ? undefined : { maxHeight }}
       >
         <div ref={setInner}>{children}</div>
       </div>
@@ -283,7 +296,10 @@ function ClampedBody({ children }: { children: React.ReactNode }) {
           type="button"
           variant="secondary"
           size="sm"
-          className="mt-3 w-full text-muted-foreground hover:text-foreground"
+          className={cn(
+            "mt-3 w-full text-muted-foreground hover:text-foreground",
+            buttonClassName,
+          )}
           onClick={() => setFull((f) => !f)}
         >
           {/* text-current opts out of the Button variant's default icon
@@ -372,7 +388,7 @@ export function PayloadView({
           <IconChevronRight
             className={cn(
               "size-3 shrink-0 transition-transform",
-              showEarlier && "rotate-90"
+              showEarlier && "rotate-90",
             )}
           />
           {shared} earlier {shared === 1 ? "message" : "messages"}

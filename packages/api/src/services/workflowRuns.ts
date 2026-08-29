@@ -2,6 +2,9 @@ import {
 	type SortDir,
 	type WorkflowRunSortField,
 	type WorkflowSortField,
+	getCustomerDisplays,
+	getTraceRootInputs,
+	getWorkflowRunHeadlines,
 	listTracesByWorkflowRun,
 	listWorkflowRuns,
 	listWorkflows,
@@ -20,7 +23,11 @@ import {
 	toClickHouseDateTime,
 } from "../lib/util";
 import type { Ch, Db } from "../types";
+import { userMessageSnippet } from "../lib/user-message";
 import { requireProjectAccess } from "./access";
+
+// Same headline cap as the traces list (see services/traces.ts).
+const USER_MESSAGE_SNIPPET_CAP = 300;
 
 /**
  * Workflows grouped by name (the Workflows grid). `workflowName: null` is the
@@ -132,19 +139,44 @@ export async function getWorkflowRunList(
 		offset: input.offset,
 	});
 
-	return runs.map((r) => ({
-		workflowRunId: r.workflow_run_id,
-		workflowName: r.workflow_name || null,
-		startTime: r.run_start,
-		endTime: r.run_end,
-		durationMs: num(r.duration_ms),
-		traceCount: num(r.trace_count),
-		spanCount: num(r.span_count),
-		errorCount: num(r.error_count),
-		totalCost: decimalOrNull(r.total_cost),
-		pricedSpanCount: num(r.priced_span_count),
-		totalTokens: num(r.total_tokens),
-	}));
+	// Decorate the page with a headline: the run's first trace (its user message
+	// titles the row), last trace, and the agents in first-run order.
+	const headlines = await getWorkflowRunHeadlines(ch, {
+		projectId: input.projectId,
+		runIds: runs.map((r) => r.workflow_run_id),
+	});
+	const headlineByRun = new Map(headlines.map((h) => [h.workflow_run_id, h]));
+	const rootInputs = await getTraceRootInputs(ch, {
+		projectId: input.projectId,
+		traceIds: headlines.map((h) => h.first_trace_id).filter(Boolean),
+	});
+	const snippetByTrace = new Map(
+		rootInputs.map((r) => [
+			r.trace_id,
+			userMessageSnippet(r.input, USER_MESSAGE_SNIPPET_CAP),
+		]),
+	);
+
+	return runs.map((r) => {
+		const h = headlineByRun.get(r.workflow_run_id);
+		return {
+			workflowRunId: r.workflow_run_id,
+			workflowName: r.workflow_name || null,
+			userMessage: h ? (snippetByTrace.get(h.first_trace_id) ?? null) : null,
+			agentNames: h?.agent_names ?? [],
+			firstTraceId: h?.first_trace_id || null,
+			lastTraceId: h?.last_trace_id || null,
+			startTime: r.run_start,
+			endTime: r.run_end,
+			durationMs: num(r.duration_ms),
+			traceCount: num(r.trace_count),
+			spanCount: num(r.span_count),
+			errorCount: num(r.error_count),
+			totalCost: decimalOrNull(r.total_cost),
+			pricedSpanCount: num(r.priced_span_count),
+			totalTokens: num(r.total_tokens),
+		};
+	});
 }
 
 /** Stat-strip rollup over one workflow's runs in the window: totals + run-count,
@@ -230,9 +262,21 @@ export async function getWorkflowRunDetail(
 	await requireProjectAccess(db, userId, input.projectId);
 
 	const traces = await listTracesByWorkflowRun(ch, input);
+	// Decorate with customer display fields (name/avatar), like the traces list.
+	const customerIds = [...new Set(traces.map((r) => r.customer_id).filter(Boolean))];
+	const dims =
+		customerIds.length > 0
+			? await getCustomerDisplays(ch, { projectId: input.projectId, customerIds })
+			: [];
+	const customerById = new Map(dims.map((d) => [d.customer_id, d]));
 	return {
 		workflowRunId: input.workflowRunId,
 		traces: traces.map((r) => ({
+			sessionId: r.session_id || null,
+			customerId: r.customer_id || null,
+			customerName: customerById.get(r.customer_id)?.customer_name || null,
+			customerImageUrl: customerById.get(r.customer_id)?.customer_image_url || null,
+			models: r.models ?? [],
 			traceId: r.trace_id,
 			traceName: r.trace_name || null,
 			agentName: r.agent_name || null,

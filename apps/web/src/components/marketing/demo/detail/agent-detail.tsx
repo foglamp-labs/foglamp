@@ -1,22 +1,15 @@
 "use client";
 
+import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
+import { spanTypeIcon } from "@/components/app/span-type";
 import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@foglamp/ui/components/card";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@foglamp/ui/components/pagination";
 import {
   Table,
   TableBody,
@@ -32,16 +25,17 @@ import {
   IconAlertTriangleFilled,
   IconArrowUpRight,
   IconBoltFilled,
-  IconChevronRight,
   IconClockFilled,
   IconCoinFilled,
-  IconCpu,
+  IconSitemapFilled,
   IconTool,
+  IconAffiliateFilled,
 } from "@tabler/icons-react";
 import { Fragment, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import {
+  PaginationFooter,
   SortableHead,
   sortRows,
   useTableSort,
@@ -49,6 +43,16 @@ import {
 import { HeatCell } from "@/components/app/heat-cell";
 import { type FlowNode, NodeFlow } from "@/components/app/node-flow";
 import { StatCard } from "@/components/app/page-parts";
+import {
+  Bubble,
+  CustomerValue,
+  DrawerColumns,
+  DrawerRow,
+  ExpandChevron,
+  Meta,
+  ModelsValue,
+  OPEN_ROW_CLASS,
+} from "@/components/app/run-exchange";
 import {
   ChartLegend,
   formatBucketFull,
@@ -63,22 +67,23 @@ import { ModelLogo } from "@/components/model-logo";
 import {
   formatCost,
   formatCount,
+  formatDateTime,
   formatDuration,
   formatPercent,
   formatSpanDuration,
   formatTokens,
 } from "@/lib/format";
 
-import { DemoRange, DetailHeader } from "../demo-chrome";
+import { DemoRange, DemoSessionButton, DetailHeader } from "../demo-chrome";
 import { useDemo } from "../demo-context";
 import {
+  AGENTS,
   AGENT_FLOW,
   AGENT_SERIES,
   AGENT_TRACES,
-  AGENTS,
   type AgentTrace,
-  quintiles,
   TRACE_MESSAGES,
+  quintiles,
 } from "../mock-data";
 import {
   DemoCostBreakdownCard,
@@ -92,7 +97,7 @@ const bucketLabel = makeBucketLabel(WINDOW_MS);
 const edgeTick = makeEdgeTick(bucketLabel);
 const seriesTicks = thinTicks(
   AGENT_SERIES.map((d) => d.bucket),
-  bucketLabel
+  bucketLabel,
 );
 
 const volumeConfig = {
@@ -119,12 +124,21 @@ const latencyData = AGENT_SERIES.map((r) => ({
   p99Abs: r.p99,
 }));
 
-function stepIcon(spanType: string, modelId: string | null) {
-  if (spanType === "llm")
-    return <ModelLogo modelId={modelId} className="size-5" />;
+function stepIcon(
+  spanType: string,
+  modelId: string | null,
+  name: string | null,
+) {
+  if (spanType === "llm" && modelId)
+    return <ModelLogo modelId={modelId} className="size-3.5" />;
+  if (spanType === "agent")
+    return <AgentIcon name={name} className="size-3.25" />;
   if (spanType === "tool")
-    return <IconTool className="size-5 text-muted-foreground" />;
-  return <IconCpu className="size-5 text-muted-foreground" />;
+    return (
+      <IconTool className="size-3 shrink-0 fill-current stroke-1 text-blue-500 mb-px" />
+    );
+  const Icon = spanTypeIcon(spanType);
+  return <Icon className="size-3.5 text-muted-foreground" />;
 }
 
 const DURATION_QUANTILES = quintiles(AGENT_TRACES.map((t) => t.durationMs));
@@ -134,12 +148,12 @@ type TraceSortKey = "when" | "duration" | "tokens" | "spans" | "cost";
 
 export function AgentDetail({ agentName }: { agentName: string }) {
   const { closeDetail, openDetail } = useDemo();
+  const [pageSize, setPageSize] = useState(25);
   const agent = AGENTS.find((a) => a.name === agentName) ?? AGENTS[0]!;
 
   const [volumeSelected, setVolumeSelected] = useState<string | null>(null);
   const [latencySelected, setLatencySelected] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
-  // Which trace row is expanded to glimpse its input/output (by traceId).
+  // Which trace row is expanded into its drawer (steps + exchange).
   const [expanded, setExpanded] = useState<string | null>(null);
   const { sort, toggle } = useTableSort<TraceSortKey>();
 
@@ -151,22 +165,8 @@ export function AgentDetail({ agentName }: { agentName: string }) {
     cost: (t) => t.cost,
   });
 
-  // Default the flow to the most recent trace (list is newest-first).
-  const activeTraceId = selected ?? traceRows[0]?.traceId ?? null;
-  const activeTrace = traceRows.find((t) => t.traceId === activeTraceId);
-
   const errorRate = agent.errorCount / agent.spanCount;
   const llmSpanCount = Math.round(agent.spanCount * 0.62);
-
-  const nodes: FlowNode[] = AGENT_FLOW.map((s) => ({
-    id: s.id,
-    icon: stepIcon(s.type, s.type === "llm" ? s.sublabel : null),
-    label: s.label,
-    sublabel: s.type === "llm" ? s.sublabel : null,
-    status: s.status,
-    timestamp: s.timestamp,
-    durationMs: s.durationMs,
-  }));
 
   return (
     <>
@@ -323,64 +323,23 @@ export function AgentDetail({ agentName }: { agentName: string }) {
         <DemoToolBreakdownCard />
       </section>
 
-      {/* Step flow for the selected trace. */}
-      <div className="px-8">
-        <Card size="sm" className="pb-4">
-          <CardHeader>
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              Trace flow
-            </CardTitle>
-            {activeTrace && (
-              <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
-                <span>{formatCount(activeTrace.spans)} spans</span>
-                <span>·</span>
-                <span>{formatSpanDuration(activeTrace.durationMs)}</span>
-                <span>·</span>
-                <span>{formatCost(activeTrace.cost)}</span>
-                <span>·</span>
-                <span>{formatTokens(activeTrace.tokens)} tokens</span>
-                {activeTrace.errors ? (
-                  <Badge variant="rose" className="font-sans">
-                    <IconAlertTriangle />
-                    {formatCount(activeTrace.errors)}
-                    {activeTrace.errors === 1 ? "error" : "errors"}
-                  </Badge>
-                ) : null}
-              </CardDescription>
-            )}
-          </CardHeader>
-          <CardContent className="px-4 mt-3">
-            <NodeFlow nodes={nodes} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Traces table — click a row to drive the flow above. */}
+      {/* Traces table — click a row to open its drawer. */}
       <div className="flex flex-col gap-3 mt-4">
         <div className="flex flex-col gap-3">
           <TooltipProvider delay={150}>
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
                   <TableHead>Trace</TableHead>
-                  <TableHead>Workflow</TableHead>
+                  <TableHead className="w-44">Workflow</TableHead>
                   <SortableHead
                     sortKey="spans"
                     sort={sort}
                     onSort={toggle}
                     align="right"
-                    className="w-24"
+                    className="w-20"
                   >
                     Spans
-                  </SortableHead>
-                  <SortableHead
-                    sortKey="tokens"
-                    sort={sort}
-                    onSort={toggle}
-                    align="right"
-                    className="w-28"
-                  >
-                    Tokens
                   </SortableHead>
                   <SortableHead
                     sortKey="duration"
@@ -418,44 +377,29 @@ export function AgentDetail({ agentName }: { agentName: string }) {
                     <Fragment key={t.traceId}>
                       <TableRow
                         interactive
-                        className={cn(
-                          t.traceId === activeTraceId &&
-                            "bg-accent/60 dark:bg-accent/30",
-                          // Left accent bar on errored traces — scannable at a glance.
-                          t.errors &&
-                            "shadow-[inset_1px_0_0_0_var(--color-rose-500)]"
-                        )}
-                        onClick={() => {
-                          // Row click both drives the flow above and
-                          // toggles the input/output preview.
-                          setSelected(t.traceId);
-                          setExpanded(isOpen ? null : t.traceId);
-                        }}
+                        aria-expanded={isOpen}
+                        className={cn("group", isOpen && OPEN_ROW_CLASS)}
+                        onClick={() => setExpanded(isOpen ? null : t.traceId)}
                       >
-                        <TableCell>
+                        {/* Content-first, like the real table: the trace's
+                            opening user message. */}
+                        <TableCell className="h-12 font-normal">
                           <div className="flex items-center gap-2">
-                            <IconChevronRight
-                              className={cn(
-                                "size-3.5 transition-transform",
-                                isOpen && "rotate-90"
-                              )}
-                            />
-                            <span className="truncate font-medium">
-                              {t.name}
-                            </span>
+                            <ExpandChevron open={isOpen} />
+                            <span className="truncate">{t.userMessage}</span>
+                            {/* Compact error count — colored text, no pill. */}
                             {t.errors ? (
-                              <Badge
-                                variant="rose"
-                                className="shrink-0 font-sans ml-auto"
+                              <span
+                                title={`${t.errors} ${t.errors === 1 ? "error" : "errors"}`}
+                                className="flex shrink-0 items-center gap-0.75 font-sans text-sm text-red-600 dark:text-red-400"
                               >
-                                <IconAlertTriangle />
-                                {formatCount(t.errors)}
-                                {t.errors === 1 ? "error" : "errors"}
-                              </Badge>
+                                <IconAlertTriangle className="size-3.5 fill-current/20" />
+                                {t.errors}
+                              </span>
                             ) : null}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="max-w-0">
                           {t.workflow ? (
                             <button
                               type="button"
@@ -467,23 +411,16 @@ export function AgentDetail({ agentName }: { agentName: string }) {
                                 });
                               }}
                               title="View workflow"
+                              className="block max-w-full truncate text-muted-foreground transition-colors hover:text-foreground"
                             >
-                              <Badge
-                                variant="secondary"
-                                className="cursor-pointer transition-colors hover:bg-secondary/80"
-                              >
-                                {t.workflow}
-                              </Badge>
+                              {t.workflow}
                             </button>
                           ) : (
-                            "—"
+                            <span className="text-muted-foreground/40">—</span>
                           )}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {formatCount(t.spans)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {formatTokens(t.tokens)}
                         </TableCell>
                         <HeatCell
                           value={t.durationMs}
@@ -504,9 +441,7 @@ export function AgentDetail({ agentName }: { agentName: string }) {
                           {t.when}
                         </TableCell>
                       </TableRow>
-                      {isOpen && (
-                        <TracePreview traceId={t.traceId} colSpan={8} />
-                      )}
+                      {isOpen && <TraceDrawer trace={t} colSpan={6} />}
                     </Fragment>
                   );
                 })}
@@ -514,92 +449,157 @@ export function AgentDetail({ agentName }: { agentName: string }) {
             </Table>
           </TooltipProvider>
 
-          <div className="flex items-center justify-between px-1">
-            <span className="text-sm text-muted-foreground/50 tabular-nums">
-              Showing 1–{traceRows.length} of {formatCount(traceRows.length)}
-            </span>
-            <Pagination className="mx-0 w-auto justify-end">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    aria-disabled
-                    className="pointer-events-none opacity-50"
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink isActive>1</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    aria-disabled
-                    className="pointer-events-none opacity-50"
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
+          <PaginationFooter
+            page={0}
+            pageSize={pageSize}
+            total={traceRows.length}
+            shown={traceRows.length}
+            noun={["trace", "traces"]}
+            onPageChange={() => {}}
+            onPageSizeChange={setPageSize}
+            pageSizes={[25, 50, 100]}
+          />
         </div>
       </div>
     </>
   );
 }
 
-/** Expanded row: shows a glimpse of the run's input/output plus a deep link
- * into the full trace. Mirrors the real page's TracePreview. */
-function TracePreview({
-  traceId,
+/** Expanded row: the trace's overview on the left (timing, size, cost,
+ * customer, models), its step flow and exchange on the right. Mirrors the real
+ * page's TraceDrawer. */
+function TraceDrawer({
+  trace,
   colSpan,
 }: {
-  traceId: string;
+  trace: AgentTrace;
   colSpan: number;
 }) {
   const { openDetail } = useDemo();
   const input = TRACE_MESSAGES.find((m) => m.role === "user")?.content;
   const output = TRACE_MESSAGES.find((m) => m.role === "assistant")?.content;
 
+  const nodes: FlowNode[] = AGENT_FLOW.map((s) => ({
+    id: s.id,
+    icon: stepIcon(s.type, s.type === "llm" ? s.sublabel : null, s.label),
+    label: s.label,
+    sublabel: s.type === "llm" ? s.sublabel : null,
+    status: s.status,
+    timestamp: s.timestamp,
+    durationMs: s.durationMs,
+  }));
+
   return (
-    <TableRow className="hover:bg-transparent">
-      <TableCell colSpan={colSpan} className="bg-muted/30 p-0">
-        <div className="flex flex-col gap-3 p-4">
-          <div className="flex items-center justify-end">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => openDetail({ type: "trace", id: traceId })}
-            >
-              See full trace
-              <IconArrowUpRight />
-            </Button>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Glimpse label="Input" value={input} />
-            <Glimpse label="Output" value={output} />
-          </div>
+    <DrawerRow colSpan={colSpan} className="pt-6">
+      <DrawerColumns
+        overview={
+          <>
+            {trace.errors ? (
+              <div className="flex h-5 items-center">
+                <Badge variant="rose" className="font-sans">
+                  <IconAlertTriangle />
+                  {formatCount(trace.errors)}
+                  {trace.errors === 1 ? " error" : " errors"}
+                </Badge>
+              </div>
+            ) : null}
+            <div className="grid grid-cols-2 gap-4">
+              <Meta label="Started" value={formatDateTime(trace.startedAt)} />
+              <Meta
+                label="Duration"
+                value={formatSpanDuration(trace.durationMs)}
+              />
+              <Meta label="Spans" value={formatCount(trace.spans)} />
+              <Meta label="Tokens" value={formatTokens(trace.tokens)} />
+              <Meta label="Cost" value={formatCost(trace.cost, 4)} />
+              <Meta
+                label="Customer"
+                value={
+                  <CustomerValue
+                    customerId={trace.customer}
+                    customerName={trace.customer}
+                  />
+                }
+              />
+              <Meta
+                label={trace.models.length === 1 ? "Model" : "Models"}
+                className="col-span-2"
+                value={<ModelsValue models={trace.models} />}
+              />
+              {trace.workflow && (
+                <Meta
+                  label="Workflow"
+                  className="col-span-2"
+                  value={
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openDetail({ type: "workflow", id: trace.workflow! })
+                      }
+                      className="flex min-w-0 max-w-full items-center gap-1.5"
+                    >
+                      <IconSitemapFilled className="size-3.5 shrink-0 text-emerald-500" />
+                      <span className="truncate">{trace.workflow}</span>
+                      <IconArrowUpRight className="size-3.5 shrink-0 text-muted-foreground" />
+                    </button>
+                  }
+                />
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2.5 mt-3">
+              <Button
+                size="sm"
+                variant="secondary"
+                className={cn("w-fit", DRAWER_BUTTON_CLASS)}
+                onClick={() => openDetail({ type: "trace", id: trace.traceId })}
+              >
+                <IconAffiliateFilled className="text-[#8b5e34] dark:text-[#c9a888]" />
+                See trace
+                <IconArrowUpRight className="mt-px" />
+              </Button>
+              {trace.sessionId && (
+                <DemoSessionButton
+                  onClick={() =>
+                    openDetail({ type: "session", id: trace.sessionId! })
+                  }
+                />
+              )}
+            </div>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-5">
+          <DrawerSection label="Steps">
+            <NodeFlow
+              nodes={nodes}
+              onNodeClick={() =>
+                openDetail({ type: "trace", id: trace.traceId })
+              }
+            />
+          </DrawerSection>
+          <DrawerSection label="Exchange">
+            <div className="flex flex-col gap-4">
+              {input ? <Bubble who="user" text={input} /> : null}
+              {output ? <Bubble who="assistant" text={output} /> : null}
+            </div>
+          </DrawerSection>
         </div>
-      </TableCell>
-    </TableRow>
+      </DrawerColumns>
+    </DrawerRow>
   );
 }
 
-function Glimpse({
+function DrawerSection({
   label,
-  value,
+  children,
 }: {
   label: string;
-  value: string | null | undefined;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      {value ? (
-        <div className="max-h-64 overflow-x-hidden overflow-y-auto rounded-md bg-muted p-2.5">
-          <p className="text-[13px] whitespace-pre-wrap wrap-break-word">
-            {value}
-          </p>
-        </div>
-      ) : (
-        <span className="text-sm text-muted-foreground">—</span>
-      )}
+    <div className="flex flex-col gap-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      {children}
     </div>
   );
 }

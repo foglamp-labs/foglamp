@@ -121,9 +121,7 @@ export function PageHeader({
       </div>
       {actions && (
         // Nudge actions down so the picker lines up with the title text.
-        <div className="flex items-center gap-2 translate-y-1">
-          {actions}
-        </div>
+        <div className="flex items-center gap-2 translate-y-1">{actions}</div>
       )}
     </div>
   );
@@ -259,7 +257,7 @@ export function StatCard({
                 cards. */}
             <span className="truncate text-sm text-foreground">{label}</span>
           </div>
-          <div className="flex shrink-0 items-center gap-2.25">
+          <div className="flex shrink-0 items-center gap-1.5">
             {hold
               ? null
               : delta && <DeltaBadge delta={delta} inverted={deltaInverted} />}

@@ -239,7 +239,7 @@ export function OverviewTab() {
 			<section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 px-8 mt-1">
 				<StatCard
 					icon={IconCirclesFilled}
-					iconClassName="text-blue-500 dark:text-blue-500"
+					iconClassName="text-sky-400 dark:text-sky-500"
 					label={KPIS[0]!.label}
 					size="sm"
 					value={KPIS[0]!.value}
@@ -248,13 +248,13 @@ export function OverviewTab() {
 					chart={
 						<CardSparkline
 							data={OVERVIEW_SERIES.map((d) => d.tokens)}
-							className="text-blue-400/50 dark:text-blue-600/50"
+							className="text-blue-400/50 dark:text-sky-600/40"
 						/>
 					}
 				/>
 				<StatCard
 					icon={IconCoinFilled}
-					iconClassName="text-yellow-400 dark:text-yellow-500"
+					iconClassName="text-amber-400 dark:text-yellow-500"
 					label={KPIS[1]!.label}
 					size="sm"
 					value={KPIS[1]!.value}
@@ -264,13 +264,13 @@ export function OverviewTab() {
 					chart={
 						<CardSparkline
 							data={OVERVIEW_SERIES.map((d) => d.cost)}
-							className="text-yellow-400/50 dark:text-yellow-600/50"
+							className="text-yellow-400/50 dark:text-yellow-500/35"
 						/>
 					}
 				/>
 				<StatCard
 					icon={IconGaugeFilled}
-					iconClassName="text-fuchsia-500 dark:text-fuchsia-500"
+					iconClassName="text-fuchsia-400 dark:text-fuchsia-500"
 					label={KPIS[2]!.label}
 					size="sm"
 					value={KPIS[2]!.value}
@@ -285,7 +285,7 @@ export function OverviewTab() {
 				/>
 				<StatCard
 					icon={IconAlertTriangleFilled}
-					iconClassName="text-red-500 dark:text-red-600"
+					iconClassName="text-red-500/90 dark:text-red-600/95 mt-px"
 					label={KPIS[3]!.label}
 					size="sm"
 					value={KPIS[3]!.value}

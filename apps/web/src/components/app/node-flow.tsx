@@ -1,38 +1,78 @@
 "use client";
 
-import { Badge } from "@foglamp/ui/components/badge";
-import { Button } from "@foglamp/ui/components/button";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
+import { IconChevronRight } from "@tabler/icons-react";
+import { Fragment } from "react";
 
-import {
-	formatDateTime,
-	formatDuration,
-	formatSpanDuration,
-} from "@/lib/format";
+import { Chip } from "@/components/app/context-chip";
+
+import { formatDateTime, formatSpanDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type FlowNode = {
 	/** Stable key. */
 	id: string;
-	/** Brand/type icon shown in the box (e.g. <ModelLogo /> or a tabler icon). */
+	/** Brand/type icon shown in the chip (e.g. <ModelLogo /> or a tabler icon). */
 	icon: React.ReactNode;
-	/** Pill text — the step/agent name. */
+	/** Chip text — the step/agent name. */
 	label: string;
-	/** Optional muted second line (e.g. model id). */
+	/** Optional muted second line (e.g. model id); shown in the tooltip. */
 	sublabel?: string | null;
-	/** Drives the pill colour. `aborted` (amber) is a clean cancellation. */
+	/** Drives the chip tint. Only failures are coloured — `ok` stays neutral. */
 	status: "ok" | "error" | "aborted";
-	/** ClickHouse datetime / ISO string; rendered as a timestamp under the pill. */
+	/** ClickHouse datetime / ISO string; shown in the tooltip. */
 	timestamp: string;
-	/** Optional duration (ms) shown next to the timestamp. */
+	/** Optional duration (ms) shown inline after the label. */
 	durationMs?: number | null;
 };
 
+/** A run of consecutive identical steps collapsed to one `×N` chip — the same
+ * fold the trace waterfall applies to repeated siblings, so a tool loop reads
+ * as one step instead of thirty. */
+type FlowStep = {
+	head: FlowNode;
+	count: number;
+	durationMs: number | null;
+	status: FlowNode["status"];
+};
+
+function groupNodes(nodes: FlowNode[]): FlowStep[] {
+	const steps: FlowStep[] = [];
+	for (const node of nodes) {
+		const prev = steps[steps.length - 1];
+		if (
+			prev &&
+			prev.head.label === node.label &&
+			(prev.head.sublabel ?? null) === (node.sublabel ?? null)
+		) {
+			prev.count += 1;
+			prev.durationMs =
+				node.durationMs == null
+					? prev.durationMs
+					: (prev.durationMs ?? 0) + node.durationMs;
+			// A single failure tints the whole fold.
+			if (node.status === "error") prev.status = "error";
+			else if (node.status === "aborted" && prev.status === "ok")
+				prev.status = "aborted";
+			continue;
+		}
+		steps.push({
+			head: node,
+			count: 1,
+			durationMs: node.durationMs ?? null,
+			status: node.status,
+		});
+	}
+	return steps;
+}
+
 /**
- * A horizontal flow of nodes — icon boxes joined by lines, with a status-coloured
- * pill and timestamp under each. Used for a workflow run's agent steps and an
- * agent trace's LLM/tool steps. Scrolls horizontally when it overflows. When
- * `onNodeClick` is given, the icon/label area is a button.
+ * A run's steps as a wrapping strip of chips joined by chevrons — the same
+ * chip vocabulary as the exchange's tool chips and the waterfall's type chips,
+ * so it reads as part of the drawer rather than a diagram dropped into it.
+ * Neutral by default; only errors (rose) and aborts (amber) are tinted.
+ * Consecutive identical steps fold to `×N`. Hovering a chip shows its start
+ * time and sublabel; when `onNodeClick` is given each chip is a button.
  */
 export function NodeFlow({
 	nodes,
@@ -42,124 +82,80 @@ export function NodeFlow({
 	onNodeClick?: (id: string) => void;
 }) {
 	if (nodes.length === 0) return null;
+	const steps = groupNodes(nodes);
 	return (
-		<div className="overflow-x-auto pb-2">
-			<div className="flex w-max min-w-full items-start">
-				{nodes.map((node, i) => {
-					const column = (
-						<>
-							{/* Icon box with a connector line stub on each side (the first
-                  node hides its left stub, the last its right) so adjacent
-                  boxes read as joined regardless of horizontal scroll. */}
-							<div className="relative flex w-full items-center justify-center">
-								{i > 0 && (
-									<div className="absolute top-1/2 right-1/2 -left-1 h-px -translate-y-1/2 bg-border" />
-								)}
-								{i < nodes.length - 1 && (
-									<div className="absolute top-1/2 -right-1 left-1/2 h-px -translate-y-1/2 bg-border" />
-								)}
-								<div
-									className={cn(
-										"relative flex size-12 items-center dark:text-emerald-600 text-emerald-400 justify-center rounded-lg squircle:rounded-3xl corner-squircle border dark:bg-background bg-neutral-50",
-										node.status === "error" &&
-											"border-rose-500/40 dark:text-rose-600 text-rose-400",
-										node.status === "aborted" &&
-											"border-amber-500/40 dark:text-amber-600 text-amber-400",
-									)}
-								>
+		<div className="flex flex-wrap items-center gap-y-1.5">
+			{steps.map((step, i) => {
+				const node = step.head;
+				const title = [
+					step.count > 1 ? `${step.count} × ${node.label}` : node.label,
+					node.sublabel,
+					formatDateTime(node.timestamp),
+				]
+					.filter(Boolean)
+					.join(" · ");
+				return (
+					<Fragment key={node.id}>
+						{i > 0 && (
+							<IconChevronRight className="mx-1 size-3 shrink-0 text-muted-foreground/50" />
+						)}
+						<Chip
+							title={title}
+							tone={step.status}
+							onClick={onNodeClick ? () => onNodeClick(node.id) : undefined}
+							icon={
+								<span className="flex shrink-0 items-center justify-center *:not-[[class*=size-]]:size-3.25">
 									{node.icon}
-								</div>
-							</div>
-
-							<Badge
-								variant={
-									node.status === "error"
-										? "rose"
-										: node.status === "aborted"
-											? "amber"
-											: "emerald"
-								}
-								className="max-w-full mt-0.5"
-							>
-								<span className="truncate">{node.label}</span>
-							</Badge>
-
-							{node.sublabel && (
-								<span className="max-w-full truncate text-[10px] text-muted-foreground">
-									{node.sublabel}
 								</span>
-							)}
-
-							<span className="text-center text-[10px] text-muted-foreground/70 tabular-nums mt-0.5">
-								{formatDateTime(node.timestamp)}
-								<br />
-								{node.durationMs != null && (
-									<>{formatSpanDuration(node.durationMs)}</>
-								)}
-							</span>
-						</>
-					);
-
-					const base = "flex w-32 shrink-0 flex-col items-center gap-2 px-1";
-					const inner = "flex w-full flex-col items-center gap-2";
-					return (
-						<div key={node.id} className={base}>
-							{onNodeClick ? (
-								<button
-									type="button"
-									onClick={() => onNodeClick(node.id)}
-									className={cn(
-										inner,
-										"rounded-lg py-1 hover:bg-accent/80 dark:hover:bg-accent/50 cursor-pointer",
-									)}
-								>
-									{column}
-								</button>
-							) : (
-								<div className={inner}>{column}</div>
-							)}
-						</div>
-					);
-				})}
-			</div>
+							}
+							label={
+								step.count > 1 ? (
+									<>
+										<span className="tabular-nums text-muted-foreground">
+											×{step.count}{" "}
+										</span>
+										{node.label}
+									</>
+								) : (
+									node.label
+								)
+							}
+							trailing={
+								step.durationMs != null
+									? formatSpanDuration(step.durationMs)
+									: undefined
+							}
+						/>
+					</Fragment>
+				);
+			})}
 		</div>
 	);
 }
 
 /**
- * Loading placeholder shaped like {@link NodeFlow} — same column width, icon
- * box, connector lines, pill, and timestamp — so swapping it in for a loading
- * run doesn't shift the layout or flicker the card height. `count` should track
- * the run's trace count when known so the skeleton's width roughly matches the
- * flow that's about to replace it.
+ * Loading placeholder shaped like {@link NodeFlow}: a row of chip-sized
+ * skeletons joined by chevrons, so swapping in the real flow doesn't shift
+ * the drawer. `count` should track the run's step count when known.
  */
 export function NodeFlowSkeleton({ count = 3 }: { count?: number }) {
+	const widths = ["w-24", "w-32", "w-20", "w-28", "w-24", "w-36"];
 	return (
-		<div className="overflow-x-auto pb-2">
-			<div className="flex w-max min-w-full items-start">
-				{Array.from({ length: Math.max(1, count) }, (_, i) => (
-					<div
-						// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder
-						key={i}
-						className="flex w-32 shrink-0 flex-col items-center gap-2 px-1 py-1"
-					>
-						<div className="relative flex w-full items-center justify-center">
-							{i > 0 && (
-								<div className="absolute top-1/2 right-1/2 -left-1 h-px -translate-y-1/2 bg-border" />
-							)}
-							{i < count - 1 && (
-								<div className="absolute top-1/2 -right-1 left-1/2 h-px -translate-y-1/2 bg-border" />
-							)}
-							<div className="relative flex size-12 items-center justify-center rounded-xl border bg-background shadow-(--custom-shadow)">
-								<Skeleton className="size-5 rounded-md squircle:rounded-md" />
-							</div>
-						</div>
-						<Skeleton className="h-5.5 w-20 rounded-md squircle:rounded-md mt-0.5" />
-						<Skeleton className="h-3 w-16 rounded-sm squircle:rounded-sm" />
-						<Skeleton className="h-1.5 w-8 rounded-sm squircle:rounded-sm mt-0.5" />
-					</div>
-				))}
-			</div>
+		<div className="flex flex-wrap items-center gap-y-1.5">
+			{Array.from({ length: Math.max(1, count) }, (_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder
+				<Fragment key={i}>
+					{i > 0 && (
+						<IconChevronRight className="mx-1 size-3 shrink-0 text-muted-foreground/30" />
+					)}
+					<Skeleton
+						className={cn(
+							"h-6 rounded-full bg-muted-foreground/15",
+							widths[i % widths.length],
+						)}
+					/>
+				</Fragment>
+			))}
 		</div>
 	);
 }

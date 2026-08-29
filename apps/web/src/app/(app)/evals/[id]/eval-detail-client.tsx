@@ -39,25 +39,21 @@ import {
   IconGauge,
   IconGaugeFilled,
   IconScaleFilled,
-  IconGhostFilled,
   IconPencilFilled,
   IconPercentage,
   IconScissors,
-  IconTool,
   IconStack2Filled,
   IconTargetArrow,
-  IconUserFilled,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Streamdown } from "streamdown";
 
 import { AgentIcon } from "@/components/app/agent-icon";
+import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import { ContextChip } from "@/components/app/context-chip";
-import { CopyButton } from "@/components/app/copy-button";
 import {
   PaginationFooter,
   SortableHead,
@@ -69,8 +65,8 @@ import {
   useEntranceOnce,
   useSkeletonShown,
 } from "@/components/app/hooks";
-import { markdownComponents } from "@/components/app/markdown";
 import { navItem } from "@/components/app/nav";
+import { ClampedBody } from "@/components/app/payload-view";
 import {
   EmptyState,
   NoProject,
@@ -79,11 +75,18 @@ import {
   TableRowsSkeleton,
 } from "@/components/app/page-parts";
 import {
-  type Message,
-  type Part,
-  fromHumanized,
-  toMessages,
-} from "@/components/app/payload-messages";
+  Bubble,
+  Conversation,
+  ConversationSkeleton,
+  DrawerColumns,
+  DrawerRow,
+  ExpandChevron,
+  FOCUSED_ROW_CLASS,
+  Meta,
+  OPEN_ROW_CLASS,
+  Transcript,
+  emptyOutputHint,
+} from "@/components/app/run-exchange";
 import { useProject } from "@/components/app/project-context";
 import { formatModelName, ModelLogo } from "@/components/model-logo";
 import { useRange } from "@/components/app/range-context";
@@ -250,11 +253,11 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
         toast.success("Eval updated");
       },
       onError: (e) => toast.error(e.message),
-    })
+    }),
   );
 
   const configuredProviders = new Set(
-    (providerKeys.data?.keys ?? []).map((k) => k.provider)
+    (providerKeys.data?.keys ?? []).map((k) => k.provider),
   );
 
   // Seed the draft from the current eval, then open the dialog.
@@ -342,7 +345,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
     const scored = buckets.reduce((n, b) => n + b.scoredCount, 0);
     const scoreSum = buckets.reduce(
       (n, b) => n + (b.avgScore ?? 0) * b.scoredCount,
-      0
+      0,
     );
     const cost = buckets.reduce((n, b) => n + (b.cost ?? 0), 0);
     return {
@@ -357,7 +360,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
   // so thresholds are relative to the visible page).
   const spendThresholds = useMemo(
     () => quintiles(scores.map((s) => s.cost ?? 0)),
-    [scores]
+    [scores],
   );
 
   const back = navItem("/evals");
@@ -388,7 +391,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
       <div
         className={cn(
           "mt-1 flex flex-wrap items-center justify-between gap-2 text-xs px-7",
-          entrance && "page-fade-in"
+          entrance && "page-fade-in",
         )}
       >
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -398,7 +401,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                 icon={CheckIcon}
                 iconClassName={cn(
                   "mb-px",
-                  FAMILY_ICON[presetMeta(ev.presetId).family]
+                  FAMILY_ICON[presetMeta(ev.presetId).family],
                 )}
                 label={checkName}
               />
@@ -466,7 +469,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
       <div
         className={cn(
           "grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-7",
-          entrance && "page-fade-in"
+          entrance && "page-fade-in",
         )}
       >
         <StatCard
@@ -513,7 +516,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
           <div
             className={cn(
               "px-7",
-              entrance && !recentSkeletonShown && "page-fade-in"
+              entrance && !recentSkeletonShown && "page-fade-in",
             )}
           >
             <EmptyState
@@ -529,7 +532,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
           <div
             className={cn(
               "flex flex-col",
-              entrance && !recentSkeletonShown && "page-fade-in"
+              entrance && !recentSkeletonShown && "page-fade-in",
             )}
           >
             <Table className="table-fixed" stickyHeader>
@@ -569,26 +572,17 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                           className={cn(
                             "group",
                             // Open row + drawer read as one unit: no divider between them.
-                            isOpen &&
-                              "border-b-0 bg-card data-interactive:hover:bg-card",
+                            isOpen && OPEN_ROW_CLASS,
                             // Deep-linked run: a soft tint (same as a selected
                             // preset card) rather than an edge bar.
-                            isFocused &&
-                              "bg-primary/5 dark:bg-primary/10 data-interactive:hover:bg-primary/10 dark:data-interactive:hover:bg-primary/15"
+                            isFocused && FOCUSED_ROW_CLASS,
                           )}
                         >
                           {/* Content-first, like the traces list: the trace's user
                             message, falling back to the id. */}
                           <TableCell className="h-12 font-normal">
                             <div className="flex items-center gap-2">
-                              {/* Expand affordance (agents page convention): muted chevron
-                                that brightens on hover and turns when open. */}
-                              <IconChevronRight
-                                className={cn(
-                                  "size-3.5 shrink-0 text-muted-foreground/50 transition-[transform,color] group-hover:text-muted-foreground",
-                                  isOpen && "rotate-90 text-muted-foreground"
-                                )}
-                              />
+                              <ExpandChevron open={isOpen} />
                               <span className="truncate">
                                 {s.userMessage ?? s.traceId}
                               </span>
@@ -602,7 +596,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                                   "inline-flex items-center gap-1 text-sm font-medium",
                                   s.passed
                                     ? "text-emerald-600 dark:text-emerald-400"
-                                    : "text-rose-600 dark:text-rose-400"
+                                    : "text-rose-600 dark:text-rose-400",
                                 )}
                               >
                                 {s.passed ? (
@@ -630,7 +624,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                                 className={cn(
                                   s.passed !== null && !s.passed
                                     ? "text-rose-600 dark:text-rose-400"
-                                    : "text-muted-foreground"
+                                    : "text-muted-foreground",
                                 )}
                               >
                                 {s.score.toFixed(2)}
@@ -751,7 +745,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                 }) ||
                 !!promptOverrideError(
                   ev ? { id: ev.presetId, source: ev.scorerSource } : null,
-                  draft.promptOverride
+                  draft.promptOverride,
                 ) ||
                 (isJudge && !!passThresholdError(draft.passThreshold))
               }
@@ -779,14 +773,9 @@ function ScoreDetail({
   colSpan: number;
 }) {
   return (
-    <TableRow className="hover:bg-transparent">
-      {/* px-8 matches the row cells' inset so the drawer's content lines up
-          with the row text; the hairline + tint make it read as a drawer
-          under the open row. */}
-      <TableCell colSpan={colSpan} className="bg-card px-8 pt-2 pb-8">
-        <RunExchange score={score} projectId={projectId} />
-      </TableCell>
-    </TableRow>
+    <DrawerRow colSpan={colSpan} className="pt-6">
+      <RunExchange score={score} projectId={projectId} />
+    </DrawerRow>
   );
 }
 
@@ -801,7 +790,7 @@ function RunExchange({
   projectId: string;
 }) {
   const detail = useQuery(
-    trpc.traces.get.queryOptions({ projectId, traceId: score.traceId })
+    trpc.traces.get.queryOptions({ projectId, traceId: score.traceId }),
   );
   const spans = detail.data?.spans ?? [];
   // Span score → that exact span; trace score → the root span (whole run).
@@ -817,26 +806,24 @@ function RunExchange({
   const judged = score.scorer === "llm" && score.label !== "skipped";
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-      <Judgment score={score} showReason={!judged} />
-      <div className="min-w-0 flex-1">
-        {judged ? (
-          <JudgeInput score={score} />
-        ) : detail.isLoading ? (
-          <ConversationSkeleton />
-        ) : !glimpse ? (
-          <span className="text-xs text-muted-foreground">
-            Trace payload unavailable.
-          </span>
-        ) : (
-          <Conversation
-            input={glimpse.input}
-            output={glimpse.output}
-            emptyHint={emptyOutputHint(spans)}
-          />
-        )}
-      </div>
-    </div>
+    <DrawerColumns overview={<Judgment score={score} showReason={!judged} />}>
+      {judged ? (
+        <JudgeInput score={score} />
+      ) : detail.isLoading ? (
+        <ConversationSkeleton />
+      ) : !glimpse ? (
+        <span className="text-xs text-muted-foreground">
+          Trace payload unavailable.
+        </span>
+      ) : (
+        <Conversation
+          input={glimpse.input}
+          output={glimpse.output}
+          emptyHint={emptyOutputHint(spans)}
+          clamp={ROW_CLAMP_HEIGHT}
+        />
+      )}
+    </DrawerColumns>
   );
 }
 
@@ -852,7 +839,7 @@ function JudgeInput({ score }: { score: BaseScoreRow }) {
     trpc.evals.judgeInput.queryOptions({
       evalId: score.evalId,
       scoreId: score.scoreId,
-    })
+    }),
   );
   if (q.isLoading) return <JudgeInputSkeleton />;
   const d = q.data;
@@ -897,7 +884,7 @@ function JudgeInput({ score }: { score: BaseScoreRow }) {
               reason={seg.field === "output" ? reason : undefined}
             />
           </JudgeSection>
-        )
+        ),
       )}
 
       <details className="group/raw">
@@ -912,6 +899,11 @@ function JudgeInput({ score }: { score: BaseScoreRow }) {
     </div>
   );
 }
+
+// Roughly ten lines of 13px relaxed text. Past this an expanded row's input
+// or output folds behind a "Show more" (the trace inspector's) instead of
+// pushing the rest of the table off the screen.
+const ROW_CLAMP_HEIGHT = 220;
 
 const FIELD_LABEL = {
   input: "Input",
@@ -963,7 +955,13 @@ function JudgeField({
       </p>
     );
   }
-  if (field === "input") return <Transcript input={text} />;
+  if (field === "input") {
+    return (
+      <ClampedBody maxHeight={ROW_CLAMP_HEIGHT}>
+        <Transcript input={text} />
+      </ClampedBody>
+    );
+  }
   if (field === "output") {
     return (
       <div className="flex flex-col gap-4">
@@ -978,7 +976,9 @@ function JudgeField({
             </p>
           </div>
         )}
-        <Bubble who="assistant" text={text} />
+        <ClampedBody maxHeight={ROW_CLAMP_HEIGHT}>
+          <Bubble who="assistant" text={text} />
+        </ClampedBody>
       </div>
     );
   }
@@ -986,23 +986,6 @@ function JudgeField({
     <pre className="max-h-96 overflow-auto whitespace-pre-wrap wrap-break-word rounded-lg border bg-muted/30 p-3 text-xs leading-relaxed">
       {text}
     </pre>
-  );
-}
-
-function Meta({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="min-w-0 text-[13px] tabular-nums">{value}</span>
-    </div>
   );
 }
 
@@ -1019,14 +1002,12 @@ function Judgment({
   const isSpan = score.targetType === "span";
   const href = isSpan
     ? `/traces/${encodeURIComponent(score.traceId)}?span=${encodeURIComponent(
-        score.targetId
+        score.targetId,
       )}`
     : `/traces/${encodeURIComponent(score.traceId)}`;
   const showCost = score.cost != null && score.cost > 0;
   return (
-    // w-88 + the 2rem column gap = the table's w-96 Run column, so the
-    // conversation starts under the Verdict cell above it.
-    <div className="flex shrink-0 flex-col gap-4 lg:w-88">
+    <>
       <div className="flex flex-col gap-2">
         <div className="flex h-5 flex-wrap items-center gap-2">
           {/* Same plain verdict/score treatment as the table cell. */}
@@ -1036,7 +1017,7 @@ function Judgment({
                 "inline-flex items-center gap-1 text-sm font-medium",
                 score.passed
                   ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-rose-600 dark:text-rose-400"
+                  : "text-rose-600 dark:text-rose-400",
               )}
             >
               {score.passed ? (
@@ -1055,7 +1036,7 @@ function Judgment({
                   ? "text-emerald-600 dark:text-emerald-400"
                   : score.score < 0.5
                     ? "text-rose-600 dark:text-rose-400"
-                    : "text-foreground"
+                    : "text-foreground",
               )}
             >
               {score.score.toFixed(2)}
@@ -1108,182 +1089,18 @@ function Judgment({
       <Button
         size="sm"
         variant="secondary"
-        className="w-fit"
+        className={cn("w-fit mt-3", DRAWER_BUTTON_CLASS)}
         // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
         render={<Link href={href as any} />}
       >
-        See full trace
-        <IconArrowUpRight />
+        <IconAffiliateFilled className="text-[#8b5e34] dark:text-[#c9a888]" />
+        See trace
+        <IconArrowUpRight className="mt-px" />
       </Button>
-    </div>
+    </>
   );
 }
 
-/** The scored exchange as a conversation. Earlier history folds behind a
- * disclosure so the drawer opens on the latest user turn and the answer;
- * payloads that aren't message-shaped fall back to the raw viewer. */
-function Conversation({
-  input,
-  output,
-  emptyHint,
-}: {
-  input: string | null | undefined;
-  output: string | null | undefined;
-  emptyHint: string;
-}) {
-  const outMessages = useMemo(
-    () => (output ? toMessages(output) : null),
-    [output]
-  );
-  // A payload that is not JSON is prose (the SDK stores plain strings
-  // verbatim) — a bubble, not the raw viewer.
-  const outputText = outMessages
-    ? messagesText(outMessages)
-    : (output?.trim() ?? "");
-
-  return (
-    <div className="flex flex-col gap-4">
-      {input ? <Transcript input={input} /> : null}
-      {outputText ? (
-        <Bubble who="assistant" text={outputText} />
-      ) : (
-        <div className="flex gap-3">
-          <Avatar who="assistant" />
-          <p className="inline-flex items-center gap-1.5 px-1 text-sm text-muted-foreground italic">
-            <IconTool className="size-3.5 shrink-0 text-muted-foreground/60" />
-            {emptyHint}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** The input side of an exchange: message-shaped payloads become turns with
- * everything before the latest user message folded away; anything else is a
- * single user bubble. */
-function Transcript({ input }: { input: string }) {
-  const messages = useMemo(
-    () => toMessages(input) ?? fromHumanized(input),
-    [input]
-  );
-  if (!messages) return <Bubble who="user" text={input} />;
-  let lastUser = -1;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i]?.role === "user") {
-      lastUser = i;
-      break;
-    }
-  }
-  const history = lastUser > 0 ? messages.slice(0, lastUser) : [];
-  const current = messages.slice(Math.max(0, lastUser));
-  return (
-    <div className="flex flex-col gap-4">
-      {history.length > 0 && (
-        <details className="group/history">
-          <summary className="flex h-5 cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
-            <IconChevronRight className="size-3.5 transition-transform group-open/history:rotate-90" />
-            {history.length} earlier{" "}
-            {history.length === 1 ? "message" : "messages"}
-          </summary>
-          <div className="mt-4 flex flex-col gap-4">
-            {history.map((m, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: positional transcript
-              <Turn key={i} message={m} />
-            ))}
-          </div>
-        </details>
-      )}
-      {current.map((m, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: positional transcript
-        <Turn key={i} message={m} />
-      ))}
-    </div>
-  );
-}
-
-function partsText(parts: Part[]): string {
-  return parts
-    .filter((p): p is Extract<Part, { kind: "text" }> => p.kind === "text")
-    .map((p) => p.text)
-    .join("\n\n")
-    .trim();
-}
-function messagesText(messages: Message[]): string {
-  return messages
-    .filter((m) => m.role !== "user" && m.role !== "system")
-    .map((m) => partsText(m.parts))
-    .filter(Boolean)
-    .join("\n\n");
-}
-
-/** One message of the transcript. User turns get the bubble, assistant turns
- * prose; tool calls and results collapse to chips; system prompts and other
- * roles show as a muted note. */
-function Turn({ message }: { message: Message }) {
-  const text = partsText(message.parts);
-  const tools = message.parts.filter(
-    (p) =>
-      p.kind === "tool-call" ||
-      p.kind === "tool-result" ||
-      p.kind === "tool-error"
-  ) as Extract<Part, { kind: "tool-call" | "tool-result" | "tool-error" }>[];
-  if (message.role === "user") {
-    return <Bubble who="user" text={text || "(no text)"} />;
-  }
-  if (message.role === "assistant" || message.role === null) {
-    return (
-      <div className="flex flex-col gap-2">
-        {text && <Bubble who="assistant" text={text} />}
-        {tools.length > 0 && <ToolChips tools={tools} />}
-      </div>
-    );
-  }
-  if (tools.length > 0 && !text) return <ToolChips tools={tools} />;
-  return (
-    <div className="flex gap-3">
-      <span className="w-6 shrink-0 text-right text-[10px] font-medium uppercase leading-6 text-muted-foreground/60">
-        {message.role}
-      </span>
-      <p className="max-h-40 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word px-1 text-xs text-muted-foreground">
-        {text || JSON.stringify(message.parts)}
-      </p>
-    </div>
-  );
-}
-
-function ToolChips({
-  tools,
-}: {
-  tools: Extract<Part, { kind: "tool-call" | "tool-result" | "tool-error" }>[];
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-1.5 pl-9">
-      {tools.map((t, i) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: positional
-          key={i}
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full border bg-card/40 px-2 py-0.5 text-xs text-muted-foreground",
-            t.kind === "tool-error" &&
-              "border-rose-500/40 text-rose-600 dark:text-rose-400"
-          )}
-        >
-          <IconTool className="size-3 shrink-0" />
-          <span className="max-w-40 truncate font-mono">{t.name}</span>
-          {t.kind !== "tool-call" && (
-            <span className="text-muted-foreground/60">
-              {t.kind === "tool-error" ? "error" : "result"}
-            </span>
-          )}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-/** Loading treatment shaped like the loaded conversation (same as the
- * session page): a user bubble and a few prose lines under real avatars. */
 /** Mirrors JudgeInput: header, rubric, input transcript, reason and output. */
 function JudgeInputSkeleton() {
   const label = <Skeleton className="h-3 w-12" />;
@@ -1325,75 +1142,6 @@ function JudgeInputSkeleton() {
   );
 }
 
-function ConversationSkeleton() {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-3">
-        <div className="mt-1.5 size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
-        <Skeleton className="h-11 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl" />
-      </div>
-      <div className="flex gap-3">
-        <div className="size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
-        <div className="flex min-w-0 flex-1 flex-col gap-2 px-1 pt-1">
-          <Skeleton className="h-3.5 w-full" />
-          <Skeleton className="h-3.5 w-11/12" />
-          <Skeleton className="h-3.5 w-2/3" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Avatar({ who }: { who: "user" | "assistant" }) {
-  const Icon = who === "user" ? IconUserFilled : IconGhostFilled;
-  return (
-    <div
-      className={cn(
-        who === "user" && "mt-1.5",
-        "flex size-6 shrink-0 items-center justify-center rounded-full bg-muted-foreground/15 text-muted-foreground shadow-(--custom-shadow)"
-      )}
-    >
-      <Icon className="size-3.5" />
-    </div>
-  );
-}
-
-// Same bubble as the session page: user text in a card, assistant markdown
-// as prose with a hover copy button.
-function Bubble({ who, text }: { who: "user" | "assistant"; text: string }) {
-  const isUser = who === "user";
-  return (
-    <div className="group/bubble flex gap-3">
-      <Avatar who={who} />
-      <div
-        className={
-          isUser
-            ? "min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl bg-card dark:bg-muted-foreground/20 shadow-(--custom-shadow) px-3 py-2.5"
-            : "min-w-0 flex-1 px-1 py-0"
-        }
-      >
-        {isUser ? (
-          <p className="whitespace-pre-wrap wrap-break-word text-sm">{text}</p>
-        ) : (
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1 text-sm leading-relaxed [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:last:mb-0 [&>*:first-child>*:first-child]:mt-0 [&>*:first-child>*:first-child>*:first-child]:mt-0">
-              <Streamdown
-                components={markdownComponents}
-                controls={{ table: false }}
-              >
-                {text}
-              </Streamdown>
-            </div>
-            <div className="shrink-0 opacity-0 transition-opacity group-hover/bubble:opacity-100">
-              <CopyButton value={text} title="Copy output" />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // The worker prefixes a judge's reason when it scored a payload cut at the
 // input cap; split that flag back out so it renders as a badge, not prose.
 const TRUNCATED_PREFIX = "[judged on truncated payload] ";
@@ -1401,14 +1149,6 @@ function splitReason(reason: string): { text: string; truncated: boolean } {
   return reason.startsWith(TRUNCATED_PREFIX)
     ? { text: reason.slice(TRUNCATED_PREFIX.length), truncated: true }
     : { text: reason, truncated: false };
-}
-
-/** Why a scored target has no output: an agent run that stopped after a tool
- * call never produced a final answer (the usual case for a blank root span). */
-function emptyOutputHint(spans: { spanType: string }[]): string {
-  return spans.some((s) => s.spanType === "tool")
-    ? "No final answer, the run ended after a tool call."
-    : "No output was recorded for this run.";
 }
 
 function FocusedRun({

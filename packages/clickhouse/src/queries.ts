@@ -1095,6 +1095,45 @@ export function listWorkflowRuns(
 	);
 }
 
+export type WorkflowRunHeadlineRow = {
+	workflow_run_id: string;
+	/** Earliest-started trace in the run (its root input headlines the row). */
+	first_trace_id: string;
+	/** Latest-started trace in the run (its root output closes the exchange). */
+	last_trace_id: string;
+	/** Distinct agent names in the order they first ran. */
+	agent_names: string[];
+};
+
+/**
+ * Headline decoration for a page of workflow runs: which trace opened and
+ * closed each run, and the agents involved in first-run order. Reads the
+ * `agent` spans only (one per agent trace), bounded by the page's run ids.
+ */
+export function getWorkflowRunHeadlines(
+	client: ClickHouseClient,
+	params: { projectId: string; runIds: string[] },
+): Promise<WorkflowRunHeadlineRow[]> {
+	if (params.runIds.length === 0) return Promise.resolve([]);
+	return rows<WorkflowRunHeadlineRow>(
+		client,
+		`SELECT
+       workflow_run_id,
+       argMin(trace_id, (start_time, span_id)) AS first_trace_id,
+       argMax(trace_id, (start_time, span_id)) AS last_trace_id,
+       arrayFilter(
+         x -> x != '',
+         arrayDistinct(arrayMap(t -> t.2, arraySort(t -> t.1, groupArray((start_time, agent_name)))))
+       ) AS agent_names
+     FROM spans FINAL
+     WHERE project_id = {projectId:String}
+       AND workflow_run_id IN {ids:Array(String)}
+       AND span_type = 'agent'
+     GROUP BY workflow_run_id`,
+		{ projectId: params.projectId, ids: params.runIds },
+	);
+}
+
 export type WorkflowRunSummaryRow = {
 	/** Total runs in the filtered set (across all pages). */
 	run_count: string;

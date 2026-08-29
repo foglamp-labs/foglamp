@@ -1,6 +1,10 @@
 "use client";
 
-import { Alert, AlertDescription, AlertTitle } from "@foglamp/ui/components/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@foglamp/ui/components/alert";
 import { Button } from "@foglamp/ui/components/button";
 import {
   Table,
@@ -16,22 +20,19 @@ import {
   IconAlertTriangle,
   IconArrowUpRight,
   IconBoltFilled,
-  IconChevronRight,
   IconCircleCheckFilled,
   IconCoinFilled,
   IconForbidFilled,
   IconGaugeFilled,
-  IconGhostFilled,
   IconPencilFilled,
   IconPercentage,
   IconStack2Filled,
-  IconUserFilled,
 } from "@tabler/icons-react";
 import { Fragment, useState } from "react";
 
 import { FAMILY_ICON, presetMeta } from "@/app/(app)/evals/preset-meta";
 import { AgentIcon } from "@/components/app/agent-icon";
-import { CopyButton } from "@/components/app/copy-button";
+import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import {
   PaginationFooter,
   SortableHead,
@@ -39,7 +40,16 @@ import {
   useTableSort,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
+import { CopyButton } from "@/components/app/copy-button";
 import { StatCard } from "@/components/app/page-parts";
+import {
+  Bubble,
+  DrawerColumns,
+  DrawerRow,
+  ExpandChevron,
+  Meta,
+  OPEN_ROW_CLASS,
+} from "@/components/app/run-exchange";
 import { formatCost, formatCostFixed } from "@/lib/format";
 
 import { DemoContextChip, DemoRange, DetailHeader } from "../demo-chrome";
@@ -103,11 +113,18 @@ export function EvalDetail({ evalId }: { evalId: string }) {
             icon={ev.level === "span" ? IconStack2Filled : IconAffiliateFilled}
             label={ev.level === "span" ? "Span" : "Trace"}
           />
-          <DemoContextChip icon={IconPercentage} label={`${ev.sample}% sampled`} />
+          <DemoContextChip
+            icon={IconPercentage}
+            label={`${ev.sample}% sampled`}
+          />
           {ev.agentName && (
             <DemoContextChip
               icon={(p) => (
-                <AgentIcon name={ev.agentName!} filled className={p.className} />
+                <AgentIcon
+                  name={ev.agentName!}
+                  filled
+                  className={p.className}
+                />
               )}
               label={ev.agentName}
               onClick={() => openDetail({ type: "agent", id: ev.agentName! })}
@@ -207,22 +224,14 @@ export function EvalDetail({ evalId }: { evalId: string }) {
                   <Fragment key={s.traceId}>
                     <TableRow
                       interactive
+                      aria-expanded={isOpen}
                       onClick={() => setExpanded(isOpen ? null : s.traceId)}
-                      className={cn(
-                        "group",
-                        // Open row + drawer read as one unit: no divider between them.
-                        isOpen &&
-                          "border-b-0 bg-card data-interactive:hover:bg-card"
-                      )}
+                      // Open row + drawer read as one unit: no divider between them.
+                      className={cn("group", isOpen && OPEN_ROW_CLASS)}
                     >
                       <TableCell className="h-12 font-normal">
                         <div className="flex items-center gap-2">
-                          <IconChevronRight
-                            className={cn(
-                              "size-3.5 shrink-0 text-muted-foreground/50 transition-[transform,color] group-hover:text-muted-foreground",
-                              isOpen && "rotate-90 text-muted-foreground"
-                            )}
-                          />
+                          <ExpandChevron open={isOpen} />
                           <span className="truncate">{s.traceId}</span>
                         </div>
                       </TableCell>
@@ -232,7 +241,7 @@ export function EvalDetail({ evalId }: { evalId: string }) {
                             "inline-flex items-center gap-1 text-sm font-medium",
                             s.verdict === "pass"
                               ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-rose-600 dark:text-rose-400"
+                              : "text-rose-600 dark:text-rose-400",
                           )}
                         >
                           {s.verdict === "pass" ? (
@@ -248,7 +257,7 @@ export function EvalDetail({ evalId }: { evalId: string }) {
                           className={cn(
                             s.verdict === "fail"
                               ? "text-rose-600 dark:text-rose-400"
-                              : "text-muted-foreground"
+                              : "text-muted-foreground",
                           )}
                         >
                           {s.score.toFixed(2)}
@@ -308,12 +317,10 @@ function ScoreDetail({
   const output = TRACE_MESSAGES.find((m) => m.role === "assistant")?.content;
 
   return (
-    <TableRow className="hover:bg-transparent">
-      <TableCell colSpan={colSpan} className="bg-card px-8 pt-2 pb-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-          {/* w-88 + the 2rem column gap = the table's w-96 Run column, so
-              the conversation starts under the Verdict cell above it. */}
-          <div className="flex shrink-0 flex-col gap-4 lg:w-88">
+    <DrawerRow colSpan={colSpan} className="pt-6">
+      <DrawerColumns
+        overview={
+          <>
             <div className="flex flex-col gap-2">
               <div className="flex h-5 flex-wrap items-center gap-2">
                 <span
@@ -321,7 +328,7 @@ function ScoreDetail({
                     "inline-flex items-center gap-1 text-sm font-medium",
                     score.verdict === "pass"
                       ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-rose-600 dark:text-rose-400"
+                      : "text-rose-600 dark:text-rose-400",
                   )}
                 >
                   {score.verdict === "pass" ? (
@@ -338,7 +345,7 @@ function ScoreDetail({
                       ? "text-emerald-600 dark:text-emerald-400"
                       : score.score < 0.5
                         ? "text-rose-600 dark:text-rose-400"
-                        : "text-foreground"
+                        : "text-foreground",
                   )}
                 >
                   {score.score.toFixed(2)}
@@ -359,75 +366,21 @@ function ScoreDetail({
             <Button
               size="sm"
               variant="secondary"
-              className="w-fit"
+              className={cn("w-fit", DRAWER_BUTTON_CLASS)}
               onClick={() => openDetail({ type: "trace", id: score.traceId })}
             >
-              See full trace
-              <IconArrowUpRight />
+              <IconAffiliateFilled className="text-[#8b5e34] dark:text-[#c9a888]" />
+              See trace
+              <IconArrowUpRight className="mt-px" />
             </Button>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-col gap-4">
-              {input ? <Bubble who="user" text={input} /> : null}
-              {output ? <Bubble who="assistant" text={output} /> : null}
-            </div>
-          </div>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function Meta({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="min-w-0 text-[13px] tabular-nums">{value}</span>
-    </div>
-  );
-}
-
-function Bubble({ who, text }: { who: "user" | "assistant"; text: string }) {
-  const isUser = who === "user";
-  const Icon = isUser ? IconUserFilled : IconGhostFilled;
-  return (
-    <div className="group/bubble flex gap-3">
-      <div
-        className={cn(
-          isUser && "mt-1.5",
-          "flex size-6 shrink-0 items-center justify-center rounded-full bg-muted-foreground/15 text-muted-foreground shadow-(--custom-shadow)"
-        )}
-      >
-        <Icon className="size-3.5" />
-      </div>
-      <div
-        className={
-          isUser
-            ? "min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl bg-card dark:bg-muted-foreground/20 shadow-(--custom-shadow) px-3 py-2.5"
-            : "min-w-0 flex-1 px-1 py-0"
+          </>
         }
       >
-        {isUser ? (
-          <p className="whitespace-pre-wrap wrap-break-word text-sm">{text}</p>
-        ) : (
-          <div className="flex items-start justify-between gap-2">
-            <p className="min-w-0 flex-1 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed">
-              {text}
-            </p>
-            <div className="shrink-0 opacity-0 transition-opacity group-hover/bubble:opacity-100">
-              <CopyButton value={text} title="Copy output" />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        <div className="flex flex-col gap-4">
+          {input ? <Bubble who="user" text={input} /> : null}
+          {output ? <Bubble who="assistant" text={output} /> : null}
+        </div>
+      </DrawerColumns>
+    </DrawerRow>
   );
 }

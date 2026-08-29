@@ -830,11 +830,13 @@ export function OverviewClient() {
                   <BreakdownRowsSkeleton skeleton={modelsSkeleton} />
                 ) : (
                   <div
-                    // Only the overflowing lists get bottom padding so the
+                    // Only the overflowing lists get extra bottom space so the
                     // last row clears the scroll fade; short lists sit flush.
+                    // The space lives inside the last row (not as list padding)
+                    // so its clickable area reaches the end of the card.
                     className={cn(
                       "divide-y divide-border/40",
-                      modelRows.length > 4 && "pb-6"
+                      modelRows.length > 4 && "[&>*:last-child]:pb-9"
                     )}
                   >
                     {modelRows.map((m) => (
@@ -891,11 +893,13 @@ export function OverviewClient() {
                   <BreakdownRowsSkeleton skeleton={agentsSkeleton} />
                 ) : (
                   <div
-                    // Only the overflowing lists get bottom padding so the
+                    // Only the overflowing lists get extra bottom space so the
                     // last row clears the scroll fade; short lists sit flush.
+                    // The space lives inside the last row (not as list padding)
+                    // so its clickable area reaches the end of the card.
                     className={cn(
                       "divide-y divide-border/40",
-                      agentRows.length > 4 && "pb-6"
+                      agentRows.length > 4 && "[&>*:last-child]:pb-9"
                     )}
                   >
                     {agentRows.map((a) => (
@@ -943,11 +947,13 @@ export function OverviewClient() {
                   <BreakdownRowsSkeleton skeleton={workflowsSkeleton} />
                 ) : (
                   <div
-                    // Only the overflowing lists get bottom padding so the
+                    // Only the overflowing lists get extra bottom space so the
                     // last row clears the scroll fade; short lists sit flush.
+                    // The space lives inside the last row (not as list padding)
+                    // so its clickable area reaches the end of the card.
                     className={cn(
                       "divide-y divide-border/40",
-                      workflowRows.length > 4 && "pb-6"
+                      workflowRows.length > 4 && "[&>*:last-child]:pb-9"
                     )}
                   >
                     {workflowRows.map((w) => (
@@ -999,11 +1005,13 @@ export function OverviewClient() {
                   <BreakdownRowsSkeleton skeleton={customersSkeleton} />
                 ) : (
                   <div
-                    // Only the overflowing lists get bottom padding so the
+                    // Only the overflowing lists get extra bottom space so the
                     // last row clears the scroll fade; short lists sit flush.
+                    // The space lives inside the last row (not as list padding)
+                    // so its clickable area reaches the end of the card.
                     className={cn(
                       "divide-y divide-border/40",
-                      customerRows.length > 4 && "pb-6"
+                      customerRows.length > 4 && "[&>*:last-child]:pb-9"
                     )}
                   >
                     {customerRows.map((c) => (

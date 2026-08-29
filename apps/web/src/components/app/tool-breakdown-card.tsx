@@ -73,7 +73,7 @@ export function ToolBreakdownCard({
             icon={IconTool}
             title="No tool calls in this range"
             description="Tool executions will show up here once they run."
-            className="mb-6"
+            className="mb-12 h-full border-none"
           />
         ) : (
           // One ScrollFade for both the skeleton and the loaded rows so the

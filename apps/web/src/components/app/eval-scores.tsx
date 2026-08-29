@@ -4,10 +4,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@foglamp/ui/components/badge";
 import {
   IconArrowUpRight,
-  IconCheck,
-  IconCheckFilled,
   IconCircleCheckFilled,
-  IconForbid,
   IconForbidFilled,
   IconGauge,
 } from "@tabler/icons-react";
@@ -164,9 +161,9 @@ export function ScoreResult({
   if (compact) {
     if (s.passed !== null) {
       return s.passed ? (
-        <IconCheckFilled className="mb-px size-3.25 text-green-500" />
+        <IconCircleCheckFilled className="mb-px size-3.25 text-green-500" />
       ) : (
-        <IconForbid className="mb-px size-3.25 text-rose-500" />
+        <IconForbidFilled className="mb-px size-3.25 text-rose-500" />
       );
     }
     if (s.score !== null) {
@@ -182,9 +179,9 @@ export function ScoreResult({
     return (
       <Badge variant={s.passed ? "emerald" : "rose"} className="shrink-0">
         {s.passed ? (
-          <IconCheck className="mb-px size-3.25" />
+          <IconCircleCheckFilled className="mb-px size-3.25" />
         ) : (
-          <IconForbid className="mb-px size-3.25" />
+          <IconForbidFilled className="mb-px size-3.25" />
         )}
         {s.passed ? "pass" : "fail"}
       </Badge>
@@ -233,19 +230,22 @@ export function ScoreRow({
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-baseline gap-1.5">
-          <span className="truncate text-sm font-medium">{evalName}</span>
-          <span className="shrink-0 text-xs text-muted-foreground">
-            · {checkName}
-          </span>
+          <span className="truncate text-xs font-medium">{evalName}</span>
+          <span className="shrink-0 text-xs text-muted-foreground"></span>
         </div>
-        {s.reason && (
-          <p
-            className="truncate text-xs text-muted-foreground/80"
-            title={s.reason}
-          >
-            {s.reason}
-          </p>
-        )}
+
+        <p
+          className="truncate text-xs text-muted-foreground/80"
+          title={s.reason}
+        >
+          {checkName}
+          {s.reason && (
+            <>
+              {" · "}
+              {s.reason}
+            </>
+          )}
+        </p>
       </div>
       <ScoreResult score={s} />
       <IconArrowUpRight className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
