@@ -492,7 +492,16 @@ export function AlertsClient() {
         </div>
       ) : (
         <div className="flex flex-col gap-4 mt-1">
-          <Toolbar>
+          <Toolbar
+            trailing={
+              <>
+                <Button onClick={() => setOpen(true)} variant="secondary">
+                  <IconPlus strokeWidth={2.4} />
+                  New alert
+                </Button>
+              </>
+            }
+          >
             <SearchInput
               value={search}
               onChange={setSearch}
@@ -512,12 +521,6 @@ export function AlertsClient() {
                 setFiringOnly(false);
               }}
             />
-            <div className="ml-auto flex items-center gap-3">
-              <Button onClick={() => setOpen(true)} variant="secondary">
-                <IconPlus strokeWidth={2.4} />
-                New alert
-              </Button>
-            </div>
           </Toolbar>
 
           {!alerts.isLoading && sorted.length === 0 ? (

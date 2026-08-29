@@ -174,7 +174,13 @@ export function AgentsClient() {
       <div
         className={cn("flex flex-col gap-4 mt-1", entrance && "page-fade-in")}
       >
-        <Toolbar>
+        <Toolbar
+          trailing={
+            <>
+              <RangeControl value={range} onChange={setRange} />
+            </>
+          }
+        >
           <SearchInput
             value={search}
             onChange={setSearch}
@@ -194,9 +200,6 @@ export function AgentsClient() {
               patchParams({ q: "", errors: "" });
             }}
           />
-          <div className="ml-auto flex items-center gap-3">
-            <RangeControl value={range} onChange={setRange} />
-          </div>
         </Toolbar>
 
         {!agents.isLoading && rows.length === 0 && page === 0 ? (

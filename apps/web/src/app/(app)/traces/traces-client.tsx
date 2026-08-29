@@ -429,7 +429,13 @@ export function TracesClient() {
       <div
         className={cn("flex flex-col gap-4 mt-1", entrance && "page-fade-in")}
       >
-        <Toolbar>
+        <Toolbar
+          trailing={
+            <>
+              <RangeControl value={range} onChange={setRange} />
+            </>
+          }
+        >
           {/* Hero filters stay inline; the rest live behind "+ Filter" and
                 only occupy the toolbar while applied (or freshly summoned). */}
           <FilterSelect
@@ -525,9 +531,6 @@ export function TracesClient() {
               setAdded(new Set());
             }}
           />
-          <div className="ml-auto">
-            <RangeControl value={range} onChange={setRange} />
-          </div>
         </Toolbar>
 
         {!traces.isLoading && rows.length === 0 && page === 0 ? (

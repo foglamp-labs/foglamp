@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { Button } from "@foglamp/ui/components/button";
 
 import { authClient } from "@/lib/auth-client";
+import { useHeaderActionsSlot } from "./header-slot";
 import { trpc } from "@/utils/trpc";
 
 import type { Delta } from "@/lib/format";
@@ -83,6 +84,7 @@ export function PageHeader({
   iconClassName?: string;
 }) {
   const BackIcon = back?.icon;
+  const slot = useHeaderActionsSlot();
   return (
     // h-8 (not h-7) so action buttons — the h-8 RangePicker — fit without
     // overflowing the line, which shifted content below by ~4px whenever a
@@ -119,10 +121,15 @@ export function PageHeader({
           <p className="text-sm text-muted-foreground">{description}</p>
         )}
       </div>
-      {actions && (
-        // Nudge actions down so the picker lines up with the title text.
-        <div className="flex items-center gap-2 translate-y-1">{actions}</div>
-      )}
+      {/* Always rendered (even without actions) so a Toolbar can portal its
+          trailing controls here when they'd wrap — see header-slot.tsx.
+          Nudged down so the picker lines up with the title text. */}
+      <div
+        ref={slot?.setEl}
+        className="flex items-center gap-2 translate-y-1 empty:hidden"
+      >
+        {actions}
+      </div>
     </div>
   );
 }

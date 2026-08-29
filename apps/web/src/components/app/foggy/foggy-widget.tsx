@@ -35,6 +35,7 @@ import { Kbd } from "@foglamp/ui/components/kbd";
 import { TextShimmerLoader } from "@foglamp/ui/components/loader";
 import { cn } from "@foglamp/ui/lib/utils";
 
+import { useReportLayoutReserve } from "../header-slot";
 import { FoggyMessage } from "./foggy-message";
 
 // The transport throws with the response body in `error.message`. Our server
@@ -60,7 +61,7 @@ const SUGGESTIONS = [
 // Width of the chat panel when open. The inset (a flex sibling, flex-1) gives up
 // exactly this much room, so the chat reads as carved out of the same canvas.
 // The user can drag the panel's left edge to resize within these bounds.
-const PANEL_WIDTH = 384;
+const PANEL_WIDTH = 354;
 const MIN_PANEL_WIDTH = 320;
 const MAX_PANEL_WIDTH = 640;
 
@@ -226,6 +227,9 @@ export function FoggyWidget({
   // 1:1 instead of easing toward it.
   const [panelWidth, setPanelWidth] = useState(PANEL_WIDTH);
   const [resizing, setResizing] = useState(false);
+  // Tell toolbars the width this panel is animating toward, so they can lift
+  // their controls into the header before the row actually overflows.
+  const asideRef = useReportLayoutReserve(open ? panelWidth : 0);
 
   function startResize(e: React.PointerEvent) {
     e.preventDefault();
@@ -433,6 +437,7 @@ export function FoggyWidget({
 
   return (
     <motion.aside
+      ref={asideRef}
       // Flat on the canvas (bg-sidebar) to the right of the inset; animating the
       // width makes the flex-1 inset shrink/grow smoothly to make room.
       initial={false}

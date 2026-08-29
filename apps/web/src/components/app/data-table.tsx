@@ -1,6 +1,10 @@
 "use client";
 
 import { formatCount } from "@/lib/format";
+import {
+  useHeaderActionsSlot,
+  usePendingShrink,
+} from "@/components/app/header-slot";
 import { Button, buttonVariants } from "@foglamp/ui/components/button";
 import { Input } from "@foglamp/ui/components/input";
 import {
@@ -28,12 +32,14 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
+import { createPortal } from "react-dom";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   type ComponentType,
   createContext,
   useCallback,
+  useLayoutEffect,
   useContext,
   useEffect,
   useId,
@@ -268,22 +274,98 @@ const FilterGroupContext = createContext<{
 } | null>(null);
 
 /** A horizontal bar of filter controls, sitting above a table. Wraps on narrow
- * widths. Also coordinates its FilterSelects' open state (see FilterGroupContext). */
+ * widths. Also coordinates its FilterSelects' open state (see FilterGroupContext).
+ *
+ * `trailing` holds the right-aligned controls (range picker, "New …" button).
+ * When the filters plus trailing controls no longer fit on one line, the
+ * trailing group is lifted into the page header's actions area (top right,
+ * aligned with the title — as on Overview) instead of wrapping under the
+ * filters. The fit check always sums the widths of both groups regardless of
+ * where the trailing group currently lives, so it can't oscillate. */
 export function Toolbar({
   children,
+  trailing,
   className,
 }: {
   children: React.ReactNode;
+  trailing?: React.ReactNode;
   className?: string;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const group = useMemo(() => ({ openId, setOpenId }), [openId]);
+  const slot = useHeaderActionsSlot();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const trailingRef = useRef<HTMLDivElement>(null);
+  const [lifted, setLifted] = useState(false);
+  const pendingShrink = usePendingShrink();
+
+  const measure = useCallback(() => {
+    const root = rootRef.current;
+    const tr = trailingRef.current;
+    if (!root || !tr) return;
+    const cs = getComputedStyle(root);
+    // Measure against the width the row is about to have, not the width it
+    // has mid-tween (see usePendingShrink).
+    const avail =
+      root.clientWidth -
+      parseFloat(cs.paddingLeft) -
+      parseFloat(cs.paddingRight) -
+      pendingShrink();
+    const gap = parseFloat(cs.columnGap) || 0;
+    // Fractional widths: offsetWidth truncates, and summing truncated widths
+    // can under-count by several pixels — enough to say "fits" while the
+    // browser actually wraps. A 2px margin covers layout rounding.
+    let need = 0;
+    let n = 0;
+    for (const child of Array.from(root.children)) {
+      if (child === tr) continue;
+      const w = child.getBoundingClientRect().width;
+      if (!w) continue;
+      need += w + (n ? gap : 0);
+      n++;
+    }
+    need += (n ? gap : 0) + tr.getBoundingClientRect().width;
+    setLifted(need + 2 > avail);
+  }, [pendingShrink]);
+
+  // Re-check after every render (filters get added/removed) and whenever the
+  // toolbar or the trailing group resizes.
+  useLayoutEffect(measure);
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    if (rootRef.current) ro.observe(rootRef.current);
+    if (trailingRef.current) ro.observe(trailingRef.current);
+    return () => ro.disconnect();
+  }, [measure]);
+
+  // Shared-layout id: lifting swaps which parent the group renders in (a
+  // remount), so the new instance slides from the old one's position instead
+  // of snapping. layout="position" keeps the controls from scaling in flight.
+  const layoutId = useId();
+  const trailingNode = trailing ? (
+    <motion.div
+      ref={trailingRef}
+      layoutId={layoutId}
+      layout="position"
+      transition={{ type: "spring", stiffness: 520, damping: 44 }}
+      className="ml-auto flex items-center gap-2"
+    >
+      {trailing}
+    </motion.div>
+  ) : null;
+  const liftTarget = lifted && slot?.el ? slot.el : null;
+
   return (
     <FilterGroupContext.Provider value={group}>
       <div
+        ref={rootRef}
         className={cn("flex flex-wrap items-center gap-2 pl-7 pr-9", className)}
       >
         {children}
+        {trailingNode && liftTarget
+          ? createPortal(trailingNode, liftTarget)
+          : trailingNode}
       </div>
     </FilterGroupContext.Provider>
   );

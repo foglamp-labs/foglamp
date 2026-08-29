@@ -223,7 +223,13 @@ export function SessionsClient() {
       <div
         className={cn("flex flex-col gap-4 mt-1", entrance && "page-fade-in")}
       >
-        <Toolbar>
+        <Toolbar
+          trailing={
+            <>
+              <RangeControl value={range} onChange={setRange} />
+            </>
+          }
+        >
           <SearchInput
             value={search}
             onChange={setSearch}
@@ -257,9 +263,6 @@ export function SessionsClient() {
               patchParams({ q: "", agent: "", customer: "", errors: "" });
             }}
           />
-          <div className="ml-auto">
-            <RangeControl value={range} onChange={setRange} />
-          </div>
         </Toolbar>
 
         {!sessions.isLoading && rows.length === 0 && page === 0 ? (
@@ -329,7 +332,10 @@ export function SessionsClient() {
                 <TableBody>
                   {sessions.isLoading ? (
                     showSkeleton ? (
-                      <TableRowsSkeleton cols={SKELETON_COLS} rowHeight="h-16" />
+                      <TableRowsSkeleton
+                        cols={SKELETON_COLS}
+                        rowHeight="h-16"
+                      />
                     ) : null
                   ) : (
                     rows.map((s) => (

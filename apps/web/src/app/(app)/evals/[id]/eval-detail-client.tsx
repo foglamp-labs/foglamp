@@ -58,6 +58,7 @@ import {
   PaginationFooter,
   SortableHead,
   useTableSort,
+  Toolbar,
 } from "@/components/app/data-table";
 import { HeatCell } from "@/components/app/heat-cell";
 import {
@@ -388,62 +389,59 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
           range picker and Edit button aligned on the same row. Chip-shaped
           placeholders hold the layout until the eval loads; loading.tsx paints
           the same row. */}
-      <div
-        className={cn(
-          "mt-1 flex flex-wrap items-center justify-between gap-2 text-xs px-7",
-          entrance && "page-fade-in",
-        )}
+      <Toolbar
+        className={cn("mt-1 text-xs px-7", entrance && "page-fade-in")}
+        trailing={
+          <>
+            <RangeControl value={range} onChange={setRange} />
+            <Button variant="secondary" disabled={!ev} onClick={openEdit}>
+              <IconPencilFilled className="mb-px" />
+              Edit
+            </Button>
+          </>
+        }
       >
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {ev ? (
-            <>
-              <ContextChip
-                icon={CheckIcon}
-                iconClassName={cn(
-                  "mb-px",
-                  FAMILY_ICON[presetMeta(ev.presetId).family],
-                )}
-                label={checkName}
-              />
-              <ContextChip
-                icon={
-                  ev.targetLevel === "span"
-                    ? IconStack2Filled
-                    : IconAffiliateFilled
-                }
-                label={ev.targetLevel === "span" ? "Span" : "Trace"}
-              />
-              <ContextChip
-                icon={IconPercentage}
-                label={`${Math.round(ev.sampleRate * 100)}% sampled`}
-              />
-              {ev.filters?.agentName && (
-                <ContextChip
-                  href={`/agents/${encodeURIComponent(ev.filters.agentName)}`}
-                  icon={(p) => (
-                    <AgentIcon
-                      name={ev.filters?.agentName ?? ""}
-                      filled
-                      className={p.className}
-                    />
-                  )}
-                  iconClassName=""
-                  label={ev.filters.agentName}
-                />
+        {ev ? (
+          <>
+            <ContextChip
+              icon={CheckIcon}
+              iconClassName={cn(
+                "mb-px",
+                FAMILY_ICON[presetMeta(ev.presetId).family],
               )}
-            </>
-          ) : (
-            <EvalChipPlaceholders />
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <RangeControl value={range} onChange={setRange} />
-          <Button variant="secondary" disabled={!ev} onClick={openEdit}>
-            <IconPencilFilled className="mb-px" />
-            Edit
-          </Button>
-        </div>
-      </div>
+              label={checkName}
+            />
+            <ContextChip
+              icon={
+                ev.targetLevel === "span"
+                  ? IconStack2Filled
+                  : IconAffiliateFilled
+              }
+              label={ev.targetLevel === "span" ? "Span" : "Trace"}
+            />
+            <ContextChip
+              icon={IconPercentage}
+              label={`${Math.round(ev.sampleRate * 100)}% sampled`}
+            />
+            {ev.filters?.agentName && (
+              <ContextChip
+                href={`/agents/${encodeURIComponent(ev.filters.agentName)}`}
+                icon={(p) => (
+                  <AgentIcon
+                    name={ev.filters?.agentName ?? ""}
+                    filled
+                    className={p.className}
+                  />
+                )}
+                iconClassName=""
+                label={ev.filters.agentName}
+              />
+            )}
+          </>
+        ) : (
+          <EvalChipPlaceholders />
+        )}
+      </Toolbar>
 
       {/* Scoring health: when the worker can't score this eval (dead jobs, no
           provider key) say so up front with the actual reason. */}

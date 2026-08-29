@@ -761,7 +761,19 @@ export function EvalsClient() {
       <div
         className={cn("flex flex-col gap-4 mt-1", entrance && "page-fade-in")}
       >
-        <Toolbar>
+        <Toolbar
+          trailing={
+            <>
+              <RangeControl value={range} onChange={setRange} />
+              {!noEvals && (
+                <Button onClick={() => setOpen(true)} variant="secondary">
+                  <IconPlus strokeWidth={2.4} />
+                  New eval
+                </Button>
+              )}
+            </>
+          }
+        >
           <SearchInput
             value={search}
             onChange={setSearch}
@@ -796,15 +808,6 @@ export function EvalsClient() {
               setSourceFilter("");
             }}
           />
-          <div className="ml-auto flex items-center gap-2">
-            <RangeControl value={range} onChange={setRange} />
-            {!noEvals && (
-              <Button onClick={() => setOpen(true)} variant="secondary">
-                <IconPlus strokeWidth={2.4} />
-                New eval
-              </Button>
-            )}
-          </div>
         </Toolbar>
 
         {!evals.isLoading && visible.length === 0 ? (

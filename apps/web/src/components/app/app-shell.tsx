@@ -61,6 +61,10 @@ import { type PrefetchCtx, prefetchRoute } from "./prefetch";
 import { ProjectProvider, useProject } from "./project-context";
 import { ProjectIcon } from "./project-icon";
 import { RangeProvider, useRange } from "./range-context";
+import {
+  HeaderActionsSlotProvider,
+  LayoutReserveProvider,
+} from "./header-slot";
 
 function initials(value: string) {
   return value.slice(0, 2).toUpperCase();
@@ -262,7 +266,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ProjectProvider>
       <RangeProvider>
-        <ShellBody>{children}</ShellBody>
+        <HeaderActionsSlotProvider>
+          <LayoutReserveProvider>
+            <ShellBody>{children}</ShellBody>
+          </LayoutReserveProvider>
+        </HeaderActionsSlotProvider>
       </RangeProvider>
     </ProjectProvider>
   );
