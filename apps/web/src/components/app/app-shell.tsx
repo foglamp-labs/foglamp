@@ -10,6 +10,7 @@ import {
   type Icon,
   IconChartBar,
   IconChevronDown,
+  IconChevronRight,
   IconDotsVertical,
   IconGhost2Filled,
   IconLogout,
@@ -156,7 +157,7 @@ function NavUser() {
           <div className="flex min-w-0 flex-1 flex-col text-left text-sm">
             <span className="truncate">{name}</span>
           </div>
-          <IconChevronDown className="ml-auto size-3.5 opacity-15" />
+          <IconChevronRight className="ml-auto size-3.5 opacity-15" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
