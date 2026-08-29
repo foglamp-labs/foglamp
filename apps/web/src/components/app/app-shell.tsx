@@ -11,6 +11,7 @@ import {
   IconChartBar,
   IconChevronDown,
   IconDotsVertical,
+  IconGhost2Filled,
   IconLogout,
   IconPlus,
 } from "@tabler/icons-react";
@@ -146,7 +147,7 @@ function NavUser() {
   return (
     <SidebarMenuItem>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<SidebarMenuButton />}>
+        <DropdownMenuTrigger render={<SidebarMenuButton className="pr-1.5" />}>
           <Avatar size="xs">
             <AvatarImage src={image} alt={name} />
             <AvatarFallback>{initials(name)}</AvatarFallback>
@@ -155,7 +156,7 @@ function NavUser() {
           <div className="flex min-w-0 flex-1 flex-col text-left text-sm">
             <span className="truncate">{name}</span>
           </div>
-          <IconDotsVertical className="ml-auto size-4 opacity-15" />
+          <IconChevronDown className="ml-auto size-3.5 opacity-15" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
