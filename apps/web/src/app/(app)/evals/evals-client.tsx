@@ -842,14 +842,14 @@ export function EvalsClient() {
               <TableHeader>
                 <TableRow>
                   <SortableHead
-                    className="w-40  truncate"
+                    className="w-60 truncate"
                     sortKey="name"
                     sort={sort}
                     onSort={toggle}
                   >
                     Name
                   </SortableHead>
-                  <TableHead className="w-52">Scope</TableHead>
+                  <TableHead className="w-68">Scope</TableHead>
                   <SortableHead
                     sortKey="passRate"
                     sort={sort}

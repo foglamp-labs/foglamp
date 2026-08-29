@@ -269,11 +269,11 @@ export function SettingsClient() {
             >
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead className="w-96">Name</TableHead>
                   <TableHead className="w-48">Status</TableHead>
                   <TableHead className="w-44">Last used</TableHead>
                   <TableHead className="w-44">Created</TableHead>
-                  <TableHead className="w-28" />
+                  <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -318,7 +318,7 @@ export function SettingsClient() {
                           addSuffix: true,
                         })}
                       </TableCell>
-                      <TableCell align="right" className="py-0">
+                      <TableCell className="py-0">
                         {!k.revokedAt && (
                           <Button
                             variant="ghost-destructive"
