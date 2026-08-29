@@ -30,12 +30,6 @@ import {
   FieldLabel,
 } from "@foglamp/ui/components/field";
 import { Input } from "@foglamp/ui/components/input";
-import {
-  Item,
-  ItemContent,
-  ItemGroup,
-  ItemTitle,
-} from "@foglamp/ui/components/item";
 import { ScrollArea } from "@foglamp/ui/components/scroll-area";
 import {
   Select,
@@ -146,11 +140,11 @@ export function AlertDetailsDialog({
         onOpenChange(false);
       },
       onError: (error) => toast.error(error.message),
-    })
+    }),
   );
 
   const patchRule = (
-    patch: Partial<Pick<Draft, "metric" | "comparison" | "threshold">>
+    patch: Partial<Pick<Draft, "metric" | "comparison" | "threshold">>,
   ) => {
     setDraft((current) => {
       const next = { ...current, ...patch };
@@ -392,7 +386,7 @@ export function AlertDetailsDialog({
                       <SelectValue>
                         {(value) =>
                           COMPARISON_OPTIONS.find(
-                            (item) => item.value === value
+                            (item) => item.value === value,
                           )?.symbol
                         }
                       </SelectValue>
@@ -530,36 +524,33 @@ export function AlertDetailsDialog({
                 </EmptyHeader>
               </Empty>
             ) : (
-              <ItemGroup className="gap-2">
+              <ul className="flex flex-col gap-3 text-sm">
                 {history.data?.map((event) => (
-                  <Item key={event.id} variant="outline" size="sm">
-                    <ItemContent>
-                      <ItemTitle>
-                        <Badge
-                          variant={event.type === "fired" ? "rose" : "emerald"}
-                        >
-                          {event.type === "fired" ? "Fired" : "Resolved"}
-                        </Badge>
-                        <span className="font-normal text-muted-foreground">
-                          {formatAlertMetricValue(alert.metric, event.value)} at
-                          a{" "}
-                          {formatAlertMetricValue(
-                            alert.metric,
-                            event.threshold
-                          )}{" "}
-                          threshold
-                        </span>
-                      </ItemTitle>
-                      <span
-                        className="text-xs text-muted-foreground"
-                        title={formatDateTime(event.createdAt)}
+                  <li
+                    key={event.id}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Badge
+                        variant={event.type === "fired" ? "rose" : "emerald"}
                       >
-                        {formatRelative(event.createdAt)}
+                        {event.type === "fired" ? "Fired" : "Resolved"}
+                      </Badge>
+                      <span className="truncate text-muted-foreground">
+                        {formatAlertMetricValue(alert.metric, event.value)} at a{" "}
+                        {formatAlertMetricValue(alert.metric, event.threshold)}{" "}
+                        threshold
                       </span>
-                    </ItemContent>
-                  </Item>
+                    </div>
+                    <span
+                      className="shrink-0 text-xs text-muted-foreground"
+                      title={formatDateTime(event.createdAt)}
+                    >
+                      {formatRelative(event.createdAt)}
+                    </span>
+                  </li>
                 ))}
-              </ItemGroup>
+              </ul>
             )}
           </section>
         </ScrollArea>
