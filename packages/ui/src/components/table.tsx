@@ -188,7 +188,7 @@ function TableHead({
     <th
       data-slot="table-head"
       className={cn(
-        "text-left align-middle font-medium whitespace-nowrap has-[[role=checkbox]]:pr-0 px-8",
+        "text-left align-middle font-medium whitespace-nowrap has-[[role=checkbox]]:pr-0 px-8.25",
         // Vertical column dividers (none on the leftmost cell). More prominent
         // than the body cells to emphasize the header.
         // "border-l border-neutral-200 first:border-l-0 dark:border-neutral-800 [&_tr]:border-b",
@@ -209,7 +209,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "align-middle whitespace-nowrap has-[[role=checkbox]]:pr-0 py-2 px-8",
+        "align-middle whitespace-nowrap has-[[role=checkbox]]:pr-0 py-2 px-8.25",
         // Vertical column dividers (none on the leftmost cell).
         // "border-l border-[#EBEBEB] first:border-l-0 dark:border-[#1E1E1E]",
         align && alignClass[align],

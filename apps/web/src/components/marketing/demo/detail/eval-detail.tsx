@@ -102,7 +102,7 @@ export function EvalDetail({ evalId }: { evalId: string }) {
 
       {/* Definition chips: the check, what it runs on, the sample rate, and
           (when scoped to one agent) a link to that agent's filter. */}
-      <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs px-7">
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs px-6">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <DemoContextChip
             icon={CheckIcon}
@@ -143,7 +143,7 @@ export function EvalDetail({ evalId }: { evalId: string }) {
       {/* Scoring health: when the eval can't score (dead jobs, no provider
           key) say so up front with the reason. */}
       {ev.status !== "ok" && (
-        <div className="px-7">
+        <div className="px-6">
           <Alert variant="destructive">
             <IconAlertTriangle />
             <AlertTitle>
@@ -160,7 +160,7 @@ export function EvalDetail({ evalId }: { evalId: string }) {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-7">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-6">
         <StatCard
           icon={IconCircleCheckFilled}
           iconClassName="text-emerald-500 dark:text-emerald-500"

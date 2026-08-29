@@ -214,7 +214,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 
 			{/* Context chips: the owning session / workflow / agent, plus the
 			    end-customer this trace served. */}
-			<div className="mt-1 flex flex-wrap items-center gap-2 text-xs px-7">
+			<div className="mt-1 flex flex-wrap items-center gap-2 text-xs px-6">
 				{row.customer && (
 					<DemoContextChip
 						icon={(p) => (

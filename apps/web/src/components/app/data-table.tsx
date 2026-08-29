@@ -360,7 +360,7 @@ export function Toolbar({
     <FilterGroupContext.Provider value={group}>
       <div
         ref={rootRef}
-        className={cn("flex flex-wrap items-center gap-2 pl-7 pr-9", className)}
+        className={cn("flex flex-wrap items-center gap-2 pl-6 pr-9", className)}
       >
         {children}
         {trailingNode && liftTarget

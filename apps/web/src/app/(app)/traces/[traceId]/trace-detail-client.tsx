@@ -483,7 +483,7 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
       {detail.isLoading && showSkeleton && (
         <div
           className={cn(
-            "mt-1 flex flex-wrap items-center gap-2 px-7",
+            "mt-1 flex flex-wrap items-center gap-2 px-6",
             entrance && "page-fade-in"
           )}
         >
@@ -501,70 +501,70 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
           ctx.agentName ||
           ctx.customer ||
           models.length > 0) && (
-        <div
-          className={cn(
-            "mt-1 flex flex-wrap items-center gap-2 text-xs px-7",
-            entrance && !skeletonShown && "page-fade-in"
-          )}
-        >
-          {ctx.customer && (
-            <ContextChip
-              href={`/traces?customer=${encodeURIComponent(ctx.customer.id)}`}
-              icon={(p) => (
-                <CustomerAvatar
-                  customerId={ctx.customer!.id}
-                  customerName={ctx.customer!.name}
-                  imageUrl={ctx.customer!.imageUrl}
-                  filled
-                  className={p.className}
-                />
-              )}
-              iconClassName=""
-              label={ctx.customer.name ?? ctx.customer.id}
-            />
-          )}
-          {ctx.sessionId && (
-            <SessionChip
-              sessionId={ctx.sessionId}
-              prev={neighbors.data?.prev ?? null}
-              next={neighbors.data?.next ?? null}
-            />
-          )}
-          {ctx.workflowName && (
-            <ContextChip
-              href={`/workflows/${encodeURIComponent(ctx.workflowName)}`}
-              icon={IconSitemapFilled}
-              iconClassName="text-emerald-500"
-              label={ctx.workflowName}
-            />
-          )}
-          {ctx.workflowName && ctx.workflowRunId && (
-            // Deep-links to this run inside the workflow detail (?run=), so the
-            // trace's sibling traces in the same run are one hop away.
-            <ContextChip
-              href={`/workflows/${encodeURIComponent(ctx.workflowName)}?run=${encodeURIComponent(ctx.workflowRunId)}`}
-              icon={IconRoute}
-              iconClassName="text-emerald-500"
-              label={ctx.workflowRunId}
-            />
-          )}
-          {ctx.agentName && (
-            <ContextChip
-              href={`/agents/${encodeURIComponent(ctx.agentName)}`}
-              icon={(p) => (
-                <AgentIcon
-                  name={ctx.agentName}
-                  filled
-                  className={p.className}
-                />
-              )}
-              iconClassName=""
-              label={ctx.agentName}
-            />
-          )}
-          <ModelChip models={models} />
-        </div>
-      )}
+          <div
+            className={cn(
+              "mt-1 flex flex-wrap items-center gap-2 text-xs px-6",
+              entrance && !skeletonShown && "page-fade-in"
+            )}
+          >
+            {ctx.customer && (
+              <ContextChip
+                href={`/traces?customer=${encodeURIComponent(ctx.customer.id)}`}
+                icon={(p) => (
+                  <CustomerAvatar
+                    customerId={ctx.customer!.id}
+                    customerName={ctx.customer!.name}
+                    imageUrl={ctx.customer!.imageUrl}
+                    filled
+                    className={p.className}
+                  />
+                )}
+                iconClassName=""
+                label={ctx.customer.name ?? ctx.customer.id}
+              />
+            )}
+            {ctx.sessionId && (
+              <SessionChip
+                sessionId={ctx.sessionId}
+                prev={neighbors.data?.prev ?? null}
+                next={neighbors.data?.next ?? null}
+              />
+            )}
+            {ctx.workflowName && (
+              <ContextChip
+                href={`/workflows/${encodeURIComponent(ctx.workflowName)}`}
+                icon={IconSitemapFilled}
+                iconClassName="text-emerald-500"
+                label={ctx.workflowName}
+              />
+            )}
+            {ctx.workflowName && ctx.workflowRunId && (
+              // Deep-links to this run inside the workflow detail (?run=), so the
+              // trace's sibling traces in the same run are one hop away.
+              <ContextChip
+                href={`/workflows/${encodeURIComponent(ctx.workflowName)}?run=${encodeURIComponent(ctx.workflowRunId)}`}
+                icon={IconRoute}
+                iconClassName="text-emerald-500"
+                label={ctx.workflowRunId}
+              />
+            )}
+            {ctx.agentName && (
+              <ContextChip
+                href={`/agents/${encodeURIComponent(ctx.agentName)}`}
+                icon={(p) => (
+                  <AgentIcon
+                    name={ctx.agentName}
+                    filled
+                    className={p.className}
+                  />
+                )}
+                iconClassName=""
+                label={ctx.agentName}
+              />
+            )}
+            <ModelChip models={models} />
+          </div>
+        )}
 
       {detail.isLoading ? (
         showSkeleton ? (

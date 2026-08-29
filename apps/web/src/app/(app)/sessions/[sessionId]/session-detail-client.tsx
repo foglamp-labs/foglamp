@@ -141,7 +141,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
       {detail.isLoading && showSkeleton && (
         <div
           className={cn(
-            "mt-1 flex flex-wrap items-center gap-2 px-7",
+            "mt-1 flex flex-wrap items-center gap-2 px-6",
             entrance && "page-fade-in",
           )}
         >
@@ -158,7 +158,7 @@ export function SessionDetailClient({ sessionId }: { sessionId: string }) {
       {(data?.customer || data?.agentName || data?.models.length) && (
         <div
           className={cn(
-            "mt-1 flex flex-wrap items-center gap-2 text-xs px-7",
+            "mt-1 flex flex-wrap items-center gap-2 text-xs px-6",
             entrance && !skeletonShown && "page-fade-in",
           )}
         >

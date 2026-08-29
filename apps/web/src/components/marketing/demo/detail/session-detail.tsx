@@ -75,7 +75,7 @@ export function SessionDetail({ sessionId }: { sessionId: string }) {
 
       {/* Context chips: the customer this session served and the agent that
 			    ran it — same linked-entity pills as the trace detail page. */}
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs px-7">
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs px-6">
         {session.customer && (
           <DemoContextChip
             icon={(p) => (

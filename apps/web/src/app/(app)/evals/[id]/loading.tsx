@@ -15,7 +15,7 @@ export default function Loading() {
 		<>
 			<RouteHeader href="/evals" back title="Eval" />
 			<Toolbar
-				className="mt-1 text-xs px-7"
+				className="mt-1 text-xs px-6"
 				trailing={
 					<>
 						<LiveRangePicker />

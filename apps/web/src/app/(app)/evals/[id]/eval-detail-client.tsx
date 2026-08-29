@@ -254,11 +254,11 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
         toast.success("Eval updated");
       },
       onError: (e) => toast.error(e.message),
-    }),
+    })
   );
 
   const configuredProviders = new Set(
-    (providerKeys.data?.keys ?? []).map((k) => k.provider),
+    (providerKeys.data?.keys ?? []).map((k) => k.provider)
   );
 
   // Seed the draft from the current eval, then open the dialog.
@@ -346,7 +346,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
     const scored = buckets.reduce((n, b) => n + b.scoredCount, 0);
     const scoreSum = buckets.reduce(
       (n, b) => n + (b.avgScore ?? 0) * b.scoredCount,
-      0,
+      0
     );
     const cost = buckets.reduce((n, b) => n + (b.cost ?? 0), 0);
     return {
@@ -361,7 +361,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
   // so thresholds are relative to the visible page).
   const spendThresholds = useMemo(
     () => quintiles(scores.map((s) => s.cost ?? 0)),
-    [scores],
+    [scores]
   );
 
   const back = navItem("/evals");
@@ -390,7 +390,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
           placeholders hold the layout until the eval loads; loading.tsx paints
           the same row. */}
       <Toolbar
-        className={cn("mt-1 text-xs px-7", entrance && "page-fade-in")}
+        className={cn("mt-1 text-xs px-6", entrance && "page-fade-in")}
         trailing={
           <>
             <RangeControl value={range} onChange={setRange} />
@@ -407,7 +407,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
               icon={CheckIcon}
               iconClassName={cn(
                 "mb-px",
-                FAMILY_ICON[presetMeta(ev.presetId).family],
+                FAMILY_ICON[presetMeta(ev.presetId).family]
               )}
               label={checkName}
             />
@@ -446,7 +446,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
       {/* Scoring health: when the worker can't score this eval (dead jobs, no
           provider key) say so up front with the actual reason. */}
       {ev && ev.status !== "ok" && (
-        <div className={cn("px-7", entrance && "page-fade-in")}>
+        <div className={cn("px-6", entrance && "page-fade-in")}>
           <Alert variant="destructive">
             <IconAlertTriangle />
             <AlertTitle>
@@ -466,8 +466,8 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
 
       <div
         className={cn(
-          "grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-7",
-          entrance && "page-fade-in",
+          "grid gap-4 sm:grid-cols-2 lg:grid-cols-4 px-6",
+          entrance && "page-fade-in"
         )}
       >
         <StatCard
@@ -513,8 +513,8 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
         {!recent.isLoading && scores.length === 0 ? (
           <div
             className={cn(
-              "px-7",
-              entrance && !recentSkeletonShown && "page-fade-in",
+              "px-6",
+              entrance && !recentSkeletonShown && "page-fade-in"
             )}
           >
             <EmptyState
@@ -530,7 +530,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
           <div
             className={cn(
               "flex flex-col",
-              entrance && !recentSkeletonShown && "page-fade-in",
+              entrance && !recentSkeletonShown && "page-fade-in"
             )}
           >
             <Table className="table-fixed" stickyHeader>
@@ -573,7 +573,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                             isOpen && OPEN_ROW_CLASS,
                             // Deep-linked run: a soft tint (same as a selected
                             // preset card) rather than an edge bar.
-                            isFocused && FOCUSED_ROW_CLASS,
+                            isFocused && FOCUSED_ROW_CLASS
                           )}
                         >
                           {/* Content-first, like the traces list: the trace's user
@@ -594,7 +594,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                                   "inline-flex items-center gap-1 text-sm font-medium",
                                   s.passed
                                     ? "text-emerald-600 dark:text-emerald-400"
-                                    : "text-rose-600 dark:text-rose-400",
+                                    : "text-rose-600 dark:text-rose-400"
                                 )}
                               >
                                 {s.passed ? (
@@ -622,7 +622,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                                 className={cn(
                                   s.passed !== null && !s.passed
                                     ? "text-rose-600 dark:text-rose-400"
-                                    : "text-muted-foreground",
+                                    : "text-muted-foreground"
                                 )}
                               >
                                 {s.score.toFixed(2)}
@@ -743,7 +743,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                 }) ||
                 !!promptOverrideError(
                   ev ? { id: ev.presetId, source: ev.scorerSource } : null,
-                  draft.promptOverride,
+                  draft.promptOverride
                 ) ||
                 (isJudge && !!passThresholdError(draft.passThreshold))
               }
@@ -788,7 +788,7 @@ function RunExchange({
   projectId: string;
 }) {
   const detail = useQuery(
-    trpc.traces.get.queryOptions({ projectId, traceId: score.traceId }),
+    trpc.traces.get.queryOptions({ projectId, traceId: score.traceId })
   );
   const spans = detail.data?.spans ?? [];
   // Span score → that exact span; trace score → the root span (whole run).
@@ -837,7 +837,7 @@ function JudgeInput({ score }: { score: BaseScoreRow }) {
     trpc.evals.judgeInput.queryOptions({
       evalId: score.evalId,
       scoreId: score.scoreId,
-    }),
+    })
   );
   if (q.isLoading) return <JudgeInputSkeleton />;
   const d = q.data;
@@ -882,7 +882,7 @@ function JudgeInput({ score }: { score: BaseScoreRow }) {
               reason={seg.field === "output" ? reason : undefined}
             />
           </JudgeSection>
-        ),
+        )
       )}
 
       <details className="group/raw">
@@ -1000,7 +1000,7 @@ function Judgment({
   const isSpan = score.targetType === "span";
   const href = isSpan
     ? `/traces/${encodeURIComponent(score.traceId)}?span=${encodeURIComponent(
-        score.targetId,
+        score.targetId
       )}`
     : `/traces/${encodeURIComponent(score.traceId)}`;
   const showCost = score.cost != null && score.cost > 0;
@@ -1015,7 +1015,7 @@ function Judgment({
                 "inline-flex items-center gap-1 text-sm font-medium",
                 score.passed
                   ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-rose-600 dark:text-rose-400",
+                  : "text-rose-600 dark:text-rose-400"
               )}
             >
               {score.passed ? (
@@ -1034,7 +1034,7 @@ function Judgment({
                   ? "text-emerald-600 dark:text-emerald-400"
                   : score.score < 0.5
                     ? "text-rose-600 dark:text-rose-400"
-                    : "text-foreground",
+                    : "text-foreground"
               )}
             >
               {score.score.toFixed(2)}
