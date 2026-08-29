@@ -723,6 +723,7 @@ export function OverviewClient() {
           icon={IconCirclesFilled}
           iconClassName="text-sky-400 dark:text-sky-500"
           label="Tokens"
+          href="/traces?sort=tokens:desc"
           size="sm"
           loading={statsLoading}
           skeleton={statsSkeleton}
@@ -742,6 +743,7 @@ export function OverviewClient() {
           icon={IconCoinFilled}
           iconClassName="text-amber-400 dark:text-yellow-500"
           label="Total cost"
+          href="/traces?sort=cost:desc"
           size="sm"
           loading={statsLoading}
           skeleton={statsSkeleton}
@@ -762,6 +764,7 @@ export function OverviewClient() {
           icon={IconGaugeFilled}
           iconClassName="text-fuchsia-400 dark:text-fuchsia-500"
           label="Eval pass rate"
+          href="/evals"
           size="sm"
           loading={statsLoading}
           skeleton={statsSkeleton}
@@ -785,6 +788,7 @@ export function OverviewClient() {
           icon={IconAlertTriangleFilled}
           iconClassName="text-red-500/90 dark:text-red-600/95 mt-px"
           label="Error rate"
+          href="/traces?errors=1"
           size="sm"
           loading={statsLoading}
           skeleton={statsSkeleton}

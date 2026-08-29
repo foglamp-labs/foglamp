@@ -198,8 +198,12 @@ export function StatCard({
   loading = false,
   skeleton = false,
   chartPlaceholder,
+  href,
 }: {
   label: string;
+  /** Makes the whole card a link: pointer cursor, and a chevron slides in
+   * after the label on hover to signal the drill-down. */
+  href?: Route;
   /** A `number` gets the ticker treatment — on change the digits animate to
    * the new value, formatted each frame by `formatValue` and wrapped in
    * `prefix`/`suffix`. Any other ReactNode (a preformatted string, "—", …)
@@ -244,8 +248,8 @@ export function StatCard({
 }) {
   const hold = loading ? (skeleton ? "skeleton" : "blank") : null;
   const placeholderClass = hold === "blank" ? "invisible" : undefined;
-  return (
-    <Card size={size}>
+  const card = (
+    <Card size={size} className={cn(href && "h-full cursor-pointer")}>
       <CardHeader className="gap-1.5">
         {/* Icon + label on the left; the delta badge and value on the right. */}
         <div className="flex items-center justify-between gap-2">
@@ -263,6 +267,9 @@ export function StatCard({
                 single row, leaving extra space at the bottom of chartless
                 cards. */}
             <span className="truncate text-sm text-foreground">{label}</span>
+            {href && (
+              <IconChevronRight className="mt-px size-3.5 shrink-0 text-muted-foreground opacity-0 -translate-x-1 transition-[opacity,translate] duration-150 group-hover/stat:translate-x-0 group-hover/stat:opacity-100" />
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {hold
@@ -310,6 +317,12 @@ export function StatCard({
         )
       )}
     </Card>
+  );
+  if (!href) return card;
+  return (
+    <Link href={href} className="group/stat block min-w-0">
+      {card}
+    </Link>
   );
 }
 
