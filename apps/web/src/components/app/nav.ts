@@ -4,8 +4,6 @@ import {
   IconAffiliateFilled,
   IconAlertTriangle,
   IconAlertTriangleFilled,
-  IconBell,
-  IconBellFilled,
   IconGauge,
   IconGaugeFilled,
   IconGhost,
@@ -109,13 +107,6 @@ export const account: NavItem[] = [
     label: "Settings",
     icon: IconSettings,
     activeIcon: IconSettingsFilled,
-    iconClassName: "text-muted-foreground/70",
-  },
-  {
-    href: "/settings/notifications",
-    label: "Notifications",
-    icon: IconBell,
-    activeIcon: IconBellFilled,
     iconClassName: "text-muted-foreground/70",
   },
 ];

@@ -38,6 +38,7 @@ import {
 import { cn } from "@foglamp/ui/lib/utils";
 import {
 	IconAlertTriangleFilled,
+	IconBellFilled,
 	IconChartPieFilled,
 	IconClockFilled,
 	IconCreditCardFilled,
@@ -69,6 +70,7 @@ import { authClient } from "@/lib/auth-client";
 import { formatCount } from "@/lib/format";
 import { trpc } from "@/utils/trpc";
 import { OrgSettingsHeader } from "./header";
+import { NotificationsTab } from "./notifications-tab";
 import { ProviderKeysTab } from "./provider-keys-tab";
 
 type Member = {
@@ -101,6 +103,7 @@ const TAB_IDS = [
 	"projects",
 	"billing",
 	"usage",
+	"notifications",
 ] as const;
 type TabId = (typeof TAB_IDS)[number];
 
@@ -125,6 +128,7 @@ const TABS: {
 	{ id: "projects", label: "Projects", icon: IconFolderFilled },
 	{ id: "billing", label: "Billing", icon: IconCreditCardFilled },
 	{ id: "usage", label: "Usage", icon: IconChartPieFilled },
+	{ id: "notifications", label: "Notifications", icon: IconBellFilled },
 ];
 
 // Button-row tab bar with one shared background pill: the active button hosts
@@ -234,6 +238,7 @@ export function OrgSettingsClient() {
 				{tab === "billing" && <BillingTab orgId={orgId} />}
 				{tab === "usage" && <UsageTab orgId={orgId} />}
 				{tab === "provider-keys" && <ProviderKeysTab />}
+				{tab === "notifications" && <NotificationsTab />}
 			</div>
 		</>
 	);

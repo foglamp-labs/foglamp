@@ -55,7 +55,7 @@ const PROJECT_SCOPED_SECTIONS = new Set([
 
 // Settings subpages that are org-scoped, not project-scoped — switching
 // projects doesn't invalidate them, so the user stays put.
-const ORG_SCOPED_PATHS = new Set(["/settings/org", "/settings/notifications"]);
+const ORG_SCOPED_PATHS = new Set(["/settings/org"]);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();

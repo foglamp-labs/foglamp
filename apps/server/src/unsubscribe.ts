@@ -32,7 +32,7 @@ export async function handleUnsubscribe(c: Context<AppEnv>) {
 		return c.html(html, status);
 	}
 	const ok = await setDigestPreference(db, parsed.userId, parsed.orgId, false);
-	const settings = `${env.CORS_ORIGIN.replace(/\/$/, "")}/settings/notifications`;
+	const settings = `${env.CORS_ORIGIN.replace(/\/$/, "")}/settings/org?tab=notifications`;
 	const { html, status } = ok
 		? page(
 				"You are unsubscribed",
