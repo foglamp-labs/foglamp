@@ -57,7 +57,7 @@ export function esc(value: string): string {
 // The alt text keeps the brand legible if a client blocks images.
 function logo(): string {
 	const base = env.CORS_ORIGIN.replace(/\/$/, "");
-	return `<img src="${esc(`${base}/wordmark-light.png`)}" alt="Foglamp" width="112" style="display:block; width:112px; height:auto; border:0; outline:none; text-decoration:none;" />`;
+	return `<img src="${esc(`${base}/wordmark-light.png`)}" alt="Foglamp" width="96" style="display:block; width:96px; height:auto; border:0; outline:none; text-decoration:none;" />`;
 }
 
 // A definition-list-style block of label/value rows (used by the alert email).

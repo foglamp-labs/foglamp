@@ -127,7 +127,7 @@ function metricCell(m: DigestMetric): string {
 		? `${img(d.icon, 14)}<span style="vertical-align:middle;">&nbsp;${esc(d.text)}</span>`
 		: esc(d.text);
 	return `<td width="25%" valign="top" style="padding:14px 8px 0 0;">
-        <div style="font-family:${FONT}; font-size:11px; line-height:14px; text-transform:uppercase; letter-spacing:0.04em; color:${C.muted}; white-space:nowrap;">${img(m.icon, 14)}<span style="vertical-align:middle;">&nbsp;${esc(m.label)}</span></div>
+        <div style="font-family:${FONT}; font-size:11px; line-height:14px; text-transform:uppercase; letter-spacing:0.04em; color:${C.muted}; white-space:nowrap;">${img(m.icon, 12)}<span style="vertical-align:middle;">&nbsp;${esc(m.label)}</span></div>
         <div style="font-family:${FONT}; font-size:17px; line-height:22px; font-weight:600; color:${C.text}; margin-top:6px;">${esc(m.value)}</div>
         <div style="font-family:${FONT}; font-size:12px; line-height:16px; color:${d.color}; margin-top:2px; white-space:nowrap;">${deltaHtml}</div>
       </td>`;
