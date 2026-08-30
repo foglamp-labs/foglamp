@@ -1,12 +1,19 @@
 "use client";
 
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@foglamp/ui/components/card";
 import { Switch } from "@foglamp/ui/components/switch";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { trpc } from "@/utils/trpc";
 
-/** Per-user notification preferences, one weekly digest toggle per org. */
+/** Per-user notification preferences: one weekly digest toggle per org. */
 export function NotificationsTab() {
 	const qc = useQueryClient();
 	const { data, isLoading } = useQuery(trpc.notifications.list.queryOptions());
@@ -22,29 +29,31 @@ export function NotificationsTab() {
 	);
 
 	return (
-		<section className="flex flex-col gap-1">
-			<h2 className="text-sm font-medium">Weekly digest</h2>
-			<p className="text-sm text-muted-foreground">
-				Every Monday, one email per organization with last week's spans, cost,
-				errors and latency for each project. Owners and admins receive it by
-				default.
-			</p>
-			<ul className="mt-4 divide-y rounded-lg border">
+		<Card className="data-[size=sm]:pb-3" size="sm">
+			<CardHeader>
+				<CardTitle>Notifications</CardTitle>
+				<CardDescription>
+					Every Monday, one weekly digest email per organization with last
+					week's spans, cost, errors and latency for each project. Owners and
+					admins receive it by default.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="flex flex-col">
 				{isLoading && (
-					<li className="px-4 py-3 text-sm text-muted-foreground">Loading…</li>
+					<div className="py-3 text-sm text-muted-foreground">Loading…</div>
 				)}
 				{data?.length === 0 && (
-					<li className="px-4 py-3 text-sm text-muted-foreground">
+					<div className="py-3 text-sm text-muted-foreground">
 						You are not a member of any organization.
-					</li>
+					</div>
 				)}
 				{data?.map((row) => (
-					<li
+					<div
 						key={row.orgId}
-						className="flex items-center justify-between gap-4 px-4 py-3"
+						className="flex items-center justify-between gap-3 border-b border-border/50 py-3 last:border-b-0 px-0.5 pr-2"
 					>
 						<div className="min-w-0">
-							<div className="truncate text-sm">{row.orgName}</div>
+							<div className="truncate text-sm font-medium">{row.orgName}</div>
 							<div className="text-xs text-muted-foreground capitalize">
 								{row.role}
 							</div>
@@ -60,9 +69,9 @@ export function NotificationsTab() {
 							}
 							aria-label={`Weekly digest for ${row.orgName}`}
 						/>
-					</li>
+					</div>
 				))}
-			</ul>
-		</section>
+			</CardContent>
+		</Card>
 	);
 }

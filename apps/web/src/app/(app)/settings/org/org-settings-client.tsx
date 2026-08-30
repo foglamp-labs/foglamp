@@ -101,9 +101,9 @@ const TAB_IDS = [
 	"members",
 	"provider-keys",
 	"projects",
+	"notifications",
 	"billing",
 	"usage",
-	"notifications",
 ] as const;
 type TabId = (typeof TAB_IDS)[number];
 
@@ -126,9 +126,9 @@ const TABS: {
 	{ id: "members", label: "Members", icon: IconUserFilled },
 	{ id: "provider-keys", label: "Provider Keys", icon: IconLockFilled },
 	{ id: "projects", label: "Projects", icon: IconFolderFilled },
+	{ id: "notifications", label: "Notifications", icon: IconBellFilled },
 	{ id: "billing", label: "Billing", icon: IconCreditCardFilled },
 	{ id: "usage", label: "Usage", icon: IconChartPieFilled },
-	{ id: "notifications", label: "Notifications", icon: IconBellFilled },
 ];
 
 // Button-row tab bar with one shared background pill: the active button hosts
@@ -235,10 +235,10 @@ export function OrgSettingsClient() {
 				{tab === "general" && <GeneralTab orgId={orgId} orgName={orgName} />}
 				{tab === "members" && <MembersTab orgId={orgId} />}
 				{tab === "projects" && <ProjectsTab orgId={orgId} />}
+				{tab === "notifications" && <NotificationsTab />}
 				{tab === "billing" && <BillingTab orgId={orgId} />}
 				{tab === "usage" && <UsageTab orgId={orgId} />}
 				{tab === "provider-keys" && <ProviderKeysTab />}
-				{tab === "notifications" && <NotificationsTab />}
 			</div>
 		</>
 	);
