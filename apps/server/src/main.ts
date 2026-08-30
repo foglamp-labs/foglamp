@@ -6,6 +6,7 @@ import { startScanCleanup } from "@foglamp/api/scanCron";
 import { startQuotaWarnSweep } from "@foglamp/api/quotaCron";
 import { startScoringWorker } from "@foglamp/api/scoringCron";
 import { startStorageWatchSweep } from "@foglamp/api/storageCron";
+import { startWeeklyDigestSweep } from "@foglamp/api/weeklyDigestCron";
 import { createContext } from "@foglamp/api/context";
 import { appRouter } from "@foglamp/api/routers/index";
 import { provisionCliKey } from "@foglamp/api/services/projects";
@@ -40,6 +41,7 @@ import {
   handleScanGet,
   handleScanGetPrevious,
 } from "./scan";
+import { handleUnsubscribe } from "./unsubscribe";
 import { pruneScanRateLimits } from "./rateLimit";
 
 const app = new Hono<AppEnv>();
@@ -126,6 +128,9 @@ app.post(
   handleScanCreate,
 );
 app.get("/scan/:slug", handleScanGet);
+// Weekly digest one-click unsubscribe (footer link + List-Unsubscribe header).
+app.get("/unsubscribe", handleUnsubscribe);
+app.post("/unsubscribe", handleUnsubscribe);
 // Previous version of a scan (pre-last-update) — powers the changes card.
 app.get("/scan/:slug/previous", handleScanGetPrevious);
 // Claim a scan into the signed-in user's account (stops the 90-day expiry).
@@ -197,6 +202,8 @@ const stopPlanExpiry = startInstrumentationPlanExpiry();
 // Personal onboarding notes: at days 1, 3, and 7, but only while the signup
 // workspace has never sent a span.
 const stopOnboardingFollowUps = startOnboardingFollowUpSweep();
+// Weekly digest: Monday 08:00 UTC per org, to opted-in members (hourly poll).
+const stopWeeklyDigest = startWeeklyDigestSweep();
 
 // Periodically shed stale in-memory rate-limit entries (foggy + scan).
 const pruneTimer = setInterval(() => {
@@ -221,6 +228,7 @@ async function shutdown(signal: string): Promise<void> {
       stopScanCleanup(),
       stopPlanExpiry(),
       stopOnboardingFollowUps(),
+      stopWeeklyDigest(),
     ]);
     log.emit({ outcome: "shutdown", signal });
   } catch (err) {

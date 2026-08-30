@@ -1,10 +1,17 @@
 import { stripe as stripePlugin } from "@better-auth/stripe";
 import { captureActivationEvent } from "@foglamp/analytics";
 import { getOrgPlan, isBillingEnabled, PLAN_LIMITS } from "@foglamp/billing";
-import { createClickHouseClient, updateOrgRetention } from "@foglamp/clickhouse";
+import {
+  createClickHouseClient,
+  updateOrgRetention,
+} from "@foglamp/clickhouse";
 import { createDb } from "@foglamp/db";
 import * as schema from "@foglamp/db/schema/index";
-import { invitation, member, organization } from "@foglamp/db/schema/organization";
+import {
+  invitation,
+  member,
+  organization,
+} from "@foglamp/db/schema/organization";
 import { onboardingEmail } from "@foglamp/db/schema/onboardingEmail";
 import { project } from "@foglamp/db/schema/project";
 import { env, getTrustedAppOrigins } from "@foglamp/env/server";
@@ -201,7 +208,7 @@ export function createAuth() {
     }),
     trustedOrigins: getTrustedAppOrigins(
       env.CORS_ORIGIN,
-      env.CORS_EXTRA_ORIGINS
+      env.CORS_EXTRA_ORIGINS,
     ),
     emailAndPassword: {
       enabled: methods.emailPassword,
@@ -264,7 +271,8 @@ export function createAuth() {
               }
 
               const orgId = uuidv7();
-              const local = user.name || user.email.split("@")[0] || "workspace";
+              const local =
+                user.name || user.email.split("@")[0] || "workspace";
               // Full uuid hex suffix → globally unique slug (no collision window).
               const slug = `${slugify(local)}-${orgId.replace(/-/g, "")}`;
               // Personalized name: orgs surface as end-customers in our own

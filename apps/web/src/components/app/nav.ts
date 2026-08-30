@@ -4,6 +4,8 @@ import {
   IconAffiliateFilled,
   IconAlertTriangle,
   IconAlertTriangleFilled,
+  IconBell,
+  IconBellFilled,
   IconGauge,
   IconGaugeFilled,
   IconGhost,
@@ -32,7 +34,6 @@ export type NavItem = {
   iconClassName?: string;
   /** Dev-toolbar "simple" variant: just the colored glyph — no chip background
    * or shadow. Falls back to `iconClassName` when unset. */
-  simpleIconClassName?: string;
 };
 
 export const nav: NavItem[] = [
@@ -43,7 +44,6 @@ export const nav: NavItem[] = [
     activeIcon: IconMichelinStarFilled,
     iconClassName:
       "bg-rose-100 dark:bg-rose-950 rounded-[5px] squircle:rounded-xl p-0.5 corner-squircle text-rose-500 shadow-[inset_0_0_0_1px_rgba(244,63,94,0.14),0_2px_6px_-2px_rgba(244,63,94,0.25)] dark:shadow-(--custom-shadow)",
-    simpleIconClassName: "text-rose-500",
   },
   {
     href: "/workflows",
@@ -52,7 +52,6 @@ export const nav: NavItem[] = [
     activeIcon: IconSitemapFilled,
     iconClassName:
       "bg-emerald-100 dark:bg-emerald-950 rounded-[5px] squircle:rounded-xl p-0.5 corner-squircle text-emerald-500 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.14),0_2px_6px_-2px_rgba(16,185,129,0.25)] dark:shadow-(--custom-shadow)",
-    simpleIconClassName: "text-emerald-500",
   },
   {
     href: "/agents",
@@ -61,7 +60,6 @@ export const nav: NavItem[] = [
     activeIcon: IconGhostFilled,
     iconClassName:
       "bg-orange-100 dark:bg-orange-950 rounded-[5px] squircle:rounded-xl p-0.5 corner-squircle text-orange-500 shadow-[inset_0_0_0_1px_rgba(249,115,22,0.14),0_2px_6px_-2px_rgba(249,115,22,0.25)] dark:shadow-(--custom-shadow)",
-    simpleIconClassName: "text-orange-500",
   },
   {
     href: "/sessions",
@@ -70,7 +68,6 @@ export const nav: NavItem[] = [
     activeIcon: IconMessage2Filled,
     iconClassName:
       "bg-sky-100 dark:bg-sky-950 rounded-[5px] squircle:rounded-xl p-0.5 corner-squircle text-sky-500 shadow-[inset_0_0_0_1px_rgba(14,165,233,0.14),0_2px_6px_-2px_rgba(14,165,233,0.25)] dark:shadow-(--custom-shadow)",
-    simpleIconClassName: "text-sky-500",
   },
   {
     href: "/traces",
@@ -79,7 +76,6 @@ export const nav: NavItem[] = [
     activeIcon: IconAffiliateFilled,
     iconClassName:
       "bg-[#ede0d4] dark:bg-[#2e211b] rounded-[5px] squircle:rounded-xl p-0.5 corner-squircle text-[#8b5e34] dark:text-[#c9a888] shadow-[inset_0_0_0_1px_rgba(139,94,52,0.14),0_2px_6px_-2px_rgba(139,94,52,0.25)] dark:shadow-(--custom-shadow)",
-    simpleIconClassName: "text-[#8b5e34] dark:text-[#c9a888]",
   },
   {
     href: "/evals",
@@ -88,7 +84,6 @@ export const nav: NavItem[] = [
     activeIcon: IconGaugeFilled,
     iconClassName:
       "bg-fuchsia-100 dark:bg-fuchsia-950 rounded-[5px] squircle:rounded-xl p-0.5 corner-squircle text-fuchsia-500 shadow-[inset_0_0_0_1px_rgba(217,70,239,0.14),0_2px_6px_-2px_rgba(217,70,239,0.25)] dark:shadow-(--custom-shadow)",
-    simpleIconClassName: "text-fuchsia-500",
   },
 
   {
@@ -98,7 +93,6 @@ export const nav: NavItem[] = [
     activeIcon: IconAlertTriangleFilled,
     iconClassName:
       "bg-yellow-100 dark:bg-yellow-950 rounded-[5px] squircle:rounded-xl p-0.5 corner-squircle text-yellow-500 shadow-[inset_0_0_0_1px_rgba(234,179,8,0.14),0_2px_6px_-2px_rgba(234,179,8,0.25)] dark:shadow-(--custom-shadow)",
-    simpleIconClassName: "text-yellow-500",
   },
 ];
 
@@ -115,6 +109,13 @@ export const account: NavItem[] = [
     label: "Settings",
     icon: IconSettings,
     activeIcon: IconSettingsFilled,
+    iconClassName: "text-muted-foreground/70",
+  },
+  {
+    href: "/settings/notifications",
+    label: "Notifications",
+    icon: IconBell,
+    activeIcon: IconBellFilled,
     iconClassName: "text-muted-foreground/70",
   },
 ];

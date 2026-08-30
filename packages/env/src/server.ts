@@ -60,6 +60,12 @@ const serverSchema = {
   // How often to check for due 1, 3, and 7 day onboarding notes.
   ONBOARDING_EMAIL_INTERVAL_MS: z.coerce.number().default(3_600_000),
 
+  // --- Weekly digest (Monday 08:00 UTC; the sweep polls hourly) ---
+  WEEKLY_DIGEST_INTERVAL_MS: z.coerce.number().default(3_600_000),
+  WEEKLY_DIGEST_FROM: z.string().default("Foglamp <digest@foglamp.dev>"),
+  // Model for the paid-tier summary paragraph; falls back to FOGGY_MODEL.
+  WEEKLY_DIGEST_MODEL: z.string().optional(),
+
   // --- Alerts (evaluator cron in apps/server) ---
   // How often the evaluator sweeps enabled rules; default every 60s.
   ALERT_EVAL_INTERVAL_MS: z.coerce.number().default(60_000),
@@ -201,7 +207,7 @@ function parseAdditionalOrigins(rawOrigins?: string | null) {
 
 export function getTrustedAppOrigins(
   primaryOrigin: string,
-  additionalOrigins?: string | null
+  additionalOrigins?: string | null,
 ) {
   const origins = new Set<string>();
 

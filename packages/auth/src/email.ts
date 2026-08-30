@@ -21,11 +21,11 @@ const log = createLogger();
 // --- Shared email chrome -----------------------------------------------------
 // All templates render onto one layout so they read like the product: Inter
 // type, the near-black/neutral palette and 10–14px radii from the UI theme, a
-// white card on a soft gray canvas, and the Foglamp logo lockup in the header.
+// white card on a soft gray canvas, with the Foglamp logo at the top of the card.
 
 // Mirrors the UI theme tokens (globals.css): --foreground, --muted-foreground,
 // --border, a soft canvas, and the near-black primary button.
-const C = {
+export const EMAIL_COLORS = {
 	canvas: "#f4f4f5",
 	card: "#ffffff",
 	border: "#ebebeb",
@@ -36,12 +36,15 @@ const C = {
 };
 
 // Inter first (matches the app), then the usual cross-client system fallbacks.
-const FONT =
+export const EMAIL_FONT =
 	"'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+const C = EMAIL_COLORS;
+const FONT = EMAIL_FONT;
 
 // Escape interpolated, user-influenced values (org/rule names, links) so they
 // can't break out of the surrounding HTML. `&` first, then the rest.
-function esc(value: string): string {
+export function esc(value: string): string {
 	return value
 		.replace(/&/g, "&amp;")
 		.replace(/</g, "&lt;")
@@ -54,7 +57,7 @@ function esc(value: string): string {
 // The alt text keeps the brand legible if a client blocks images.
 function logo(): string {
 	const base = env.CORS_ORIGIN.replace(/\/$/, "");
-	return `<img src="${esc(`${base}/wordmark-light.png`)}" alt="Foglamp" width="132" style="display:block; width:132px; height:auto; border:0; outline:none; text-decoration:none;" />`;
+	return `<img src="${esc(`${base}/wordmark-light.png`)}" alt="Foglamp" width="112" style="display:block; width:112px; height:auto; border:0; outline:none; text-decoration:none;" />`;
 }
 
 // A definition-list-style block of label/value rows (used by the alert email).
@@ -76,7 +79,7 @@ function detailRows(rows: [label: string, value: string][]): string {
  * text itself. `eyebrow` is a small uppercased kicker, optionally tinted to a
  * semantic accent (amber for quota, red/green for alerts).
  */
-function emailLayout(opts: {
+export function emailLayout(opts: {
 	previewText: string;
 	title: string;
 	body: string;
@@ -116,10 +119,8 @@ function emailLayout(opts: {
         <td align="center" style="padding:32px 16px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:460px;">
             <tr>
-              <td style="padding:0 4px 20px;">${logo()}</td>
-            </tr>
-            <tr>
               <td style="background:${C.card}; border:1px solid ${C.border}; border-radius:14px; padding:32px;">
+                <div style="padding-bottom:24px;">${logo()}</div>
                 ${eyebrowHtml}
                 <h1 style="margin:0 0 14px; font-family:${FONT}; font-size:20px; font-weight:600; letter-spacing:-0.3px; color:${C.text};">${title}</h1>
                 <div style="font-family:${FONT}; font-size:14px; line-height:1.6; color:${C.text};">${body}</div>

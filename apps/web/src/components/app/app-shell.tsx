@@ -55,18 +55,18 @@ import { QuotaCard } from "@/components/app/quota-card";
 
 import { FoglampHUD } from "foglamp/hud";
 
-import { DevBar, useNavIconVariant } from "./dev-toolbar";
+import { DevBar } from "./dev-toolbar";
 import { FoggyLauncher, FoggyWidget } from "./foggy/foggy-widget";
+import {
+  HeaderActionsSlotProvider,
+  LayoutReserveProvider,
+} from "./header-slot";
 import { account, nav } from "./nav";
 import { NewProjectDialog } from "./new-project-dialog";
 import { type PrefetchCtx, prefetchRoute } from "./prefetch";
 import { ProjectProvider, useProject } from "./project-context";
 import { ProjectIcon } from "./project-icon";
 import { RangeProvider, useRange } from "./range-context";
-import {
-  HeaderActionsSlotProvider,
-  LayoutReserveProvider,
-} from "./header-slot";
 
 function initials(value: string) {
   return value.slice(0, 2).toUpperCase();
@@ -234,19 +234,19 @@ function NavIcon({
     <span
       className={cn(
         "grid size-4.5 place-items-center [&_svg]:size-full!",
-        className
+        className,
       )}
     >
       <OutlineIcon
         className={cn(
           "[grid-area:1/1] transition-opacity duration-100 ease-in-out",
-          active ? "opacity-0" : "opacity-100"
+          active ? "opacity-0" : "opacity-100",
         )}
       />
       <ActiveIcon
         className={cn(
           "[grid-area:1/1] transition-opacity duration-100 ease-in-out",
-          active ? "opacity-100" : "opacity-0"
+          active ? "opacity-100" : "opacity-0",
         )}
       />
     </span>
@@ -290,13 +290,6 @@ function ShellBody({ children }: { children: React.ReactNode }) {
   // for a real project, preventing the inset corner from flashing in and out.
   const foggyAvailable = isLoading || projects.length > 0;
   const foggyCarved = foggyAvailable && !foggyOpen;
-  // Dev-toolbar toggle: "chip" (colored chip w/ background + shadow) or
-  // "simple" (bare colored glyph). Always "chip" in production.
-  const navIconVariant = useNavIconVariant();
-  const navIconClass = (item: (typeof nav)[number]) =>
-    navIconVariant === "simple"
-      ? (item.simpleIconClassName ?? item.iconClassName)
-      : item.iconClassName;
 
   // Hover/focus intent on a sidebar link warms that page's tRPC queries (see
   // prefetch.ts) with the same project + range args the page itself will use.
@@ -331,7 +324,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
                           icon={item.icon}
                           activeIcon={item.activeIcon}
                           active={active}
-                          className={navIconClass(item)}
+                          className={item.iconClassName}
                         />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
@@ -358,7 +351,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
                       icon={item.icon}
                       activeIcon={item.activeIcon}
                       active={active}
-                      className={navIconClass(item)}
+                      className={item.iconClassName}
                     />
                     <span>{item.label}</span>
                   </SidebarMenuButton>
@@ -371,16 +364,16 @@ function ShellBody({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       {/* This wrapper owns the inset's canvas margin so the dev bar can sit
-			    above it without disturbing the sidebar/Foggy horizontal flex layout.
-			    With no dev bar in production, the single inset fills it exactly as it
-			    did before. */}
+          above it without disturbing the sidebar/Foggy horizontal flex layout.
+          With no dev bar in production, the single inset fills it exactly as it
+          did before. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2">
         <DevBar />
 
         <SidebarInset
           className={cn(
             "min-h-0 overflow-hidden transition-shadow duration-200 md:rounded-lg squircle:md:rounded-3xl",
-            foggyCarved && "foggy-inset-closed"
+            foggyCarved && "foggy-inset-closed",
           )}
           // Square the bottom-right corner so the carved launcher's shelf sits flush
           // there; restore the round corner once the chat pushes it in. Inline so

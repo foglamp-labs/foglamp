@@ -11,7 +11,10 @@ const expectedSubjects = {
 describe("onboarding follow-up emails", () => {
   test("renders the approved subject, calendar link, and personal greeting", () => {
     for (const milestoneDays of [1, 3, 7] as const) {
-      const email = renderOnboardingFollowUpEmail(milestoneDays, "Gustavo Fior");
+      const email = renderOnboardingFollowUpEmail(
+        milestoneDays,
+        "Gustavo Fior",
+      );
 
       expect(email.subject).toBe(expectedSubjects[milestoneDays]);
       expect(email.text).toStartWith("Hey Gustavo!\n\n");

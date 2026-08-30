@@ -23,7 +23,6 @@ import {
 } from "react";
 
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
-import { useTtftVariant } from "@/components/app/dev-toolbar";
 import {
   type EvalMeta,
   SpanScoreDots,
@@ -127,7 +126,7 @@ export function SpanIconChip({
           "flex size-4.5 shrink-0 items-center justify-center rounded-md corner-squircle dark:shadow-(--custom-shadow)",
           modelColor
             ? "shadow-(--chip-shadow)"
-            : "bg-muted shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)]"
+            : "bg-muted shadow-[inset_0_0_0_1px_rgba(100,116,139,0.14),0_2px_6px_-2px_rgba(100,116,139,0.25)]",
         )}
         style={
           modelColor
@@ -164,7 +163,7 @@ const GROUP_MIN_RUN = 3;
  */
 function groupRepeatedSiblings(
   rows: SpanRow[],
-  expanded: ReadonlySet<string>
+  expanded: ReadonlySet<string>,
 ): Row[] {
   const out: Row[] = [];
   let i = 0;
@@ -249,14 +248,12 @@ export function TraceTimeline({
 
   // Per-row collapse — view-local state; collapsing a row hides its subtree.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  // Dev-only A/B of the pre-first-token bar rendering; fixed in production.
-  const ttftVariant = useTtftVariant();
   // Runs of identical siblings fold by default; this holds the ones the reader
   // has since opened back up. Controlled by the parent when both group props
   // are passed (so keyboard Enter can toggle), self-managed otherwise.
-  const [internalExpanded, setInternalExpanded] = useState<
-    ReadonlySet<string>
-  >(new Set());
+  const [internalExpanded, setInternalExpanded] = useState<ReadonlySet<string>>(
+    new Set(),
+  );
   const expandedGroups = expandedGroupsProp ?? internalExpanded;
   // Hover time cursor — a vertical line + offset chip following the pointer
   // over the track. Driven imperatively (direct style writes on refs) so
@@ -279,7 +276,7 @@ export function TraceTimeline({
     cursor.style.display = "block";
     cursor.style.left = `${frac * 100}%`;
     label.textContent = `${formatSpanDuration(offsetMs)} · ${new Date(
-      window.start + offsetMs
+      window.start + offsetMs,
     ).toLocaleTimeString(undefined, {
       hour: "numeric",
       minute: "2-digit",
@@ -373,9 +370,7 @@ export function TraceTimeline({
         });
         continue;
       }
-      if (
-        openGroup?.spans.some((s) => s.spanId === row.span.spanId)
-      ) {
+      if (openGroup?.spans.some((s) => s.spanId === row.span.spanId)) {
         entries.push({
           spanId: row.span.spanId,
           groupKey: openGroup.key,
@@ -408,7 +403,7 @@ export function TraceTimeline({
   // Split scores into whole-trace (header strip) and per-span (row indicators).
   const traceScores = useMemo(
     () => scores.filter((s) => s.targetType !== "span"),
-    [scores]
+    [scores],
   );
   const spanScores = useMemo(() => {
     const m = new Map<string, TraceScore[]>();
@@ -474,7 +469,7 @@ export function TraceTimeline({
         <TooltipProvider delay={150}>
           <div className="relative z-10 flex flex-col gap-0.5">
             {/* Whole-trace root row — the entire trace as one bar; every
-						    real span indents beneath it. */}
+                real span indents beneath it. */}
             <button
               type="button"
               onClick={() =>
@@ -484,7 +479,7 @@ export function TraceTimeline({
                 "grid w-full cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-r-sm rounded-l-md py-0.5 text-left text-sm",
                 selected === WHOLE_TRACE_ID
                   ? "bg-accent dark:bg-accent/70"
-                  : "hover:bg-accent/80 dark:hover:bg-accent/50"
+                  : "hover:bg-accent/80 dark:hover:bg-accent/50",
               )}
             >
               {/* pl-1 + the empty chevron slot puts this chip one 12px indent
@@ -539,9 +534,7 @@ export function TraceTimeline({
                     onToggle={() => expandGroup(row.key)}
                     // A folded run answers for its head span, so keyboard
                     // selection landing there highlights the group row.
-                    selected={
-                      !row.expanded && selected === row.spans[0].spanId
-                    }
+                    selected={!row.expanded && selected === row.spans[0].spanId}
                   />
                 );
               }
@@ -554,7 +547,7 @@ export function TraceTimeline({
               // can't spill the bar past the track's right edge.
               const width = Math.min(
                 Math.max((span.durationMs / total) * 100, 1.5),
-                Math.max(100 - offset, 0)
+                Math.max(100 - offset, 0),
               );
               const isError = span.status === "error";
               // Aborted: a clean cancellation (AI SDK onAbort), amber — distinct
@@ -592,7 +585,7 @@ export function TraceTimeline({
                 thinkingMs != null
                   ? Math.min(
                       (thinkingMs / span.durationMs) * 100,
-                      100 - thinkingLeftPct
+                      100 - thinkingLeftPct,
                     )
                   : 0;
               // Model-call phase: the pure provider call leads the step; the
@@ -636,12 +629,11 @@ export function TraceTimeline({
                   key={span.spanId}
                   type="button"
                   onClick={() => onSelect(span.spanId)}
-
                   className={cn(
                     "grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm",
                     span.spanId === selected
                       ? "bg-accent dark:bg-accent/70"
-                      : "hover:bg-accent/80 dark:hover:bg-accent/50"
+                      : "hover:bg-accent/80 dark:hover:bg-accent/50",
                   )}
                 >
                   <div
@@ -674,13 +666,13 @@ export function TraceTimeline({
                         "flex size-3.5 shrink-0 items-center justify-center",
                         hasChildren
                           ? "cursor-pointer text-muted-foreground/50 hover:text-foreground"
-                          : "pointer-events-none opacity-0"
+                          : "pointer-events-none opacity-0",
                       )}
                     >
                       <IconChevronRight
                         className={cn(
                           "size-3 transition-transform",
-                          hasChildren && !isCollapsed && "rotate-90"
+                          hasChildren && !isCollapsed && "rotate-90",
                         )}
                       />
                     </span>
@@ -730,27 +722,19 @@ export function TraceTimeline({
                             className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs"
                             style={{ left: `${offset}%`, width: `${width}%` }}
                           >
-                            {/* Base track. Up to TTFT the bar renders as the
-                                "waiting" treatment (dev-toolbar selectable) —
-                                and the solid fill starts from there. */}
+                            {/* Base track. Up to TTFT the bar renders as a
+                                faded "waiting" stretch, and the solid fill
+                                starts from there. */}
                             {ttftPct != null && ttftPct > 0 ? (
                               <>
                                 <TtftWait
-                                  variant={ttftVariant}
                                   widthPct={ttftPct}
                                   barClass={barClass}
-                                  borderClass={
-                                    isError
-                                      ? "border-rose-500"
-                                      : isAborted
-                                        ? "border-amber-500"
-                                        : "border-violet-500"
-                                  }
                                 />
                                 <div
                                   className={cn(
                                     "absolute inset-y-0 right-0 rounded-r-xs",
-                                    barClass
+                                    barClass,
                                   )}
                                   style={{
                                     ...barStyle,
@@ -762,15 +746,15 @@ export function TraceTimeline({
                               <div
                                 className={cn(
                                   "h-full w-full rounded-xs",
-                                  barClass
+                                  barClass,
                                 )}
                                 style={barStyle}
                               />
                             )}
                             {/* Model-call phase — sky tint over the pure
-	                              provider call; the tail is tool execution.
-	                              Starts at TTFT so the hatched wait stays
-	                              legible underneath. */}
+                                provider call; the tail is tool execution.
+                                Starts at TTFT so the hatched wait stays
+                                legible underneath. */}
                             {modelCallMs != null &&
                               modelCallWidthPct > (ttftPct ?? 0) && (
                                 <div
@@ -782,7 +766,7 @@ export function TraceTimeline({
                                 />
                               )}
                             {/* Thinking phase — violet stretch over the
-	                              reasoning window within the step. */}
+                                reasoning window within the step. */}
                             {thinkingMs != null && thinkingWidthPct > 0 && (
                               <div
                                 className="absolute inset-y-0 rounded-xs bg-violet-500/80"
@@ -881,7 +865,7 @@ function GroupedRow({
   const offset = (first / total) * 100;
   const width = Math.min(
     Math.max(((last - first) / total) * 100, 1.5),
-    Math.max(100 - offset, 0)
+    Math.max(100 - offset, 0),
   );
   // Wall-clock envelope (first start → last end), not the summed durations:
   // the calls often run in parallel, a sum can exceed the trace itself, and
@@ -903,7 +887,7 @@ function GroupedRow({
         "grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm",
         selected
           ? "bg-accent dark:bg-accent/70"
-          : "hover:bg-accent/80 dark:hover:bg-accent/50"
+          : "hover:bg-accent/80 dark:hover:bg-accent/50",
       )}
     >
       <div
@@ -916,7 +900,7 @@ function GroupedRow({
           <IconChevronRight
             className={cn(
               "size-3 transition-transform",
-              expanded && "rotate-90"
+              expanded && "rotate-90",
             )}
           />
         </span>
@@ -965,88 +949,27 @@ function GroupedRow({
 // ruler's tick positions so the gridlines and time labels all align.
 const GRID_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
 
-// Diagonal-stripe mask for the "stripes" TTFT variant: the bar's own color
-// shows in the stripes, the row background in the gaps.
-const TTFT_HATCH_MASK =
-  "repeating-linear-gradient(45deg, black 0 2.5px, transparent 2.5px 5px)";
-
 /**
- * The pre-first-token stretch of an LLM bar, rendered per the dev-toolbar's
- * TTFT variant (production always gets the default). `barClass` is the solid
- * fill's bg-*, `borderClass` its matching border-* hue.
+ * The pre-first-token stretch of an LLM bar: the bar's own color at reduced
+ * opacity, so the wait reads as part of the span while the solid fill starts
+ * at first token. `barClass` is the fill's bg-*.
  */
 function TtftWait({
-  variant,
   widthPct,
   barClass,
-  borderClass,
 }: {
-  variant: ReturnType<typeof useTtftVariant>;
   widthPct: number;
   barClass: string | undefined;
-  borderClass: string;
 }) {
-  const width = { width: `${widthPct}%` };
-  switch (variant) {
-    case "stripes":
-      return (
-        <div
-          className={cn("absolute inset-y-0 left-0 rounded-l-xs", barClass)}
-          style={{
-            ...width,
-            maskImage: TTFT_HATCH_MASK,
-            WebkitMaskImage: TTFT_HATCH_MASK,
-          }}
-        />
-      );
-    case "faded":
-      return (
-        <div
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-l-xs opacity-30",
-            barClass
-          )}
-          style={width}
-        />
-      );
-    case "thin":
-      return (
-        <div
-          className={cn(
-            "absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-l-xs",
-            barClass
-          )}
-          style={width}
-        />
-      );
-    case "gap":
-      return (
-        <div
-          className="absolute inset-y-0 left-0 rounded-l-xs bg-muted-foreground/20"
-          style={width}
-        />
-      );
-    case "dots":
-      return (
-        <div
-          className={cn(
-            "absolute top-1/2 left-0 -translate-y-1/2 border-t-2 border-dotted",
-            borderClass
-          )}
-          style={width}
-        />
-      );
-    default:
-      return (
-        <div
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-l-xs border border-r-0 border-dashed",
-            borderClass
-          )}
-          style={width}
-        />
-      );
-  }
+  return (
+    <div
+      className={cn(
+        "absolute inset-y-0 left-0 rounded-l-xs opacity-30",
+        barClass
+      )}
+      style={{ width: `${widthPct}%` }}
+    />
+  );
 }
 
 /**
@@ -1062,7 +985,7 @@ function TimeRuler({ total }: { total: number }) {
           key={frac}
           className={cn(
             "absolute top-0 text-[10px] text-muted-foreground/50 tabular-nums",
-            frac === 1 && "-translate-x-full"
+            frac === 1 && "-translate-x-full",
           )}
           style={{ left: `${frac * 100}%` }}
         >

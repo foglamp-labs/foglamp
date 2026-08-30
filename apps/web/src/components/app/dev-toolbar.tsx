@@ -20,30 +20,21 @@ import {
 } from "@foglamp/ui/components/tooltip";
 import {
   IconArrowUp,
-  IconBlur,
   IconClock,
-  IconClockBolt,
   IconClockExclamation,
   IconClockOff,
   IconDatabaseSearch,
   IconGauge,
   IconGaugeFilled,
   IconHourglass,
-  IconLayoutSidebar,
-  IconLineDashed,
-  IconLineDotted,
   IconLoader,
-  IconMinus,
   IconPlugConnectedX,
   IconRefresh,
-  IconSpacingHorizontal,
-  IconSquareRounded,
-  IconSquareRoundedFilled,
-  IconTexture,
   IconTrash,
   IconWifi,
 } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 
 import {
@@ -62,102 +53,11 @@ import {
 // ---------------------------------------------------------------------------
 // Dev settings store
 // ---------------------------------------------------------------------------
-// A tiny localStorage-backed store (rather than context) so any component can
-// subscribe to a dev setting without threading providers through the tree.
-// Everything here is dev-only: in production the hooks return the default and
-// the toolbar renders nothing.
+// Dev-only simulated network conditions live in utils/dev-network.ts; the
+// hooks below subscribe to that store. In production the toolbar renders
+// nothing.
 
 const DEV = process.env.NODE_ENV === "development";
-
-/** How the sidebar nav icons render: the current colored chip (background +
- * shadow) or just the colored glyph. */
-export type NavIconVariant = "chip" | "simple";
-
-const NAV_ICON_KEY = "foglamp:dev:nav-icon-variant";
-const listeners = new Set<() => void>();
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-function readNavIconVariant(): NavIconVariant {
-  if (typeof window === "undefined") return "chip";
-  return window.localStorage.getItem(NAV_ICON_KEY) === "simple"
-    ? "simple"
-    : "chip";
-}
-
-function setNavIconVariant(variant: NavIconVariant) {
-  // The default is absence, so a stale key never leaks into a fresh state.
-  if (variant === "simple") window.localStorage.setItem(NAV_ICON_KEY, "simple");
-  else window.localStorage.removeItem(NAV_ICON_KEY);
-  for (const listener of listeners) listener();
-}
-
-/** The active nav-icon variant. Always "chip" outside development. */
-export function useNavIconVariant(): NavIconVariant {
-  const variant = useSyncExternalStore(
-    subscribe,
-    readNavIconVariant,
-    () => "chip" as const
-  );
-  return DEV ? variant : "chip";
-}
-
-/** How an LLM bar renders its pre-first-token stretch in the waterfall. */
-export type TtftVariant =
-  | "dashed"
-  | "stripes"
-  | "faded"
-  | "thin"
-  | "gap"
-  | "dots";
-
-export const TTFT_VARIANTS: {
-  value: TtftVariant;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  { value: "dashed", label: "Dashed", icon: IconLineDashed },
-  { value: "stripes", label: "Stripes", icon: IconTexture },
-  { value: "faded", label: "Faded", icon: IconBlur },
-  { value: "thin", label: "Thin", icon: IconMinus },
-  { value: "gap", label: "Gap", icon: IconSpacingHorizontal },
-  { value: "dots", label: "Dots", icon: IconLineDotted },
-];
-
-const TTFT_KEY = "foglamp:dev:ttft-variant";
-// "Faded" won the A/B — production always renders it; the other variants stay
-// pickable from the dev toolbar.
-const TTFT_DEFAULT: TtftVariant = "faded";
-
-function readTtftVariant(): TtftVariant {
-  if (typeof window === "undefined") return TTFT_DEFAULT;
-  const v = window.localStorage.getItem(TTFT_KEY);
-  return TTFT_VARIANTS.some((o) => o.value === v)
-    ? (v as TtftVariant)
-    : TTFT_DEFAULT;
-}
-
-function setTtftVariant(variant: TtftVariant) {
-  // The default is absence, so a stale key never leaks into a fresh state.
-  if (variant === TTFT_DEFAULT) window.localStorage.removeItem(TTFT_KEY);
-  else window.localStorage.setItem(TTFT_KEY, variant);
-  for (const listener of listeners) listener();
-}
-
-/** The active TTFT-wait rendering. Always the default outside development. */
-export function useTtftVariant(): TtftVariant {
-  const variant = useSyncExternalStore(
-    subscribe,
-    readTtftVariant,
-    () => TTFT_DEFAULT
-  );
-  return DEV ? variant : TTFT_DEFAULT;
-}
 
 // Simulated network conditions (store lives in utils/dev-network.ts so the
 // tRPC client can read it without importing component code). One hook per
@@ -167,7 +67,7 @@ function useDevNetworkDelay(): DevNetworkDelay {
   return useSyncExternalStore(
     subscribeDevNetwork,
     readDevNetworkDelay,
-    () => 0
+    () => 0,
   );
 }
 
@@ -175,7 +75,7 @@ function useDevNetworkFail(): boolean {
   return useSyncExternalStore(
     subscribeDevNetwork,
     readDevNetworkFail,
-    () => false
+    () => false,
   );
 }
 
@@ -183,7 +83,7 @@ function useDevForceLoading(): boolean {
   return useSyncExternalStore(
     subscribeDevNetwork,
     readDevForceLoading,
-    () => false
+    () => false,
   );
 }
 
@@ -277,10 +177,10 @@ function useQueryDiagnostics() {
         label: formatQueryLabel(query.queryKey),
       });
       const allStale = queries.filter(
-        (query) => query.state.data !== undefined && query.isStale()
+        (query) => query.state.data !== undefined && query.isStale(),
       );
       const observedStale = allStale.filter(
-        (query) => query.getObserversCount() > 0
+        (query) => query.getObserversCount() > 0,
       );
       const next = {
         fetching: queries
@@ -297,7 +197,7 @@ function useQueryDiagnostics() {
         prev.fetching.every((q, i) => q.hash === next.fetching[i]?.hash) &&
         prev.stale.every((q, i) => q.hash === next.stale[i]?.hash)
           ? prev
-          : next
+          : next,
       );
     }
 
@@ -391,16 +291,47 @@ export function DevBar() {
   return <DevBarInner />;
 }
 
+// Exit is staged: the controls fade out first, then the bar's height (and the
+// canvas gap it occupies) collapses so the inset grows into the space in one
+// smooth motion instead of jumping.
+const FADE_S = 0.1;
+const COLLAPSE_S = 0.25;
+
 function DevBarInner() {
   // Session-only: a reload restores the strip, so it cannot be lost.
   const [hidden, setHidden] = useState(false);
-  if (hidden) return null;
-  return <DevBarContent onHide={() => setHidden(true)} />;
+  return (
+    <AnimatePresence>
+      {!hidden && (
+        <motion.div
+          key="dev-bar"
+          // Cancels the wrapper's `gap-2` as the bar collapses so the inset ends
+          // up exactly where it sits in production (no dev bar at all).
+          initial={false}
+          exit={{
+            height: 0,
+            marginBottom: "-0.5rem",
+            transition: {
+              delay: FADE_S,
+              duration: COLLAPSE_S,
+              ease: [0.4, 0, 0.2, 1],
+            },
+          }}
+          className="h-8 shrink-0 overflow-hidden"
+        >
+          <motion.div
+            exit={{ opacity: 0, transition: { duration: FADE_S } }}
+            className="h-full"
+          >
+            <DevBarContent onHide={() => setHidden(true)} />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
 function DevBarContent({ onHide }: { onHide: () => void }) {
-  const variant = useNavIconVariant();
-  const ttft = useTtftVariant();
   const fps = useFramesPerSecond();
   const queries = useQueryDiagnostics();
   const queryClient = useQueryClient();
@@ -462,68 +393,6 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
           </QueryTooltip>
         </TooltipProvider>
       </div>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger>
-          <div className="flex gap-1.25 items-center text-xs group text-foreground transition-all cursor-pointer">
-            <IconLayoutSidebar
-              data-icon="inline-start"
-              className="size-3.25 text-muted-foreground opacity-80 group-hover:text-foreground group-hover:opacity-100"
-            />
-            Sidebar icons
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuGroup>
-            <DropdownMenuRadioGroup
-              value={variant}
-              onValueChange={(value) =>
-                setNavIconVariant(value as NavIconVariant)
-              }
-            >
-              <DropdownMenuRadioItem value="chip" className={MENU_ITEM}>
-                <IconSquareRoundedFilled />
-                Chips
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="simple" className={MENU_ITEM}>
-                <IconSquareRounded />
-                Simple
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <DropdownMenu>
-        <DropdownMenuTrigger>
-          <div className="flex gap-1.25 items-center text-xs group text-foreground transition-all cursor-pointer">
-            <IconClockBolt
-              data-icon="inline-start"
-              className="size-3.25 text-muted-foreground opacity-80 group-hover:text-foreground group-hover:opacity-100"
-            />
-            TTFT bar
-          </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuGroup>
-            <DropdownMenuRadioGroup
-              value={ttft}
-              onValueChange={(value) => setTtftVariant(value as TtftVariant)}
-            >
-              {TTFT_VARIANTS.map((option) => (
-                <DropdownMenuRadioItem
-                  key={option.value}
-                  value={option.value}
-                  className={MENU_ITEM}
-                >
-                  <option.icon />
-                  {option.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
 
       <DropdownMenu>
         <DropdownMenuTrigger>

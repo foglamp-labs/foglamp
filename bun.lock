@@ -185,6 +185,7 @@
         "dotenv": "catalog:",
         "drizzle-orm": "^0.45.1",
         "evlog": "^2.13.0",
+        "foglamp": "workspace:*",
         "stripe": "catalog:",
         "uuidv7": "^1.0.2",
         "zod": "catalog:",

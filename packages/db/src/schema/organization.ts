@@ -33,6 +33,9 @@ export const organization = pgTable("organization", {
   // When set, the override above only applies until this instant (timed comp
   // grants from the platform admin page). Null = no expiry.
   overrideExpiresAt: timestamp("override_expires_at"),
+  // Weekly digest: set when the "quiet week" nudge went out, so an org that
+  // stays silent hears from us once, not every Monday. Cleared by a real digest.
+  digestNudgedAt: timestamp("digest_nudged_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

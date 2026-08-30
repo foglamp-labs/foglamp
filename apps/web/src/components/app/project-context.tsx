@@ -55,7 +55,7 @@ const PROJECT_SCOPED_SECTIONS = new Set([
 
 // Settings subpages that are org-scoped, not project-scoped — switching
 // projects doesn't invalidate them, so the user stays put.
-const ORG_SCOPED_PATHS = new Set(["/settings/org"]);
+const ORG_SCOPED_PATHS = new Set(["/settings/org", "/settings/notifications"]);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
@@ -71,12 +71,21 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 	useEffect(() => {
 		if (projects.length === 0) return;
 		if (selected && projects.some((p) => p.id === selected)) return;
+		// `?project=<id>` (deep links from the weekly digest email) beats the
+		// remembered project; it is consumed once and then behaves like a
+		// normal selection.
+		const linked =
+			typeof window !== "undefined"
+				? new URLSearchParams(window.location.search).get("project")
+				: null;
 		const stored =
 			typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
 		const next =
-			stored && projects.some((p) => p.id === stored)
-				? stored
-				: projects[0]!.id;
+			linked && projects.some((p) => p.id === linked)
+				? linked
+				: stored && projects.some((p) => p.id === stored)
+					? stored
+					: projects[0]!.id;
 		setSelected(next);
 		if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, next);
 	}, [projects, selected]);

@@ -120,6 +120,13 @@
       "when": 1787868341843,
       "tag": "0016_eval_pass_threshold",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788113442002,
+      "tag": "0017_weekly_digest",
+      "breakpoints": true
     }
   ]
 }
