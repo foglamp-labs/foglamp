@@ -94,7 +94,7 @@ function ProjectSwitcher() {
                 {project?.name ?? "Select project"}
               </span>
             </div>
-            <IconChevronDown className="ml-auto size-3.5 opacity-50" />
+            <IconChevronDown className="ml-auto size-3.5 opacity-15" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
