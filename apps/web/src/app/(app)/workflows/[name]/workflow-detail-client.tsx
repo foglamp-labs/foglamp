@@ -774,7 +774,7 @@ function RunDrawer({
 
   const nodes: FlowNode[] = traces.map((t) => ({
     id: t.traceId,
-    icon: <AgentIcon name={t.agentName} className="size-5" />,
+    icon: <AgentIcon name={t.agentName} className="size-3.25" />,
     label: t.agentName ?? t.traceName ?? "trace",
     sublabel: t.agentName && t.traceName !== t.agentName ? t.traceName : null,
     status: t.errorCount > 0 ? "error" : t.abortedCount > 0 ? "aborted" : "ok",
