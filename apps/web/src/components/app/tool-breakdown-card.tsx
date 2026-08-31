@@ -55,6 +55,10 @@ export function ToolBreakdownCard({
 
   const tools = query.data ?? [];
   const skeleton = useDelayedLoading(query.isLoading);
+  // While a range change (or chart zoom) refetches, the held rows dim — same
+  // treatment as the charts' isUpdating, with the same 150ms grace so fetches
+  // that finish quickly never flash.
+  const isUpdating = query.isPlaceholderData;
   // Share bars are scaled to the most-called tool, like the overview's
   // breakdown cards scale to the top cost.
   const maxCalls = Math.max(1, ...tools.map((t) => t.callCount));
@@ -78,7 +82,13 @@ export function ToolBreakdownCard({
         ) : (
           // One ScrollFade for both the skeleton and the loaded rows so the
           // fade never remounts when the data lands (mirrors the overview).
-          <ScrollFade className="max-h-72 pr-1">
+          <ScrollFade
+            className="max-h-72 pr-1"
+            containerClassName={cn(
+              "transition-opacity",
+              isUpdating ? "opacity-50 delay-150 duration-300" : "duration-150",
+            )}
+          >
             {query.isLoading ? (
               <ToolRowsSkeleton skeleton={skeleton} />
             ) : (

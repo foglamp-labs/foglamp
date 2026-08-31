@@ -541,7 +541,14 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                   entrance && !runsSkeletonShown && "page-fade-in",
                 )}
               >
-                <Table className="table-fixed" stickyHeader>
+                {/* pr-11 (not the default pr-9): the range picker lives in the
+                    page header here (px-8) rather than a toolbar (pr-6), so
+                    the last column needs 8px more to line up with its chevron
+                    the way the list pages do. */}
+                <Table
+                  className="table-fixed [&_th:last-child]:pr-11 [&_td:last-child]:pr-11"
+                  stickyHeader
+                >
                   <TableHeader>
                     <TableRow>
                       <TableHead>Run</TableHead>
