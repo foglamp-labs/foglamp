@@ -165,6 +165,7 @@ type EvilAreaChartBaseProps<
 	syncId?: string; // shares the hover cursor with every chart using the same id
 	onZoomSelect?: ZoomSelectHandler; // enables drag-to-zoom; receives the selected x range (needs xDataKey)
 	onZoomReset?: () => void; // fires on double-click — pairs with onZoomSelect to undo a zoom
+	isUpdating?: boolean; // dims the plot while a refetch keeps stale data on screen
 };
 
 type EvilAreaChartProps<
@@ -203,6 +204,7 @@ export function EvilAreaChart<
 	syncId,
 	onZoomSelect,
 	onZoomReset,
+	isUpdating = false,
 }: EvilAreaChartProps<TData, TConfig>) {
 	const chartId = useId().replace(/:/g, ""); // colon-free id keeps CSS/SVG selectors valid
 	const [internalSelectedDataKey, setInternalSelectedDataKey] = useState<
@@ -277,6 +279,7 @@ export function EvilAreaChart<
 			<ChartContainer
 				className={className}
 				config={config}
+				isUpdating={isUpdating}
 				footer={
 					showBrush &&
 					!isLoading && (

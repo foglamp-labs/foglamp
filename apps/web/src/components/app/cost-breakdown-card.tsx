@@ -172,6 +172,7 @@ export function CostBreakdownCard({
 						selectedDataKey={selected}
 						onSelectionChange={setSelected}
 						isLoading={query.isLoading}
+						isUpdating={!empty && query.isPlaceholderData}
 						className={cn("h-[260px] w-full", empty && "opacity-40")}
 						chartProps={{
 							margin: { top: 5, right: 5, bottom: 5, left: 2 },

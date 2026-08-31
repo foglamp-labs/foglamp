@@ -457,6 +457,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     config={volumeConfig}
                     data={seriesData}
                     isLoading={seriesLoading}
+                    isUpdating={series.isPlaceholderData}
                     xDataKey="bucket"
                     syncId="agent-trends"
                     onZoomSelect={zoom.zoomTo}
@@ -516,6 +517,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     config={latencyConfig}
                     data={latencyData}
                     isLoading={seriesLoading}
+                    isUpdating={series.isPlaceholderData}
                     xDataKey="bucket"
                     syncId="agent-trends"
                     onZoomSelect={zoom.zoomTo}

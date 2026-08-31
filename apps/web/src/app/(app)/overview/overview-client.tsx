@@ -1128,6 +1128,7 @@ export function OverviewClient() {
                 config={costChartConfig}
                 data={costChartData}
                 isLoading={costLoading}
+                isUpdating={!costEmpty && (costByModel.isPlaceholderData || timeseries.isPlaceholderData)}
                 stackType="stacked"
                 xDataKey="bucket"
                 syncId="overview-trends"
@@ -1193,6 +1194,7 @@ export function OverviewClient() {
                 config={volumeConfig}
                 data={volumeChartData}
                 isLoading={seriesLoading}
+                isUpdating={!seriesEmpty && timeseries.isPlaceholderData}
                 xDataKey="bucket"
                 syncId="overview-trends"
                 onZoomSelect={seriesEmpty ? undefined : zoom.zoomTo}
@@ -1252,6 +1254,7 @@ export function OverviewClient() {
                 config={latencyConfig}
                 data={latencyChartData}
                 isLoading={seriesLoading}
+                isUpdating={!seriesEmpty && timeseries.isPlaceholderData}
                 xDataKey="bucket"
                 syncId="overview-trends"
                 onZoomSelect={seriesEmpty ? undefined : zoom.zoomTo}

@@ -85,6 +85,10 @@ interface ChartContainerProps
 	>["style"];
 	/** Optional content rendered below the chart (e.g. EvilBrush) */
 	footer?: React.ReactNode;
+	/** Dims the plot while a refetch keeps stale data on screen. The dim eases
+	 * in after a short transition delay, so fetches that resolve quickly never
+	 * visibly flash it. */
+	isUpdating?: boolean;
 }
 
 function ChartContainer({
@@ -99,6 +103,7 @@ function ChartContainer({
 	className,
 	children,
 	footer,
+	isUpdating = false,
 	...props
 }: Readonly<ChartContainerProps>) {
 	const uniqueId = React.useId();
@@ -122,7 +127,10 @@ function ChartContainer({
 			>
 				<ChartStyle id={chartId} config={config} />
 				<RechartsPrimitive.ResponsiveContainer
-					className="min-h-0 w-full flex-1"
+					className={cn(
+						"min-h-0 w-full flex-1 transition-opacity",
+						isUpdating ? "opacity-50 delay-150 duration-300" : "duration-150",
+					)}
 					initialDimension={initialDimension}
 					debounce={debounce}
 				>

@@ -401,6 +401,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                     config={volumeConfig}
                     data={seriesData}
                     isLoading={seriesLoading}
+                    isUpdating={series.isPlaceholderData}
                     xDataKey="bucket"
                     syncId="workflow-trends"
                     onZoomSelect={zoom.zoomTo}
@@ -460,6 +461,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                     config={latencyConfig}
                     data={latencyData}
                     isLoading={seriesLoading}
+                    isUpdating={series.isPlaceholderData}
                     xDataKey="bucket"
                     syncId="workflow-trends"
                     onZoomSelect={zoom.zoomTo}
