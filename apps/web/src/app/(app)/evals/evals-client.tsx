@@ -108,6 +108,7 @@ import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { formatCostFixed, formatPercent } from "@/lib/format";
+import { rowNav } from "@/lib/row-nav";
 import { trpc } from "@/utils/trpc";
 import { EvalsHeader } from "./header";
 
@@ -892,7 +893,7 @@ export function EvalsClient() {
                       <TableRow
                         key={r.id}
                         interactive
-                        onClick={() => router.push(`/evals/${r.id}`)}
+                        {...rowNav(router, `/evals/${r.id}`)}
                       >
                         <TableCell className="h-16">
                           <div className="flex min-w-0 flex-col gap-1">

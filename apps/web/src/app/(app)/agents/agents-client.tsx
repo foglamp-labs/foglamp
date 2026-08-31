@@ -50,6 +50,7 @@ import {
   formatDuration,
   formatTokens,
 } from "@/lib/format";
+import { rowNav } from "@/lib/row-nav";
 import { trpc } from "@/utils/trpc";
 import { AgentsHeader } from "./header";
 
@@ -280,11 +281,10 @@ export function AgentsClient() {
                       <TableRow
                         key={a.agentName}
                         interactive
-                        onClick={() =>
-                          router.push(
-                            `/agents/${encodeURIComponent(a.agentName)}`
-                          )
-                        }
+                        {...rowNav(
+                          router,
+                          `/agents/${encodeURIComponent(a.agentName)}`
+                        )}
                       >
                         <TableCell className="h-12">
                           <div className="flex min-w-0 items-center gap-2">

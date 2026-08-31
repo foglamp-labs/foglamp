@@ -71,6 +71,7 @@ import {
   formatSpanDuration,
   formatTokens,
 } from "@/lib/format";
+import { rowNav } from "@/lib/row-nav";
 import { trpc } from "@/utils/trpc";
 import { TracesHeader } from "./header";
 
@@ -637,11 +638,10 @@ export function TracesClient() {
                       <TableRow
                         key={t.traceId}
                         interactive
-                        onClick={() =>
-                          router.push(
-                            `/traces/${encodeURIComponent(t.traceId)}`
-                          )
-                        }
+                        {...rowNav(
+                          router,
+                          `/traces/${encodeURIComponent(t.traceId)}`
+                        )}
                       >
                         <TableCell className="h-16">
                           <div className="min-w-0 flex justify-between items-center">

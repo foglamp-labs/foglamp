@@ -48,6 +48,7 @@ import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
 import { RelativeTime } from "@/components/app/relative-time";
 import { formatCostFixed, formatCount, formatTokens } from "@/lib/format";
+import { rowNav } from "@/lib/row-nav";
 import { trpc } from "@/utils/trpc";
 import { WorkflowsHeader } from "./header";
 
@@ -282,11 +283,10 @@ export function WorkflowsClient() {
                       <TableRow
                         key={workflowSlug(w.workflowName)}
                         interactive
-                        onClick={() =>
-                          router.push(
-                            `/workflows/${workflowSlug(w.workflowName)}`
-                          )
-                        }
+                        {...rowNav(
+                          router,
+                          `/workflows/${workflowSlug(w.workflowName)}`
+                        )}
                       >
                         <TableCell className="h-12">
                           <div className="flex min-w-0 items-center gap-2">
