@@ -1101,38 +1101,41 @@ function Judgment({
 
 /** Mirrors JudgeInput: header, rubric, input transcript, reason and output. */
 function JudgeInputSkeleton() {
-  const label = <Skeleton className="h-3 w-12" />;
+  // The drawer row sits on bg-neutral-100, which is the skeleton's own
+  // bg-muted in light mode — use the avatar placeholders' tint so the
+  // bars actually read against it (same trick as ConversationSkeleton).
+  const label = <Skeleton className="h-3 w-12 bg-muted-foreground/15" />;
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-1.5">
-        <Skeleton className="size-3 rounded-full" />
-        <Skeleton className="h-4 w-32" />
+        <Skeleton className="size-3 rounded-full bg-muted-foreground/15" />
+        <Skeleton className="h-4 w-32 bg-muted-foreground/15" />
       </div>
       <div className="flex flex-col gap-2">
         {label}
-        <Skeleton className="h-3.5 w-full" />
-        <Skeleton className="h-3.5 w-4/5" />
+        <Skeleton className="h-3.5 w-full bg-muted-foreground/15" />
+        <Skeleton className="h-3.5 w-4/5 bg-muted-foreground/15" />
       </div>
       <div className="flex flex-col gap-2">
         {label}
         <div className="flex gap-3">
           <div className="mt-1.5 size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
-          <Skeleton className="h-11 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl" />
+          <Skeleton className="h-11 min-w-0 flex-1 corner-squircle rounded-lg squircle:rounded-2xl bg-muted-foreground/15" />
         </div>
       </div>
       <div className="flex flex-col gap-2">
         {label}
         <div className="flex flex-col gap-2 rounded-lg border border-dashed px-3 py-2">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-3.5 w-full" />
-          <Skeleton className="h-3.5 w-3/4" />
+          <Skeleton className="h-3 w-20 bg-muted-foreground/15" />
+          <Skeleton className="h-3.5 w-full bg-muted-foreground/15" />
+          <Skeleton className="h-3.5 w-3/4 bg-muted-foreground/15" />
         </div>
         <div className="flex gap-3">
           <div className="size-6 shrink-0 animate-pulse rounded-full bg-muted-foreground/15" />
           <div className="flex min-w-0 flex-1 flex-col gap-2 px-1 pt-1">
-            <Skeleton className="h-3.5 w-full" />
-            <Skeleton className="h-3.5 w-11/12" />
-            <Skeleton className="h-3.5 w-2/3" />
+            <Skeleton className="h-3.5 w-full bg-muted-foreground/15" />
+            <Skeleton className="h-3.5 w-11/12 bg-muted-foreground/15" />
+            <Skeleton className="h-3.5 w-2/3 bg-muted-foreground/15" />
           </div>
         </div>
       </div>
