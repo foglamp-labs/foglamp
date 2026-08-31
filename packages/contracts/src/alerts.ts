@@ -24,6 +24,19 @@ export const CREATABLE_ALERT_METRICS = [
 
 export type CreatableAlertMetric = (typeof CREATABLE_ALERT_METRICS)[number];
 
+/** Evaluation windows the product has ever offered. Legacy windows remain
+ * evaluable so existing alerts do not break. */
+export const ALERT_WINDOW_SECONDS = [300, 900, 3600, 86_400] as const;
+
+export type AlertWindowSeconds = (typeof ALERT_WINDOW_SECONDS)[number];
+
+/** Windows offered for newly-created (or re-windowed) rules. 5m was dropped:
+ * with a 60s sweep it is nearly all noise, and the anti-flap state machine
+ * makes 15m the shortest useful detection window. */
+export const CREATABLE_ALERT_WINDOW_SECONDS = [
+  900, 3600, 86_400,
+] as const satisfies readonly AlertWindowSeconds[];
+
 export const ALERT_COMPARISONS = ["gt", "gte", "lt", "lte"] as const;
 export type AlertComparison = (typeof ALERT_COMPARISONS)[number];
 

@@ -7,6 +7,8 @@ import {
 	EMAIL_FONT as FONT,
 	emailLayout,
 	esc,
+	projectFaviconUrl,
+	projectPlaceholderIcon,
 } from "./email";
 
 const log = createLogger();
@@ -66,32 +68,15 @@ const img = (name: string, size: number, alt = "") =>
 	`<img src="${esc(`${assetBase()}/${name}.png`)}" alt="${esc(alt)}" width="${size}" height="${size}" style="display:inline-block; width:${size}px; height:${size}px; border:0; vertical-align:middle;" />`;
 
 // Mirrors apps/web ProjectIcon: favicon of the project's site, else one of a
-// fixed set of placeholder icons picked from the first letter of the name.
-const PLACEHOLDERS = [
-	"cloud",
-	"flask-2",
-	"flower",
-	"cherry",
-	"meteor",
-	"flame",
-	"droplet",
-	"chef-hat",
-	"triangle",
-];
-
+// fixed set of placeholder icons picked from the first letter of the name
+// (helpers shared with the alert email in ./email).
 function projectIcon(p: DigestProject): string {
 	const box =
 		"display:block; width:16px; height:16px; border-radius:4px; border:0;";
 	if (p.siteUrl) {
-		const site = /^https?:\/\//.test(p.siteUrl)
-			? p.siteUrl
-			: `https://${p.siteUrl}`;
-		const src = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(site)}&size=64`;
-		return `<img src="${esc(src)}" alt="" width="16" height="16" style="${box}" />`;
+		return `<img src="${esc(projectFaviconUrl(p.siteUrl))}" alt="" width="16" height="16" style="${box}" />`;
 	}
-	const code = p.name.trim().charAt(0).toLowerCase().charCodeAt(0);
-	const idx = Number.isNaN(code) ? 0 : code % PLACEHOLDERS.length;
-	return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;"><tr><td align="center" valign="middle" style="width:16px; height:16px; border-radius:4px; background:#ededed; line-height:0; font-size:0;">${img(`project-${PLACEHOLDERS[idx]}`, 10)}</td></tr></table>`;
+	return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;"><tr><td align="center" valign="middle" style="width:16px; height:16px; border-radius:4px; background:#ededed; line-height:0; font-size:0;">${img(`project-${projectPlaceholderIcon(p.name)}`, 10)}</td></tr></table>`;
 }
 
 function fmtDelta(m: DigestMetric): {
@@ -215,10 +200,10 @@ export function renderQuietWeekEmail(data: {
 		eyebrow: { label: "Weekly digest" },
 		title: "A quiet week",
 		body: `<p style="margin:0;">${esc(data.orgName)} sent no traces in the last seven days, so there is nothing to summarize. Once your agents report again the weekly digest picks back up on its own.</p>`,
-		cta: { label: "Set up instrumentation", url: data.setupUrl },
+		cta: { label: "Instrument your app", url: data.setupUrl },
 		footnote: `We will stay quiet until traffic returns. <a href="${esc(data.unsubscribeUrl)}" style="color:${C.muted};">Unsubscribe</a>`,
 	});
-	const text = `${data.orgName} sent no traces in the last seven days. Set up instrumentation: ${data.setupUrl}\n\nUnsubscribe: ${data.unsubscribeUrl}`;
+	const text = `${data.orgName} sent no traces in the last seven days. Instrument your app: ${data.setupUrl}\n\nUnsubscribe: ${data.unsubscribeUrl}`;
 	return { subject, html, text };
 }
 

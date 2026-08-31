@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { getOrgPlan } from "@foglamp/billing";
 import {
+  CREATABLE_ALERT_WINDOW_SECONDS,
   generateAlertName,
   type AlertComparison,
   type AlertMetric,
@@ -59,6 +60,19 @@ function validateThreshold(metric: AlertMetric, threshold: number) {
   }
 }
 
+function validateWindow(windowSeconds: number) {
+  if (
+    !(CREATABLE_ALERT_WINDOW_SECONDS as readonly number[]).includes(
+      windowSeconds,
+    )
+  ) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Choose a supported evaluation window",
+    });
+  }
+}
+
 async function requireRuleAccess(db: Db, userId: string, ruleId: string) {
   const rows = await db
     .select()
@@ -112,6 +126,7 @@ export async function createAlert(
 ) {
   const proj = await requireProjectAccess(db, userId, input.projectId);
   validateThreshold(input.metric, input.threshold);
+  validateWindow(input.windowSeconds);
   // Eval-score alerts reference an eval — verify it's one the caller can access
   // AND that it lives in this alert's project. Otherwise the evaluator queries
   // ClickHouse with a mismatched (projectId, evalId) pair, finds no scores, and
@@ -214,6 +229,14 @@ export async function updateAlert(
   const comparison = input.comparison ?? rule.comparison;
   const threshold = input.threshold ?? Number(rule.threshold);
   validateThreshold(metric, threshold);
+  // Only a *changed* window must be a currently-offered preset — legacy 5m
+  // rules stay editable (threshold, name, …) without a forced re-window.
+  if (
+    input.windowSeconds !== undefined &&
+    input.windowSeconds !== rule.windowSeconds
+  ) {
+    validateWindow(input.windowSeconds);
+  }
   const nextName = automaticName
     ? generateAlertName({ metric, comparison, threshold })
     : input.name;
@@ -269,6 +292,7 @@ export async function getAlertHistory(
     type: e.type,
     value: decimalOrNull(e.value),
     threshold: decimalOrNull(e.threshold),
+    diagnosis: e.diagnosis ?? null,
     createdAt: e.createdAt,
   }));
 }

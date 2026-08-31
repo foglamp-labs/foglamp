@@ -59,6 +59,7 @@ import {
   thresholdFromInput,
   thresholdToInput,
   WINDOW_PRESETS,
+  windowLabel,
 } from "./alert-config";
 
 type AlertRow = RouterOutputs["alerts"]["list"][number];
@@ -218,6 +219,20 @@ export function AlertDetailsDialog({
           ...METRIC_META[draft.metric],
         },
         ...CREATABLE_METRIC_OPTIONS,
+      ];
+
+  // A legacy window (5m) still renders as the current value, but once changed
+  // away it is gone — the server rejects re-selecting a retired window.
+  const windowOptions = WINDOW_PRESETS.some(
+    (preset) => preset.value === draft.windowSeconds,
+  )
+    ? WINDOW_PRESETS
+    : [
+        {
+          value: draft.windowSeconds,
+          label: windowLabel(Number(draft.windowSeconds)),
+        },
+        ...WINDOW_PRESETS,
       ];
 
   return (
@@ -472,7 +487,7 @@ export function AlertDetailsDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {WINDOW_PRESETS.map((preset) => (
+                        {windowOptions.map((preset) => (
                           <SelectItem key={preset.value} value={preset.value}>
                             {preset.label}
                           </SelectItem>
@@ -526,28 +541,36 @@ export function AlertDetailsDialog({
             ) : (
               <ul className="flex flex-col gap-3 text-sm">
                 {history.data?.map((event) => (
-                  <li
-                    key={event.id}
-                    className="flex items-center justify-between gap-3"
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Badge
-                        variant={event.type === "fired" ? "rose" : "emerald"}
+                  <li key={event.id} className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Badge
+                          variant={event.type === "fired" ? "rose" : "emerald"}
+                        >
+                          {event.type === "fired" ? "Fired" : "Resolved"}
+                        </Badge>
+                        <span className="truncate text-muted-foreground">
+                          {formatAlertMetricValue(alert.metric, event.value)} at
+                          a{" "}
+                          {formatAlertMetricValue(
+                            alert.metric,
+                            event.threshold,
+                          )}{" "}
+                          threshold
+                        </span>
+                      </div>
+                      <span
+                        className="shrink-0 text-xs text-muted-foreground"
+                        title={formatDateTime(event.createdAt)}
                       >
-                        {event.type === "fired" ? "Fired" : "Resolved"}
-                      </Badge>
-                      <span className="truncate text-muted-foreground">
-                        {formatAlertMetricValue(alert.metric, event.value)} at a{" "}
-                        {formatAlertMetricValue(alert.metric, event.threshold)}{" "}
-                        threshold
+                        {formatRelative(event.createdAt)}
                       </span>
                     </div>
-                    <span
-                      className="shrink-0 text-xs text-muted-foreground"
-                      title={formatDateTime(event.createdAt)}
-                    >
-                      {formatRelative(event.createdAt)}
-                    </span>
+                    {event.diagnosis?.summary ? (
+                      <p className="rounded-md bg-muted/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                        {event.diagnosis.summary}
+                      </p>
+                    ) : null}
                   </li>
                 ))}
               </ul>

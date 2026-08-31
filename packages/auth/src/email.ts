@@ -57,7 +57,51 @@ export function esc(value: string): string {
 // The alt text keeps the brand legible if a client blocks images.
 function logo(): string {
 	const base = env.CORS_ORIGIN.replace(/\/$/, "");
-	return `<img src="${esc(`${base}/wordmark-light.png`)}" alt="Foglamp" width="96" style="display:block; width:96px; height:auto; border:0; outline:none; text-decoration:none;" />`;
+	return `<img src="${esc(`${base}/wordmark-light.png`)}" alt="Foglamp" width="72" style="display:block; width:72px; height:auto; border:0; outline:none; text-decoration:none;" />`;
+}
+
+// A small PNG icon from the web app's public /email dir, rendered inline with
+// the surrounding text (email clients don't render inline SVG).
+function emailIcon(name: string, size: number, gapRight = 0): string {
+	const base = env.CORS_ORIGIN.replace(/\/$/, "");
+	return `<img src="${esc(`${base}/email/${name}.png`)}" alt="" width="${size}" height="${size}" style="display:inline-block; width:${size}px; height:${size}px; border:0; vertical-align:-1px; margin-right:${gapRight}px;" />`;
+}
+
+// Mirrors apps/web ProjectIcon: favicon of the project's site, else one of a
+// fixed set of placeholder icons picked from the first letter of the name.
+export const PROJECT_PLACEHOLDER_ICONS = [
+	"cloud",
+	"flask-2",
+	"flower",
+	"cherry",
+	"meteor",
+	"flame",
+	"droplet",
+	"chef-hat",
+	"triangle",
+];
+
+export function projectPlaceholderIcon(name: string): string {
+	const code = name.trim().charAt(0).toLowerCase().charCodeAt(0);
+	const idx = Number.isNaN(code) ? 0 : code % PROJECT_PLACEHOLDER_ICONS.length;
+	return PROJECT_PLACEHOLDER_ICONS[idx] as string;
+}
+
+export function projectFaviconUrl(siteUrl: string): string {
+	const site = /^https?:\/\//.test(siteUrl) ? siteUrl : `https://${siteUrl}`;
+	return `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(site)}&size=64`;
+}
+
+// Inline (text-flow) project icon used before the project name in the alert
+// email. The digest renders its own block-level variant.
+function projectIconInline(name: string, siteUrl?: string | null): string {
+	const style =
+		"display:inline-block; width:14px; height:14px; border-radius:3px; border:0; vertical-align:-2px; margin-right:6px;";
+	if (siteUrl) {
+		return `<img src="${esc(projectFaviconUrl(siteUrl))}" alt="" width="14" height="14" style="${style}" />`;
+	}
+	const base = env.CORS_ORIGIN.replace(/\/$/, "");
+	return `<img src="${esc(`${base}/email/project-${projectPlaceholderIcon(name)}.png`)}" alt="" width="14" height="14" style="${style}" />`;
 }
 
 // A definition-list-style block of label/value rows (used by the alert email).
@@ -89,13 +133,13 @@ export function emailLayout(opts: {
 }): string {
 	const { previewText, title, body, eyebrow, cta, footnote } = opts;
 	const eyebrowHtml = eyebrow
-		? `<p style="margin:0 0 10px; font-family:${FONT}; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:${eyebrow.color ?? C.muted};">${eyebrow.label}</p>`
+		? `<p style="margin:0 0 10px; font-family:${FONT}; font-size:14px; font-weight:600; color:${eyebrow.color ?? C.muted};">${eyebrow.label}</p>`
 		: "";
 	const ctaHtml = cta
 		? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0;">
                   <tr>
-                    <td style="border-radius:9px; background:${C.buttonBg};">
-                      <a href="${esc(cta.url)}" style="display:inline-block; padding:11px 20px; font-family:${FONT}; font-size:14px; font-weight:500; line-height:1; color:${C.buttonText}; text-decoration:none; border-radius:9px;">${cta.label}</a>
+                    <td style="border-radius:999px; background:${C.buttonBg};">
+                      <a href="${esc(cta.url)}" style="display:inline-block; padding:11px 20px; font-family:${FONT}; font-size:14px; font-weight:500; line-height:1; color:${C.buttonText}; text-decoration:none; border-radius:999px;">${cta.label}</a>
                     </td>
                   </tr>
                 </table>`
@@ -156,8 +200,8 @@ export async function sendMagicLinkEmail({
 		from,
 		to: [to],
 		subject: "Your Foglamp sign-in link",
-		html: renderHtml(url),
-		text: renderText(url),
+		html: renderMagicLinkHtml(url),
+		text: renderMagicLinkText(url),
 	});
 
 	if (error) {
@@ -187,26 +231,34 @@ export async function sendResetPasswordEmail({
 		from,
 		to: [to],
 		subject: "Reset your Foglamp password",
-		html: emailLayout({
-			previewText: "Reset your Foglamp password — expires in 1 hour.",
-			title: "Reset your password",
-			body: `<p style="margin:0;">Click the button below to choose a new password.</p>`,
-			cta: { label: "Reset password", url },
-			footnote:
-				"This link expires in 1 hour. If you didn't request a reset, you can safely ignore this email — your password is unchanged.",
-		}),
-		text: `Reset your Foglamp password
-
-Open the link below to choose a new password. This link expires in 1 hour.
-
-${url}
-
-If you didn't request a reset, you can safely ignore this email — your password is unchanged.`,
+		html: renderResetPasswordHtml(url),
+		text: renderResetPasswordText(url),
 	});
 
 	if (error) {
 		throw new Error(`Resend request failed: ${error.name} — ${error.message}`);
 	}
+}
+
+export function renderResetPasswordHtml(url: string) {
+	return emailLayout({
+		previewText: "Reset your Foglamp password — expires in 1 hour.",
+		title: "Reset your password",
+		body: `<p style="margin:0;">Click the button below to choose a new password.</p>`,
+		cta: { label: "Reset password", url },
+		footnote:
+			"This link expires in 1 hour. If you didn't request a reset, you can safely ignore this email — your password is unchanged.",
+	});
+}
+
+export function renderResetPasswordText(url: string) {
+	return `Reset your Foglamp password
+
+Open the link below to choose a new password. This link expires in 1 hour.
+
+${url}
+
+If you didn't request a reset, you can safely ignore this email — your password is unchanged.`;
 }
 
 export async function sendInvitationEmail({
@@ -244,7 +296,7 @@ export async function sendInvitationEmail({
 	}
 }
 
-function renderInviteHtml(p: {
+export function renderInviteHtml(p: {
 	inviterName: string;
 	orgName: string;
 	url: string;
@@ -259,7 +311,7 @@ function renderInviteHtml(p: {
 	});
 }
 
-function renderInviteText(p: {
+export function renderInviteText(p: {
 	inviterName: string;
 	orgName: string;
 	url: string;
@@ -271,6 +323,23 @@ ${p.inviterName} invited you to the ${p.orgName} organization.
 Accept the invitation: ${p.url}
 
 If you weren't expecting this, you can safely ignore it.`;
+}
+
+export function renderQuotaWarningHtml(p: {
+	orgName: string;
+	pct: number;
+	url: string;
+}) {
+	return emailLayout({
+		previewText: `${p.orgName} has used ${p.pct}% of its monthly span quota.`,
+		eyebrow: {
+			label: `${emailIcon("alert-triangle-amber", 12, 6)}Span quota`,
+			color: "#d97706",
+		},
+		title: `${esc(p.orgName)} has used ${p.pct}% of its monthly span quota`,
+		body: `<p style="margin:0;">New spans are rejected once you exceed the quota. Upgrade to keep ingesting without interruption.</p>`,
+		cta: { label: "Review billing", url: p.url },
+	});
 }
 
 export async function sendQuotaWarningEmail({
@@ -291,13 +360,7 @@ export async function sendQuotaWarningEmail({
 		return;
 	}
 	const resend = new Resend(apiKey);
-	const html = emailLayout({
-		previewText: `${orgName} has used ${pct}% of its monthly span quota.`,
-		eyebrow: { label: "Span quota", color: "#d97706" },
-		title: `${esc(orgName)} has used ${pct}% of its monthly span quota`,
-		body: `<p style="margin:0;">New spans are rejected once you exceed the quota. Upgrade to keep ingesting without interruption.</p>`,
-		cta: { label: "Review billing", url },
-	});
+	const html = renderQuotaWarningHtml({ orgName, pct, url });
 	const { error } = await resend.emails.send({
 		from,
 		to: [to],
@@ -308,6 +371,20 @@ export async function sendQuotaWarningEmail({
 	if (error) {
 		throw new Error(`Resend request failed: ${error.name} — ${error.message}`);
 	}
+}
+
+export function renderStorageAlertHtml(p: {
+	usedLabel: string;
+	thresholdLabel: string;
+	url: string;
+}) {
+	return emailLayout({
+		previewText: `ClickHouse storage is at ${p.usedLabel}.`,
+		eyebrow: { label: "Storage", color: "#d97706" },
+		title: `ClickHouse storage has passed ${esc(p.thresholdLabel)}`,
+		body: `<p style="margin:0;">The ClickHouse database is now using <strong style="font-weight:600;">${esc(p.usedLabel)}</strong> on disk, above the ${esc(p.thresholdLabel)} alert threshold. Review retention and disk headroom before the VM fills.</p>`,
+		cta: { label: "Open platform dashboard", url: p.url },
+	});
 }
 
 export async function sendStorageAlertEmail({
@@ -328,13 +405,7 @@ export async function sendStorageAlertEmail({
 		return;
 	}
 	const resend = new Resend(apiKey);
-	const html = emailLayout({
-		previewText: `ClickHouse storage is at ${usedLabel}.`,
-		eyebrow: { label: "Storage", color: "#d97706" },
-		title: `ClickHouse storage has passed ${esc(thresholdLabel)}`,
-		body: `<p style="margin:0;">The ClickHouse database is now using <strong style="font-weight:600;">${esc(usedLabel)}</strong> on disk, above the ${esc(thresholdLabel)} alert threshold. Review retention and disk headroom before the VM fills.</p>`,
-		cta: { label: "Open platform dashboard", url },
-	});
+	const html = renderStorageAlertHtml({ usedLabel, thresholdLabel, url });
 	const { error } = await resend.emails.send({
 		from,
 		to: [to],
@@ -347,44 +418,52 @@ export async function sendStorageAlertEmail({
 	}
 }
 
-export type AlertEmailKind = "fired" | "resolved";
+// Auto-diagnosis payload attached to a fired-alert email. Everything here is
+// pre-formatted display text (the api package builds it); this module only
+// escapes and lays it out.
+export type AlertEmailDiagnosis = {
+	/** LLM root-cause narrative (plain text; paid tiers only). */
+	summary?: string;
+	/** Deterministic label/value context rows (window delta, top contributors). */
+	rows?: [label: string, value: string][];
+	/** Top offending traces, deep-linked into the app. */
+	traces?: { name: string; detail: string; url: string }[];
+};
 
-export async function sendAlertEmail(params: {
+export type AlertEmailParams = {
 	to: string;
-	kind: AlertEmailKind;
 	ruleName: string;
 	projectName: string;
+	// Project site URL for the favicon shown before the name (null → placeholder).
+	projectSiteUrl?: string | null;
 	metricLabel: string;
 	conditionLabel: string;
 	value: string;
-	windowLabel: string;
 	url: string;
-}) {
+	diagnosis?: AlertEmailDiagnosis;
+};
+
+// Fired-only by design: resolved transitions are recorded in the alert history
+// but never emailed (they doubled notification volume for no action).
+export async function sendAlertEmail(params: AlertEmailParams) {
 	const apiKey = env.RESEND_API_KEY;
 	const from = env.RESEND_FROM_EMAIL ?? DEFAULT_FROM;
 
 	if (!apiKey) {
 		log.info("alert.email.skipped_no_api_key", {
 			to: params.to,
-			kind: params.kind,
 			rule: params.ruleName,
 		});
 		return;
 	}
 
-	const verb = params.kind === "fired" ? "firing" : "resolved";
-	const subject =
-		params.kind === "fired"
-			? `🔴 Alert firing: ${params.ruleName}`
-			: `✅ Alert resolved: ${params.ruleName}`;
-
 	const resend = new Resend(apiKey);
 	const { error } = await resend.emails.send({
 		from,
 		to: [params.to],
-		subject,
-		html: renderAlertHtml({ ...params, verb }),
-		text: renderAlertText({ ...params, verb }),
+		subject: `🔴 Alert firing: ${params.ruleName}`,
+		html: renderAlertHtml(params),
+		text: renderAlertText(params),
 	});
 
 	if (error) {
@@ -392,58 +471,88 @@ export async function sendAlertEmail(params: {
 	}
 }
 
-function renderAlertHtml(p: {
-	kind: AlertEmailKind;
-	verb: string;
-	ruleName: string;
-	projectName: string;
-	metricLabel: string;
-	conditionLabel: string;
-	value: string;
-	windowLabel: string;
-	url: string;
-}) {
-	const accent = p.kind === "fired" ? "#dc2626" : "#16a34a";
-	return emailLayout({
-		previewText: `Alert ${p.verb}: ${p.ruleName}`,
-		eyebrow: { label: `Alert ${p.verb}`, color: accent },
-		title: esc(p.ruleName),
-		body: detailRows([
-			["Project", esc(p.projectName)],
-			["Metric", esc(p.metricLabel)],
-			["Condition", esc(p.conditionLabel)],
+// Small section kicker used between diagnosis blocks.
+function sectionTitle(label: string): string {
+	return `<p style="margin:24px 0 0; font-family:${FONT}; font-size:13px; font-weight:600; color:${C.muted};">${label}</p>`;
+}
+
+export function renderAlertHtml(p: Omit<AlertEmailParams, "to">) {
+	const d = p.diagnosis;
+	const sections: string[] = [
+		detailRows([
+			[
+				"Project",
+				`${projectIconInline(p.projectName, p.projectSiteUrl)}${esc(p.projectName)}`,
+			],
+			["Condition", `${esc(p.metricLabel)} ${esc(p.conditionLabel)}`],
 			[
 				"Current value",
 				`<strong style="font-weight:600;">${esc(p.value)}</strong>`,
 			],
-			["Window", esc(p.windowLabel)],
 		]),
+	];
+	if (d?.summary) {
+		sections.push(
+			sectionTitle("Diagnosis"),
+			`<p style="margin:8px 0 0; font-family:${FONT}; font-size:13px; line-height:1.6; color:${C.text};">${esc(d.summary)}</p>`,
+		);
+	}
+	if (d?.rows?.length) {
+		sections.push(
+			sectionTitle("What changed"),
+			detailRows(d.rows.map(([k, v]): [string, string] => [esc(k), esc(v)])),
+		);
+	}
+	if (d?.traces?.length) {
+		sections.push(
+			sectionTitle("Top traces"),
+			detailRows(
+				d.traces.map((t): [string, string] => [
+					`<a href="${esc(t.url)}" style="color:${C.text}; text-decoration:underline;">${esc(t.name)}</a>`,
+					esc(t.detail),
+				]),
+			),
+		);
+	}
+	return emailLayout({
+		previewText: `Alert firing: ${p.ruleName}`,
+		eyebrow: {
+			label: `${emailIcon("alert-triangle", 12, 6)}Alert firing`,
+			color: "#dc2626",
+		},
+		title: esc(p.ruleName),
+		body: sections.join(""),
 		cta: { label: "Open in Foglamp", url: p.url },
 	});
 }
 
-function renderAlertText(p: {
-	verb: string;
-	ruleName: string;
-	projectName: string;
-	metricLabel: string;
-	conditionLabel: string;
-	value: string;
-	windowLabel: string;
-	url: string;
-}) {
-	return `Alert ${p.verb}: ${p.ruleName}
+export function renderAlertText(p: Omit<AlertEmailParams, "to">) {
+	const d = p.diagnosis;
+	const parts = [
+		`Alert firing: ${p.ruleName}
 
 Project:   ${p.projectName}
-Metric:    ${p.metricLabel}
-Condition: ${p.conditionLabel}
-Value:     ${p.value}
-Window:    ${p.windowLabel}
-
-Open in Foglamp: ${p.url}`;
+Condition: ${p.metricLabel} ${p.conditionLabel}
+Value:     ${p.value}`,
+	];
+	if (d?.summary) {
+		parts.push(`Diagnosis:\n${d.summary}`);
+	}
+	if (d?.rows?.length) {
+		parts.push(
+			`What changed:\n${d.rows.map(([k, v]) => `${k}: ${v}`).join("\n")}`,
+		);
+	}
+	if (d?.traces?.length) {
+		parts.push(
+			`Top traces:\n${d.traces.map((t) => `${t.name} (${t.detail}): ${t.url}`).join("\n")}`,
+		);
+	}
+	parts.push(`Open in Foglamp: ${p.url}`);
+	return parts.join("\n\n");
 }
 
-function renderHtml(url: string) {
+export function renderMagicLinkHtml(url: string) {
 	return emailLayout({
 		previewText: "Your Foglamp sign-in link — expires in 15 minutes.",
 		title: "Sign in to Foglamp",
@@ -454,7 +563,7 @@ function renderHtml(url: string) {
 	});
 }
 
-function renderText(url: string) {
+export function renderMagicLinkText(url: string) {
 	return `Sign in to Foglamp
 
 Click the link below to access your account. This link expires in 15 minutes.
@@ -471,6 +580,24 @@ If you didn't request this email, you can safely ignore it.`;
 
 const WELCOME_FROM = "Gustavo from Foglamp <gustavo@foglamp.dev>";
 const WELCOME_REPLY_TO = "gustavo@foglamp.dev";
+
+export function renderWelcomeText(name?: string | null) {
+	return `${personalGreeting(name)}
+
+I'm Gustavo, I build Foglamp.
+
+Thanks for signing up.
+
+The fastest way in is the prompt on your dashboard: paste it into your coding
+agent and it instruments your app for you.
+
+If you'd rather talk it through or have ideas for the project, grab 30 minutes with me:
+${GUSTAVO_CAL_URL}
+
+Either way, would be a pleasure to talk to you!
+
+Gustavo`;
+}
 
 export async function sendWelcomeEmail({
 	to,
@@ -492,21 +619,7 @@ export async function sendWelcomeEmail({
 		replyTo: WELCOME_REPLY_TO,
 		to: [to],
 		subject: "Welcome to Foglamp",
-		text: `${personalGreeting(name)}
-
-I'm Gustavo, I build Foglamp.
-
-Thanks for signing up.
-
-The fastest way in is the prompt on your dashboard: paste it into your coding
-agent and it instruments your app for you.
-
-If you'd rather talk it through or have ideas for the project, grab 30 minutes with me:
-${GUSTAVO_CAL_URL}
-
-Either way, would be a pleasure to talk to you!
-
-Gustavo`,
+		text: renderWelcomeText(name),
 	});
 
 	if (error) {

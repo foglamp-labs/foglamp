@@ -71,6 +71,10 @@ const serverSchema = {
   ALERT_EVAL_INTERVAL_MS: z.coerce.number().default(60_000),
   // Re-notify cooldown while a rule stays firing; default 1h.
   ALERT_RENOTIFY_MS: z.coerce.number().default(3_600_000),
+  // Model for the paid-tier alert auto-diagnosis narrative (platform Google
+  // key; the feature is off entirely when GOOGLE_GENERATIVE_AI_API_KEY is
+  // absent).
+  ALERT_DIAGNOSIS_MODEL: z.string().default("gemini-3.7-flash"),
 
   // --- Evals (scoring worker in apps/server; BYOK) ---
   // 32+ char secret used to AES-256-GCM encrypt provider API keys at rest.

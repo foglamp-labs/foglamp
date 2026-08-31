@@ -51,6 +51,24 @@ export type AlertFilters = {
 // Notification channels (only email in this build).
 export type AlertChannel = { type: "email"; to: string };
 
+/**
+ * Auto-diagnosis attached to a fired alert event. The deterministic parts
+ * (`rows`, `traces`) are computed from ClickHouse for every plan; `summary` is
+ * the LLM narrative and is present only for paid tiers (and within the per-rule
+ * daily cap).
+ */
+export type AlertDiagnosis = {
+  /** LLM root-cause narrative (plain text). */
+  summary?: string;
+  /** Model id that wrote `summary`. */
+  model?: string;
+  /** Deterministic label/value context rows (window delta, top contributors). */
+  rows?: [label: string, value: string][];
+  /** Top offending traces for the alert's metric. */
+  traces?: { traceId: string; name: string; detail: string }[];
+  generatedAt: string;
+};
+
 export const alertRule = pgTable(
   "alert_rule",
   {
@@ -97,6 +115,23 @@ export const alertState = pgTable("alert_state", {
   lastEvaluatedAt: timestamp("last_evaluated_at", { withTimezone: true }),
   lastFiredAt: timestamp("last_fired_at", { withTimezone: true }),
   lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }),
+  // Anti-flap damping: consecutive breached / cleared-with-margin sweeps. A
+  // rule fires only after FIRE_STREAK breaches and resolves only after
+  // RESOLVE_STREAK margin-clear sweeps (see alertEvaluator).
+  breachStreak: integer("breach_streak").default(0).notNull(),
+  okStreak: integer("ok_streak").default(0).notNull(),
+  // Daily caps, keyed by UTC day (YYYY-MM-DD). Counters reset when the stored
+  // day differs from today.
+  notifyDay: text("notify_day"),
+  notifyCount: integer("notify_count").default(0).notNull(),
+  diagnosisDay: text("diagnosis_day"),
+  diagnosisCount: integer("diagnosis_count").default(0).notNull(),
+  // Metric value at the time the last LLM diagnosis was written; a renotify
+  // regenerates only when the value has moved materially since.
+  lastDiagnosisValue: numeric("last_diagnosis_value", {
+    precision: 24,
+    scale: 10,
+  }),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
@@ -115,6 +150,9 @@ export const alertEvent = pgTable(
     type: alertEventType("type").notNull(),
     value: numeric("value", { precision: 24, scale: 10 }),
     threshold: numeric("threshold", { precision: 24, scale: 10 }),
+    // Auto-diagnosis attached to fired events (null for resolved events and
+    // for fires that predate the feature).
+    diagnosis: jsonb("diagnosis").$type<AlertDiagnosis>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

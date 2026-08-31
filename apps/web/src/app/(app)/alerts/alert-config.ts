@@ -1,6 +1,8 @@
 import {
   ALERT_METRIC_LABELS,
   CREATABLE_ALERT_METRICS,
+  CREATABLE_ALERT_WINDOW_SECONDS,
+  formatAlertWindow,
   type AlertMetric,
   type CreatableAlertMetric,
 } from "@foglamp/contracts/alerts";
@@ -111,12 +113,25 @@ export const COMPARISON_OPTIONS = [
   { value: "lte", symbol: "≤", label: "less than or equal" },
 ] as const;
 
-export const WINDOW_PRESETS = [
-  { value: "300", label: "5 minutes" },
-  { value: "900", label: "15 minutes" },
-  { value: "3600", label: "1 hour" },
-  { value: "86400", label: "24 hours" },
-] as const;
+// Friendly names for every window the product has ever offered; anything else
+// (nothing today) falls back to the compact contracts formatter.
+const WINDOW_LABELS: Record<number, string> = {
+  300: "5 minutes",
+  900: "15 minutes",
+  3600: "1 hour",
+  86400: "24 hours",
+};
+
+export function windowLabel(seconds: number): string {
+  return WINDOW_LABELS[seconds] ?? formatAlertWindow(seconds);
+}
+
+// Offered for new rules. A stored legacy window (5m) still renders via
+// `windowLabel` in the edit dialog without being offered here.
+export const WINDOW_PRESETS = CREATABLE_ALERT_WINDOW_SECONDS.map((seconds) => ({
+  value: String(seconds),
+  label: windowLabel(seconds),
+}));
 
 export function isEvalMetric(metric: AlertMetric): boolean {
   return metric === "eval_avg_score" || metric === "eval_pass_rate";

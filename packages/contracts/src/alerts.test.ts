@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { formatAlertMetricValue, generateAlertName } from "./alerts";
+import {
+  ALERT_WINDOW_SECONDS,
+  CREATABLE_ALERT_WINDOW_SECONDS,
+  formatAlertMetricValue,
+  generateAlertName,
+} from "./alerts";
 
 describe("alert display formatting", () => {
   test("formats values in user-facing units", () => {
@@ -35,5 +40,19 @@ describe("alert display formatting", () => {
         threshold: 0.9,
       }),
     ).toBe("Eval pass rate at most 90%");
+  });
+});
+
+describe("alert windows", () => {
+  test("5m is legacy: evaluable but not creatable", () => {
+    expect(ALERT_WINDOW_SECONDS).toContain(300);
+    expect(CREATABLE_ALERT_WINDOW_SECONDS).not.toContain(300);
+    expect(CREATABLE_ALERT_WINDOW_SECONDS).toEqual([900, 3600, 86_400]);
+  });
+
+  test("every creatable window is a known window", () => {
+    for (const seconds of CREATABLE_ALERT_WINDOW_SECONDS) {
+      expect(ALERT_WINDOW_SECONDS).toContain(seconds);
+    }
   });
 });
