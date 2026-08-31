@@ -58,6 +58,7 @@ import {
   makeBucketLabel,
   makeEdgeTick,
   thinTicks,
+  useFrozen,
   useZoomRange,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
@@ -339,8 +340,6 @@ export function OverviewClient() {
     [range]
   );
   const windowMs = range.to.getTime() - range.from.getTime();
-  const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
-  const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
   const enabled = !!projectId;
   const args = { projectId: projectId!, from, to };
   const zoom = useZoomRange();
@@ -456,13 +455,39 @@ export function OverviewClient() {
   const workflowsSkeleton = useDelayedLoading(workflowsLoading);
   const customersSkeleton = useDelayedLoading(customersLoading);
 
+  // While a range change refetches, every chart holds the previous view — the
+  // rows *and* the window they were fetched for, so fill, ticks, and label
+  // format stay mutually consistent — dimmed (isUpdating), then swaps to the
+  // fresh view in one transition. All charts share one freshness flag so the
+  // page moves together instead of chart by chart.
+  const chartsStale =
+    timeseries.isPlaceholderData ||
+    costByModel.isPlaceholderData ||
+    models.isPlaceholderData;
+  const chartView = useFrozen(
+    {
+      series: timeseries.data,
+      cost: costByModel.data,
+      models: models.data,
+      from: range.from,
+      to: range.to,
+    },
+    chartsStale
+  );
+  const chartWindowMs = chartView.to.getTime() - chartView.from.getTime();
+  const bucketLabel = useMemo(
+    () => makeBucketLabel(chartWindowMs),
+    [chartWindowMs]
+  );
+  const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
+
   // p50/p95/p99 latency + requests/errors per bucket, zero-filled so quiet
   // stretches keep their width on the x-axis. Keeps the raw bucket as the x
   // value (formatted on the axis) so we can thin the ticks.
   const seriesData = useMemo(
     () =>
       fillBuckets(
-        (timeseries.data ?? []).map((r) => ({
+        (chartView.series ?? []).map((r) => ({
           bucket: r.bucket,
           p50: r.latencyMs.p50,
           p95: r.latencyMs.p95,
@@ -472,8 +497,8 @@ export function OverviewClient() {
           tokens: r.totalTokens,
           cost: r.totalCost ?? 0,
         })),
-        range.from,
-        range.to,
+        chartView.from,
+        chartView.to,
         (bucket) => ({
           bucket,
           p50: 0,
@@ -483,10 +508,9 @@ export function OverviewClient() {
           errors: 0,
           tokens: 0,
           cost: 0,
-        }),
-        timeseries.isPlaceholderData
+        })
       ),
-    [timeseries.data, timeseries.isPlaceholderData, range.from, range.to]
+    [chartView]
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between
@@ -532,7 +556,7 @@ export function OverviewClient() {
   // "/" and "."); everything else rolls into "Other". Colors track each
   // model's brand so the chart and the "By model" list stay consistent.
   const { costData, costConfig, costItems, costTicks } = useMemo(() => {
-    const top = (models.data ?? []).slice(0, 5).map((m) => m.modelId);
+    const top = (chartView.models ?? []).slice(0, 5).map((m) => m.modelId);
     const keyOf = new Map(top.map((id, i) => [id, `m${i}`]));
     const config: ChartConfig = {};
     const items: LegendItem[] = [];
@@ -569,7 +593,7 @@ export function OverviewClient() {
     for (const r of seriesData) {
       byBucket.set(r.bucket, {});
     }
-    for (const r of costByModel.data ?? []) {
+    for (const r of chartView.cost ?? []) {
       // The series grid is authoritative: while the two queries refetch at
       // different speeds (a range change), rows for buckets outside it would
       // stretch the axis across both the old and new windows — drop them.
@@ -616,7 +640,7 @@ export function OverviewClient() {
       costItems: items,
       costTicks: ticks,
     };
-  }, [costByModel.data, models.data, seriesData, bucketLabel]);
+  }, [chartView, seriesData, bucketLabel]);
 
   // Deterministic sample series for the blurred empty-state preview: buckets
   // span the selected range like the live query's would; shapes are sine waves
@@ -1128,7 +1152,7 @@ export function OverviewClient() {
                 config={costChartConfig}
                 data={costChartData}
                 isLoading={costLoading}
-                isUpdating={!costEmpty && (costByModel.isPlaceholderData || timeseries.isPlaceholderData)}
+                isUpdating={!costEmpty && chartsStale}
                 stackType="stacked"
                 xDataKey="bucket"
                 syncId="overview-trends"
@@ -1194,7 +1218,7 @@ export function OverviewClient() {
                 config={volumeConfig}
                 data={volumeChartData}
                 isLoading={seriesLoading}
-                isUpdating={!seriesEmpty && timeseries.isPlaceholderData}
+                isUpdating={!seriesEmpty && chartsStale}
                 xDataKey="bucket"
                 syncId="overview-trends"
                 onZoomSelect={seriesEmpty ? undefined : zoom.zoomTo}
@@ -1254,7 +1278,7 @@ export function OverviewClient() {
                 config={latencyConfig}
                 data={latencyChartData}
                 isLoading={seriesLoading}
-                isUpdating={!seriesEmpty && timeseries.isPlaceholderData}
+                isUpdating={!seriesEmpty && chartsStale}
                 xDataKey="bucket"
                 syncId="overview-trends"
                 onZoomSelect={seriesEmpty ? undefined : zoom.zoomTo}

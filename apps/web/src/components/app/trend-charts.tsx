@@ -230,24 +230,33 @@ export function pickBucketMs(windowMs: number): number {
 }
 
 /**
+ * Renders the last value seen while `frozen` was false. Feed it everything a
+ * chart derives its render from (query rows plus the range they were fetched
+ * for) with the query's `isPlaceholderData` as `frozen`: while a range change
+ * refetches, the chart then holds the previous view perfectly still — data,
+ * fill, ticks, and label format all stay mutually consistent — and swaps to
+ * the fresh view in a single transition when it lands.
+ */
+export function useFrozen<T>(value: T, frozen: boolean): T {
+	const ref = useRef(value);
+	if (!frozen) ref.current = value;
+	return ref.current;
+}
+
+/**
  * Zero-fills the gaps the main timeseries query leaves for empty buckets (it
  * has no `WITH FILL`), so quiet periods keep their real width on the x-axis
  * instead of compressing. Rows are keyed by parsed epoch, gaps get rows from
  * `makeEmpty`. Bails out — returning the rows untouched — if any row doesn't
- * sit on the expected grid or the grid would be implausibly large.
- *
- * Pass `stale` (the query's `isPlaceholderData`) when the rows may belong to a
- * previous window kept on screen during a refetch: rows on a different bucket
- * grid then freeze as-is until the fresh response lands — one clean transition
- * instead of an intermediate mis-bucketed render — while rows that share the
- * new window's grid still fill immediately (they're valid data for it).
+ * sit on the expected grid or the grid would be implausibly large. Callers
+ * must pass rows fetched *for* this window (see useFrozen): rows for a
+ * different one would zero-fill into a mis-bucketed comb.
  */
 export function fillBuckets<T extends { bucket: string }>(
 	rows: T[],
 	from: Date,
 	to: Date,
 	makeEmpty: (bucket: string) => T,
-	stale = false,
 ): T[] {
 	// An empty result set stays empty (pages detect "no data" by length), and a
 	// degenerate window has no grid to fill.
@@ -263,31 +272,11 @@ export function fillBuckets<T extends { bucket: string }>(
 	if (count <= 0 || count > 1000) return rows;
 
 	const byEpoch = new Map<number, T>();
-	const epochs: number[] = [];
-	let onGrid = true;
 	for (const row of rows) {
 		const t = parseBucket(row.bucket);
-		if (Number.isNaN(t)) return rows;
-		if ((t - start) % bucketMs !== 0) onGrid = false;
-		epochs.push(t);
+		if (Number.isNaN(t) || (t - start) % bucketMs !== 0) return rows;
 		byEpoch.set(t, row);
 	}
-	if (stale) {
-		// Rows kept on screen from a previous window (placeholderData). Coarser
-		// buckets often still sit on the finer grid (the widths divide evenly),
-		// so filling them would weave zeros between the real rows and flash a
-		// comb pattern; check the rows' own cadence — the smallest gap between
-		// consecutive buckets — and freeze the old chart untouched unless it
-		// matches the new window's grid exactly.
-		epochs.sort((a, b) => a - b);
-		let cadence: number | null = null;
-		for (let i = 1; i < epochs.length; i++) {
-			const gap = epochs[i]! - epochs[i - 1]!;
-			if (cadence === null || gap < cadence) cadence = gap;
-		}
-		if (!onGrid || (cadence !== null && cadence !== bucketMs)) return rows;
-	}
-	if (!onGrid) return rows;
 
 	const out: T[] = [];
 	for (let t = start; t < toMs; t += bucketMs) {

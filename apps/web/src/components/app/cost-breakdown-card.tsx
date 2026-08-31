@@ -18,6 +18,7 @@ import {
 	makeEdgeTick,
 	themed,
 	thinTicks,
+	useFrozen,
 	useZoomRange,
 } from "@/components/app/trend-charts";
 import * as BarChart from "@/components/evilcharts/charts/bar-chart";
@@ -74,9 +75,6 @@ export function CostBreakdownCard({
 	const zoom = useZoomRange();
 	const from = range.from.toISOString();
 	const to = range.to.toISOString();
-	const windowMs = range.to.getTime() - range.from.getTime();
-	const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
-	const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
 
 	const [selected, setSelected] = useState<string | null>(null);
 	// The visible category set can change with the range, so a stale selection
@@ -98,8 +96,23 @@ export function CostBreakdownCard({
 		placeholderData: (prev) => prev,
 	});
 
+	// While a range change refetches, the chart holds the previous view — the
+	// rows *and* the window they were fetched for, so ticks and label format
+	// stay mutually consistent — dimmed (isUpdating), then swaps to the fresh
+	// view in one transition.
+	const chartsStale = query.isPlaceholderData;
+	const chartView = useFrozen(
+		{ rows: query.data, windowMs: range.to.getTime() - range.from.getTime() },
+		chartsStale,
+	);
+	const bucketLabel = useMemo(
+		() => makeBucketLabel(chartView.windowMs),
+		[chartView.windowMs],
+	);
+	const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
+
 	const { data, config, keys, ticks, empty } = useMemo(() => {
-		const rows = query.data ?? [];
+		const rows = chartView.rows ?? [];
 		const totals: Record<CategoryKey, number> = {
 			input: 0,
 			output: 0,
@@ -135,7 +148,7 @@ export function CostBreakdownCard({
 			),
 			empty: !query.isLoading && active.length === 0,
 		};
-	}, [query.data, query.isLoading, bucketLabel]);
+	}, [chartView, query.isLoading, bucketLabel]);
 
 	// Dash-hatch the trailing bar only when the last bucket is still filling.
 	const lastBucketLive = useMemo(() => {
@@ -172,7 +185,7 @@ export function CostBreakdownCard({
 						selectedDataKey={selected}
 						onSelectionChange={setSelected}
 						isLoading={query.isLoading}
-						isUpdating={!empty && query.isPlaceholderData}
+						isUpdating={!empty && chartsStale}
 						className={cn("h-[260px] w-full", empty && "opacity-40")}
 						chartProps={{
 							margin: { top: 5, right: 5, bottom: 5, left: 2 },

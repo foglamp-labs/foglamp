@@ -86,6 +86,7 @@ import {
   makeEdgeTick,
   themed,
   thinTicks,
+  useFrozen,
   useZoomRange,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
@@ -240,8 +241,20 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   // never painted a skeleton first (see useSkeletonShown).
   const runsSkeletonShown = useSkeletonShown(showRunsSkeleton);
 
-  const windowMs = range.to.getTime() - range.from.getTime();
-  const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
+  // While a range change refetches, the trend charts hold the previous view —
+  // the rows *and* the window they were fetched for, so fill, ticks, and label
+  // format stay mutually consistent — dimmed (isUpdating), then swap to the
+  // fresh view in one transition.
+  const chartsStale = series.isPlaceholderData;
+  const chartView = useFrozen(
+    { series: series.data, from: range.from, to: range.to },
+    chartsStale,
+  );
+  const chartWindowMs = chartView.to.getTime() - chartView.from.getTime();
+  const bucketLabel = useMemo(
+    () => makeBucketLabel(chartWindowMs),
+    [chartWindowMs],
+  );
   const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
   // Keep the raw bucket as the x value (formatted on the axis) so we can thin
   // the ticks and edge-anchor the first/last labels. Zero-filled so quiet
@@ -249,7 +262,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   const seriesData = useMemo(
     () =>
       fillBuckets(
-        (series.data ?? []).map((r) => ({
+        (chartView.series ?? []).map((r) => ({
           bucket: r.bucket,
           runs: r.runCount,
           errors: r.erroredRunCount,
@@ -257,12 +270,11 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
           p95: r.durationMs.p95,
           p99: r.durationMs.p99,
         })),
-        range.from,
-        range.to,
+        chartView.from,
+        chartView.to,
         (bucket) => ({ bucket, runs: 0, errors: 0, p50: 0, p95: 0, p99: 0 }),
-        series.isPlaceholderData,
       ),
-    [series.data, series.isPlaceholderData, range.from, range.to],
+    [chartView],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between
@@ -401,7 +413,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                     config={volumeConfig}
                     data={seriesData}
                     isLoading={seriesLoading}
-                    isUpdating={series.isPlaceholderData}
+                    isUpdating={chartsStale}
                     xDataKey="bucket"
                     syncId="workflow-trends"
                     onZoomSelect={zoom.zoomTo}
@@ -461,7 +473,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                     config={latencyConfig}
                     data={latencyData}
                     isLoading={seriesLoading}
-                    isUpdating={series.isPlaceholderData}
+                    isUpdating={chartsStale}
                     xDataKey="bucket"
                     syncId="workflow-trends"
                     onZoomSelect={zoom.zoomTo}

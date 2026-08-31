@@ -91,6 +91,7 @@ import {
   makeEdgeTick,
   themed,
   thinTicks,
+  useFrozen,
   useZoomRange,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
@@ -292,8 +293,20 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
   // never painted a skeleton first (see useSkeletonShown).
   const tracesSkeletonShown = useSkeletonShown(showTracesSkeleton);
 
-  const windowMs = range.to.getTime() - range.from.getTime();
-  const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
+  // While a range change refetches, the trend charts hold the previous view —
+  // the rows *and* the window they were fetched for, so fill, ticks, and label
+  // format stay mutually consistent — dimmed (isUpdating), then swap to the
+  // fresh view in one transition.
+  const chartsStale = series.isPlaceholderData;
+  const chartView = useFrozen(
+    { series: series.data, from: range.from, to: range.to },
+    chartsStale,
+  );
+  const chartWindowMs = chartView.to.getTime() - chartView.from.getTime();
+  const bucketLabel = useMemo(
+    () => makeBucketLabel(chartWindowMs),
+    [chartWindowMs],
+  );
   const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
   // Keep the raw bucket as the x value (formatted on the axis) so we can thin
   // the ticks and edge-anchor the first/last labels. Zero-filled so an agent's
@@ -301,7 +314,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
   const seriesData = useMemo(
     () =>
       fillBuckets(
-        (series.data ?? []).map((r) => ({
+        (chartView.series ?? []).map((r) => ({
           bucket: r.bucket,
           spans: r.spanCount,
           errors: r.errorCount,
@@ -309,12 +322,11 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
           p95: r.latencyMs.p95,
           p99: r.latencyMs.p99,
         })),
-        range.from,
-        range.to,
+        chartView.from,
+        chartView.to,
         (bucket) => ({ bucket, spans: 0, errors: 0, p50: 0, p95: 0, p99: 0 }),
-        series.isPlaceholderData,
       ),
-    [series.data, series.isPlaceholderData, range.from, range.to],
+    [chartView],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between two
@@ -457,7 +469,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     config={volumeConfig}
                     data={seriesData}
                     isLoading={seriesLoading}
-                    isUpdating={series.isPlaceholderData}
+                    isUpdating={chartsStale}
                     xDataKey="bucket"
                     syncId="agent-trends"
                     onZoomSelect={zoom.zoomTo}
@@ -517,7 +529,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     config={latencyConfig}
                     data={latencyData}
                     isLoading={seriesLoading}
-                    isUpdating={series.isPlaceholderData}
+                    isUpdating={chartsStale}
                     xDataKey="bucket"
                     syncId="agent-trends"
                     onZoomSelect={zoom.zoomTo}
