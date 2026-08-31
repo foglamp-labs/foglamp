@@ -6,7 +6,7 @@ import { Text as RechartsText } from "recharts";
 
 import { useRange } from "@/components/app/range-context";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
-import { exactRange } from "@/lib/range";
+import { type RangeValue, exactRange } from "@/lib/range";
 import { cn } from "@/lib/utils";
 
 // Evil Charts wants `colors: { light, dark }`; our --chart-* vars adapt to the
@@ -257,10 +257,36 @@ export function fillBuckets<T extends { bucket: string }>(
 	if (count <= 0 || count > 1000) return rows;
 
 	const byEpoch = new Map<number, T>();
+	const epochs: number[] = [];
+	let onGrid = true;
 	for (const row of rows) {
 		const t = parseBucket(row.bucket);
-		if (Number.isNaN(t) || (t - start) % bucketMs !== 0) return rows;
+		if (Number.isNaN(t)) return rows;
+		if ((t - start) % bucketMs !== 0) onGrid = false;
+		epochs.push(t);
 		byEpoch.set(t, row);
+	}
+	// The response's own cadence — the smallest gap between consecutive buckets.
+	// A stale response (placeholderData while a changed range loads) usually has
+	// a *coarser* cadence whose buckets still sit on the finer grid, so the grid
+	// check alone can't catch it; filling it would weave zeros between the
+	// coarse rows and flash a comb pattern until the fresh data lands.
+	epochs.sort((a, b) => a - b);
+	let cadence: number | null = null;
+	for (let i = 1; i < epochs.length; i++) {
+		const gap = epochs[i]! - epochs[i - 1]!;
+		if (cadence === null || gap < cadence) cadence = gap;
+	}
+	if (!onGrid || (cadence !== null && cadence !== bucketMs)) {
+		// Stale rows: clip them to the requested window so a zoom snaps to its
+		// new extent immediately (one reflow, when the fresh data lands, instead
+		// of two). If clipping leaves nothing to draw — a jump to a disjoint
+		// window — keep the stale rows on screen until the fresh data arrives.
+		const clipped = rows.filter((row) => {
+			const t = parseBucket(row.bucket);
+			return t >= fromMs && t < toMs;
+		});
+		return clipped.length >= 2 ? clipped : rows;
 	}
 
 	const out: T[] = [];
@@ -274,6 +300,15 @@ export function fillBuckets<T extends { bucket: string }>(
 	return out;
 }
 
+// The zoom-undo session, shared by every useZoomRange instance: the date range
+// is one global filter, so a zoom started on any chart (or card) must be
+// undoable by a double-click on any other. `prev` is the range to restore —
+// captured before the first zoom of a chain — and `zoomed` is the range the
+// last zoom set, compared *by identity* against the live range so a manual
+// range change (the picker) invalidates the session instead of being clobbered
+// by a later double-click.
+let zoomSession: { prev: RangeValue; zoomed: RangeValue } | null = null;
+
 /**
  * Drag-to-zoom glue between a chart and the global date filter: `zoomTo` maps
  * a selected bucket range to an exact absolute range (extending the end by one
@@ -282,9 +317,6 @@ export function fillBuckets<T extends { bucket: string }>(
  */
 export function useZoomRange() {
 	const { range, setRange } = useRange();
-	// The range to restore on double-click — captured before the first zoom and
-	// kept across chained zooms, so reset undoes the whole zoom session.
-	const prevRef = useRef<typeof range | null>(null);
 	const rangeRef = useRef(range);
 	rangeRef.current = range;
 
@@ -300,16 +332,22 @@ export function useZoomRange() {
 			const start = Math.max(fromMs, current.from.getTime());
 			const end = Math.min(toMs + bucketMs, current.to.getTime());
 			if (end <= start) return;
-			if (prevRef.current === null) prevRef.current = current;
-			setRange(exactRange(new Date(start), new Date(end)));
+			const next = exactRange(new Date(start), new Date(end));
+			// Chain onto the open session only while the live range is still the
+			// one our last zoom set; anything else starts a fresh session.
+			zoomSession = {
+				prev: zoomSession?.zoomed === current ? zoomSession.prev : current,
+				zoomed: next,
+			};
+			setRange(next);
 		},
 		[setRange],
 	);
 
 	const reset = useCallback(() => {
-		if (prevRef.current === null) return;
-		setRange(prevRef.current);
-		prevRef.current = null;
+		if (zoomSession === null) return;
+		if (zoomSession.zoomed === rangeRef.current) setRange(zoomSession.prev);
+		zoomSession = null;
 	}, [setRange]);
 
 	return { zoomTo, reset };

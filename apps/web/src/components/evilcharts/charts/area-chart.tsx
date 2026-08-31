@@ -307,7 +307,7 @@ export function EvilAreaChart<
 					stackOffset={isExpanded ? "expand" : undefined}
 					data={isLoading ? loadingData : displayData}
 					syncId={syncId}
-					style={zoom.enabled ? { cursor: "crosshair" } : undefined}
+					style={zoom.enabled ? { cursor: "crosshair", userSelect: "none" } : undefined}
 					onMouseEnter={() => setIsMouseInChart(true)}
 					onMouseLeave={() => {
 						setIsMouseInChart(false);

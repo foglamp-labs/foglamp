@@ -17,8 +17,7 @@ export type ZoomSelectHandler = (startX: string, endX: string) => void;
 const activeIndexOf = (state: unknown): number | null => {
 	if (typeof state !== "object" || state === null) return null;
 	const raw = (state as { activeTooltipIndex?: unknown }).activeTooltipIndex;
-	const idx =
-		typeof raw === "string" && raw !== "" ? Number(raw) : (raw as unknown);
+	const idx = typeof raw === "string" && raw !== "" ? Number(raw) : raw;
 	return typeof idx === "number" && Number.isInteger(idx) && idx >= 0
 		? idx
 		: null;
@@ -82,7 +81,7 @@ export function useZoomDrag({
 			const sel = selectionRef.current;
 			if (!sel) return; // only tracks while a drag is in progress
 			const idx = activeIndexOf(state);
-			if (idx === null) return;
+			if (idx === null || idx === sel.end) return; // re-render per bucket, not per pixel
 			select({ start: sel.start, end: idx });
 		},
 		[select],
