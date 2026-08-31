@@ -312,8 +312,9 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
         range.from,
         range.to,
         (bucket) => ({ bucket, spans: 0, errors: 0, p50: 0, p95: 0, p99: 0 }),
+        series.isPlaceholderData,
       ),
-    [series.data, range.from, range.to],
+    [series.data, series.isPlaceholderData, range.from, range.to],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between two

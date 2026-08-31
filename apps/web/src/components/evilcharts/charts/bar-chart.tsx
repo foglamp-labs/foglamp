@@ -332,7 +332,6 @@ export function EvilBarChart<
 					{...chartProps}
 				>
 					{backgroundVariant && <ChartBackground variant={backgroundVariant} />}
-					<ReferenceLine color="white" />
 					{children}
 					{zoom.overlay}
 					{isLoading && (

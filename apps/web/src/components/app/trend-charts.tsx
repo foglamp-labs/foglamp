@@ -234,14 +234,20 @@ export function pickBucketMs(windowMs: number): number {
  * has no `WITH FILL`), so quiet periods keep their real width on the x-axis
  * instead of compressing. Rows are keyed by parsed epoch, gaps get rows from
  * `makeEmpty`. Bails out — returning the rows untouched — if any row doesn't
- * sit on the expected grid (a stale response for a different window) or the
- * grid would be implausibly large.
+ * sit on the expected grid or the grid would be implausibly large.
+ *
+ * Pass `stale` (the query's `isPlaceholderData`) when the rows may belong to a
+ * previous window kept on screen during a refetch: rows on a different bucket
+ * grid then freeze as-is until the fresh response lands — one clean transition
+ * instead of an intermediate mis-bucketed render — while rows that share the
+ * new window's grid still fill immediately (they're valid data for it).
  */
 export function fillBuckets<T extends { bucket: string }>(
 	rows: T[],
 	from: Date,
 	to: Date,
 	makeEmpty: (bucket: string) => T,
+	stale = false,
 ): T[] {
 	// An empty result set stays empty (pages detect "no data" by length), and a
 	// degenerate window has no grid to fill.
@@ -266,28 +272,22 @@ export function fillBuckets<T extends { bucket: string }>(
 		epochs.push(t);
 		byEpoch.set(t, row);
 	}
-	// The response's own cadence — the smallest gap between consecutive buckets.
-	// A stale response (placeholderData while a changed range loads) usually has
-	// a *coarser* cadence whose buckets still sit on the finer grid, so the grid
-	// check alone can't catch it; filling it would weave zeros between the
-	// coarse rows and flash a comb pattern until the fresh data lands.
-	epochs.sort((a, b) => a - b);
-	let cadence: number | null = null;
-	for (let i = 1; i < epochs.length; i++) {
-		const gap = epochs[i]! - epochs[i - 1]!;
-		if (cadence === null || gap < cadence) cadence = gap;
+	if (stale) {
+		// Rows kept on screen from a previous window (placeholderData). Coarser
+		// buckets often still sit on the finer grid (the widths divide evenly),
+		// so filling them would weave zeros between the real rows and flash a
+		// comb pattern; check the rows' own cadence — the smallest gap between
+		// consecutive buckets — and freeze the old chart untouched unless it
+		// matches the new window's grid exactly.
+		epochs.sort((a, b) => a - b);
+		let cadence: number | null = null;
+		for (let i = 1; i < epochs.length; i++) {
+			const gap = epochs[i]! - epochs[i - 1]!;
+			if (cadence === null || gap < cadence) cadence = gap;
+		}
+		if (!onGrid || (cadence !== null && cadence !== bucketMs)) return rows;
 	}
-	if (!onGrid || (cadence !== null && cadence !== bucketMs)) {
-		// Stale rows: clip them to the requested window so a zoom snaps to its
-		// new extent immediately (one reflow, when the fresh data lands, instead
-		// of two). If clipping leaves nothing to draw — a jump to a disjoint
-		// window — keep the stale rows on screen until the fresh data arrives.
-		const clipped = rows.filter((row) => {
-			const t = parseBucket(row.bucket);
-			return t >= fromMs && t < toMs;
-		});
-		return clipped.length >= 2 ? clipped : rows;
-	}
+	if (!onGrid) return rows;
 
 	const out: T[] = [];
 	for (let t = start; t < toMs; t += bucketMs) {
@@ -311,9 +311,9 @@ let zoomSession: { prev: RangeValue; zoomed: RangeValue } | null = null;
 
 /**
  * Drag-to-zoom glue between a chart and the global date filter: `zoomTo` maps
- * a selected bucket range to an exact absolute range (extending the end by one
- * bucket so the selection's last bucket is included in full), and `reset`
- * restores the range that was active before the first zoom.
+ * a selected bucket range to an exact absolute range ending at the bucket the
+ * drag released on — exactly the span the selection overlay covered — and
+ * `reset` restores the range that was active before the first zoom.
  */
 export function useZoomRange() {
 	const { range, setRange } = useRange();
@@ -326,11 +326,8 @@ export function useZoomRange() {
 			const fromMs = parseBucket(fromBucket);
 			const toMs = parseBucket(toBucket);
 			if (Number.isNaN(fromMs) || Number.isNaN(toMs)) return;
-			const bucketMs = pickBucketMs(
-				current.to.getTime() - current.from.getTime(),
-			);
 			const start = Math.max(fromMs, current.from.getTime());
-			const end = Math.min(toMs + bucketMs, current.to.getTime());
+			const end = Math.min(toMs, current.to.getTime());
 			if (end <= start) return;
 			const next = exactRange(new Date(start), new Date(end));
 			// Chain onto the open session only while the live range is still the

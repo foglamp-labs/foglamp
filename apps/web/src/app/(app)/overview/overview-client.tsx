@@ -483,9 +483,10 @@ export function OverviewClient() {
           errors: 0,
           tokens: 0,
           cost: 0,
-        })
+        }),
+        timeseries.isPlaceholderData
       ),
-    [timeseries.data, range.from, range.to]
+    [timeseries.data, timeseries.isPlaceholderData, range.from, range.to]
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between
@@ -569,11 +570,14 @@ export function OverviewClient() {
       byBucket.set(r.bucket, {});
     }
     for (const r of costByModel.data ?? []) {
+      // The series grid is authoritative: while the two queries refetch at
+      // different speeds (a range change), rows for buckets outside it would
+      // stretch the axis across both the old and new windows — drop them.
+      const row = byBucket.get(r.bucket);
+      if (!row) continue;
       const key = keyOf.get(r.modelId) ?? "other";
       if (key === "other") sawOther = true;
-      const row = byBucket.get(r.bucket) ?? {};
       row[key] = (row[key] ?? 0) + (r.totalCost ?? 0);
-      byBucket.set(r.bucket, row);
     }
     if (sawOther) {
       config.other = {
