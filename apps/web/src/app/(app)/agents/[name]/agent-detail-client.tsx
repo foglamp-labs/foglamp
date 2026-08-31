@@ -85,11 +85,13 @@ import { spanTypeIcon } from "@/components/app/span-type";
 import { ToolBreakdownCard } from "@/components/app/tool-breakdown-card";
 import {
   ChartLegend,
+  fillBuckets,
   formatBucketFull,
   makeBucketLabel,
   makeEdgeTick,
   themed,
   thinTicks,
+  useZoomRange,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
@@ -180,6 +182,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
     [range],
   );
   const enabled = !!projectId;
+  const zoom = useZoomRange();
 
   // Stats reflect *all* spans in the window (no errors-only filter), so the
   // error-rate stat stays meaningful when the table below is filtered down.
@@ -204,6 +207,31 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
     enabled,
     placeholderData: (prev) => prev,
   });
+
+  // Alert rules, for threshold lines on the latency chart: project-wide
+  // latency alerts plus ones scoped to this agent (but not to a specific
+  // model/workflow/metadata, which this chart doesn't isolate).
+  const alerts = useQuery({
+    ...trpc.alerts.list.queryOptions({ projectId: projectId! }),
+    enabled,
+  });
+  const latencyThresholds = useMemo(
+    () =>
+      (alerts.data ?? []).filter(
+        (r) =>
+          r.enabled &&
+          r.threshold != null &&
+          !r.evalId &&
+          (r.metric === "latency_p50" ||
+            r.metric === "latency_p95" ||
+            r.metric === "latency_p99") &&
+          (!r.filters?.agentName || r.filters.agentName === agentName) &&
+          !r.filters?.modelId &&
+          !r.filters?.workflowName &&
+          Object.keys(r.filters?.metadata ?? {}).length === 0,
+      ),
+    [alerts.data, agentName],
+  );
 
   const traces = useQuery({
     ...trpc.traces.list.queryOptions({
@@ -267,19 +295,25 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
   const windowMs = range.to.getTime() - range.from.getTime();
   const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
   const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
-  // Keep the raw bucket as the x value (formatted on the axis) so we can thin the
-  // ticks and edge-anchor the first/last labels.
+  // Keep the raw bucket as the x value (formatted on the axis) so we can thin
+  // the ticks and edge-anchor the first/last labels. Zero-filled so an agent's
+  // quiet stretches keep their width on the x-axis.
   const seriesData = useMemo(
     () =>
-      (series.data ?? []).map((r) => ({
-        bucket: r.bucket,
-        spans: r.spanCount,
-        errors: r.errorCount,
-        p50: r.latencyMs.p50,
-        p95: r.latencyMs.p95,
-        p99: r.latencyMs.p99,
-      })),
-    [series.data],
+      fillBuckets(
+        (series.data ?? []).map((r) => ({
+          bucket: r.bucket,
+          spans: r.spanCount,
+          errors: r.errorCount,
+          p50: r.latencyMs.p50,
+          p95: r.latencyMs.p95,
+          p99: r.latencyMs.p99,
+        })),
+        range.from,
+        range.to,
+        (bucket) => ({ bucket, spans: 0, errors: 0, p50: 0, p95: 0, p99: 0 }),
+      ),
+    [series.data, range.from, range.to],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between two
@@ -423,6 +457,9 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     data={seriesData}
                     isLoading={seriesLoading}
                     xDataKey="bucket"
+                    syncId="agent-trends"
+                    onZoomSelect={zoom.zoomTo}
+                    onZoomReset={zoom.reset}
                     selectedDataKey={volumeSelected}
                     onSelectionChange={setVolumeSelected}
                     className="h-55 w-full"
@@ -479,6 +516,9 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     data={latencyData}
                     isLoading={seriesLoading}
                     xDataKey="bucket"
+                    syncId="agent-trends"
+                    onZoomSelect={zoom.zoomTo}
+                    onZoomReset={zoom.reset}
                     stackType="stacked"
                     selectedDataKey={latencySelected}
                     onSelectionChange={setLatencySelected}
@@ -512,6 +552,13 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
                     <AreaChart.Area dataKey="p50" strokeVariant="solid" />
                     <AreaChart.Area dataKey="p95" strokeVariant="solid" />
                     <AreaChart.Area dataKey="p99" strokeVariant="solid" />
+                    {latencyThresholds.map((r) => (
+                      <AreaChart.Threshold
+                        key={r.id}
+                        value={Number(r.threshold)}
+                        label={`${r.metric.slice("latency_".length)} alert`}
+                      />
+                    ))}
                   </AreaChart.EvilAreaChart>
                 )}
               </CardContent>
@@ -523,6 +570,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
           <section className="grid gap-4 lg:grid-cols-2 px-8">
             <CostBreakdownCard
               agentName={agentName}
+              syncId="agent-trends"
               className={cn(entrance && "page-fade-in")}
             />
             <ToolBreakdownCard

@@ -53,10 +53,12 @@ import {
 } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import {
+  fillBuckets,
   formatBucketFull,
   makeBucketLabel,
   makeEdgeTick,
   thinTicks,
+  useZoomRange,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
 import * as BarChart from "@/components/evilcharts/charts/bar-chart";
@@ -341,6 +343,7 @@ export function OverviewClient() {
   const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
   const enabled = !!projectId;
   const args = { projectId: projectId!, from, to };
+  const zoom = useZoomRange();
 
   // Per-chart selected series, driven by the header legends.
   const [costSelected, setCostSelected] = useState<string | null>(null);
@@ -411,6 +414,32 @@ export function OverviewClient() {
     ...trpc.traces.list.queryOptions({ projectId: projectId!, limit: 1 }),
     enabled,
   });
+  // Alert rules, for threshold lines on the latency chart. Range-independent.
+  const alerts = useQuery({
+    ...trpc.alerts.list.queryOptions({ projectId: projectId! }),
+    enabled,
+  });
+  // Project-wide latency alerts (no eval, no model/agent/workflow/metadata
+  // scoping — those wouldn't match what this chart aggregates), drawn as
+  // dashed threshold lines. The stacked bands top out at the absolute
+  // percentile values, so a horizontal line at the threshold is exact.
+  const latencyThresholds = useMemo(
+    () =>
+      (alerts.data ?? []).filter(
+        (r) =>
+          r.enabled &&
+          r.threshold != null &&
+          !r.evalId &&
+          (r.metric === "latency_p50" ||
+            r.metric === "latency_p95" ||
+            r.metric === "latency_p99") &&
+          !r.filters?.modelId &&
+          !r.filters?.agentName &&
+          !r.filters?.workflowName &&
+          Object.keys(r.filters?.metadata ?? {}).length === 0
+      ),
+    [alerts.data]
+  );
   // Every card shell mounts immediately; only the data slots wait. Each slot
   // gates on its own queries, and the skeleton treatment is delayed per slot
   // (see useDelayedLoading) so fast loads paint data straight into the shell
@@ -427,21 +456,36 @@ export function OverviewClient() {
   const workflowsSkeleton = useDelayedLoading(workflowsLoading);
   const customersSkeleton = useDelayedLoading(customersLoading);
 
-  // p50/p95/p99 latency + requests/errors per bucket. Keeps the raw bucket as
-  // the x value (formatted on the axis) so we can thin the ticks.
+  // p50/p95/p99 latency + requests/errors per bucket, zero-filled so quiet
+  // stretches keep their width on the x-axis. Keeps the raw bucket as the x
+  // value (formatted on the axis) so we can thin the ticks.
   const seriesData = useMemo(
     () =>
-      (timeseries.data ?? []).map((r) => ({
-        bucket: r.bucket,
-        p50: r.latencyMs.p50,
-        p95: r.latencyMs.p95,
-        p99: r.latencyMs.p99,
-        requests: r.spanCount,
-        errors: r.errorCount,
-        tokens: r.totalTokens,
-        cost: r.totalCost ?? 0,
-      })),
-    [timeseries.data]
+      fillBuckets(
+        (timeseries.data ?? []).map((r) => ({
+          bucket: r.bucket,
+          p50: r.latencyMs.p50,
+          p95: r.latencyMs.p95,
+          p99: r.latencyMs.p99,
+          requests: r.spanCount,
+          errors: r.errorCount,
+          tokens: r.totalTokens,
+          cost: r.totalCost ?? 0,
+        })),
+        range.from,
+        range.to,
+        (bucket) => ({
+          bucket,
+          p50: 0,
+          p95: 0,
+          p99: 0,
+          requests: 0,
+          errors: 0,
+          tokens: 0,
+          cost: 0,
+        })
+      ),
+    [timeseries.data, range.from, range.to]
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between
@@ -518,10 +562,10 @@ export function OverviewClient() {
     });
     let sawOther = false;
     const byBucket = new Map<string, Record<string, number>>();
-    // Seed every bucket (including zero-cost ones, taken from the timeseries)
-    // so the stacked areas stay continuous instead of breaking on days a model
-    // had no spend.
-    for (const r of timeseries.data ?? []) {
+    // Seed every bucket (including zero-cost ones, taken from the zero-filled
+    // series) so the stacked bars stay continuous — and index-aligned with the
+    // other synced charts — instead of skipping buckets with no spend.
+    for (const r of seriesData) {
       byBucket.set(r.bucket, {});
     }
     for (const r of costByModel.data ?? []) {
@@ -568,7 +612,7 @@ export function OverviewClient() {
       costItems: items,
       costTicks: ticks,
     };
-  }, [costByModel.data, models.data, timeseries.data, bucketLabel]);
+  }, [costByModel.data, models.data, seriesData, bucketLabel]);
 
   // Deterministic sample series for the blurred empty-state preview: buckets
   // span the selected range like the live query's would; shapes are sine waves
@@ -1081,6 +1125,10 @@ export function OverviewClient() {
                 data={costChartData}
                 isLoading={costLoading}
                 stackType="stacked"
+                xDataKey="bucket"
+                syncId="overview-trends"
+                onZoomSelect={costEmpty ? undefined : zoom.zoomTo}
+                onZoomReset={zoom.reset}
                 selectedDataKey={costSelected}
                 onSelectionChange={setCostSelected}
                 className="h-65 w-full"
@@ -1142,6 +1190,9 @@ export function OverviewClient() {
                 data={volumeChartData}
                 isLoading={seriesLoading}
                 xDataKey="bucket"
+                syncId="overview-trends"
+                onZoomSelect={seriesEmpty ? undefined : zoom.zoomTo}
+                onZoomReset={zoom.reset}
                 selectedDataKey={volumeSelected}
                 onSelectionChange={setVolumeSelected}
                 className="h-65 w-full"
@@ -1198,6 +1249,9 @@ export function OverviewClient() {
                 data={latencyChartData}
                 isLoading={seriesLoading}
                 xDataKey="bucket"
+                syncId="overview-trends"
+                onZoomSelect={seriesEmpty ? undefined : zoom.zoomTo}
+                onZoomReset={zoom.reset}
                 stackType="stacked"
                 selectedDataKey={latencySelected}
                 onSelectionChange={setLatencySelected}
@@ -1245,6 +1299,14 @@ export function OverviewClient() {
                   strokeVariant="solid"
                   enableBufferLine={seriesBuffer}
                 />
+                {!seriesEmpty &&
+                  latencyThresholds.map((r) => (
+                    <AreaChart.Threshold
+                      key={r.id}
+                      value={Number(r.threshold)}
+                      label={`${r.metric.slice("latency_".length)} alert`}
+                    />
+                  ))}
               </AreaChart.EvilAreaChart>
             </MaybeEmptyOverlay>
           </CardContent>

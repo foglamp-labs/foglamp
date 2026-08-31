@@ -80,11 +80,13 @@ import {
 } from "@/components/app/run-exchange";
 import {
   ChartLegend,
+  fillBuckets,
   formatBucketFull,
   makeBucketLabel,
   makeEdgeTick,
   themed,
   thinTicks,
+  useZoomRange,
 } from "@/components/app/trend-charts";
 import * as AreaChart from "@/components/evilcharts/charts/area-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
@@ -136,6 +138,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   const searchParams = useSearchParams();
   // Shared time window drives the stats, trend charts, and runs table.
   const { range, setRange } = useRange();
+  const zoom = useZoomRange();
   // A `?run=` deep link focuses one run: its row opens and is tinted.
   const focusRun = searchParams.get("run");
   // Which run row is expanded (agent flow + exchange drawer). Mirrors `?run=`
@@ -241,18 +244,24 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   const bucketLabel = useMemo(() => makeBucketLabel(windowMs), [windowMs]);
   const edgeTick = useMemo(() => makeEdgeTick(bucketLabel), [bucketLabel]);
   // Keep the raw bucket as the x value (formatted on the axis) so we can thin
-  // the ticks and edge-anchor the first/last labels.
+  // the ticks and edge-anchor the first/last labels. Zero-filled so quiet
+  // stretches keep their width on the x-axis.
   const seriesData = useMemo(
     () =>
-      (series.data ?? []).map((r) => ({
-        bucket: r.bucket,
-        runs: r.runCount,
-        errors: r.erroredRunCount,
-        p50: r.durationMs.p50,
-        p95: r.durationMs.p95,
-        p99: r.durationMs.p99,
-      })),
-    [series.data],
+      fillBuckets(
+        (series.data ?? []).map((r) => ({
+          bucket: r.bucket,
+          runs: r.runCount,
+          errors: r.erroredRunCount,
+          p50: r.durationMs.p50,
+          p95: r.durationMs.p95,
+          p99: r.durationMs.p99,
+        })),
+        range.from,
+        range.to,
+        (bucket) => ({ bucket, runs: 0, errors: 0, p50: 0, p95: 0, p99: 0 }),
+      ),
+    [series.data, range.from, range.to],
   );
   // Latency as a stacked *band* chart: each area plots the delta to the band
   // below it (p50, p95−p50, p99−p95), so its gradient fill is bounded between
@@ -392,6 +401,9 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                     data={seriesData}
                     isLoading={seriesLoading}
                     xDataKey="bucket"
+                    syncId="workflow-trends"
+                    onZoomSelect={zoom.zoomTo}
+                    onZoomReset={zoom.reset}
                     selectedDataKey={volumeSelected}
                     onSelectionChange={setVolumeSelected}
                     className="h-55 w-full"
@@ -448,6 +460,9 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                     data={latencyData}
                     isLoading={seriesLoading}
                     xDataKey="bucket"
+                    syncId="workflow-trends"
+                    onZoomSelect={zoom.zoomTo}
+                    onZoomReset={zoom.reset}
                     stackType="stacked"
                     selectedDataKey={latencySelected}
                     onSelectionChange={setLatencySelected}

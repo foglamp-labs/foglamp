@@ -44,6 +44,7 @@ function ChartTooltipContent({
 	selected,
 	roundness = "lg",
 	variant = "default",
+	hidden = false,
 }: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
 	React.ComponentProps<"div"> & {
 		hideLabel?: boolean;
@@ -54,6 +55,10 @@ function ChartTooltipContent({
 		selected?: string | null;
 		roundness?: TooltipRoundness;
 		variant?: TooltipVariant;
+		// Suppresses the tooltip body while keeping the Tooltip mounted — used by
+		// synced charts (`syncId`) so only the hovered chart shows content while
+		// the others still draw the shared cursor line.
+		hidden?: boolean;
 		// Formats just the numeric value (the right-hand figure of each row),
 		// leaving the color dot, icon, and label layout intact. Also receives the
 		// full data row, so e.g. a stacked band chart (which plots deltas) can map
@@ -108,7 +113,7 @@ function ChartTooltipContent({
 		labelKey,
 	]);
 
-	if (!active || !payload?.length) {
+	if (hidden || !active || !payload?.length) {
 		// Empty tooltip - to prevent position getting 0.0 so it doesnt animate tooltip every time from 0.0 origin
 		return <span className="p-4" />;
 	}

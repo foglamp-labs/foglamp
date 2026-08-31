@@ -4,8 +4,8 @@ import { createContext, use, useEffect, useMemo, useState } from "react";
 
 import {
 	type RangeValue,
-	customRange,
 	defaultRange,
+	exactRange,
 	resolvePreset,
 } from "@/lib/range";
 
@@ -32,7 +32,9 @@ export function RangeProvider({ children }: { children: React.ReactNode }) {
 			if (v.key && v.key !== "custom") {
 				setRangeState(resolvePreset(v.key));
 			} else if (v.from && v.to) {
-				setRangeState(customRange(new Date(v.from), new Date(v.to)));
+				// Exact restore keeps sub-day windows (chart drag-zooms) intact;
+				// calendar ranges are stored day-snapped already, so they round-trip.
+				setRangeState(exactRange(new Date(v.from), new Date(v.to)));
 			}
 		} catch {
 			// ignore malformed storage

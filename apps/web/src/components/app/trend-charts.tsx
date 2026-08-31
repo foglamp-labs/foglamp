@@ -1,9 +1,12 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import { useCallback, useRef } from "react";
 import { Text as RechartsText } from "recharts";
 
+import { useRange } from "@/components/app/range-context";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
+import { exactRange } from "@/lib/range";
 import { cn } from "@/lib/utils";
 
 // Evil Charts wants `colors: { light, dark }`; our --chart-* vars adapt to the
@@ -208,4 +211,106 @@ export function pageWindow(
 	if (middle[middle.length - 1] < total - 1) out.push("ellipsis");
 	out.push(total);
 	return out;
+}
+
+/** A bucket string ("YYYY-MM-DD HH:MM:SS", UTC) → epoch ms, or NaN. */
+export function parseBucket(bucket: string): number {
+	return new Date(`${bucket.replace(" ", "T")}Z`).getTime();
+}
+
+/** Bucket width the server picks for a window — client-side mirror of the
+ * API's `pickBucketSec` (packages/api/src/lib/util.ts). Keep the two in sync:
+ * gap filling only works when the generated grid matches the server's. */
+export function pickBucketMs(windowMs: number): number {
+	const target = windowMs / 1000 / 50;
+	const steps = [
+		60, 120, 300, 600, 900, 1800, 3600, 7200, 10_800, 21_600, 43_200, 86_400,
+	];
+	return (steps.find((s) => s >= target) ?? 86_400) * 1000;
+}
+
+/**
+ * Zero-fills the gaps the main timeseries query leaves for empty buckets (it
+ * has no `WITH FILL`), so quiet periods keep their real width on the x-axis
+ * instead of compressing. Rows are keyed by parsed epoch, gaps get rows from
+ * `makeEmpty`. Bails out — returning the rows untouched — if any row doesn't
+ * sit on the expected grid (a stale response for a different window) or the
+ * grid would be implausibly large.
+ */
+export function fillBuckets<T extends { bucket: string }>(
+	rows: T[],
+	from: Date,
+	to: Date,
+	makeEmpty: (bucket: string) => T,
+): T[] {
+	// An empty result set stays empty (pages detect "no data" by length), and a
+	// degenerate window has no grid to fill.
+	if (rows.length === 0) return rows;
+	const fromMs = from.getTime();
+	const toMs = to.getTime();
+	if (!(toMs > fromMs)) return rows;
+
+	const bucketMs = pickBucketMs(toMs - fromMs);
+	// ClickHouse's toStartOfInterval aligns buckets to the epoch.
+	const start = Math.floor(fromMs / bucketMs) * bucketMs;
+	const count = Math.ceil((toMs - start) / bucketMs);
+	if (count <= 0 || count > 1000) return rows;
+
+	const byEpoch = new Map<number, T>();
+	for (const row of rows) {
+		const t = parseBucket(row.bucket);
+		if (Number.isNaN(t) || (t - start) % bucketMs !== 0) return rows;
+		byEpoch.set(t, row);
+	}
+
+	const out: T[] = [];
+	for (let t = start; t < toMs; t += bucketMs) {
+		const existing = byEpoch.get(t);
+		out.push(
+			existing ??
+				makeEmpty(new Date(t).toISOString().slice(0, 19).replace("T", " ")),
+		);
+	}
+	return out;
+}
+
+/**
+ * Drag-to-zoom glue between a chart and the global date filter: `zoomTo` maps
+ * a selected bucket range to an exact absolute range (extending the end by one
+ * bucket so the selection's last bucket is included in full), and `reset`
+ * restores the range that was active before the first zoom.
+ */
+export function useZoomRange() {
+	const { range, setRange } = useRange();
+	// The range to restore on double-click — captured before the first zoom and
+	// kept across chained zooms, so reset undoes the whole zoom session.
+	const prevRef = useRef<typeof range | null>(null);
+	const rangeRef = useRef(range);
+	rangeRef.current = range;
+
+	const zoomTo = useCallback(
+		(fromBucket: string, toBucket: string) => {
+			const current = rangeRef.current;
+			const fromMs = parseBucket(fromBucket);
+			const toMs = parseBucket(toBucket);
+			if (Number.isNaN(fromMs) || Number.isNaN(toMs)) return;
+			const bucketMs = pickBucketMs(
+				current.to.getTime() - current.from.getTime(),
+			);
+			const start = Math.max(fromMs, current.from.getTime());
+			const end = Math.min(toMs + bucketMs, current.to.getTime());
+			if (end <= start) return;
+			if (prevRef.current === null) prevRef.current = current;
+			setRange(exactRange(new Date(start), new Date(end)));
+		},
+		[setRange],
+	);
+
+	const reset = useCallback(() => {
+		if (prevRef.current === null) return;
+		setRange(prevRef.current);
+		prevRef.current = null;
+	}, [setRange]);
+
+	return { zoomTo, reset };
 }

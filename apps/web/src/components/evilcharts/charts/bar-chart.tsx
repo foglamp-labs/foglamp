@@ -10,6 +10,7 @@ import {
 	LoadingIndicator,
 	getColorsCount,
 	getLoadingData,
+	niceDomain,
 } from "@/components/evilcharts/ui/chart";
 import {
 	EvilBrush,
@@ -27,6 +28,10 @@ import {
 	type TooltipRoundness,
 	type TooltipVariant,
 } from "@/components/evilcharts/ui/tooltip";
+import {
+	type ZoomSelectHandler,
+	useZoomDrag,
+} from "@/components/evilcharts/ui/zoom";
 import { motion, useReducedMotion } from "motion/react";
 import {
 	type ComponentProps,
@@ -106,6 +111,7 @@ type BarChartContextValue = {
 	selectedDataKey: string | null; // currently selected series, or null when none
 	selectDataKey: (dataKey: string | null) => void; // sets the selected series
 	isMouseInChart: boolean; // whether the pointer is currently over the chart
+	syncId: string | undefined; // cursor-sync group this chart belongs to, if any
 };
 
 const BarChartContext = createContext<BarChartContextValue | null>(null);
@@ -158,6 +164,9 @@ type EvilBarChartBaseProps<
 	brushHeight?: number; // height of the brush preview in pixels
 	brushFormatLabel?: (value: unknown, index: number) => string; // formats brush axis labels
 	onBrushChange?: (range: EvilBrushRange) => void; // fires when the brush range changes
+	syncId?: string; // shares the hover cursor with every chart using the same id
+	onZoomSelect?: ZoomSelectHandler; // enables drag-to-zoom; receives the selected x range (needs xDataKey)
+	onZoomReset?: () => void; // fires on double-click — pairs with onZoomSelect to undo a zoom
 };
 
 type EvilBarChartProps<
@@ -197,6 +206,9 @@ export function EvilBarChart<
 	brushHeight,
 	brushFormatLabel,
 	onBrushChange,
+	syncId,
+	onZoomSelect,
+	onZoomReset,
 }: EvilBarChartProps<TData, TConfig>) {
 	const chartId = useId().replace(/:/g, ""); // colon-free id keeps CSS/SVG selectors valid
 	// Anchors the grow-in to a fixed moment so it plays exactly once — re-renders
@@ -220,13 +232,22 @@ export function EvilBarChart<
 	const isHorizontal = layout === "horizontal";
 	const displayData = showBrush && !isLoading ? visibleData : data;
 
+	const zoom = useZoomDrag({
+		data: displayData,
+		xDataKey,
+		onZoomSelect,
+		disabled: isLoading,
+	});
+
 	// Updates selection state and notifies the parent
 	const selectDataKey = useCallback(
 		(newSelectedDataKey: string | null) => {
+			// The click that ends a zoom drag must not also toggle a series selection.
+			if (zoom.suppressClickRef.current) return;
 			if (!isControlled) setInternalSelectedDataKey(newSelectedDataKey);
 			onSelectionChange?.(newSelectedDataKey);
 		},
-		[isControlled, onSelectionChange],
+		[isControlled, onSelectionChange, zoom.suppressClickRef],
 	);
 
 	const contextValue = useMemo<BarChartContextValue>(
@@ -242,6 +263,7 @@ export function EvilBarChart<
 			selectedDataKey,
 			selectDataKey,
 			isMouseInChart,
+			syncId,
 		}),
 		[
 			config,
@@ -255,6 +277,7 @@ export function EvilBarChart<
 			selectedDataKey,
 			selectDataKey,
 			isMouseInChart,
+			syncId,
 		],
 	);
 
@@ -295,13 +318,23 @@ export function EvilBarChart<
 					barGap={barGap}
 					barCategoryGap={barCategoryGap}
 					stackOffset={stackType === "percent" ? "expand" : undefined}
+					syncId={syncId}
+					style={zoom.enabled ? { cursor: "crosshair" } : undefined}
 					onMouseEnter={() => setIsMouseInChart(true)}
-					onMouseLeave={() => setIsMouseInChart(false)}
+					onMouseLeave={() => {
+						setIsMouseInChart(false);
+						zoom.handlers.onMouseLeave();
+					}}
+					onMouseDown={zoom.handlers.onMouseDown}
+					onMouseMove={zoom.handlers.onMouseMove}
+					onMouseUp={zoom.handlers.onMouseUp}
+					onDoubleClick={onZoomReset}
 					{...chartProps}
 				>
 					{backgroundVariant && <ChartBackground variant={backgroundVariant} />}
 					<ReferenceLine color="white" />
 					{children}
+					{zoom.overlay}
 					{isLoading && (
 						<LoadingBar chartId={chartId} onShimmerExit={onShimmerExit} />
 					)}
@@ -495,11 +528,14 @@ export function YAxis({
 	minTickGap = 8,
 	width = "auto",
 	type,
+	domain,
 	...props
 }: YAxisProps) {
 	const { isLoading, isHorizontal } = useBarChart();
 
 	if (isLoading) return null;
+
+	const resolvedType = type ?? (isHorizontal ? "category" : "number");
 
 	return (
 		<RechartsYAxis
@@ -508,7 +544,10 @@ export function YAxis({
 			tickMargin={tickMargin}
 			minTickGap={minTickGap}
 			width={width}
-			type={type ?? (isHorizontal ? "category" : "number")}
+			type={resolvedType}
+			// Numeric axes default to a zero-based domain with a "nice" stable max,
+			// so live refreshes don't jitter the axis. An explicit `domain` overrides.
+			domain={domain ?? (resolvedType === "number" ? niceDomain : undefined)}
 			{...props}
 		/>
 	);
@@ -543,6 +582,7 @@ type TooltipProps = {
 	variant?: TooltipVariant; // visual style of the tooltip surface
 	roundness?: TooltipRoundness; // border-radius of the tooltip
 	defaultIndex?: number; // data index shown by default with no hover
+	cursor?: boolean; // whether the hovered category is highlighted with a band
 	// Formats the tooltip's heading (the x value), e.g. a raw bucket → a date.
 	labelFormatter?: ComponentProps<typeof ChartTooltipContent>["labelFormatter"];
 	// Formats each row's numeric value, e.g. raw ms → "1.70s".
@@ -559,17 +599,20 @@ export function Tooltip({
 	variant,
 	roundness,
 	defaultIndex,
+	cursor = true,
 	labelFormatter,
 	valueFormatter,
 	reverse,
 }: TooltipProps) {
-	const { isLoading, selectedDataKey } = useBarChart();
+	const { isLoading, selectedDataKey, syncId, isMouseInChart } = useBarChart();
 
 	if (isLoading) return null;
 
 	return (
 		<ChartTooltip
-			cursor={false}
+			// The band cursor highlights the hovered category — styled by the
+			// container's `.recharts-rectangle.recharts-tooltip-cursor` rule.
+			cursor={cursor}
 			defaultIndex={defaultIndex}
 			content={
 				<ChartTooltipContent
@@ -579,7 +622,54 @@ export function Tooltip({
 					labelFormatter={labelFormatter}
 					valueFormatter={valueFormatter}
 					reverse={reverse}
+					// Synced peers draw the shared cursor band but stay quiet — only
+					// the chart under the pointer shows tooltip content.
+					hidden={syncId != null && !isMouseInChart}
 				/>
+			}
+		/>
+	);
+}
+
+type ThresholdProps = {
+	value: number; // value the line sits at, on the numeric axis
+	label?: string; // small caption rendered inside the chart's right edge
+	color?: string; // stroke + label color
+};
+
+/**
+ * A reference line marking a configured alert threshold, drawn across the
+ * numeric axis (horizontal for vertical bars, vertical for horizontal ones).
+ * The domain extends to keep it visible when the threshold sits beyond the data.
+ */
+export function Threshold({
+	value,
+	label,
+	color = "var(--destructive)",
+}: ThresholdProps) {
+	const { isLoading, isHorizontal } = useBarChart();
+
+	if (isLoading) return null;
+
+	return (
+		<ReferenceLine
+			y={isHorizontal ? undefined : value}
+			x={isHorizontal ? value : undefined}
+			stroke={color}
+			strokeDasharray="4 4"
+			strokeOpacity={0.5}
+			ifOverflow="extendDomain"
+			label={
+				label
+					? {
+							value: label,
+							position: isHorizontal ? "insideTop" : "insideRight",
+							fill: color,
+							fontSize: 10,
+							// Sits below the line, with a little air between the two.
+							dy: isHorizontal ? undefined : 12,
+						}
+					: undefined
 			}
 		/>
 	);

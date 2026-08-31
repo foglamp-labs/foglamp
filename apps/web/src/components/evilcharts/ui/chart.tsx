@@ -114,7 +114,7 @@ function ChartContainer({
 				data-chart={chartId}
 				className={cn(
 					"min-h-0 w-full flex-1",
-					"[&_.recharts-yAxis-tick-labels_.recharts-cartesian-axis-tick-value]:tabular-nums [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border relative flex flex-col justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden [&_*:focus]:outline-none [&_*:focus-visible]:outline-none",
+					"[&_.recharts-yAxis-tick-labels_.recharts-cartesian-axis-tick-value]:tabular-nums [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-muted-foreground/50 [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border relative flex flex-col justify-center text-xs [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden [&_*:focus]:outline-none [&_*:focus-visible]:outline-none",
 					!footer && "aspect-video",
 					className,
 				)}
@@ -261,6 +261,24 @@ function axisValueToPercentFormatter(value: number) {
 	return `${Math.round(value * 100).toFixed(0)}%`;
 }
 
+// Snap a value up to the next "nice" number (1/1.2/1.5/2/2.5/3/4/5/6/8 × 10ⁿ).
+// Used as the numeric y-axis max so live data refreshes only move the axis when
+// the data actually outgrows the current nice bound — no per-refresh jitter.
+function niceCeil(value: number): number {
+	if (!Number.isFinite(value) || value <= 0) return 1;
+	const exp = 10 ** Math.floor(Math.log10(value));
+	const mantissa = value / exp;
+	const steps = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+	const step = steps.find((s) => s >= mantissa - 1e-9) ?? 10;
+	return step * exp;
+}
+
+// Default numeric y-axis domain: zero-based with a nice, stable upper bound.
+const niceDomain: [number, (dataMax: number) => number] = [
+	0,
+	(dataMax: number) => niceCeil(dataMax),
+];
+
 // Get max colors count across all themes for a config entry
 function getColorsCount(config: ChartConfig[string]): number {
 	if (!config.colors) return 1;
@@ -285,4 +303,6 @@ export {
 	axisValueToPercentFormatter,
 	LoadingIndicator,
 	getColorsCount,
+	niceCeil,
+	niceDomain,
 };

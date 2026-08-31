@@ -95,6 +95,25 @@ export function customRange(from: Date, to: Date): RangeValue {
   return { key: "custom", label: formatRangeLabel(f, t), from: f, to: t };
 }
 
+/** An absolute range at full time precision — produced by dragging a zoom
+ * selection on a chart (and used to restore stored custom ranges verbatim).
+ * Whole-day ranges keep the calendar picker's date-only label. */
+export function exactRange(from: Date, to: Date): RangeValue {
+  return { key: "custom", label: formatExactLabel(from, to), from, to };
+}
+
+function formatExactLabel(from: Date, to: Date): string {
+  const wholeDays =
+    from.getTime() === startOfDay(from).getTime() &&
+    to.getTime() === endOfDay(to).getTime();
+  if (wholeDays) return formatRangeLabel(from, to);
+  const sameDay = startOfDay(from).getTime() === startOfDay(to).getTime();
+  if (sameDay) return `${format(from, "MMM d, HH:mm")} – ${format(to, "HH:mm")}`;
+  const sameYear = from.getFullYear() === to.getFullYear();
+  const fmt = sameYear ? "MMM d, HH:mm" : "MMM d, yyyy HH:mm";
+  return `${format(from, fmt)} – ${format(to, fmt)}`;
+}
+
 /** Absolute readout of a resolved window, minute precision — "Aug 10, 14:32 –
  * Aug 11, 14:32". The year only appears when it isn't the current one. */
 export function formatRangeWindow(

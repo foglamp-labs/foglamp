@@ -18,6 +18,7 @@ import {
 	makeEdgeTick,
 	themed,
 	thinTicks,
+	useZoomRange,
 } from "@/components/app/trend-charts";
 import * as BarChart from "@/components/evilcharts/charts/bar-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
@@ -59,14 +60,18 @@ export function CostBreakdownCard({
 	workflowName,
 	title = "Cost breakdown",
 	className,
+	syncId,
 }: {
 	agentName?: string;
 	workflowName?: string;
 	title?: string;
 	className?: string;
+	/** Recharts sync group — pass the host page's id to share its crosshair. */
+	syncId?: string;
 }) {
 	const { projectId } = useProject();
 	const { range } = useRange();
+	const zoom = useZoomRange();
 	const from = range.from.toISOString();
 	const to = range.to.toISOString();
 	const windowMs = range.to.getTime() - range.from.getTime();
@@ -160,6 +165,10 @@ export function CostBreakdownCard({
 						config={config}
 						data={data}
 						stackType="stacked"
+						xDataKey="bucket"
+						syncId={syncId}
+						onZoomSelect={empty ? undefined : zoom.zoomTo}
+						onZoomReset={zoom.reset}
 						selectedDataKey={selected}
 						onSelectionChange={setSelected}
 						isLoading={query.isLoading}

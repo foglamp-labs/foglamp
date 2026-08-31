@@ -6,6 +6,7 @@ import {
 	LoadingIndicator,
 	getColorsCount,
 	getLoadingData,
+	niceDomain,
 } from "@/components/evilcharts/ui/chart";
 import { ChartDot, type DotVariant } from "@/components/evilcharts/ui/dot";
 import {
@@ -24,6 +25,10 @@ import {
 	type TooltipRoundness,
 	type TooltipVariant,
 } from "@/components/evilcharts/ui/tooltip";
+import {
+	type ZoomSelectHandler,
+	useZoomDrag,
+} from "@/components/evilcharts/ui/zoom";
 import { motion, useReducedMotion } from "motion/react";
 import {
 	Children,
@@ -48,6 +53,7 @@ import {
 	LineChart as RechartsLineChart,
 	XAxis as RechartsXAxis,
 	YAxis as RechartsYAxis,
+	ReferenceLine,
 } from "recharts";
 
 // Constants
@@ -95,6 +101,8 @@ type LineChartContextValue = {
 	isLoading: boolean; // whether the chart shows its loading skeleton
 	selectedDataKey: string | null; // currently selected series, or null when none
 	selectDataKey: (dataKey: string | null) => void; // sets the selected series
+	syncId: string | undefined; // cursor-sync group this chart belongs to, if any
+	isMouseInChart: boolean; // whether the pointer is over this chart (vs a synced peer)
 };
 
 const LineChartContext = createContext<LineChartContextValue | null>(null);
@@ -142,6 +150,9 @@ type EvilLineChartBaseProps<
 	brushHeight?: number; // height of the brush preview in pixels
 	brushFormatLabel?: (value: unknown, index: number) => string; // formats brush axis labels
 	onBrushChange?: (range: EvilBrushRange) => void; // fires when the brush range changes
+	syncId?: string; // shares the hover cursor with every chart using the same id
+	onZoomSelect?: ZoomSelectHandler; // enables drag-to-zoom; receives the selected x range (needs xDataKey)
+	onZoomReset?: () => void; // fires on double-click — pairs with onZoomSelect to undo a zoom
 };
 
 type EvilLineChartProps<
@@ -176,11 +187,17 @@ export function EvilLineChart<
 	brushHeight,
 	brushFormatLabel,
 	onBrushChange,
+	syncId,
+	onZoomSelect,
+	onZoomReset,
 }: EvilLineChartProps<TData, TConfig>) {
 	const chartId = useId().replace(/:/g, ""); // colon-free id keeps CSS/SVG selectors valid
 	const [internalSelectedDataKey, setInternalSelectedDataKey] = useState<
 		string | null
 	>(defaultSelectedDataKey);
+	// Synced charts (`syncId`) show the shared cursor line everywhere but tooltip
+	// content only on the chart actually under the pointer — tracked here.
+	const [isMouseInChart, setIsMouseInChart] = useState(false);
 	const { loadingData, onShimmerExit } = useLoadingData(
 		isLoading,
 		loadingPoints,
@@ -195,13 +212,22 @@ export function EvilLineChart<
 
 	const displayData = showBrush && !isLoading ? visibleData : data;
 
+	const zoom = useZoomDrag({
+		data: displayData,
+		xDataKey,
+		onZoomSelect,
+		disabled: isLoading,
+	});
+
 	// Updates selection state and notifies the parent
 	const selectDataKey = useCallback(
 		(newSelectedDataKey: string | null) => {
+			// The click that ends a zoom drag must not also toggle a series selection.
+			if (zoom.suppressClickRef.current) return;
 			if (!isControlled) setInternalSelectedDataKey(newSelectedDataKey);
 			onSelectionChange?.(newSelectedDataKey);
 		},
-		[isControlled, onSelectionChange],
+		[isControlled, onSelectionChange, zoom.suppressClickRef],
 	);
 
 	const contextValue = useMemo<LineChartContextValue>(
@@ -212,6 +238,8 @@ export function EvilLineChart<
 			isLoading,
 			selectedDataKey,
 			selectDataKey,
+			syncId,
+			isMouseInChart,
 		}),
 		[
 			config,
@@ -220,6 +248,8 @@ export function EvilLineChart<
 			isLoading,
 			selectedDataKey,
 			selectDataKey,
+			syncId,
+			isMouseInChart,
 		],
 	);
 
@@ -255,9 +285,21 @@ export function EvilLineChart<
 					id={chartId}
 					accessibilityLayer
 					data={isLoading ? loadingData : displayData}
+					syncId={syncId}
+					style={zoom.enabled ? { cursor: "crosshair" } : undefined}
+					onMouseEnter={() => setIsMouseInChart(true)}
+					onMouseLeave={() => {
+						setIsMouseInChart(false);
+						zoom.handlers.onMouseLeave();
+					}}
+					onMouseDown={zoom.handlers.onMouseDown}
+					onMouseMove={zoom.handlers.onMouseMove}
+					onMouseUp={zoom.handlers.onMouseUp}
+					onDoubleClick={onZoomReset}
 					{...chartProps}
 				>
 					{children}
+					{zoom.overlay}
 					{isLoading && (
 						<LoadingLine
 							chartId={chartId}
@@ -472,6 +514,9 @@ export function YAxis({
 	tickMargin = 8,
 	minTickGap = 8,
 	width = "auto",
+	// Zero-based with a "nice" stable max, so live refreshes don't jitter the
+	// axis. Pass an explicit `domain` to override.
+	domain = niceDomain,
 	...props
 }: YAxisProps) {
 	const { isLoading } = useLineChart();
@@ -485,6 +530,7 @@ export function YAxis({
 			tickMargin={tickMargin}
 			minTickGap={minTickGap}
 			width={width}
+			domain={domain}
 			{...props}
 		/>
 	);
@@ -536,7 +582,7 @@ export function Tooltip({
 	valueFormatter,
 	reverse,
 }: TooltipProps) {
-	const { isLoading, selectedDataKey } = useLineChart();
+	const { isLoading, selectedDataKey, syncId, isMouseInChart } = useLineChart();
 
 	if (isLoading) return null;
 
@@ -554,7 +600,52 @@ export function Tooltip({
 					labelFormatter={labelFormatter}
 					valueFormatter={valueFormatter}
 					reverse={reverse}
+					// Synced peers draw the shared cursor line but stay quiet — only
+					// the chart under the pointer shows tooltip content.
+					hidden={syncId != null && !isMouseInChart}
 				/>
+			}
+		/>
+	);
+}
+
+type ThresholdProps = {
+	value: number; // y value the line sits at, in the chart's y units
+	label?: string; // small caption rendered inside the chart's right edge
+	color?: string; // stroke + label color
+};
+
+/**
+ * A horizontal reference line marking a configured alert threshold. The y-domain
+ * extends to keep it visible when the threshold sits above the data.
+ */
+export function Threshold({
+	value,
+	label,
+	color = "var(--destructive)",
+}: ThresholdProps) {
+	const { isLoading } = useLineChart();
+
+	if (isLoading) return null;
+
+	return (
+		<ReferenceLine
+			y={value}
+			stroke={color}
+			strokeDasharray="4 4"
+			strokeOpacity={0.5}
+			ifOverflow="extendDomain"
+			label={
+				label
+					? {
+							value: label,
+							position: "insideRight",
+							fill: color,
+							fontSize: 10,
+							// Sits below the line, with a little air between the two.
+							dy: 12,
+						}
+					: undefined
 			}
 		/>
 	);
