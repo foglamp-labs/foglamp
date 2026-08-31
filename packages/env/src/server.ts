@@ -12,6 +12,10 @@ const serverSchema = {
   // An email-less self-host logs in via the seeded email+password admin.
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
+  // Recipient for the dev-toolbar "send test email" buttons. Unset → the
+  // feature is disabled (in production it additionally requires a platform
+  // admin caller).
+  TEST_EMAIL_TO: z.email().optional(),
 
   // --- Product analytics (hosted deployment; optional for self-hosts) ---
   POSTHOG_KEY: z.string().min(1).optional(),

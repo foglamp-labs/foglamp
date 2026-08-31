@@ -6,6 +6,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -28,14 +29,29 @@ import {
   IconGaugeFilled,
   IconHourglass,
   IconLoader,
+  IconAlertTriangle,
+  IconBellRinging,
+  IconCalendarOff,
+  IconCalendarWeek,
+  IconConfetti,
+  IconDatabaseExclamation,
+  IconKey,
+  IconMail,
+  IconMailBolt,
+  IconMailFast,
   IconPlugConnectedX,
+  IconUserPlus,
+  IconWand,
   IconRefresh,
   IconTrash,
   IconWifi,
 } from "@tabler/icons-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
+
+import { trpc } from "@/utils/trpc";
 
 import {
   DEV_NETWORK_DELAYS,
@@ -99,7 +115,96 @@ function delayIcon(delay: DevNetworkDelay) {
 
 // Dev-bar menus are dense: the items drop to the toolbar's text size and
 // their leading icons shrink to match.
-const MENU_ITEM = "text-xs [&_svg]:size-3.5 [&_svg]:text-muted-foreground";
+// The dropdown component sizes bare svgs to size-4 with a higher-specificity
+// [&_svg:not([class*='size-'])] rule, so the icon size must live on the
+// icons themselves (MENU_ICON), not on the item.
+const MENU_ITEM = "text-xs [&_svg]:text-muted-foreground";
+const MENU_ICON = "size-3.5";
+
+// One entry per email the product sends, grouped the way the templates relate.
+// Sends go to the server's TEST_EMAIL_TO address.
+const TEST_EMAIL_GROUPS = [
+  {
+    label: "Alerts",
+    items: [
+      { variant: "alert_fired", label: "Fired alert (plain)", icon: IconBellRinging },
+      { variant: "alert_diagnosis", label: "Fired alert + diagnosis", icon: IconMailBolt },
+    ],
+  },
+  {
+    label: "Digest",
+    items: [
+      { variant: "weekly_digest", label: "Weekly digest", icon: IconCalendarWeek },
+      { variant: "quiet_week", label: "Quiet week", icon: IconCalendarOff },
+    ],
+  },
+  {
+    label: "Onboarding",
+    items: [
+      { variant: "welcome", label: "Welcome", icon: IconConfetti },
+      { variant: "onboarding_day_1", label: "Follow-up (day 1)", icon: IconMailFast },
+      { variant: "onboarding_day_3", label: "Follow-up (day 3)", icon: IconMailFast },
+      { variant: "onboarding_day_7", label: "Follow-up (day 7)", icon: IconMailFast },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { variant: "magic_link", label: "Magic link", icon: IconWand },
+      { variant: "reset_password", label: "Reset password", icon: IconKey },
+      { variant: "invitation", label: "Org invitation", icon: IconUserPlus },
+    ],
+  },
+  {
+    label: "Usage",
+    items: [
+      { variant: "quota_warning", label: "Quota warning", icon: IconAlertTriangle },
+      { variant: "storage_alert", label: "Storage alert", icon: IconDatabaseExclamation },
+    ],
+  },
+] as const;
+
+function TestEmailsMenu() {
+  const sendTest = useMutation(
+    trpc.testEmails.send.mutationOptions({
+      onSuccess: (data) => toast.success(`Test email sent to ${data.to}`),
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        <div className="group flex cursor-pointer items-center gap-1.25 text-xs text-foreground transition-all">
+          <IconMail
+            data-icon="inline-start"
+            className="size-4 text-muted-foreground opacity-80 group-hover:text-foreground group-hover:opacity-100"
+            strokeWidth={1.75}
+          />
+          Emails
+        </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-fit">
+        {TEST_EMAIL_GROUPS.map((group, index) => (
+          <DropdownMenuGroup key={group.label}>
+            {index > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+            {group.items.map((item) => (
+              <DropdownMenuItem
+                key={item.variant}
+                className={MENU_ITEM}
+                disabled={sendTest.isPending}
+                onClick={() => sendTest.mutate({ variant: item.variant })}
+              >
+                <item.icon className={MENU_ICON} />
+                {item.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Dev bar
@@ -394,6 +499,8 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
         </TooltipProvider>
       </div>
 
+      <TestEmailsMenu />
+
       <DropdownMenu>
         <DropdownMenuTrigger>
           <div
@@ -403,7 +510,7 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
           >
             <IconWifi
               data-icon="inline-start"
-              className={`size-4 ${
+              className={`size-4.5 ${
                 netActive
                   ? "text-destructive"
                   : "text-muted-foreground opacity-80 group-hover:text-foreground group-hover:opacity-100"
@@ -430,7 +537,7 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
                     value={String(delay)}
                     className={MENU_ITEM}
                   >
-                    <Icon />
+                    <Icon className={MENU_ICON} />
                     {formatDelay(delay)}
                   </DropdownMenuRadioItem>
                 );
@@ -442,7 +549,7 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
               onCheckedChange={setDevNetworkFail}
               className={MENU_ITEM}
             >
-              <IconPlugConnectedX />
+              <IconPlugConnectedX className={MENU_ICON} />
               Fail {Math.round(DEV_NETWORK_FAIL_RATE * 100)}% of requests
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem
@@ -458,7 +565,7 @@ function DevBarContent({ onHide }: { onHide: () => void }) {
               }}
               className={MENU_ITEM}
             >
-              <IconLoader />
+              <IconLoader className={MENU_ICON} />
               Force loading state
             </DropdownMenuCheckboxItem>
           </DropdownMenuGroup>

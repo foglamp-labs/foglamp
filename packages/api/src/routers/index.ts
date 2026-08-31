@@ -12,6 +12,7 @@ import { providerKeysRouter } from "./providerKeys";
 import { pricingRouter } from "./pricing";
 import { projectsRouter } from "./projects";
 import { sessionsRouter } from "./sessions";
+import { testEmailsRouter } from "./testEmails";
 import { tracesRouter } from "./traces";
 import { workflowRunsRouter } from "./workflowRuns";
 import { workflowsRouter } from "./workflows";
@@ -36,5 +37,6 @@ export const appRouter = router({
   providerKeys: providerKeysRouter,
   pricing: pricingRouter,
   platform: platformRouter,
+  testEmails: testEmailsRouter,
 });
 export type AppRouter = typeof appRouter;
