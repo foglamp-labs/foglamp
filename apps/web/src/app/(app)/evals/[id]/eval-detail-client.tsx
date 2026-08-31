@@ -492,7 +492,7 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
           size="sm"
           label="Eval spend"
           value={totals.cost ?? "—"}
-          formatValue={(n) => formatCost(n, 4)}
+          formatValue={(n) => formatCostFixed(n, 4)}
         />
         <StatCard
           icon={IconBoltFilled}

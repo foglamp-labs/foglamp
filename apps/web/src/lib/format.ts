@@ -46,14 +46,18 @@ export function formatCostFixed(
 const compact = new Intl.NumberFormat("en-US", { notation: "compact" });
 const plain = new Intl.NumberFormat("en-US");
 
+// Count formatters round first: counts are integers by definition, but animated
+// stat tickers feed them fractional in-between frames, which would otherwise
+// render decimals mid-tween ("1,234.567").
 export function formatCount(value: number): string {
-	return value >= 1000 ? compact.format(value) : plain.format(value);
+	const n = Math.round(value);
+	return n >= 1000 ? compact.format(n) : plain.format(n);
 }
 
 /** A count with no compaction — "1,024", never "1K". For operator figures where
  * the exact number is the point and 1,024 vs 1,499 must not both read "1K". */
 export function formatExactCount(value: number): string {
-	return plain.format(value);
+	return plain.format(Math.round(value));
 }
 
 export function formatTokens(value: number): string {

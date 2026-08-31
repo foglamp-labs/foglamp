@@ -63,6 +63,7 @@ import * as AreaChart from "@/components/evilcharts/charts/area-chart";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import {
 	formatCost,
+	formatCostFixed,
 	formatCount,
 	formatDateTime,
 	formatDuration,
@@ -162,7 +163,7 @@ export function WorkflowDetail({ workflowName }: { workflowName: string }) {
 					size="sm"
 					label="Total cost"
 					value={workflow.costValue}
-					formatValue={(n) => formatCost(n, 4)}
+					formatValue={(n) => formatCostFixed(n, 4)}
 					hint={`${formatTokens(tokensPerRun * workflow.runs)} tokens`}
 				/>
 				<StatCard

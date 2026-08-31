@@ -74,7 +74,9 @@ function formatBytes(bytes: number): string {
 
 function formatMrr(cents: number | null): string {
 	if (cents === null) return "—";
-	const dollars = cents / 100;
+	// Round first: the animated ticker feeds fractional in-between frames, which
+	// would otherwise render sub-cent decimals mid-tween.
+	const dollars = Math.round(cents) / 100;
 	return `$${dollars.toLocaleString("en-US", {
 		minimumFractionDigits: 0,
 		maximumFractionDigits: dollars % 1 === 0 ? 0 : 2,

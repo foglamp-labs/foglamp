@@ -99,6 +99,7 @@ import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import { ModelLogo } from "@/components/model-logo";
 import {
   formatCost,
+  formatCostFixed,
   formatCount,
   formatDateTime,
   formatDuration,
@@ -414,7 +415,7 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
               size="sm"
               label="Total cost"
               value={stats?.totalCost ?? "—"}
-              formatValue={(n) => formatCost(n, 4)}
+              formatValue={(n) => formatCostFixed(n, 4)}
               hint={`${formatTokens(stats?.totalTokens ?? 0)} tokens`}
             />
             <StatCard
