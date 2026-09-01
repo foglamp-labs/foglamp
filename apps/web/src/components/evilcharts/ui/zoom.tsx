@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { ReferenceArea } from "recharts";
+import { ReferenceArea, ReferenceLine } from "recharts";
 
 /**
  * Fired when a drag-selection completes. Receives the raw x values (as stored
@@ -119,16 +119,31 @@ export function useZoomDrag({
 		const x1 = data[lo]?.[xDataKey];
 		const x2 = data[hi]?.[xDataKey];
 		if (x1 != null && x2 != null) {
+			// A ReferenceArea strokes all four edges of its rect; drawing the
+			// fill without a stroke and marking the edges with ReferenceLines
+			// keeps only the vertical sides dashed.
 			overlay = (
-				<ReferenceArea
-					x1={String(x1)}
-					x2={String(x2)}
-					fill="var(--foreground)"
-					fillOpacity={0.06}
-					stroke="var(--foreground)"
-					strokeOpacity={0.25}
-					strokeDasharray="2 2"
-				/>
+				<>
+					<ReferenceArea
+						x1={String(x1)}
+						x2={String(x2)}
+						fill="var(--foreground)"
+						fillOpacity={0.06}
+						stroke="none"
+					/>
+					<ReferenceLine
+						x={String(x1)}
+						stroke="var(--foreground)"
+						strokeOpacity={0.25}
+						strokeDasharray="2 2"
+					/>
+					<ReferenceLine
+						x={String(x2)}
+						stroke="var(--foreground)"
+						strokeOpacity={0.25}
+						strokeDasharray="2 2"
+					/>
+				</>
 			);
 		}
 	}
