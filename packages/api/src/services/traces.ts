@@ -18,6 +18,7 @@ import { userMessageSnippet } from "../lib/user-message";
 import { decimalOrNull, finite, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
+import { promptVersionForHash, promptVersionHashes } from "./promptVersions";
 
 // Max chars of the extracted user message used as a trace's display title
 // (list rows and the detail header) — one line of context, not a transcript.
@@ -41,12 +42,22 @@ export async function getTraceList(
      * decorates each trace with its value (the pinned metadata column). */
     metadataKey?: string;
     metadataValue?: string;
+    /** Keep only runs of this inferred prompt version. */
+    promptVersionId?: string;
     sort?: { field: TraceSortField; dir: SortDir };
     limit?: number;
     offset?: number;
   },
 ) {
   await requireProjectAccess(db, userId, input.projectId);
+  // A prompt version is a set of root-span prompt hashes; a version that no
+  // longer exists matches nothing (empty list) rather than everything.
+  const promptHashes = input.promptVersionId
+    ? ((await promptVersionHashes(db, {
+        projectId: input.projectId,
+        versionId: input.promptVersionId,
+      }))?.hashes ?? [])
+    : undefined;
   const filters = {
     projectId: input.projectId,
     from: input.from ? toClickHouseDateTime(input.from) : undefined,
@@ -59,6 +70,7 @@ export async function getTraceList(
     errorsOnly: input.errorsOnly,
     metadataKey: input.metadataKey,
     metadataValue: input.metadataValue,
+    promptHashes,
   };
   // Fetch the page and, in parallel, a single-row rollup over the whole filtered
   // set — the cost/duration quintile thresholds drive the heatmaps (percentile-
@@ -304,6 +316,16 @@ export async function getTraceDetail(
   // Rows arrive ordered by start time, so the first agent row is the trace's
   // root turn — its input carries the user message the header titles with.
   const rootAgent = rows.find((r) => r.span_type === "agent");
+  // Which inferred prompt version the run belongs to (null until the version
+  // job has folded this run, or when no system prompt was recorded).
+  const promptVersion =
+    rootAgent?.prompt_hash && rootAgent.agent_name
+      ? await promptVersionForHash(db, {
+          projectId: input.projectId,
+          agentName: rootAgent.agent_name,
+          hash: rootAgent.prompt_hash,
+        })
+      : null;
   return {
     traceId: input.traceId,
     traceName: firstNonEmpty((r) => r.trace_name),
@@ -319,6 +341,7 @@ export async function getTraceDetail(
           imageUrl: customerDim?.customer_image_url || null,
         }
       : null,
+    promptVersion,
     spans,
   };
 }

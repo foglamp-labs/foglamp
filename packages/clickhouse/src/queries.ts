@@ -76,6 +76,9 @@ export function listTraces(
 		/** Keep only traces with a span carrying metadata[key] = value. */
 		metadataKey?: string;
 		metadataValue?: string;
+		/** Keep only traces whose root span ran with one of these prompt hashes
+		 * (a prompt version's members). An empty list matches nothing. */
+		promptHashes?: string[];
 		sort?: { field: TraceSortField; dir: SortDir };
 		limit?: number;
 		offset?: number;
@@ -107,7 +110,7 @@ export function listTraces(
 	// Metadata lives only on raw spans (trace_summary has no map column), so the
 	// filter is a semi-join against spans, bounded by the same time window and
 	// pruned by the bloom indexes on mapKeys/mapValues.
-	const metadataWhere = metadataTraceFilter(params);
+	const metadataWhere = metadataTraceFilter(params) + promptTraceFilter(params);
 	const sortCol = params.sort
 		? TRACE_SORT_COLUMN[params.sort.field]
 		: "trace_start";
@@ -153,6 +156,7 @@ export function listTraces(
 			traceName: params.traceName,
 			metadataKey: params.metadataKey,
 			metadataValue: params.metadataValue,
+			promptHashes: params.promptHashes,
 			limit: params.limit ?? 50,
 			offset: params.offset ?? 0,
 		},
@@ -184,6 +188,32 @@ function metadataTraceFilter(params: {
        WHERE project_id = {projectId:String}
          ${timeBounds}
          AND metadata[{metadataKey:String}] = {metadataValue:String}
+     )`;
+}
+
+/**
+ * WHERE fragment (leading ` AND …` or empty) restricting trace_summary rows to
+ * traces whose root agent span ran with one of the given prompt hashes — how
+ * the "prompt version" filter resolves (a version is a set of hashes).
+ */
+function promptTraceFilter(params: {
+	promptHashes?: string[];
+	from?: string;
+	to?: string;
+}): string {
+	if (params.promptHashes === undefined) return "";
+	const timeBounds = [
+		params.from !== undefined ? "AND start_time >= {from:DateTime64(3)}" : "",
+		params.to !== undefined ? "AND start_time < {to:DateTime64(3)}" : "",
+	]
+		.filter(Boolean)
+		.join(" ");
+	return ` AND trace_id IN (
+       SELECT DISTINCT trace_id FROM spans
+       WHERE project_id = {projectId:String}
+         ${timeBounds}
+         AND span_type = 'agent'
+         AND prompt_hash IN {promptHashes:Array(String)}
      )`;
 }
 
@@ -335,6 +365,7 @@ export function traceListSummary(
 		modelId?: string;
 		metadataKey?: string;
 		metadataValue?: string;
+		promptHashes?: string[];
 	},
 ): Promise<TraceListSummaryRow[]> {
 	// Per-trace filters that narrow the visible set apply here too; the
@@ -358,7 +389,7 @@ export function traceListSummary(
 	if (params.traceName !== undefined)
 		having.push("positionCaseInsensitive(trace_name, {traceName:String}) > 0");
 	const havingClause = having.length ? `HAVING ${having.join(" AND ")}` : "";
-	const metadataWhere = metadataTraceFilter(params);
+	const metadataWhere = metadataTraceFilter(params) + promptTraceFilter(params);
 	return rows<TraceListSummaryRow>(
 		client,
 		// Qualify the per-trace columns with the subquery alias \`t\`: the outer
@@ -402,6 +433,7 @@ export function traceListSummary(
 			traceName: params.traceName,
 			metadataKey: params.metadataKey,
 			metadataValue: params.metadataValue,
+			promptHashes: params.promptHashes,
 		},
 	);
 }
@@ -2681,7 +2713,52 @@ export type EvalFilterParams = {
 	spanType?: string;
 	status?: string;
 	metadata?: Record<string, string>;
+	/** Root-span prompt hashes (a pinned prompt version's members). */
+	promptHashes?: string[];
 };
+
+export type PromptHashActivityRow = {
+	project_id: string;
+	agent_name: string;
+	prompt_hash: string;
+	/** One of the raw prompts behind the hash (they normalize identically). */
+	sample: string;
+	first_seen: string;
+	last_seen: string;
+	runs: string;
+};
+
+/**
+ * New prompt activity since a watermark: every (project, agent, prompt hash)
+ * with runs ingested in (since, until], with when those runs happened and a
+ * sample prompt. Feeds the prompt-version job, which folds the rows into its
+ * per-hash table and re-infers versions for the touched agents.
+ */
+export function queryPromptHashActivity(
+	client: ClickHouseClient,
+	params: { since: string; until: string; limit: number },
+): Promise<PromptHashActivityRow[]> {
+	return rows<PromptHashActivityRow>(
+		client,
+		`SELECT
+       project_id,
+       agent_name,
+       prompt_hash,
+       any(system_prompt) AS sample,
+       min(start_time) AS first_seen,
+       max(start_time) AS last_seen,
+       count() AS runs
+     FROM spans
+     WHERE ingested_at > {since:DateTime64(3)}
+       AND ingested_at <= {until:DateTime64(3)}
+       AND span_type = 'agent'
+       AND prompt_hash != ''
+     GROUP BY project_id, agent_name, prompt_hash
+     ORDER BY project_id, agent_name, prompt_hash
+     LIMIT {limit:UInt32}`,
+		{ since: params.since, until: params.until, limit: params.limit },
+	);
+}
 
 export type EvalCandidateRow = {
 	target_id: string;
@@ -2737,6 +2814,10 @@ export function queryEvalCandidates(
 	if (filters.agentName) {
 		where.push("agent_name = {agentName:String}");
 		qp.agentName = filters.agentName;
+	}
+	if (filters.promptHashes !== undefined) {
+		where.push("prompt_hash IN {promptHashes:Array(String)}");
+		qp.promptHashes = filters.promptHashes;
 	}
 	if (filters.workflowName) {
 		where.push("workflow_name = {workflowName:String}");

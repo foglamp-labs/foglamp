@@ -19,6 +19,7 @@
 		"@foglamp/contracts": "workspace:*",
 		"@foglamp/cost": "workspace:*",
 		"@foglamp/db": "workspace:*",
+		"@foglamp/prompts": "workspace:*",
 		"uuidv7": "^1.0.2",
 		"@foglamp/env": "workspace:*",
 		"@ai-sdk/anthropic": "4.0.0",

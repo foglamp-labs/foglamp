@@ -51,6 +51,8 @@ import {
 } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
 import { ClampedBody, Prose } from "@/components/app/payload-view";
+import { PromptVersionChip } from "@/components/app/prompt-version-chip";
+import { PromptVersionsCard } from "@/components/app/prompt-versions-card";
 import {
   type FlowNode,
   NodeFlow,
@@ -596,6 +598,15 @@ export function AgentDetailClient({ agentName }: { agentName: string }) {
             />
           </section>
 
+          {/* The system prompts this agent has run with, grouped into
+              versions by the prompt job. */}
+          <section className="px-8">
+            <PromptVersionsCard
+              agentName={agentName}
+              className={cn(entrance && "page-fade-in")}
+            />
+          </section>
+
           {/* Traces table — click a row to open its steps + exchange. */}
           <div className="flex flex-col gap-3 mt-4">
             {!traces.isLoading && traceRows.length === 0 ? (
@@ -932,7 +943,15 @@ function TraceDrawer({
             )}
           </DrawerSection>
           {root?.systemPrompt && (
-            <DrawerSection label="System prompt">
+            <DrawerSection
+              label="System prompt"
+              trailing={
+                <PromptVersionChip
+                  version={detail.data?.promptVersion}
+                  agentName={detail.data?.agentName}
+                />
+              }
+            >
               <ClampedBody maxHeight={200} buttonClassName={DRAWER_BUTTON_CLASS}>
                 <Prose>{root.systemPrompt}</Prose>
               </ClampedBody>
@@ -962,14 +981,20 @@ function TraceDrawer({
 
 function DrawerSection({
   label,
+  trailing,
   children,
 }: {
   label: string;
+  /** Sits at the label's right edge (e.g. the prompt-version chip). */
+  trailing?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        {trailing}
+      </div>
       {children}
     </div>
   );

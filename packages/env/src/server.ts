@@ -97,6 +97,10 @@ const serverSchema = {
   // Max eval_job rows an executor claims (and runs) per tick.
   EVAL_EXECUTOR_BATCH: z.coerce.number().default(5),
 
+  // --- Prompt versions (inference job in apps/server) ---
+  // How often the job rolls new system prompts into versions; default every 60s.
+  PROMPT_VERSION_INTERVAL_MS: z.coerce.number().default(60_000),
+
   // --- Billing (Stripe; org-scoped). Plugin enabled only when the secret is set. ---
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),

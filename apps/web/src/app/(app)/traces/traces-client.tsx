@@ -22,6 +22,7 @@ import {
   IconAlertTriangle,
   IconCpu,
   IconGhost,
+  IconVersions,
   IconMessage2Filled,
   IconPlayerStopFilled,
   IconPlus,
@@ -34,7 +35,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { CustomerAvatar } from "@/components/app/customer-avatar";
@@ -198,6 +199,7 @@ export function TracesClient() {
   // the URL so the view survives reload/back and can be shared.
   const [params, patchParams] = useUrlFilters({
     agent: "",
+    prompt: "",
     workflow: "",
     customer: "",
     model: "",
@@ -209,6 +211,9 @@ export function TracesClient() {
     size: "25",
   });
   const agentFilter = params.agent;
+  // Prompt version (an id from agents.promptVersions) — only meaningful
+  // together with the agent it belongs to.
+  const promptFilter = agentFilter ? params.prompt : "";
   const workflowFilter = params.workflow;
   const customerFilter = params.customer;
   const modelFilter = params.model;
@@ -227,6 +232,7 @@ export function TracesClient() {
     : 25;
   const hasFilters = !!(
     agentFilter ||
+    promptFilter ||
     workflowFilter ||
     customerFilter ||
     modelFilter ||
@@ -270,6 +276,26 @@ export function TracesClient() {
     }),
     enabled: !!projectId,
   });
+
+  // Prompt versions of the selected agent, for the version filter.
+  const promptVersions = useQuery({
+    ...trpc.agents.promptVersions.queryOptions({
+      projectId: projectId!,
+      agentName: agentFilter,
+    }),
+    enabled: !!projectId && !!agentFilter,
+  });
+  const promptOptions = useMemo(
+    () =>
+      (promptVersions.data?.versions ?? [])
+        .slice()
+        .reverse()
+        .map((v) => ({
+          value: v.id,
+          label: `v${v.number}${v.current ? " · current" : ""}`,
+        })),
+    [promptVersions.data],
+  );
 
   // Workflow names for the filter dropdown.
   const workflowsList = useQuery({
@@ -329,6 +355,7 @@ export function TracesClient() {
       from: range.from.toISOString(),
       to: range.to.toISOString(),
       agentName: agentFilter || undefined,
+      promptVersionId: promptFilter || undefined,
       workflowName: workflowFilter || undefined,
       customerId: customerFilter || undefined,
       modelId: modelFilter || undefined,
@@ -441,11 +468,22 @@ export function TracesClient() {
                 only occupy the toolbar while applied (or freshly summoned). */}
           <FilterSelect
             value={agentFilter}
-            onChange={(v) => patchParams({ agent: v })}
+            onChange={(v) => patchParams({ agent: v, prompt: "" })}
             allLabel="Any agent"
             icon={IconGhost}
             options={agentOptions}
           />
+          {/* Prompt version rides on the agent filter: it only shows once an
+              agent is picked and that agent has inferred versions. */}
+          {agentFilter && (promptOptions.length > 0 || promptFilter) && (
+            <FilterSelect
+              value={promptFilter}
+              onChange={(v) => patchParams({ prompt: v })}
+              allLabel="Any prompt version"
+              icon={IconVersions}
+              options={promptOptions}
+            />
+          )}
           <FilterSelect
             value={modelFilter}
             onChange={(v) => patchParams({ model: v })}
@@ -522,6 +560,7 @@ export function TracesClient() {
             onClick={() => {
               patchParams({
                 agent: "",
+                prompt: "",
                 workflow: "",
                 customer: "",
                 model: "",

@@ -28,6 +28,8 @@ export const tracesRouter = router({
         errorsOnly: z.boolean().optional(),
         metadataKey: z.string().optional(),
         metadataValue: z.string().optional(),
+        // Keep only runs of one inferred prompt version (resolved to hashes).
+        promptVersionId: z.string().optional(),
         sort: z
           .object({
             field: z.enum(["when", "cost", "duration", "tokens", "spans"]),

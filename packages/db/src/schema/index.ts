@@ -11,3 +11,4 @@ export * from "./instrumentationPlan";
 export * from "./foggy";
 export * from "./onboardingEmail";
 export * from "./weeklyDigest";
+export * from "./prompt";

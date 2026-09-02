@@ -4,6 +4,7 @@ import { startInstrumentationPlanExpiry } from "@foglamp/api/instrumentationCron
 import { startOnboardingFollowUpSweep } from "@foglamp/api/onboardingFollowUpCron";
 import { startScanCleanup } from "@foglamp/api/scanCron";
 import { startQuotaWarnSweep } from "@foglamp/api/quotaCron";
+import { startPromptVersionJob } from "@foglamp/api/promptVersionCron";
 import { startScoringWorker } from "@foglamp/api/scoringCron";
 import { startStorageWatchSweep } from "@foglamp/api/storageCron";
 import { startWeeklyDigestSweep } from "@foglamp/api/weeklyDigestCron";
@@ -190,6 +191,9 @@ const stopAlertEvaluator = startAlertEvaluator();
 // Eval scoring worker: score new traces/spans against enabled evals on an
 // interval (BYOK judges + code scorers), writing to the scores table.
 const stopScoringWorker = startScoringWorker();
+// Prompt versions: fold newly ingested system prompts into inferred versions
+// per agent (see services/promptVersions.ts).
+const stopPromptVersionJob = startPromptVersionJob();
 // Quota warning sweep: email owners/admins when an org nears its span quota.
 const stopQuotaWarnSweep = startQuotaWarnSweep();
 // ClickHouse storage watch: email platform admins when the DB grows past the
@@ -223,6 +227,7 @@ async function shutdown(signal: string): Promise<void> {
     await Promise.all([
       stopAlertEvaluator(),
       stopScoringWorker(),
+      stopPromptVersionJob(),
       stopQuotaWarnSweep(),
       stopStorageWatchSweep(),
       stopScanCleanup(),

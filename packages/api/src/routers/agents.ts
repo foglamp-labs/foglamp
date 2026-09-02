@@ -7,6 +7,7 @@ import {
 	getAgentList,
 	getAgentNames,
 } from "../services/agents";
+import { listPromptVersions } from "../services/promptVersions";
 
 export const agentsRouter = router({
 	list: protectedProcedure
@@ -81,4 +82,11 @@ export const agentsRouter = router({
 				to,
 			});
 		}),
+
+	// Inferred prompt versions for one agent (all time; not range-bound).
+	promptVersions: protectedProcedure
+		.input(z.object({ projectId: z.string(), agentName: z.string() }))
+		.query(({ ctx, input }) =>
+			listPromptVersions(ctx.db, ctx.session.user.id, input),
+		),
 });

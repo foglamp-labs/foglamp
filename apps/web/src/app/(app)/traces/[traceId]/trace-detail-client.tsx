@@ -37,6 +37,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { PromptVersionChip } from "@/components/app/prompt-version-chip";
 import { AgentIcon } from "@/components/app/agent-icon";
 import { useShikiHtml } from "@/components/app/code-block";
 import { ContextChip } from "@/components/app/context-chip";
@@ -104,6 +105,10 @@ type TraceSummary = {
   spanCount: number;
   errorCount: number;
   scores: TraceScore[];
+  /** Inferred prompt version of the root agent span, when the prompt job has
+   * seen it (see agents.promptVersions). */
+  promptVersion: { id: string; number: number } | null;
+  agentName: string | null;
 };
 
 export function TraceDetailClient({ traceId }: { traceId: string }) {
@@ -334,8 +339,18 @@ export function TraceDetailClient({ traceId }: { traceId: string }) {
       spanCount: spans.length,
       errorCount: erroredSpans.length,
       scores: traceScores,
+      promptVersion: detail.data?.promptVersion ?? null,
+      agentName: detail.data?.agentName ?? null,
     };
-  }, [spans, window.span, stats, erroredSpans.length, traceScores]);
+  }, [
+    spans,
+    window.span,
+    stats,
+    erroredSpans.length,
+    traceScores,
+    detail.data?.promptVersion,
+    detail.data?.agentName,
+  ]);
 
   // Select a span and reflect it in the URL (?span=) so the selection is
   // shareable; other params are preserved. Deselecting (null) falls back to the
@@ -1808,6 +1823,7 @@ function DetailPanel({
           previousInput={previousInput}
           tall={tall}
           toolCounts={toolCounts}
+          trace={trace}
         />
       ) : null}
     </aside>
@@ -2036,6 +2052,12 @@ function TraceDetail({
                 <Transcript
                   label="System prompt"
                   value={root.systemPrompt}
+                  trailing={
+                    <PromptVersionChip
+                      version={trace.promptVersion}
+                      agentName={trace.agentName}
+                    />
+                  }
                   className={cn(
                     "px-5 py-5",
                     (root.input || root.output) && "border-b border-border/40"
@@ -2108,11 +2130,14 @@ function SpanDetail({
   previousInput,
   tall,
   toolCounts,
+  trace,
 }: {
   span: Span;
   /** All spans of the trace — agent containers aggregate their descendants
    * into the token/cost/model breakdowns. */
   spans: Span[];
+  /** Trace-level facts; carries the root prompt's inferred version. */
+  trace: TraceSummary | null;
   scores: TraceScore[];
   evalMeta: Map<string, EvalMeta>;
   presetName: Map<string, string>;
@@ -2544,6 +2569,12 @@ function SpanDetail({
                 <Transcript
                   label="System prompt"
                   value={span.systemPrompt}
+                  trailing={
+                    <PromptVersionChip
+                      version={trace?.promptVersion ?? null}
+                      agentName={trace?.agentName ?? null}
+                    />
+                  }
                   className={cn(
                     "px-5 py-5",
                     (span.input || span.output) && "border-b border-border/40"
@@ -2822,6 +2853,7 @@ function Transcript({
   label,
   value,
   previousValue,
+  trailing,
   className,
 }: {
   label: string;
@@ -2829,6 +2861,8 @@ function Transcript({
   /** Same payload from the previous LLM call — lets PayloadView fold the
    * unchanged message prefix (see its prop doc). */
   previousValue?: string | null;
+  /** Rendered beside the copy button (e.g. the prompt-version chip). */
+  trailing?: React.ReactNode;
   className?: string;
 }) {
   // Collapsed by default: the field grid and breakdowns above are the summary
@@ -2851,7 +2885,10 @@ function Transcript({
           {label}
           <span className="text-muted-foreground/60 tabular-nums">{hint}</span>
         </button>
-        <CopyButton value={value} title={`Copy ${label.toLowerCase()}`} />
+        <div className="flex items-center gap-1.5">
+          {trailing}
+          <CopyButton value={value} title={`Copy ${label.toLowerCase()}`} />
+        </div>
       </div>
       {open && <PayloadView value={value} previousValue={previousValue} />}
     </div>

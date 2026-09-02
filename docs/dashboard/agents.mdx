@@ -22,10 +22,35 @@ Opening an agent shows:
 - **Stat cards**: spans, error rate, p95 latency, and total cost.
 - **Spans & errors** and **Latency**: trend charts over the selected range.
 - **Cost breakdown**: a donut of cost per pricing dimension.
+- **Prompt versions**: the system prompts this agent has run with, grouped
+  into versions (see below).
 - **Trace flow**: a graph of the agent's most recent trace, with its steps and
   tool calls. Click through to the full [trace](/dashboard/traces).
 - **Recent traces**: the agent's latest runs with spans, tokens, duration, and
   cost. Click a row to open the trace.
+
+### Prompt versions
+
+Foglamp reads prompt versions off your runs — there is nothing to declare. When
+the SDK records a system prompt (on by default, see
+[`recordSystemPrompt`](/sdk/configuration)), a background job groups the
+distinct prompts an agent has run with into versions:
+
+- **Slots**: content that changes between runs (a user's name, a retrieved
+  snippet, a date) is folded into the version's template as a `{…}` line, so
+  a personalised prompt is still one version.
+- **Edits**: when the prompt text changes and the new text keeps being used
+  for later runs, a new version opens. A one-off variation does not.
+
+Each version shows when it was first seen, how many runs used it, how many
+distinct prompt texts fold into it, and its template. Expand a version to
+read the template, diff it against the previous version, or jump to the
+[traces](/dashboard/traces) that ran with it. The `v3` chip next to a trace's
+system prompt links back here.
+
+Versions are inferred, so they can be re-grouped as more runs land — for
+example, a new prompt held with the current version until it has run a few
+times becomes its own version once it has.
 
 <Tip>
   Agents and workflows are independent views. An agent's totals cover every
