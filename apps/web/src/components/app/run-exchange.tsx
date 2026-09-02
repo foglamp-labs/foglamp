@@ -27,7 +27,7 @@ import {
   fromHumanized,
   toMessages,
 } from "@/components/app/payload-messages";
-import { ClampedBody } from "@/components/app/payload-view";
+import { ClampedBody, JsonBlock } from "@/components/app/payload-view";
 import { ModelLogo, formatModelName } from "@/components/model-logo";
 import { cn } from "@/lib/utils";
 
@@ -238,6 +238,17 @@ export function Conversation({
   const outputText = outMessages
     ? messagesText(outMessages)
     : (output?.trim() ?? "");
+  // A structured answer (an output schema, a workflow's return value) has no
+  // text part at all — show the JSON rather than claiming nothing came back.
+  const outputJson = useMemo(
+    () => (outputText ? [] : jsonParts(outMessages ?? [])),
+    [outMessages, outputText],
+  );
+  const outputTools = useMemo(
+    () =>
+      outputText || outputJson.length > 0 ? [] : toolParts(outMessages ?? []),
+    [outMessages, outputText, outputJson],
+  );
 
   const fold = (node: React.ReactNode) =>
     clamp ? (
@@ -252,6 +263,15 @@ export function Conversation({
       {input ? fold(<Transcript input={input} />) : null}
       {outputText ? (
         fold(<Bubble who="assistant" text={outputText} />)
+      ) : outputJson.length > 0 ? (
+        fold(<JsonBubble data={outputJson} />)
+      ) : outputTools.length > 0 ? (
+        <div className="flex gap-3">
+          <Avatar who="assistant" />
+          <div className="min-w-0 flex-1 py-0.5">
+            <ToolChips tools={outputTools} className="pl-0" />
+          </div>
+        </div>
       ) : (
         <div className="flex gap-3">
           <Avatar who="assistant" />
@@ -323,6 +343,33 @@ export function messagesText(messages: Message[]): string {
     .join("\n\n");
 }
 
+/** The model-side messages of a payload: everything the user and the system
+ * didn't say. */
+function answerMessages(messages: Message[]): Message[] {
+  return messages.filter((m) => m.role !== "user" && m.role !== "system");
+}
+/** The raw JSON parts of the answer — the whole payload when it's a single
+ * structured value, or each unrecognized object of a parts array. */
+export function jsonParts(messages: Message[]): unknown[] {
+  return answerMessages(messages).flatMap((m) =>
+    m.parts.flatMap((p) => (p.kind === "json" ? [p.data] : [])),
+  );
+}
+type ToolPart = Extract<
+  Part,
+  { kind: "tool-call" | "tool-result" | "tool-error" }
+>;
+export function toolParts(messages: Message[]): ToolPart[] {
+  return answerMessages(messages).flatMap((m) =>
+    m.parts.filter(
+      (p): p is ToolPart =>
+        p.kind === "tool-call" ||
+        p.kind === "tool-result" ||
+        p.kind === "tool-error",
+    ),
+  );
+}
+
 /** One message of the transcript. User turns get the bubble, assistant turns
  * prose; tool calls and results collapse to chips; system prompts and other
  * roles show as a muted note. */
@@ -360,11 +407,13 @@ export function Turn({ message }: { message: Message }) {
 
 export function ToolChips({
   tools,
+  className,
 }: {
   tools: Extract<Part, { kind: "tool-call" | "tool-result" | "tool-error" }>[];
+  className?: string;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5 pl-9">
+    <div className={cn("flex flex-wrap items-center gap-1.5 pl-9", className)}>
       {tools.map((t, i) => (
         <Chip
           // biome-ignore lint/suspicious/noArrayIndexKey: positional
@@ -479,6 +528,42 @@ export function Bubble({
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** The assistant slot for a structured answer: the same row as a prose
+ * bubble, with the JSON viewer where the markdown would be. One block per
+ * value, so an output that is a parts array reads as its pieces. The block's
+ * own scroll cap is lifted — the drawer clamps the whole exchange instead. */
+export function JsonBubble({ data }: { data: unknown[] }) {
+  const copy = data
+    .map((d) => {
+      try {
+        return JSON.stringify(d, null, 2);
+      } catch {
+        return String(d);
+      }
+    })
+    .join("\n\n");
+  return (
+    <div className="group/bubble flex gap-3">
+      <Avatar who="assistant" />
+      <div className="flex min-w-0 flex-1 items-start justify-between gap-2 px-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          {data.map((d, i) => (
+            <JsonBlock
+              // biome-ignore lint/suspicious/noArrayIndexKey: positional
+              key={i}
+              data={d}
+              className="max-h-none corner-squircle rounded-lg squircle:rounded-2xl bg-card p-3 shadow-(--custom-shadow) dark:bg-muted-foreground/10"
+            />
+          ))}
+        </div>
+        <div className="shrink-0 opacity-0 transition-opacity group-hover/bubble:opacity-100">
+          <CopyButton value={copy} title="Copy output" />
+        </div>
       </div>
     </div>
   );

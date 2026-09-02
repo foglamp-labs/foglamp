@@ -42,7 +42,7 @@ function stringify(data: unknown): string {
 // or if it fails — the plain text renders as a fallback so there's never an
 // empty flash. `className` styles the outer container (border/bg/rounding); the
 // highlighted `<pre>` is made transparent so that container shows through.
-function JsonBlock({ data, className }: { data: unknown; className?: string }) {
+export function JsonBlock({ data, className }: { data: unknown; className?: string }) {
   const code = stringify(data);
   const html = useShikiHtml(code, "json");
   const base = "max-h-56 overflow-x-hidden overflow-y-auto p-2 text-xs";
