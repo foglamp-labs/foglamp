@@ -100,7 +100,9 @@ import {
   formatSpanDuration,
   formatPercent,
   formatTokens,
+  parseDateTime,
 } from "@/lib/format";
+import { customRange } from "@/lib/range";
 import { cn } from "@/lib/utils";
 import { type RouterOutputs, trpc } from "@/utils/trpc";
 
@@ -152,6 +154,20 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   // the `?run=` mirror around.
   const [deepLinked, setDeepLinked] = useState<string | null>(focusRun);
   const focusRef = useRef<HTMLTableRowElement>(null);
+  // The deep-linked run, fetched on its own (no window, no paging) so the link
+  // always lands on it: it pins above the table whenever the window or the
+  // current page doesn't hold it. Captured once so it stays put while the
+  // drawer's `?run=` mirror moves to other rows.
+  const [pinnedId] = useState(focusRun);
+  const pinned = useQuery({
+    ...trpc.workflowRuns.list.queryOptions({
+      projectId: projectId!,
+      workflowRunId: pinnedId ?? "",
+      limit: 1,
+    }),
+    enabled: !!projectId && !!pinnedId,
+  });
+  const pinnedRow = pinned.data?.[0] ?? null;
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
   // Selected series for each trend chart, driven by the header legends.
@@ -202,6 +218,26 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
     placeholderData: (prev) => prev,
   });
 
+  // Widen the window to the pinned run, once, so the stats and charts agree
+  // with the row the link asked for instead of reporting an empty range. The
+  // filter reset below must not close the deep-linked drawer when this fires.
+  const widened = useRef(false);
+  const skipReset = useRef(false);
+  useEffect(() => {
+    if (!pinnedRow || widened.current) return;
+    widened.current = true;
+    const start = parseDateTime(pinnedRow.startTime);
+    const end = parseDateTime(pinnedRow.endTime);
+    if (start >= range.from && end <= range.to) return;
+    skipReset.current = true;
+    setRange(
+      customRange(
+        new Date(Math.min(start.getTime(), range.from.getTime())),
+        new Date(Math.max(end.getTime(), range.to.getTime())),
+      ),
+    );
+  }, [pinnedRow, range, setRange]);
+
   // Reset paging + any open drawer when the query that defines the result set
   // changes (skipping mount, so a deep-linked drawer survives the first render).
   const mounted = useRef(false);
@@ -211,11 +247,21 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
       mounted.current = true;
       return;
     }
+    if (skipReset.current) {
+      skipReset.current = false;
+      return;
+    }
     setPage(0);
     setExpanded(null);
   }, [range, projectId, sort]);
 
   const runRows = runs.data ?? [];
+  // The pinned run renders above the page only while the page itself doesn't
+  // hold it — once the widened window (or a page flip) brings it into the
+  // list, it takes its natural place.
+  const showPinned =
+    !!pinnedRow &&
+    !runRows.some((r) => r.workflowRunId === pinnedRow.workflowRunId);
 
   // Toggle a row's drawer and mirror it in the URL (`?run=`), so the open run
   // can be shared and survives a reload.
@@ -322,9 +368,92 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
   const totalRuns = stats?.runCount ?? 0;
   // No runs at all in this window (not just filtered away). Wait for the
   // summary so a slow rollup doesn't flash the empty state before stats land.
+  // A pinned deep-link run counts as a run, even before the window widens to
+  // include it.
   const noRuns =
-    !runs.isLoading && !summary.isLoading && (stats?.runCount ?? 0) === 0;
+    !runs.isLoading &&
+    !summary.isLoading &&
+    (stats?.runCount ?? 0) === 0 &&
+    !pinnedRow &&
+    !(pinnedId && pinned.isLoading);
   const seriesLoading = series.isLoading;
+
+  // One run row plus, when open, its drawer — shared by the paged rows and
+  // the pinned deep-link run.
+  const renderRun = (r: RunRow) => {
+    const isOpen = expanded === r.workflowRunId;
+    const isFocused = r.workflowRunId === deepLinked;
+    return (
+      <Fragment key={r.workflowRunId}>
+        <TableRow
+          ref={isFocused ? focusRef : undefined}
+          interactive
+          aria-expanded={isOpen}
+          onClick={() => toggleRun(r.workflowRunId)}
+          className={cn(
+            "group",
+            isOpen && OPEN_ROW_CLASS,
+            isFocused && FOCUSED_ROW_CLASS,
+          )}
+        >
+          {/* Content-first: the run's opening user message
+              (from its first trace), falling back to the
+              id; the agents involved trail on the right. */}
+          <TableCell className="h-12 font-normal">
+            <div className="flex items-center gap-2">
+              <ExpandChevron open={isOpen} />
+              <span className="truncate">
+                {r.userMessage ?? (
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {r.workflowRunId}
+                  </span>
+                )}
+              </span>
+              {/* Compact error count — colored text, no pill. */}
+              {r.errorCount > 0 && (
+                <span
+                  title={`${r.errorCount} ${r.errorCount === 1 ? "error" : "errors"}`}
+                  className="flex shrink-0 items-center gap-0.75 font-sans text-sm text-red-600 dark:text-red-400"
+                >
+                  <IconAlertTriangle className="size-3.5 fill-current/20" />
+                  {r.errorCount}
+                </span>
+              )}
+              <AgentStack names={r.agentNames} />
+            </div>
+          </TableCell>
+          <TableCell className="text-right tabular-nums">
+            {formatCount(r.traceCount)}
+          </TableCell>
+          <HeatCell
+            value={r.durationMs}
+            thresholds={durationQuantiles}
+            metric="duration"
+          >
+            {formatSpanDuration(r.durationMs)}
+          </HeatCell>
+          <HeatCell
+            value={r.totalCost}
+            thresholds={costQuantiles}
+            metric="cost"
+            bold
+          >
+            {formatCost(r.totalCost)}
+          </HeatCell>
+          <TableCell className="text-right text-muted-foreground">
+            <RelativeTime value={r.startTime} />
+          </TableCell>
+        </TableRow>
+        {isOpen && (
+          <RunDrawer
+            run={r}
+            projectId={projectId}
+            colSpan={5}
+          />
+        )}
+      </Fragment>
+    );
+  };
 
   return (
     <>
@@ -520,7 +649,7 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
 
           {/* Runs table — click a row to open its agent flow + exchange. */}
           <div className="flex flex-col gap-3 mt-4">
-            {!runs.isLoading && runRows.length === 0 ? (
+            {!runs.isLoading && runRows.length === 0 && !showPinned ? (
               <div
                 className={cn(
                   entrance && !runsSkeletonShown && "page-fade-in",
@@ -597,80 +726,10 @@ export function WorkflowDetailClient({ nameParam }: { nameParam: string }) {
                         <TableRowsSkeleton cols={SKELETON_COLS} />
                       ) : null
                     ) : (
-                      runRows.map((r) => {
-                        const isOpen = expanded === r.workflowRunId;
-                        const isFocused = r.workflowRunId === deepLinked;
-                        return (
-                          <Fragment key={r.workflowRunId}>
-                            <TableRow
-                              ref={isFocused ? focusRef : undefined}
-                              interactive
-                              aria-expanded={isOpen}
-                              onClick={() => toggleRun(r.workflowRunId)}
-                              className={cn(
-                                "group",
-                                isOpen && OPEN_ROW_CLASS,
-                                isFocused && FOCUSED_ROW_CLASS,
-                              )}
-                            >
-                              {/* Content-first: the run's opening user message
-                                  (from its first trace), falling back to the
-                                  id; the agents involved trail on the right. */}
-                              <TableCell className="h-12 font-normal">
-                                <div className="flex items-center gap-2">
-                                  <ExpandChevron open={isOpen} />
-                                  <span className="truncate">
-                                    {r.userMessage ?? (
-                                      <span className="font-mono text-xs text-muted-foreground">
-                                        {r.workflowRunId}
-                                      </span>
-                                    )}
-                                  </span>
-                                  {/* Compact error count — colored text, no pill. */}
-                                  {r.errorCount > 0 && (
-                                    <span
-                                      title={`${r.errorCount} ${r.errorCount === 1 ? "error" : "errors"}`}
-                                      className="flex shrink-0 items-center gap-0.75 font-sans text-sm text-red-600 dark:text-red-400"
-                                    >
-                                      <IconAlertTriangle className="size-3.5 fill-current/20" />
-                                      {r.errorCount}
-                                    </span>
-                                  )}
-                                  <AgentStack names={r.agentNames} />
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {formatCount(r.traceCount)}
-                              </TableCell>
-                              <HeatCell
-                                value={r.durationMs}
-                                thresholds={durationQuantiles}
-                                metric="duration"
-                              >
-                                {formatSpanDuration(r.durationMs)}
-                              </HeatCell>
-                              <HeatCell
-                                value={r.totalCost}
-                                thresholds={costQuantiles}
-                                metric="cost"
-                                bold
-                              >
-                                {formatCost(r.totalCost)}
-                              </HeatCell>
-                              <TableCell className="text-right text-muted-foreground">
-                                <RelativeTime value={r.startTime} />
-                              </TableCell>
-                            </TableRow>
-                            {isOpen && (
-                              <RunDrawer
-                                run={r}
-                                projectId={projectId}
-                                colSpan={5}
-                              />
-                            )}
-                          </Fragment>
-                        );
-                      })
+<>
+                        {showPinned && pinnedRow && renderRun(pinnedRow)}
+                        {runRows.map(renderRun)}
+                      </>
                     )}
                   </TableBody>
                 </Table>

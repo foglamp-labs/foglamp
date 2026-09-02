@@ -1051,6 +1051,8 @@ export function listWorkflowRuns(
 	client: ClickHouseClient,
 	params: {
 		projectId: string;
+		/** One run by id — the deep-link lookup, which ignores the window. */
+		workflowRunId?: string;
 		workflowName?: string;
 		from?: string;
 		to?: string;
@@ -1080,12 +1082,14 @@ export function listWorkflowRuns(
        sum(total_tokens) AS total_tokens
      FROM workflow_run_summary
      WHERE project_id = {projectId:String}
+       ${params.workflowRunId !== undefined ? "AND workflow_run_id = {workflowRunId:String}" : ""}
      GROUP BY workflow_run_id
      ${workflowRunHaving(params)}
      ORDER BY ${sortCol} ${sortDir}
      LIMIT {limit:UInt32} OFFSET {offset:UInt32}`,
 		{
 			projectId: params.projectId,
+			workflowRunId: params.workflowRunId,
 			workflowName: params.workflowName,
 			from: params.from,
 			to: params.to,

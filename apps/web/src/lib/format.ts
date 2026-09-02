@@ -95,7 +95,8 @@ export function formatPercent(fraction: number | null | undefined): string {
 	return `${Math.round(fraction * 100)}%`;
 }
 
-function parseDateTime(value: string | Date): Date {
+/** ClickHouse DateTime strings ('YYYY-MM-DD HH:MM:SS', UTC) or ISO → Date. */
+export function parseDateTime(value: string | Date): Date {
 	if (value instanceof Date) return value;
 
 	const normalized = value.replace(" ", "T");

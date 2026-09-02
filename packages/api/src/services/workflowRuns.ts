@@ -118,6 +118,7 @@ export async function getWorkflowRunList(
 	userId: string,
 	input: {
 		projectId: string;
+		workflowRunId?: string;
 		workflowName?: string;
 		from?: Date;
 		to?: Date;
@@ -130,6 +131,7 @@ export async function getWorkflowRunList(
 	await requireProjectAccess(db, userId, input.projectId);
 	const runs = await listWorkflowRuns(ch, {
 		projectId: input.projectId,
+		workflowRunId: input.workflowRunId,
 		workflowName: input.workflowName,
 		from: input.from ? toClickHouseDateTime(input.from) : undefined,
 		to: input.to ? toClickHouseDateTime(input.to) : undefined,

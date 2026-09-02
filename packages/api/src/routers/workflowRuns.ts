@@ -21,6 +21,9 @@ export const workflowRunsRouter = router({
 		.input(
 			z.object({
 				projectId: z.string(),
+				// One run by id (a deep link); the window is ignored so the run is
+				// found no matter how old it is.
+				workflowRunId: z.string().optional(),
 				// Empty string selects the "Ungrouped" bucket; omit for all runs.
 				workflowName: z.string().optional(),
 				from: z.coerce.date().optional(),
@@ -32,7 +35,9 @@ export const workflowRunsRouter = router({
 			}),
 		)
 		.query(({ ctx, input }) => {
-			const { from, to } = resolveRange(input.from, input.to);
+			const { from, to } = input.workflowRunId
+				? { from: undefined, to: undefined }
+				: resolveRange(input.from, input.to);
 			return getWorkflowRunList(ctx.db, ctx.ch, ctx.session.user.id, {
 				...input,
 				from,

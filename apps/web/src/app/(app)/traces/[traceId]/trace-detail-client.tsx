@@ -1299,6 +1299,7 @@ function spanFields(
           <TokenSplitBar
             input={span.inputTokens}
             cached={span.cachedInputTokens ?? 0}
+            reasoning={span.reasoningTokens ?? 0}
             output={span.outputTokens}
           />
         </span>,
@@ -1337,6 +1338,7 @@ function spanFields(
             <TokenSplitBar
               input={usage.input}
               cached={usage.cached}
+              reasoning={usage.reasoning}
               output={usage.output}
             />
           </span>,
@@ -1418,28 +1420,36 @@ function TtftSplitBar({
 }
 
 /** Token proportion strip + legend, in the cost-category palette — Input,
- * Cached input, and Output keep the same colors whether the strip is measuring
- * tokens or dollars, so the two breakdowns visibly rhyme. */
+ * Cached input, Reasoning, and Output keep the same colors whether the strip
+ * is measuring tokens or dollars, so the two breakdowns visibly rhyme. Cached
+ * input is carved out of the input count and reasoning out of the output
+ * count, which is how providers report them (and how the cost package bills
+ * them), so the strip still sums to the headline total. */
 function TokenSplitBar({
   input,
   cached,
+  reasoning = 0,
   output,
 }: {
   input: number;
   cached: number;
+  reasoning?: number;
   output: number;
 }) {
   const total = input + output;
   if (total <= 0) return null;
   const cachedPart = Math.min(Math.max(cached, 0), input);
   const fresh = input - cachedPart;
+  const reasoningPart = Math.min(Math.max(reasoning, 0), output);
+  const answer = output - reasoningPart;
   return (
     <BreakdownStrip
       format={formatTokens}
       parts={[
         { label: "Input", value: fresh, color: "#F97316" },
         { label: "Cached input", value: cachedPart, color: "#FDBA74" },
-        { label: "Output", value: output, color: "#0090FD" },
+        { label: "Reasoning", value: reasoningPart, color: "#93C5FD" },
+        { label: "Output", value: answer, color: "#0090FD" },
       ].filter((p) => p.value > 0)}
     />
   );
@@ -1478,12 +1488,14 @@ function costPartsOf(src: {
 function aggregateUsage(list: Span[]): {
   input: number;
   cached: number;
+  reasoning: number;
   output: number;
   models: { modelId: string; provider: string | null }[];
   costParts: CostPart[];
 } {
   let input = 0;
   let cached = 0;
+  let reasoning = 0;
   let output = 0;
   const sums = {
     promptCost: 0,
@@ -1501,6 +1513,7 @@ function aggregateUsage(list: Span[]): {
   for (const s of list) {
     input += s.inputTokens;
     cached += s.cachedInputTokens ?? 0;
+    reasoning += s.reasoningTokens ?? 0;
     output += s.outputTokens;
     sums.promptCost += s.promptCost ?? 0;
     sums.cacheReadCost += s.cacheReadCost ?? 0;
@@ -1515,6 +1528,7 @@ function aggregateUsage(list: Span[]): {
   return {
     input,
     cached,
+    reasoning,
     output,
     models: [...models].map(([modelId, provider]) => ({ modelId, provider })),
     costParts: costPartsOf(sums),
@@ -1960,6 +1974,7 @@ function TraceDetail({
                       <TokenSplitBar
                         input={usage.input}
                         cached={usage.cached}
+                        reasoning={usage.reasoning}
                         output={usage.output}
                       />
                     </span>
@@ -2129,16 +2144,17 @@ function SpanDetail({
     span.spanType === "agent"
       ? aggregateUsage(descendants).costParts
       : costPartsOf(span);
-  // Usage counters beyond the headline in/out tokens; shown only when present.
-  // `tok`-unit rows format as tokens (compact), the rest as plain counts.
+  // Usage counters with no segment in the Tokens strip above; shown only when
+  // present. Cached input and reasoning are *not* here — the strip carves them
+  // out of input and output — and cache-write stays because it is billed on
+  // top of the input count rather than being part of it. `tok`-unit rows
+  // format as tokens (compact), the rest as plain counts.
   const usageExtras = [
-    { label: "Cached input", value: span.cachedInputTokens, unit: " tok" },
     {
       label: "Cache-write input",
       value: span.cacheWriteInputTokens,
       unit: " tok",
     },
-    { label: "Reasoning", value: span.reasoningTokens, unit: " tok" },
     { label: "Images", value: span.imageCount, unit: "" },
     { label: "Web searches", value: span.webSearchCount, unit: "" },
     // No "Requests" row — it's 1 for virtually every LLM call, so it only ever
@@ -2323,8 +2339,8 @@ function SpanDetail({
                     )}
                   </div>
                   <CostStrip parts={costParts} />
-                  {/* The usage-count side of the breakdown — cached/reasoning
-                  tokens, retries — so the costs above have their volumes. */}
+                  {/* The usage-count side of the breakdown — cache writes,
+                  images, searches — so the costs above have their volumes. */}
                   {usageExtras.length > 0 && (
                     // The section wrapper's px-5 would inset this border —
                     // bleed back out so it spans edge to edge like the
