@@ -16,6 +16,7 @@
     "@foglamp/clickhouse": "workspace:*",
     "@foglamp/contracts": "workspace:*",
     "@foglamp/cost": "workspace:*",
+    "@foglamp/prompts": "workspace:*",
     "@foglamp/db": "workspace:*",
     "@foglamp/env": "workspace:*",
     "dotenv": "catalog:",

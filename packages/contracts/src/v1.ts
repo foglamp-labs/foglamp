@@ -121,6 +121,11 @@ export const spanSchema = z
     // {description, JSON-Schema params}). Stamped on llm + agent spans only.
     toolCatalog: z.string().max(MAX_PAYLOAD_CHARS).optional(),
 
+    // The system prompt / agent instructions the run was started with, as
+    // plain text. Stamped on the root agent span only; the SDK omits it when
+    // `recordInputs` or `recordSystemPrompt` is off.
+    systemPrompt: z.string().max(MAX_PAYLOAD_CHARS).optional(),
+
     // Pure model-call wall-clock for the step (ms): the provider invocation
     // only, excluding client-side tool execution. The llm span still covers the
     // whole step (model + tools); tool time is `durationMs - modelCallMs`.

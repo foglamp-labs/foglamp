@@ -401,6 +401,104 @@ describe("wrap", () => {
     expect(llm.usage?.outputTokens).toBe(3);
   });
 
+  test("system prompt + generation settings land on the root span; settings on llm spans", async () => {
+    const { fake } = makeFakeAi();
+    const { fetchImpl, traces } = makeCapture();
+    (fake as { generateText: unknown }).generateText = async () => ({
+      text: "ok",
+      steps: [
+        {
+          text: "ok",
+          usage: { inputTokens: 1, outputTokens: 1 },
+          response: { modelId: "gpt-4o-2024-08-06" },
+          warnings: [{ type: "unsupported", feature: "topK" }],
+        },
+      ],
+      usage: { inputTokens: 1, outputTokens: 1 },
+    });
+    const fog = wrap(fake, { ...OPTS, fetch: fetchImpl });
+
+    await fog.generateText({
+      model: { provider: "openai", modelId: "gpt-4o" },
+      system: "You are terse.",
+      prompt: "hi",
+      temperature: 0.1,
+      maxOutputTokens: 200,
+      foglamp: { agentName: "terse" },
+    } as never);
+    await fog.flush();
+
+    const trace = traces()[0]!;
+    const root = trace.spans.find((s) => s.spanType === "agent")!;
+    expect(root.systemPrompt).toBe("You are terse.");
+    expect(root.metadata).toEqual({ temperature: "0.1", maxOutputTokens: "200" });
+    const llm = trace.spans.find((s) => s.spanType === "llm")!;
+    expect(llm.systemPrompt).toBeUndefined();
+    expect(llm.metadata).toMatchObject({
+      temperature: "0.1",
+      maxOutputTokens: "200",
+      servedModelId: "gpt-4o-2024-08-06",
+      warnings: '[{"type":"unsupported","feature":"topK"}]',
+      stepNumber: "0",
+    });
+  });
+
+  test("system prompt falls back to leading system messages; recordSystemPrompt: false drops it", async () => {
+    const { fake } = makeFakeAi();
+    const { fetchImpl, traces } = makeCapture();
+    const fog = wrap(fake, { ...OPTS, fetch: fetchImpl });
+    await fog.generateText({
+      model: "m",
+      messages: [
+        { role: "system", content: "From messages." },
+        { role: "user", content: "hi" },
+      ],
+    } as never);
+    await fog.flush();
+    expect(traces()[0]!.spans[0]!.systemPrompt).toBe("From messages.");
+
+    const off = wrap(makeFakeAi().fake, { ...OPTS, fetch: fetchImpl, recordSystemPrompt: false });
+    await off.generateText({ model: "m", system: "secret", prompt: "hi" } as never);
+    await off.flush();
+    expect(traces()[1]!.spans[0]!.systemPrompt).toBeUndefined();
+    // The input itself is still recorded.
+    expect(traces()[1]!.spans[0]!.input).toBe("hi");
+  });
+
+  test("ToolLoopAgent: instructions become the system prompt", async () => {
+    const { fake } = makeFakeAi();
+    const { fetchImpl, traces } = makeCapture();
+    const fog = wrap(fake, { ...OPTS, fetch: fetchImpl });
+    const Agent = fog.ToolLoopAgent as new (s: Record<string, unknown>) => {
+      generate: (o: Record<string, unknown>) => Promise<{ text: string }>;
+    };
+    const agent = new Agent({
+      id: "planner",
+      model: { provider: "openai", modelId: "gpt-4o" },
+      instructions: [{ role: "system", content: "Plan carefully." }],
+      temperature: 0,
+    });
+    await agent.generate({ prompt: "go" });
+    await fog.flush();
+    const root = traces()[0]!.spans.find((s) => s.spanType === "agent")!;
+    expect(root.systemPrompt).toBe("Plan carefully.");
+    expect(root.metadata).toEqual({ temperature: "0" });
+  });
+
+  test("generateObject: the output schema is recorded as metadata", async () => {
+    const { fake } = makeFakeAi();
+    const { fetchImpl, traces } = makeCapture();
+    const fog = wrap(fake, { ...OPTS, fetch: fetchImpl });
+    await (fog.generateObject as (a: unknown) => Promise<unknown>)({
+      model: "gpt-4o",
+      prompt: "obj",
+      schema: { type: "object", properties: { a: { type: "number" } } },
+    });
+    await fog.flush();
+    const root = traces()[0]!.spans.find((s) => s.spanType === "agent")!;
+    expect(root.metadata?.outputSchema).toContain('"properties"');
+  });
+
   test("no API key: passes through (foglamp stripped) and sends nothing", async () => {
     const { fake, calls } = makeFakeAi();
     const { fetchImpl, traces } = makeCapture();

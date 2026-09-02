@@ -5,6 +5,7 @@ import {
   type PricingTable,
   priceSpan,
 } from "@foglamp/cost";
+import { promptHash } from "@foglamp/prompts";
 
 import { matchCustomPrice } from "./customPricing";
 
@@ -103,6 +104,8 @@ export function buildSpanRows(args: {
         input: span.input ?? "",
         output: span.output ?? "",
         tool_catalog: span.toolCatalog ?? "",
+        system_prompt: span.systemPrompt ?? "",
+        prompt_hash: span.systemPrompt ? promptHash(span.systemPrompt) : "",
         model_call_ms: span.modelCallMs == null ? null : Math.round(span.modelCallMs),
         system_fingerprint: span.systemFingerprint ?? "",
         safety_metadata: span.safetyMetadata ?? "",

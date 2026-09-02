@@ -75,6 +75,7 @@ export function resolveConfig(config: FoglampConfig): ResolvedConfig {
     maxPayloadChars: Math.min(positive(config.maxPayloadChars, 100_000), CONTRACT_MAX_PAYLOAD),
     recordInputs: config.recordInputs ?? true,
     recordOutputs: config.recordOutputs ?? true,
+    recordSystemPrompt: config.recordSystemPrompt ?? true,
     fetch: fetchImpl as typeof fetch,
     waitUntil: config.waitUntil,
     serverless,

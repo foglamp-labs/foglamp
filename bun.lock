@@ -27,6 +27,7 @@
         "@foglamp/cost": "workspace:*",
         "@foglamp/db": "workspace:*",
         "@foglamp/env": "workspace:*",
+        "@foglamp/prompts": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "^0.45.1",
         "evlog": "^2.13.0",
@@ -303,6 +304,15 @@
         "dotenv": "catalog:",
         "zod": "catalog:",
       },
+      "devDependencies": {
+        "@foglamp/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "^5",
+      },
+    },
+    "packages/prompts": {
+      "name": "@foglamp/prompts",
+      "version": "0.0.0",
       "devDependencies": {
         "@foglamp/config": "workspace:*",
         "@types/bun": "catalog:",
@@ -612,6 +622,8 @@
     "@foglamp/db": ["@foglamp/db@workspace:packages/db"],
 
     "@foglamp/env": ["@foglamp/env@workspace:packages/env"],
+
+    "@foglamp/prompts": ["@foglamp/prompts@workspace:packages/prompts"],
 
     "@foglamp/ui": ["@foglamp/ui@workspace:packages/ui"],
 

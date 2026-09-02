@@ -69,6 +69,8 @@ const blank = {
   input: "",
   output: "",
   tool_catalog: "",
+  system_prompt: "",
+  prompt_hash: "",
   model_call_ms: null,
   system_fingerprint: "",
   safety_metadata: "",

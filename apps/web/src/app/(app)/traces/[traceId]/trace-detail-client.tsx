@@ -2032,6 +2032,16 @@ function TraceDetail({
                 />
               )}
 
+              {root?.systemPrompt && (
+                <Transcript
+                  label="System prompt"
+                  value={root.systemPrompt}
+                  className={cn(
+                    "px-5 py-5",
+                    (root.input || root.output) && "border-b border-border/40"
+                  )}
+                />
+              )}
               {root?.input && (
                 <Transcript
                   label="Input"
@@ -2529,6 +2539,18 @@ function SpanDetail({
                 />
               )}
 
+              {/* The system prompt lives on the root agent span only. */}
+              {span.spanType === "agent" && span.systemPrompt && (
+                <Transcript
+                  label="System prompt"
+                  value={span.systemPrompt}
+                  className={cn(
+                    "px-5 py-5",
+                    (span.input || span.output) && "border-b border-border/40"
+                  )}
+                />
+              )}
+
               {/* Readable transcript here; the Raw tab keeps the verbatim JSON. */}
               {span.input && (
                 <Transcript
@@ -2571,7 +2593,7 @@ function SpanDetail({
  * shown in full, never truncated. */
 function SpanRaw({ span }: { span: Span }) {
   const fields = useMemo(() => {
-    const { input, output, ...rest } = span;
+    const { input, output, systemPrompt: _systemPrompt, ...rest } = span;
     // Absent fields are noise here — the point of Raw is to show what was
     // captured, and a wall of nulls buries it.
     const present = Object.fromEntries(
@@ -2591,6 +2613,13 @@ function SpanRaw({ span }: { span: Span }) {
         value={fields}
         className="border-b border-border/40 px-5 py-5 pt-1"
       />
+      {span.systemPrompt && (
+        <Payload
+          label="System prompt"
+          value={span.systemPrompt}
+          className="border-b border-border/40 px-5 py-5"
+        />
+      )}
       {span.input && (
         <Payload
           label="Input"

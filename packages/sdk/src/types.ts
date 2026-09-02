@@ -50,6 +50,12 @@ export interface FoglampConfig {
   recordInputs?: boolean;
   /** Capture model/tool results as span `output`. Default true. */
   recordOutputs?: boolean;
+  /**
+   * Capture the system prompt (`system` / agent `instructions`) on the run's
+   * root span, so the dashboard can show it and group runs by prompt version.
+   * Also off whenever `recordInputs` is false. Default true.
+   */
+  recordSystemPrompt?: boolean;
   /** Serverless keep-alive (e.g. Vercel/CF `waitUntil`). Enables flush-per-call. */
   waitUntil?: WaitUntil;
   /** Override the `fetch` used to POST batches. Defaults to global `fetch`. */
@@ -142,6 +148,7 @@ export interface ResolvedConfig {
   maxPayloadChars: number;
   recordInputs: boolean;
   recordOutputs: boolean;
+  recordSystemPrompt: boolean;
   fetch: typeof fetch;
   waitUntil: WaitUntil | undefined;
   serverless: boolean;

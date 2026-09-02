@@ -41,6 +41,8 @@ export interface Span {
   output?: string;
   /** JSON catalog of tools offered to the model (name → {description, params}). */
   toolCatalog?: string;
+  /** The system prompt / agent instructions for the run (root agent span only). */
+  systemPrompt?: string;
   /** Pure model-call wall-clock for the step (ms), excluding tool execution. v7 only. */
   modelCallMs?: number;
   /**

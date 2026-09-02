@@ -241,6 +241,8 @@ export async function getTraceDetail(
     input: s.input || null,
     output: s.output || null,
     toolCatalog: s.tool_catalog || null,
+    systemPrompt: s.system_prompt || null,
+    promptHash: s.prompt_hash || null,
     // Pure model-call time; tool time is the remainder of the span window.
     modelCallMs: s.model_call_ms === null ? null : num(s.model_call_ms),
     // Official AI SDK step `performance` stats (v7 beta/canary; null on older v7,

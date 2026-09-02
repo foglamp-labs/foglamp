@@ -78,22 +78,32 @@ export function toolCatalogJson(tools: unknown, maxChars: number): string | unde
 // Best-effort JSON Schema for a tool's input. Handles the v7 `inputSchema` and
 // v4/v5 `parameters` shapes (Zod or JSON), converting via the AI SDK's
 // `asSchema` when present; falls back to a pass-through for plain JSON schemas.
-function toolParams(schema: unknown): unknown {
+export function toolParams(schema: unknown): unknown {
   if (schema == null || (typeof schema !== "object" && typeof schema !== "function")) {
     return undefined;
   }
   try {
-    if (typeof asSchema !== "function") {
+    // A plain JSON Schema object passes through as-is (asSchema would reject it).
+    if (typeof schema === "object" && !("~standard" in schema) && !("jsonSchema" in schema)) {
       const s = schema as Record<string, unknown>;
       return "type" in s || "properties" in s ? s : undefined;
     }
+    if (typeof asSchema !== "function") return undefined;
     const js = (asSchema as (s: unknown) => { jsonSchema?: unknown })(schema as never).jsonSchema;
     // `.jsonSchema` may be a PromiseLike for lazy schemas — omit rather than await.
     if (js && typeof (js as { then?: unknown }).then === "function") return undefined;
-    return js;
+    return stripSchemaNoise(js);
   } catch {
     return undefined;
   }
+}
+
+// Drop the Standard-Schema marker (`~standard`, all functions) that zod v4
+// leaves on its JSON Schema output so the blob is pure JSON Schema.
+function stripSchemaNoise(js: unknown): unknown {
+  if (!js || typeof js !== "object" || Array.isArray(js)) return js;
+  const { "~standard": _standard, ...rest } = js as Record<string, unknown>;
+  return rest;
 }
 
 // Mirror the wire contract's metadata limits so an oversized map is clamped

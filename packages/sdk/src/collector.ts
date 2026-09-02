@@ -2,6 +2,7 @@ import type { Telemetry } from "ai";
 
 import { ambientContext, mergeContext, runWithContext } from "./context";
 import { extractWebSearchCount } from "./providerUsage";
+import { instructionsText, leadingSystemText, settingsMetadata, stepExtras } from "./prompt";
 import { coerceMetadata, serialize, toolCatalogJson } from "./serialize";
 import {
   extractRateLimit,
@@ -120,6 +121,8 @@ interface StartView {
   recordInputs?: boolean;
   recordOutputs?: boolean;
   messages?: unknown;
+  // The system prompt (`system` / agent `instructions`) as standardized by the SDK.
+  instructions?: unknown;
   // The tool catalog offered to the model for this call (name → definition).
   tools?: unknown;
 }
@@ -154,9 +157,12 @@ interface StepEndView {
   providerMetadata?: unknown;
   toolCalls?: unknown;
   toolResults?: unknown;
-  // RAG/grounding citations + the provider response (carries rate-limit headers).
+  // RAG/grounding citations + the provider response (carries rate-limit headers
+  // and the model id the provider actually served).
   sources?: unknown;
-  response?: { headers?: unknown };
+  response?: { headers?: unknown; modelId?: string };
+  // Provider call warnings (unsupported settings etc.) — recorded as metadata.
+  warnings?: unknown;
   // Official per-step statistics (AI SDK v7 beta/canary `StepResult.performance`).
   // All optional: absent on older v7, the v4-v6 wrap path, and (sub-fields) on
   // non-streaming steps. We read responseTimeMs, the TPS rates,
@@ -203,7 +209,8 @@ interface ObjectStepEndView {
   // Time to first chunk (streamObject only); the object path has no onChunk.
   msToFirstChunk?: number;
   providerMetadata?: unknown;
-  response?: { headers?: unknown };
+  response?: { headers?: unknown; modelId?: string };
+  warnings?: unknown;
   sources?: unknown;
 }
 interface FinishView {
@@ -244,6 +251,10 @@ interface TraceBuilder {
   // JSON catalog of tools offered to the model (stable across the call); stamped
   // onto every llm step span and the root agent span.
   toolCatalog: string | undefined;
+  // The system prompt / agent instructions (root agent span only).
+  systemPrompt: string | undefined;
+  // Call-level generation settings, stamped on every llm span and the root.
+  callMetadata: Metadata;
   finalOutput: string | undefined;
   error: string | undefined;
   // Set when the operation was aborted (onAbort). Drives the root span's
@@ -451,6 +462,14 @@ export class Collector implements Telemetry {
         modelId: e.modelId,
         rootInput: recordInputs ? serialize(e.messages, this.config.maxPayloadChars) : undefined,
         toolCatalog,
+        systemPrompt:
+          recordInputs && this.config.recordSystemPrompt
+            ? serialize(
+                instructionsText(e.instructions) ?? leadingSystemText(e.messages),
+                this.config.maxPayloadChars,
+              )
+            : undefined,
+        callMetadata: settingsMetadata(e),
         finalOutput: undefined,
         error: undefined,
         aborted: false,
@@ -679,7 +698,11 @@ export class Collector implements Telemetry {
 
     const now = Date.now();
     const start = builder.stepStart.get(e.stepNumber) ?? builder.startTime;
-    const metadata: Metadata = { stepNumber: String(e.stepNumber) };
+    const metadata: Metadata = {
+      ...builder.callMetadata,
+      ...stepExtras(e, e.model?.modelId ?? builder.modelId),
+      stepNumber: String(e.stepNumber),
+    };
     if (e.finishReason) metadata.finishReason = e.finishReason;
 
     let usage = mapUsage(e.usage);
@@ -850,7 +873,11 @@ export class Collector implements Telemetry {
 
     const now = Date.now();
     const start = builder.stepStart.get(step) ?? builder.startTime;
-    const metadata: Metadata = { stepNumber: String(step) };
+    const metadata: Metadata = {
+      ...builder.callMetadata,
+      ...stepExtras(e, e.modelId ?? builder.modelId),
+      stepNumber: String(step),
+    };
     if (e.finishReason) metadata.finishReason = e.finishReason;
 
     let usage = mapUsage(e.usage);
@@ -1222,6 +1249,9 @@ export class Collector implements Telemetry {
       input: builder.rootInput,
       output: builder.finalOutput,
       toolCatalog: builder.toolCatalog,
+      systemPrompt: builder.systemPrompt,
+      metadata:
+        Object.keys(builder.callMetadata).length > 0 ? { ...builder.callMetadata } : undefined,
     };
 
     let spans = [root, ...builder.spans];

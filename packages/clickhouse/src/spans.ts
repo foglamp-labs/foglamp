@@ -52,6 +52,8 @@ export type SpanRow = {
   input: string;
   output: string;
   tool_catalog: string; // JSON catalog of tools offered to the model (llm/agent spans)
+  system_prompt: string; // system prompt / agent instructions (root agent span only)
+  prompt_hash: string; // normalized hash of system_prompt ('' when absent)
   model_call_ms: number | null; // pure provider-call ms (llm step; null = not captured)
   system_fingerprint: string; // OpenAI-style model build id (drift detection)
   safety_metadata: string; // JSON blob of provider safety ratings

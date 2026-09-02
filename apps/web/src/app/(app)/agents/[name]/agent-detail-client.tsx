@@ -50,6 +50,7 @@ import {
   useSkeletonShown,
 } from "@/components/app/hooks";
 import { navItem } from "@/components/app/nav";
+import { ClampedBody, Prose } from "@/components/app/payload-view";
 import {
   type FlowNode,
   NodeFlow,
@@ -930,6 +931,13 @@ function TraceDrawer({
               />
             )}
           </DrawerSection>
+          {root?.systemPrompt && (
+            <DrawerSection label="System prompt">
+              <ClampedBody maxHeight={200} buttonClassName={DRAWER_BUTTON_CLASS}>
+                <Prose>{root.systemPrompt}</Prose>
+              </ClampedBody>
+            </DrawerSection>
+          )}
           <DrawerSection label="Exchange">
             {detail.isLoading ? (
               <ConversationSkeleton />

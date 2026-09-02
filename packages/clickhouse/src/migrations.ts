@@ -677,4 +677,14 @@ GROUP BY project_id, bucket, span_type, model_id, agent_name`,
       `ALTER TABLE spans DROP COLUMN IF EXISTS reasoning_chunk_tokens`,
     ],
   },
+  {
+    // The system prompt / agent instructions a run was started with (root
+    // agent span only) and its normalized hash (see @foglamp/prompts), which
+    // groups runs by prompt wording for version inference and eval pinning.
+    id: "0019_system_prompt",
+    statements: [
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS system_prompt String DEFAULT '' CODEC(ZSTD(3))`,
+      `ALTER TABLE spans ADD COLUMN IF NOT EXISTS prompt_hash String DEFAULT ''`,
+    ],
+  },
 ];

@@ -922,6 +922,8 @@ export type SpanDetailRow = {
 	input: string;
 	output: string;
 	tool_catalog: string;
+	system_prompt: string;
+	prompt_hash: string;
 	// Secondary provider signals (llm spans). model_call_ms splits pure model
 	// time from tool execution; the rest are drift/safety/grounding/rate-limit.
 	model_call_ms: number | null;
@@ -980,7 +982,7 @@ export function getTraceSpans(
        prompt_cost, completion_cost, request_cost, image_cost, web_search_cost,
        internal_reasoning_cost, cache_read_cost, cache_write_cost,
        total_cost, priced_model_id, priced_at, pricing_source,
-       metadata, input, output, tool_catalog,
+       metadata, input, output, tool_catalog, system_prompt, prompt_hash,
        model_call_ms, system_fingerprint, safety_metadata, sources,
        rate_limit_requests_limit, rate_limit_requests_remaining, rate_limit_requests_reset_ms,
        rate_limit_tokens_limit, rate_limit_tokens_remaining, rate_limit_tokens_reset_ms,

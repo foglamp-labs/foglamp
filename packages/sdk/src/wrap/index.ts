@@ -130,6 +130,14 @@ export function wrap<T extends AiModuleLike>(ai: T, options: WrapOptions = {}): 
     return { clean, context: mergeContext(base, foglamp as IntegrationContext | undefined) };
   };
 
+  // The schema behind a v6/v7 `Output.object({ schema })` spec, when the spec
+  // keeps it reachable synchronously (best effort; undefined otherwise).
+  const outputSpecSchema = (output: unknown): unknown => {
+    if (!output || typeof output !== "object") return undefined;
+    const o = output as { schema?: unknown; jsonSchema?: unknown };
+    return o.schema ?? o.jsonSchema;
+  };
+
   const modelInfo = (model: unknown): { provider?: string; modelId?: string } => {
     if (!model) return {};
     if (typeof model === "string") return { modelId: model };
@@ -182,6 +190,11 @@ export function wrap<T extends AiModuleLike>(ai: T, options: WrapOptions = {}): 
       // before `clean.tools` is replaced by `wrapTools` (which only swaps
       // `execute`, leaving descriptions/schemas intact either way).
       toolsRaw: clean.tools,
+      // `system` on the plain functions; agents spread their `instructions`
+      // in as `system` (see wrapAgentClass).
+      systemRaw: clean.system,
+      settingsRaw: clean,
+      outputSchemaRaw: clean.schema ?? outputSpecSchema(clean.output),
     });
   };
 
@@ -326,14 +339,23 @@ export function wrap<T extends AiModuleLike>(ai: T, options: WrapOptions = {}): 
         return this.#inner.tools;
       }
 
+      // The collector's view of a call: agent settings (model, tools,
+      // instructions → `system`, generation settings) under the per-call args.
+      #callArgs(clean: Record<string, unknown>): Record<string, unknown> {
+        const { instructions, ...settings } = this.#settings;
+        return {
+          ...settings,
+          system: instructions ?? settings.system,
+          ...clean,
+          model: this.#settings.model,
+          tools: this.#settings.tools,
+        };
+      }
+
       async generate(options: Record<string, unknown>): Promise<unknown> {
         const { clean, context } = prepare(options, this.#context);
         if (!resolved.enabled) return this.#inner.generate(clean);
-        const collector = newCollector(
-          "agent.generate",
-          { ...clean, model: this.#settings.model, tools: this.#settings.tools },
-          context,
-        );
+        const collector = newCollector("agent.generate", this.#callArgs(clean), context);
         const agent = new Base({
           ...this.#settings,
           tools: wrapTools(this.#settings.tools, collector),
@@ -351,11 +373,7 @@ export function wrap<T extends AiModuleLike>(ai: T, options: WrapOptions = {}): 
       stream(options: Record<string, unknown>): unknown {
         const { clean, context } = prepare(options, this.#context);
         if (!resolved.enabled) return this.#inner.stream(clean);
-        const collector = newCollector(
-          "agent.stream",
-          { ...clean, model: this.#settings.model, tools: this.#settings.tools },
-          context,
-        );
+        const collector = newCollector("agent.stream", this.#callArgs(clean), context);
         // Steps and the final text arrive via the settings-level callbacks
         // (the class merges these with any per-call `onStepFinish`, so user
         // callbacks still run). Agent streams expose no `onChunk`, so TTFT /

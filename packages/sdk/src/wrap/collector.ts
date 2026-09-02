@@ -1,5 +1,6 @@
 import { uuidv7 } from "uuidv7";
 
+import { instructionsText, leadingSystemText, outputSchemaJson, settingsMetadata, stepExtras } from "../prompt";
 import { extractWebSearchCount } from "../providerUsage";
 import { coerceMetadata, serialize, toolCatalogJson } from "../serialize";
 import {
@@ -94,6 +95,8 @@ export interface StepView {
   text?: string;
   finishReason?: string;
   response?: { modelId?: string; headers?: unknown };
+  // Provider call warnings (unsupported settings etc.) — recorded as metadata.
+  warnings?: unknown;
   // Provider-specific usage (web search etc.) — read by extractWebSearchCount.
   providerMetadata?: unknown;
   experimental_providerMetadata?: unknown;
@@ -120,6 +123,8 @@ interface LlmSpanInput {
   safetyMetadata?: string | undefined;
   sources?: string | undefined;
   rateLimit?: RateLimitInfo | undefined;
+  // Served model id / provider warnings (see stepExtras).
+  extras?: Record<string, string> | undefined;
 }
 
 export class WrapCollector {
@@ -134,6 +139,11 @@ export class WrapCollector {
   private readonly rootInput: string | undefined;
   // JSON catalog of tools offered to the model; stamped on every llm + root span.
   private readonly toolCatalog: string | undefined;
+  // The system prompt / agent instructions (root span only).
+  private readonly systemPrompt: string | undefined;
+  // Call-level "free" metadata (generation settings, output schema): stamped on
+  // every llm span and the root span.
+  private readonly callMetadata: Record<string, string>;
   private finalOutput: string | undefined;
   private error: string | undefined;
   private provider: string | undefined;
@@ -166,6 +176,13 @@ export class WrapCollector {
       modelId?: string;
       promptRaw?: unknown;
       toolsRaw?: unknown;
+      // `system` (generateText & co) or agent `instructions`; falls back to
+      // leading system messages in `promptRaw`.
+      systemRaw?: unknown;
+      // The call args/agent settings, read for generation settings.
+      settingsRaw?: unknown;
+      // generateObject/streamObject `schema` (or an `Output.object` schema).
+      outputSchemaRaw?: unknown;
     },
   ) {
     this.transport = transport;
@@ -180,6 +197,18 @@ export class WrapCollector {
     this.toolCatalog = config.recordInputs
       ? toolCatalogJson(init.toolsRaw, config.maxPayloadChars)
       : undefined;
+    this.systemPrompt =
+      config.recordInputs && config.recordSystemPrompt
+        ? serialize(
+            instructionsText(init.systemRaw) ?? leadingSystemText(init.promptRaw),
+            config.maxPayloadChars,
+          )
+        : undefined;
+    this.callMetadata = settingsMetadata(init.settingsRaw);
+    if (config.recordInputs) {
+      const outputSchema = outputSchemaJson(init.outputSchemaRaw);
+      if (outputSchema) this.callMetadata.outputSchema = outputSchema;
+    }
   }
 
   // --- tools (all modes) --------------------------------------------------
@@ -423,9 +452,11 @@ export class WrapCollector {
     safetyMetadata?: string;
     sources?: string;
     rateLimit?: RateLimitInfo;
+    extras?: Record<string, string>;
   } {
     if (!step) return {};
     return {
+      extras: stepExtras(step, this.modelId),
       systemFingerprint: extractSystemFingerprint(step),
       safetyMetadata: extractSafetyMetadata(step, this.config.maxPayloadChars),
       sources: this.config.recordOutputs
@@ -445,7 +476,11 @@ export class WrapCollector {
 
   private pushLlmSpan(s: LlmSpanInput): void {
     const end = Math.max(s.start, s.end);
-    const metadata: Record<string, string> = { stepNumber: String(s.stepNumber) };
+    const metadata: Record<string, string> = {
+      ...this.callMetadata,
+      ...s.extras,
+      stepNumber: String(s.stepNumber),
+    };
     if (s.finishReason) metadata.finishReason = s.finishReason;
     this.spans.push({
       spanId: `${this.traceId}:step:${s.stepNumber}`,
@@ -496,6 +531,8 @@ export class WrapCollector {
       input: this.rootInput,
       output: this.finalOutput,
       toolCatalog: this.toolCatalog,
+      systemPrompt: this.systemPrompt,
+      metadata: Object.keys(this.callMetadata).length > 0 ? { ...this.callMetadata } : undefined,
     };
 
     let spans = [root, ...this.spans];

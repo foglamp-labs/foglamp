@@ -146,6 +146,7 @@ Creates a collector that is both an AI SDK `Telemetry` integration (pass to
 | `maxPayloadChars` | `100_000` | Per-blob cap for serialized input/output (hard contract max 1 MB). |
 | `recordInputs` | `true` | Capture prompt/messages as span `input`. |
 | `recordOutputs` | `true` | Capture model/tool results as span `output`. |
+| `recordSystemPrompt` | `true` | Capture the system prompt / agent instructions on the root span (also off when `recordInputs` is off). |
 | `waitUntil` | — | Serverless keep-alive (e.g. Vercel/CF `waitUntil`). Enables flush-per-call. |
 | `fetch` | global `fetch` | Override the `fetch` used to POST batches. |
 | `debug` | `false` | Log internal warnings/errors to the console. |

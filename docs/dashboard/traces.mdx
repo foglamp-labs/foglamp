@@ -59,6 +59,9 @@ the span, it shows:
 - **Provider signals**: when captured, rate-limit headroom, the model build
   fingerprint, safety ratings, and grounding sources.
 - **Tools available**: the tools the model was offered for the call.
+- **System prompt**: on the run's root span, the system prompt or agent
+  instructions the run started with, rendered as markdown, with a link to the
+  agent's [prompt version](/dashboard/agents#prompt-versions).
 - **Payloads**: the captured `input` and `output`, pretty-printed, in a
   scrollable block (subject to
   [`recordInputs`/`recordOutputs`](/sdk/configuration)).

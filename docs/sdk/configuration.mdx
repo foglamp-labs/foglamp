@@ -17,6 +17,7 @@ const fog = foglamp({
   maxPayloadChars: 100_000,
   recordInputs: true,
   recordOutputs: true,
+  recordSystemPrompt: true,
   debug: false,
   onError: (err) => console.error(err),
 });
@@ -36,6 +37,7 @@ const fog = foglamp({
 | `maxPayloadChars` | number | `100_000` | Max length for each `input`/`output` field. Longer values are cut off. |
 | `recordInputs` | boolean | `true` | Capture prompt text. |
 | `recordOutputs` | boolean | `true` | Capture response text. |
+| `recordSystemPrompt` | boolean | `true` | Capture the system prompt (`system`, or an agent's `instructions`) on the run. It powers the **System prompt** section and [prompt versions](/dashboard/agents#prompt-versions). Also off when `recordInputs` is off. |
 | `waitUntil` | function | none | Serverless flush hook. Detected automatically on Vercel and Lambda; pass `ctx.waitUntil` on Cloudflare Workers. See [Runtimes](/sdk/runtimes). |
 | `fetch` | function | global `fetch` | Custom fetch implementation. |
 | `debug` | boolean | `false` | Log batching and flush activity. |
@@ -62,6 +64,11 @@ const fog = foglamp({
 
 Token counts and cost still work. They come from the provider's usage report,
 not from the text.
+
+To keep the conversation but drop only the system prompt (for example when it
+embeds proprietary instructions), set `recordSystemPrompt: false`. Generation
+settings (temperature, max output tokens, ...) and provider warnings are always
+recorded as span metadata; they contain no prompt text.
 
 ## Error handling
 
