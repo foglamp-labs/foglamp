@@ -16,7 +16,10 @@ A short wizard walks you through three steps:
 
 1. **Target: what to run on.** Choose `trace` (score the whole run) or `span`
    (score individual steps). Optionally filter by agent, trace name, and for
-   spans, span type and model.
+   spans, span type and model. Once an agent is picked you can also pin the
+   eval to one of its [prompt versions](/dashboard/agents#prompt-versions):
+   only runs that used that prompt are scored, so a version's scores are
+   comparable across time.
 2. **Check: what to verify.** Pick a preset (below).
 3. **Score: how to score.** For LLM judges, pick a judge model. For checks that
    take a parameter, set it (a substring, pattern, or max length). Set a
@@ -74,3 +77,10 @@ rate, and judge spend over the selected range, plus a table of recent scores
 (target, pass/fail or numeric score, the reason, and when). Each enabled eval
 also has a status of **ok**, **needs key**, or **error**, and an inline on/off
 toggle.
+
+An eval pinned to a prompt version shows it as a chip. Because versions are
+inferred, scoring for a pinned eval trails the prompt job by about a minute so
+new runs are attributed to their version first. If the job later regroups the
+prompts and the pinned version no longer exists, the eval reports an error
+instead of silently scoring everything — create a new eval on the current
+version.

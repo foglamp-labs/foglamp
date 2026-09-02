@@ -1,4 +1,4 @@
-import { queryPromptHashActivity } from "@foglamp/clickhouse";
+import { type EvalFilterParams, queryPromptHashActivity } from "@foglamp/clickhouse";
 import type { EvalFilters } from "@foglamp/db/schema/eval";
 import { promptHash, promptInferState, promptVersion } from "@foglamp/db/schema/prompt";
 import { inferVersions, normalizePrompt } from "@foglamp/prompts";
@@ -322,18 +322,61 @@ export async function promptVersionHashes(
   return { agentName: version.agentName, hashes: rows.map((r) => r.hash) };
 }
 
-/**
- * Whether an eval's pinned prompt version still exists — evals referencing a
- * version that re-inference removed are surfaced, not silently unpinned.
- */
-export async function evalPromptVersion(db: Db, filters: EvalFilters | null) {
-  if (!filters?.promptVersionId) return null;
-  const v = await db.query.promptVersion.findFirst({
-    where: eq(promptVersion.id, filters.promptVersionId),
+/** How far the prompt job has indexed runs (by ingested_at); null before its first pass. */
+export async function promptInferWatermark(db: Db): Promise<Date | null> {
+  const state = await db.query.promptInferState.findFirst({
+    where: eq(promptInferState.id, STATE_ID),
   });
-  return v
-    ? { id: v.id, number: v.number, agentName: v.agentName }
-    : { id: filters.promptVersionId, number: null, agentName: null };
+  return state?.watermark ?? null;
+}
+
+/** An eval is pinned to a prompt version that re-inference has since removed. */
+export class PromptVersionGone extends Error {
+  constructor(versionId: string) {
+    super(`prompt version ${versionId} no longer exists — re-pin the eval`);
+    this.name = "PromptVersionGone";
+  }
+}
+
+/**
+ * Turn an eval's filters into ClickHouse filter params: a pinned prompt
+ * version becomes the set of root-prompt hashes behind it (and pins the
+ * agent). Throws PromptVersionGone when the version was removed.
+ */
+export async function resolveEvalPromptFilter(
+  db: Db,
+  projectId: string,
+  filters: EvalFilters,
+): Promise<EvalFilterParams> {
+  const { promptVersionId, ...rest } = filters;
+  if (!promptVersionId) return rest;
+  const version = await promptVersionHashes(db, { projectId, versionId: promptVersionId });
+  if (!version) throw new PromptVersionGone(promptVersionId);
+  return { ...rest, agentName: rest.agentName || version.agentName, promptHashes: version.hashes };
+}
+
+export type EvalPromptVersion = {
+  id: string;
+  /** null when re-inference removed the version — surfaced, never silently unpinned. */
+  number: number | null;
+  agentName: string | null;
+};
+
+/** The pinned prompt version behind each eval's filters, resolved in one query. */
+export async function evalPromptVersions(
+  db: Db,
+  filtersList: (EvalFilters | null)[],
+): Promise<Map<string, EvalPromptVersion>> {
+  const ids = [...new Set(filtersList.flatMap((f) => (f?.promptVersionId ? [f.promptVersionId] : [])))];
+  const out = new Map<string, EvalPromptVersion>();
+  if (ids.length === 0) return out;
+  const rows = await db
+    .select({ id: promptVersion.id, number: promptVersion.number, agentName: promptVersion.agentName })
+    .from(promptVersion)
+    .where(inArray(promptVersion.id, ids));
+  for (const id of ids) out.set(id, { id, number: null, agentName: null });
+  for (const r of rows) out.set(r.id, r);
+  return out;
 }
 
 function fromClickHouse(s: string): Date {

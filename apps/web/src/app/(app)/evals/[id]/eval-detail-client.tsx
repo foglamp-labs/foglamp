@@ -44,6 +44,7 @@ import {
   IconScissors,
   IconStack2Filled,
   IconTargetArrow,
+  IconVersions,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -51,6 +52,7 @@ import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { promptVersionsHref } from "@/components/app/prompt-version-chip";
 import { AgentIcon } from "@/components/app/agent-icon";
 import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import { ContextChip } from "@/components/app/context-chip";
@@ -435,6 +437,21 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                 )}
                 iconClassName=""
                 label={ev.filters.agentName}
+              />
+            )}
+            {ev.promptVersion && (
+              <ContextChip
+                href={
+                  ev.promptVersion.agentName
+                    ? promptVersionsHref(ev.promptVersion.agentName)
+                    : undefined
+                }
+                icon={IconVersions}
+                label={
+                  ev.promptVersion.number != null
+                    ? `Prompt v${ev.promptVersion.number}`
+                    : "Prompt version removed"
+                }
               />
             )}
           </>

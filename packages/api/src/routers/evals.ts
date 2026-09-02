@@ -27,6 +27,7 @@ const filtersSchema = z
     spanType: z.string().optional(),
     status: z.string().optional(),
     metadata: z.record(z.string(), z.string()).optional(),
+    promptVersionId: z.string().optional(),
   })
   .optional();
 

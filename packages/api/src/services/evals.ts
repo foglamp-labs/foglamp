@@ -36,6 +36,7 @@ import { userMessageSnippet } from "../lib/user-message";
 import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
+import { PromptVersionGone, evalPromptVersions, resolveEvalPromptFilter } from "./promptVersions";
 
 export type EvalInput = {
   projectId: string;
@@ -140,6 +141,10 @@ export async function listEvals(
       : [];
 
   const byEval = new Map(summaryRows.map((s) => [s.eval_id, s]));
+  const pinned = await evalPromptVersions(
+    db,
+    rows.map(({ ev }) => ev.filters ?? null),
+  );
 
   return rows.map(({ ev, st }) => {
     const s = byEval.get(ev.id);
@@ -153,6 +158,11 @@ export async function listEvals(
       scorerSource: ev.scorerSource,
       targetLevel: ev.targetLevel,
       filters: ev.filters ?? null,
+      // The pinned prompt version, when the eval has one (number is null if
+      // re-inference removed it).
+      promptVersion: ev.filters?.promptVersionId
+        ? (pinned.get(ev.filters.promptVersionId) ?? null)
+        : null,
       sampleRate: Number(ev.sampleRate),
       passThreshold: Number(ev.passThreshold),
       model: ev.model ?? null,
@@ -517,11 +527,18 @@ export async function preflightEval(
   }
   const filters = { ...(input.filters ?? {}) } as EvalFilters;
   if (preset.spanType && !filters.spanType) filters.spanType = preset.spanType;
+  let chFilters: Awaited<ReturnType<typeof resolveEvalPromptFilter>>;
+  try {
+    chFilters = await resolveEvalPromptFilter(db, input.projectId, filters);
+  } catch (err) {
+    if (!(err instanceof PromptVersionGone)) throw err;
+    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
   const now = Date.now();
   const candidates = await queryEvalCandidates(ch, {
     projectId: input.projectId,
     level: input.targetLevel,
-    filters,
+    filters: chFilters,
     since: toClickHouseDateTime64(now - PREFLIGHT_LOOKBACK_MS),
     until: toClickHouseDateTime64(now),
     sampleThousandths: 1000,

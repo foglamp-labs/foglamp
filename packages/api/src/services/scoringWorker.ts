@@ -25,6 +25,7 @@ import { getPreset, type Preset } from "../evals/presets";
 import { decryptSecret } from "../lib/crypto";
 import { mapLimit } from "../lib/util";
 import type { Ch, Db, Log } from "../types";
+import { PromptVersionGone, promptInferWatermark, resolveEvalPromptFilter } from "./promptVersions";
 import type { ExtractedContext, ScoringTarget, SiblingSpan } from "../evals/types";
 
 // The transaction handle drizzle hands to `db.transaction(async (tx) => …)`.
@@ -143,7 +144,7 @@ async function planOneEval(
     }
   }
 
-  const until = new Date(Date.now() - env.SCORING_SETTLE_MS);
+  let until = new Date(Date.now() - env.SCORING_SETTLE_MS);
   const since = watermark ?? until; // no state yet → start now (future-only)
   if (since >= until) {
     await setState(db, ev.id, until, "ok", null, { keepError: true });
@@ -157,6 +158,28 @@ async function planOneEval(
   if (preset.spanType && !filters.spanType) filters.spanType = preset.spanType;
   const sampleRate = Number(ev.sampleRate);
 
+  // A pinned prompt version resolves to its hashes. Since the prompt job
+  // assigns new hashes to versions after the fact, only score runs it has
+  // already indexed — otherwise a fresh hash of the pinned version would be
+  // skipped for good once this eval's watermark moved past it.
+  let chFilters: Awaited<ReturnType<typeof resolveEvalPromptFilter>>;
+  try {
+    chFilters = await resolveEvalPromptFilter(db, ev.projectId, filters);
+  } catch (err) {
+    if (!(err instanceof PromptVersionGone)) throw err;
+    await setState(db, ev.id, watermark, "error", err.message);
+    return;
+  }
+  if (filters.promptVersionId) {
+    const indexed = await promptInferWatermark(db);
+    if (!indexed || indexed <= since) {
+      // Nothing new indexed yet — leave the watermark where it is.
+      await setState(db, ev.id, null, "ok", null, { keepError: true });
+      return;
+    }
+    if (indexed < until) until = indexed;
+  }
+
   // Read the candidate batch from ClickHouse *before* touching Postgres. This
   // read is the slow part (and hangs if ClickHouse or the process stalls), and
   // it must never run inside a Postgres transaction: an open tx pins a pool
@@ -166,7 +189,7 @@ async function planOneEval(
   const candidates = await queryEvalCandidates(ch, {
     projectId: ev.projectId,
     level: ev.targetLevel,
-    filters,
+    filters: chFilters,
     since: toClickHouseDateTime64(since.getTime()),
     until: toClickHouseDateTime64(until.getTime()),
     sampleThousandths: Math.max(0, Math.min(1000, Math.round(sampleRate * 1000))),
@@ -366,6 +389,8 @@ async function executeOneJob(
   const filters = { ...(ev.filters ?? {}) } as EvalFilters;
   if (preset.spanType && !filters.spanType) filters.spanType = preset.spanType;
   const sampleRate = Number(ev.sampleRate);
+  // A removed prompt version throws here → the job fails → eval shows the error.
+  const chFilters = await resolveEvalPromptFilter(db, ev.projectId, filters);
 
   // Re-query the window's candidates rather than persisting them in the job:
   // the query is deterministic over an immutable (settled) window, and the row
@@ -373,7 +398,7 @@ async function executeOneJob(
   const batch = await queryEvalCandidates(ch, {
     projectId: ev.projectId,
     level: ev.targetLevel,
-    filters,
+    filters: chFilters,
     since: toClickHouseDateTime64(new Date(job.window_start).getTime()),
     until: toClickHouseDateTime64(new Date(job.window_end).getTime()),
     sampleThousandths: Math.max(0, Math.min(1000, Math.round(sampleRate * 1000))),
