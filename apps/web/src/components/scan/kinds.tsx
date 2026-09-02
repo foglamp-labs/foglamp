@@ -1,7 +1,3 @@
-// The fixed visual vocabulary for node kinds, expressed with the design system:
-// each kind maps to standard Tailwind palette classes for the node's icon tint,
-// legend dot, and pulse stroke. The agent only tags a node with a `kind`.
-
 import type { NodeKind } from "@foglamp/contracts/scan";
 import {
 	IconBoltFilled,

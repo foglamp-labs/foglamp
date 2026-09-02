@@ -1,8 +1,3 @@
-/**
- * Chip-shaped placeholders where the eval's definition chips land, so the row
- * doesn't shift when the eval loads. Plain divs, not <Skeleton> — its base
- * corner-squircle squares off rounded-full, and these must read as pills.
- */
 export function EvalChipPlaceholders() {
 	return (
 		<>

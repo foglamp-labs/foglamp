@@ -1,21 +1,3 @@
-// Ordered ClickHouse DDL migrations. Kept as inline statements (rather than
-// loose .sql files) so they bundle into the tsdown-built ingest deployable and
-// remain the single source of truth. The runner (migrate.ts) applies these in
-// order, tracking applied ids in a `schema_migrations` table; applying twice is
-// a no-op (every statement is IF NOT EXISTS).
-//
-// Only ORDER BY and PARTITION BY are irreversible in ClickHouse. Everything
-// else (columns, skip indexes, MVs, TTL) is an online ALTER — so new migrations
-// append here; existing ones are never edited once shipped.
-//
-// Changing what a materialized view computes is the one sharp edge: an MV only
-// processes rows inserted while it exists, so the old DROP VIEW + CREATE dance
-// loses every span ingested in between (a permanent hole in the aggregate on a
-// live system). Use modifyMaterializedViewQuery() instead — it swaps the SELECT
-// atomically via ALTER TABLE … MODIFY QUERY, with no such window. The first
-// migration, 0005_trace_name, predates this rule and is grandfathered; a unit
-// test (migrate.test.ts) keeps every later migration honest.
-
 export type Migration = {
   id: string;
   statements: string[];

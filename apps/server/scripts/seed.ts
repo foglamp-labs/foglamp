@@ -1,12 +1,3 @@
-// Idempotent bootstrap seed: admin user → default org → membership → project →
-// one API key. Safe to re-run; each step is skipped if its row already exists.
-//
-// No static default credentials: the admin password comes from ADMIN_PASSWORD,
-// or — when unset — is generated and printed exactly once here. The API-key
-// plaintext is likewise shown only on first creation; afterwards only its
-// sha256 hash lives in Postgres, so a re-run cannot reprint it.
-//
-// Run via `bun run db:seed` (turbo) or directly: `bun run scripts/seed.ts`.
 import { createHash, randomBytes } from "node:crypto";
 
 import { auth } from "@foglamp/auth";

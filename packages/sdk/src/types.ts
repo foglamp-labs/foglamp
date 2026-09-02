@@ -1,13 +1,3 @@
-// Public configuration + context types for the Foglamp SDK. Kept dependency-
-// free (only the bundled wire contract) so the published package has zero
-// workspace runtime deps and `ai` stays a peer dependency.
-
-/**
- * Keeps a serverless invocation alive until the given promise settles. On
- * Vercel the SDK picks this up automatically from the runtime's request
- * context; on Cloudflare Workers pass `ctx.waitUntil`. Without it, a
- * serverless function may freeze before a fire-and-forget flush completes.
- */
 export type WaitUntil = (promise: Promise<unknown>) => void;
 
 /**

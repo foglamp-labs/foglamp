@@ -1,7 +1,3 @@
-// Slim display formatters for the HUD — vendored from the dashboard's
-// apps/web/src/lib/format.ts so the component stays self-contained (no workspace
-// import). Same conventions: unpriced cost renders "—", never "$0".
-
 const usd = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",

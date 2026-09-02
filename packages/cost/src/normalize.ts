@@ -1,11 +1,3 @@
-// Maps an AI SDK (provider, modelId) pair onto OpenRouter model id candidates
-// ("vendor/model"). This is heuristic by nature — a miss simply leaves cost
-// null, surfaced in the UI — so the maps below are conservative and meant to be
-// community-contributable.
-
-// AI SDK provider id (prefix before the first ".") → OpenRouter vendor slug.
-// An empty value means "no reliable vendor mapping" (e.g. inference resellers
-// that serve many creators' models); we leave such ids unresolved.
 const VENDOR_MAP: Record<string, string> = {
   openai: "openai",
   azure: "openai",

@@ -1,17 +1,3 @@
-// @foglamp/contracts — the codebase-scan contract.
-//
-// Single source of truth shared by: the renderer (apps/web), the create/read
-// service (packages/api), the DB row type (packages/db), and the extractor
-// prompt/skill. The "every scan looks consistent" property comes from the
-// *caps* here — the agent is forced to prioritize (top 3 models, top 10 tools,
-// short labels, ≤60 nodes) rather than dump everything, so every scan reads
-// the same way even when the map is big.
-//
-// The agent never picks colors, icons, or positions. It emits canonical
-// `domain`s (e.g. "openai.com", "exa.ai") that the renderer turns into real
-// logos via the favicon service, and a typed node-graph that a deterministic
-// dagre layout draws. Same data in → same scan out.
-
 import { z } from "zod";
 
 /** Max label length for graph nodes — keeps node cards a predictable width. */

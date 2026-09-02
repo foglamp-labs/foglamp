@@ -1,12 +1,3 @@
-// The HUD's stylesheet, injected into a Shadow DOM root so it can't collide with
-// (or be restyled by) the host app. Tokens are vendored from the Foglamp design
-// system (packages/ui/src/styles/globals.css): neutral oklch surfaces, soft
-// shadow rings, squircle radii, emerald/rose status, tabular figures. No neon.
-//
-// Three states (closed tab → pill → expanded panel) are anchored bottom-center;
-// the shell morphs its size between them (motion drives width/height, these
-// rules handle radius, lift, and content). Theme follows the host app.
-
 export const HUD_CSS = /* css */ `
 :host {
   /* light (default) */

@@ -1,12 +1,3 @@
-// Live smoke test for Anthropic judges. Exercises the exact production path the
-// scoring worker uses — runJudge → buildModel(createAnthropic) → generateObject
-// with the judge schema → parseJudgeObject → priceSpan — against a real Claude
-// call. This is the one check that can't be done offline: it confirms the
-// canary-line @ai-sdk/anthropic build emits valid structured output under the
-// beta-line `ai` runtime. Uses the cheapest model and a single short call.
-//
-//   ANTHROPIC_API_KEY=sk-ant-... bun run packages/api/scripts/smoke-anthropic-judge.ts
-//
 import { runJudge } from "../src/evals/judge";
 import { getPreset } from "../src/evals/presets";
 

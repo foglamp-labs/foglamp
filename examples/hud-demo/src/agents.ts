@@ -1,6 +1,3 @@
-// Agent catalog shared by the UI (cards) and the server (run logic). Pure data
-// so the client can import it without pulling in `ai`/`foglamp`.
-
 export interface AgentMeta {
   id: string;
   name: string;

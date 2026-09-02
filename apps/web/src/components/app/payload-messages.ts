@@ -1,15 +1,3 @@
-// Normalizes a span/trace input or output payload into messages → parts, so the
-// UI can render a conversation instead of a wall of JSON.
-//
-// These payloads are Vercel AI SDK v7 shapes captured verbatim by the foglamp
-// SDK (not OpenTelemetry GenAI conventions): an array of `{role, content}`
-// messages, a bare array of content parts, or a plain (markdown) string. The
-// database stores them as opaque strings, so nothing here can assume a schema —
-// every unrecognized shape has to survive as JSON rather than throw. In
-// particular, payloads over 1MB are stored truncated with a `…[truncated]`
-// suffix, which means `JSON.parse` failing is a routine path on real traces,
-// not an edge case.
-
 export type Part =
 	| { kind: "text"; text: string }
 	/** Model thinking — same payload as text, but never the answer. */

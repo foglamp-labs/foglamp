@@ -1,8 +1,3 @@
-// Headless end-to-end check: run the demo agent and confirm the live cascade
-// (lookup → refund FAILS → refund retry → email → answer) streams over SSE from
-// the local HUD broker. Proves the public API path (generateText + foglamp) end
-// to end without a browser. Run: `bun run verify`.
-
 import { runAgent } from "./server/run";
 
 const PORT = 8518;

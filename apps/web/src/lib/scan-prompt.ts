@@ -1,7 +1,3 @@
-// The extractor prompt served at GET /scan/prompt and shown on the /scan
-// landing page. Mirrors .agents/skills/codebase-scan/SKILL.md — keep in sync.
-// Agent-agnostic: paste into any coding agent (Claude Code, Cursor, …).
-
 export const SCAN_ENDPOINT = "https://api.foglamp.dev/scan";
 
 // The `ScanData` shape and the rules that keep every map consistent. Exported

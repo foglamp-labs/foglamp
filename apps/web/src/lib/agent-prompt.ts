@@ -1,14 +1,3 @@
-// Single source of truth for the "paste this into your coding agent" prompts.
-//
-// Both prompts are deliberately tiny: the real contract lives at /setup/prompt
-// (lib/setup-prompt.ts) and the agent fetches it. That keeps what the user
-// copies short enough to trust, and lets the contract change without anyone
-// re-copying a prompt out of a screenshot.
-//
-// The shared body is identical whether the user is signed in (key minted
-// server-side and inlined) or on the landing page (key obtained via
-// `npx foglamp login`); only the preamble — how the agent gets a key — differs.
-
 import { SITE_URL } from "./links";
 
 export const DOCS_URL = "https://docs.foglamp.dev/quickstart";

@@ -1,7 +1,3 @@
-// Standalone integration check against a local ClickHouse (the foglamp-ch-test
-// container). Runs migrations, inserts sample spans, and reads back through
-// every materialized view + the trace-detail query. Not part of the unit suite
-// (needs a live server); invoked manually during Phase 4 verification.
 import { createClickHouseClient } from "../src/client";
 import { runMigrations, applySpansRetention } from "../src/migrate";
 import { MIGRATIONS } from "../src/migrations";

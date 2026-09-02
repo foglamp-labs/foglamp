@@ -1,11 +1,3 @@
-/**
- * Best-effort: a root agent span's `input` is usually a JSON messages array
- * (each call passes the running history), so surface the last user message as
- * the trace's prompt. Falls back to the raw string when it isn't a
- * recognizable messages array — the SDK truncates payloads over 1MB with a
- * trailing `…[truncated]` that breaks JSON.parse, so that path is routine on
- * large traces. Never throws.
- */
 export function extractUserMessage(input: string | undefined, capLength: number): string | null {
   if (!input) return null;
   const cap = (s: string) => (s.length > capLength ? `${s.slice(0, capLength)}…` : s);

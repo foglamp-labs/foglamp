@@ -1,14 +1,3 @@
-// Best-effort live cost for the HUD ticker. Runs only on the lazy HUD path, so
-// @foglamp/cost (and its zod/contracts deps) are bundled into the HUD chunk and
-// never touch the core `.` entry's footprint.
-//
-// We fetch the OpenRouter pricing table directly and parse it with @foglamp/cost's
-// *pure* `parsePricingResponse` (and price with `priceSpan`). We deliberately do
-// NOT use @foglamp/cost's `getPricingTable()` — that path imports the validated
-// server env (DATABASE_URL etc.), which a HUD/dev process won't have. We pre-warm
-// on the first trace; until the table is ready `priceTraceUsd` returns null and
-// the HUD shows "—" (never a misleading $0).
-
 import { parsePricingResponse, priceSpan, type PricingTable } from "@foglamp/cost";
 
 import type { Span } from "../wire";

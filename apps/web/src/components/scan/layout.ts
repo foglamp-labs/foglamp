@@ -1,14 +1,3 @@
-// Deterministic flow-map layout, powered by ELK's layered algorithm with
-// orthogonal edge routing. Grouped nodes (same `group`) are laid out as a
-// VERTICAL stack in an isolated pass, then the root pass arranges those stacks
-// and the ungrouped nodes LEFT-TO-RIGHT — so deep pipelines fold into labeled
-// columns instead of sprawling one-node-per-layer across the screen. Groups
-// named in `horizontalGroups` (workflows on the setup review page) flow
-// LEFT-TO-RIGHT inside their box instead: a workflow is a pipeline, and a
-// pipeline reads left to right like the rest of the map.
-// Cross-group edges attach to the group container (deduped), which keeps the
-// macro story readable. Same input → same coordinates. Async (elkjs).
-
 import type { GraphEdge } from "@foglamp/contracts/scan";
 import type { ELK, ElkNode } from "elkjs/lib/elk-api";
 

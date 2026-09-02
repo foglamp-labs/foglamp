@@ -1,11 +1,3 @@
-// Wire shape for the local HUD overlay — the events the dev SSE broker streams
-// to `<FoglampHUD/>`. Mirrors the collector's lifecycle so the HUD can render
-// execution as it happens: a trace starts, steps run, tools fire, tokens
-// stream, then the trace ends with priced totals.
-//
-// Dependency-free (only the local wire types), so the `foglamp/hud` client and
-// the server emitter share one definition without dragging in workspace code.
-
 import type { Span, SpanStatus, Trace, Usage } from "../wire";
 
 /** Per-trace totals, summed at finalize. `costUsd` is null when unpriced. */

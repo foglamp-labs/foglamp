@@ -1,7 +1,3 @@
-// Shared marketing copy for the install command, AI SDK v7's global telemetry
-// registration, and the "copy the prompt" payload. Kept in one place so the
-// marketing surfaces cannot drift from the published `foglamp` package.
-
 export const INSTALL_CMD = "npm i foglamp";
 
 // AI SDK v7's native, global telemetry path. The version-aware setup prompt and

@@ -1,13 +1,3 @@
-// Best-effort extraction of secondary provider signals from a model step:
-//   • system fingerprint  — OpenAI-style model build id (drift detection)
-//   • safety ratings      — provider safety metadata (Google/others)
-//   • sources             — RAG/grounding citations (StepResult.sources)
-//   • rate-limit headroom — normalized cross-provider from response headers
-//
-// All of it is defensive: provider shapes vary and evolve, so an unexpected or
-// missing shape yields `undefined` rather than throwing or guessing. Nothing
-// here is ever estimated — unknown stays absent.
-
 import { serialize } from "./serialize";
 
 type Dict = Record<string, unknown>;

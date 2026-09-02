@@ -1,14 +1,3 @@
-// Static, locally-typed data for the interactive landing-page demo. None of this
-// touches tRPC or the live types — the demo is a faithful *visual* replica, so
-// the shapes here only need to match what the demo components read. Where a real
-// presentational component (e.g. TraceTimeline) wants the deep tRPC `TraceSpan`,
-// the demo casts `MockTraceSpan[] as unknown as TraceSpan[]` at the call site.
-//
-// The demo is lazy-loaded client-only (ssr:false), so module-load work that
-// touches `new Date()` / `Math.*` is safe here. "when" fields stay as literal
-// relative strings; real ClickHouse datetime strings are used only where a chart
-// axis or a turn timestamp has to parse one.
-
 import { agentColor } from "@/components/app/agent-icon";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 

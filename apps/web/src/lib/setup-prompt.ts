@@ -1,12 +1,3 @@
-// The agent-facing contract for the instrumentation approval loop, served at
-// GET /setup/prompt. The prompt a user actually pastes (lib/agent-prompt.ts) is
-// four lines long and fetches this — so the contract can change without anyone
-// re-copying a prompt out of the docs.
-//
-// The whole design rests on step 4: the agent makes ONE blocking call and the
-// server holds it until the user clicks Approve. A model asked to "keep polling"
-// forgets; a blocked bash command cannot.
-
 import { SCAN_RULES, SCAN_SHAPE } from "./scan-prompt";
 
 export const SETUP_API_BASE = "https://api.foglamp.dev";

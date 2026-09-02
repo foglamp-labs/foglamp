@@ -1,10 +1,3 @@
-/**
- * Generic cron scaffold: logger → env interval → re-entrancy guard →
- * setInterval → handle.unref() → initial tick → stop function.
- *
- * The returned stop function is async: it clears the interval AND awaits
- * any in-flight tick so callers can drain cleanly on shutdown.
- */
 export function startCron(
   _name: string,
   intervalMs: number,

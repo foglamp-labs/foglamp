@@ -1,15 +1,3 @@
-#!/usr/bin/env node
-// foglamp CLI — `npx foglamp login`.
-//
-// Runs the OAuth 2.0 device authorization grant against a Foglamp server:
-// requests a code, prints a URL for the user to approve in their browser, polls
-// until approved, then mints an API key and writes FOGLAMP_API_KEY to .env.
-//
-// Designed to be driven by a coding agent: it prints the verification URL (so
-// the agent can relay it), blocks until the user approves, and on success
-// writes the key and prints where it went. Zero runtime dependencies — Node 18+
-// built-ins only (global fetch, node:fs, node:util).
-
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";

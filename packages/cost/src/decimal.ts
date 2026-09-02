@@ -1,8 +1,3 @@
-// Exact fixed-point arithmetic for cost math. OpenRouter prices are per-token
-// decimal strings (e.g. "0.00000008333333333333334"); multiplying by integer
-// token counts in float would drift at the 10th decimal that ClickHouse stores.
-// We keep everything in BigInt scaled to 10^COST_SCALE and round half-up once.
-
 export const COST_SCALE = 10; // matches ClickHouse Decimal(18, 10)
 
 const DECIMAL_RE = /^\d+(\.\d+)?$/;

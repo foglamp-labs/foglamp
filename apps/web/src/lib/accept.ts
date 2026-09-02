@@ -1,9 +1,3 @@
-// Minimal Accept-header negotiation between the two representations the
-// marketing site serves: text/html (default) and text/markdown (for agents,
-// per acceptmarkdown.com). Honors q-values per RFC 9110 §12.5.1 — more
-// specific matches (text/markdown) beat ranges (text/*, */*), and a q of 0
-// means "explicitly not acceptable".
-
 export type NegotiatedFormat = "html" | "markdown" | "unacceptable";
 
 type Entry = { type: string; subtype: string; q: number };

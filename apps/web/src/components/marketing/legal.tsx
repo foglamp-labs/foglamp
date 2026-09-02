@@ -1,6 +1,3 @@
-// Shared layout for the legal pages (/privacy, /terms): a narrow column of
-// numbered sections, hand-styled since the app doesn't use a typography plugin.
-
 export type LegalSection = {
 	heading: string;
 	body: React.ReactNode;

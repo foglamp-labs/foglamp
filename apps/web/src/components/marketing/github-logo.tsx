@@ -1,8 +1,3 @@
-/**
- * GitHub glyph (the Octocat). `fill="currentColor"` so it inherits the
- * surrounding text color — which makes it light/dark-mode aware (and
- * hover-aware) through the usual foreground tokens, with no per-theme variant.
- */
 export function GithubLogo({ className }: { className?: string }) {
 	return (
 		<svg

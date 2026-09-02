@@ -1,13 +1,3 @@
-// Plain, dependency-free mirror of the @foglamp/contracts v1 wire shapes.
-//
-// The SDK only *produces* ingest payloads (it never validates them), so it
-// carries these as plain TypeScript types rather than importing the zod-derived
-// contract types. That keeps zod — and any other workspace code — out of the
-// published `.d.ts`, so consumers need only `ai` as a peer dep.
-//
-// `contract-conformance.ts` asserts at type-check time that these stay
-// structurally identical to the contract; drift fails `check-types`.
-
 export type Metadata = Record<string, string>;
 
 export interface Customer {

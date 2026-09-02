@@ -1,9 +1,3 @@
-// Dev-only simulated network conditions, applied per-procedure by a tRPC
-// link (src/utils/trpc.ts) and controlled from the dev toolbar.
-// Framework-free on purpose: trpc.ts imports it at module scope, so it must
-// not pull in React or any component code. Settings live in localStorage and
-// are read at request time, so changes apply to the very next request.
-
 const DELAY_KEY = "foglamp:dev:net-delay";
 const FAIL_KEY = "foglamp:dev:net-fail";
 const LOADING_KEY = "foglamp:dev:net-loading";

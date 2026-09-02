@@ -1,15 +1,3 @@
-// Foglamp SDK — basic end-to-end example.
-//
-// Demonstrates the two-line integration: create a collector, attach it to a
-// `generateText` call. Every step/tool becomes a span; the trace is flushed to
-// your Foglamp ingest endpoint.
-//
-//   FOGLAMP_API_KEY=fl_…  FOGLAMP_INGEST_URL=http://localhost:4000/ingest \
-//     bun run start
-//
-// With no OPENAI_API_KEY set it uses a deterministic mock model, so the whole
-// pipeline runs offline. Set OPENAI_API_KEY to hit a real model instead — the
-// instrumentation is identical either way.
 import { openai } from "@ai-sdk/openai";
 import { foglamp } from "foglamp";
 import { generateText } from "ai";

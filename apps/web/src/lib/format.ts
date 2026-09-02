@@ -1,9 +1,3 @@
-// Display formatters for the dashboard. Costs come back as numbers|null (null =
-// unpriced, must render "—", never "$0.00"); counts/durations as numbers.
-
-// Cost formatters keyed by their fraction-digit range, built lazily and cached
-// (Intl.NumberFormat construction isn't free). Full precision (6) is the
-// default; stat-card headline figures pass 4 for a more compact number.
 const usdFormatters = new Map<string, Intl.NumberFormat>();
 function usdFormatter(minDecimals: number, maxDecimals: number) {
 	const key = `${minDecimals}:${maxDecimals}`;

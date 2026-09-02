@@ -1,7 +1,3 @@
-// Slim, vendored model branding for the HUD (Shadow DOM = no app imports). A
-// subset of the dashboard's model-logo: the common provider marks, a vendor
-// resolver, and the display-name formatter. Unknown vendors fall back to a chip.
-
 import type { SVGProps } from "react";
 
 type Logo = (props: SVGProps<SVGSVGElement>) => React.ReactElement;

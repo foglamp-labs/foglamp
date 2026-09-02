@@ -1,10 +1,3 @@
-// One-shot self-host bootstrap, run by the `migrate` compose service before the
-// long-running tiers start. Idempotent end to end:
-//   1. Postgres — apply Drizzle migrations.
-//   2. ClickHouse — apply DDL migrations + set the spans retention TTL.
-//   3. Seed — admin user → org → project → API key (prints secrets once).
-// Each step is safe to re-run, so `docker compose up` after an upgrade just
-// applies what's new.
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

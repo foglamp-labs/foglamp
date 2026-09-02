@@ -1,9 +1,3 @@
-// Client-side live model: fold the HUD event stream into traces the panel
-// renders. Incremental events (step/tool/token) drive the live animation; the
-// final `trace.end` snaps steps/tools to the authoritative spans, so a HUD that
-// connects mid-run (and was replayed a partial backfill) still resolves to the
-// correct completed trace.
-
 import type { HudEvent, HudTotals } from "../events";
 import type { Span, SpanStatus } from "../../wire";
 

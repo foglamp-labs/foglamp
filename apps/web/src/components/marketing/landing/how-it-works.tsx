@@ -1,7 +1,3 @@
-// How it works, in three steps, each with a small line illustration. No cards,
-// no demo (the hero already has one) — just type and drawings.
-// Arts: chat input (copy), diff (agent wires it), dashboard (see everything).
-
 import { ClaudeCodeLogo, CodexLogo } from "@/components/brand-logos";
 
 // ─── Step illustrations ───────────────────────────────────────────────────────

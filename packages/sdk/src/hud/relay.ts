@@ -1,8 +1,3 @@
-// Server-side HUD relay: the single entry the collector lazily imports. It owns
-// the SSE broker and best-effort cost pricing, so all HUD server code (and its
-// `node:http` + @foglamp/cost deps) is code-split out of the core `.` bundle and
-// loaded only when `config.hud` is on.
-
 import { closeAllBrokers, getBroker } from "./broker";
 import type { HudEvent } from "./events";
 import { priceTraceUsd, warmPricing } from "./pricing";

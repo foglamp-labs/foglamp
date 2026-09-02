@@ -1,14 +1,3 @@
-// Serves the built Vite app (dist/) and runs the mock agents. Importing
-// ./server/run constructs foglamp({ hud: true, hudPort: 8518 }), which starts
-// the local HUD broker (loopback). The browser can't reach that loopback when
-// this is hosted, so we proxy the broker's SSE onto THIS server's own origin at
-// /hud/events — and the client connects there via <FoglampHUD url="/hud/events" />.
-//
-//   bun run start   (= vite build && bun run src/server.ts)
-//
-// Hosted: runs on Cloud Run as a single always-on instance. `hud: true` is gated
-// to non-production, so the runtime image must NOT set NODE_ENV=production.
-
 import { AGENTS } from "./agents";
 import { runAgent, runStorm } from "./server/run";
 

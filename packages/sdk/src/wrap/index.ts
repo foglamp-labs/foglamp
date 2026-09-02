@@ -1,33 +1,3 @@
-// foglamp/wrap — observability for the Vercel AI SDK **v4+** by wrapping the
-// module's functions (the v7 `registerTelemetry`/`integrations` API doesn't
-// exist before v7; import the root `foglamp` entry for the v7 native path).
-//
-//   import * as ai from "ai";
-//   import { wrap } from "foglamp/wrap";
-//
-//   const fog = wrap(ai, {
-//     context: { agentName: "support" },   // default trace context
-//   });
-//
-//   // Fully-typed path: bind context, get the original AI SDK signatures back.
-//   const { generateText, ToolLoopAgent } = fog.with({ agentName: "summarizer" });
-//   await generateText({ model, prompt });
-//
-//   // Untyped-context path (JS, or when you don't need the result types):
-//   await fog.generateText({ model, prompt, foglamp: { traceName: "summarize" } });
-//
-//   // Ambient path: attach run-scoped context (workflow/session/metadata) to
-//   // everything inside, however deeply nested — no parameter threading:
-//   await fog.run({ workflowName: "onboarding", workflowRunId: id }, () => handler());
-//
-// Mechanism: each tool's `execute` is wrapped for real per-tool timing, and our
-// telemetry callbacks are composed over any you pass (`onChunk`/`onStepFinish`/
-// `onFinish`/`onError`) — so the user's stream is never tee'd. Agent classes
-// (`ToolLoopAgent`, `Experimental_Agent`) are wrapped by constructing the real
-// agent per call with traced tools. Produces the same wire trace as the v7 path
-// and shares one `Transport`. Silent no-op without an API key; never throws
-// into your app.
-
 import { resolveConfig } from "../config";
 import { ambientContext, mergeContext, runWithContext } from "../context";
 import { Transport } from "../transport";

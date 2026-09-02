@@ -1,7 +1,3 @@
-// Shared timeline math for the trace waterfall. Span shape is inferred from the
-// tRPC router output so it tracks the server contract without a manual
-// re-declaration.
-
 import type { RouterOutputs } from "@/utils/trpc";
 
 export type TraceSpan = RouterOutputs["traces"]["get"]["spans"][number];

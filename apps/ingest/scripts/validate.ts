@@ -1,8 +1,3 @@
-// Integration check for the ingest write path against the local test
-// ClickHouse (foglamp-ch-test, port 18123). Bypasses HTTP/auth and drives the core
-// pipeline directly: a wire payload → buildSpanRows (cost-at-ingest) → the
-// WriteBuffer → ClickHouse → MV rollups. Proves cost math, id denormalization,
-// metadata merge, and the flush path. Run manually during Phase 5 verification.
 import { createClickHouseClient, listTraces, getTraceSpans } from "@foglamp/clickhouse";
 import type { IngestPayload } from "@foglamp/contracts";
 import { type ModelPrice, type PricingTable } from "@foglamp/cost";

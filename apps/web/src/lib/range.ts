@@ -1,7 +1,3 @@
-// Time-range model shared by the metric pages. A range resolves to concrete
-// instants (passed to tRPC as ISO strings; `z.coerce.date` parses them
-// server-side). Presets are either relative (now-anchored) or calendar-anchored;
-// a custom range comes from the calendar picker.
 import {
   endOfDay,
   endOfMonth,

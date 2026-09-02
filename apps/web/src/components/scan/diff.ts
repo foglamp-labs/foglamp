@@ -1,7 +1,3 @@
-// Compare two scans of the same project (current vs the version before its
-// last update) into a small "what changed" summary. Nodes are matched by id;
-// a node whose label/kind/sub changed counts as changed, not added+removed.
-
 import type { GraphNode, ScanData } from "@foglamp/contracts/scan";
 
 export interface ScanDiff {

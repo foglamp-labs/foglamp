@@ -1,6 +1,3 @@
-// Shared types for the evals scoring engine. A scorer (code or llm) consumes
-// an ExtractedContext (built from a trace/span target) and emits a ScoreResult.
-
 export type Provider = "google" | "openai" | "anthropic";
 
 export type ScoreResult = {

@@ -1,9 +1,3 @@
-// Deterministic "personality" identity derived from the scan data — the
-// stats-as-identity hook (à la Arc's member card). Every archetype is scored
-// on how *dominant* its trait is in this graph and the best score wins — a
-// first-match rule chain made almost everything an Orchestrator. Same data →
-// same card.
-
 import type { ScanData } from "@foglamp/contracts/scan";
 import {
 	IconAffiliateFilled,

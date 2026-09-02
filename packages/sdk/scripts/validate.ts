@@ -1,8 +1,3 @@
-// Behavioral check for the SDK's Telemetry → wire mapping. Drives the v7
-// lifecycle hooks by hand (no live model) against a captured fetch, then asserts
-// the produced IngestPayload: trace/span shape, id correlation, usage mapping,
-// TTFT capture, metadata coercion, context binding, and the disabled no-op.
-// Run manually during Phase 6 verification: `bun run scripts/validate.ts`.
 import { ingestPayloadSchema, type IngestPayload } from "@foglamp/contracts";
 
 import { foglamp } from "../src/index";

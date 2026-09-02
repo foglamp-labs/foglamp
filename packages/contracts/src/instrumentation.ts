@@ -1,26 +1,3 @@
-// @foglamp/contracts — the instrumentation-plan contract.
-//
-// The onboarding loop: a coding agent reads the user's repo, uploads a
-// DetectedPlan, and blocks. The user reviews it at /setup/<planId> and
-// approves. The agent resumes, applies the plan, and uploads an AppliedReport.
-//
-// Two hard rules shape everything here:
-//
-//  1. NO SOURCE. Only structured metadata — symbol names, file:line refs,
-//     counts, and short descriptions. Never code, prompts, completions, env
-//     values, or secrets. Every string is capped so a buggy agent can't smuggle
-//     a file body through a `rationale` field.
-//
-//  2. ScanData IS EMBEDDED, NOT EXTENDED. The graph reuses the public Scan
-//     contract verbatim (`scan.ts`), which is `.strict()` and pinned at
-//     `version: 1`. Instrumentation decisions live in a sibling object, so the
-//     lead-magnet renderer and every scan already in the database keep working.
-//
-// This module is deliberately dependency-free apart from zod: the state machine
-// below is imported by the server, the web app, and unit tests, none of which
-// should have to boot a database connection to ask whether a transition is
-// legal.
-
 import { z } from "zod";
 
 import { type GraphNode, ScanData } from "./scan";

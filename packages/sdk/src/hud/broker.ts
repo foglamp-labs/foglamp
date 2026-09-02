@@ -1,16 +1,3 @@
-// In-process HUD broker: a localhost-only Server-Sent-Events server the
-// `<FoglampHUD/>` component connects to (via the browser-native EventSource).
-//
-// SSE, not WebSocket, because the data flow is one-directional (server → HUD)
-// and SSE needs only `node:http` — zero dependencies, and it works on both Node
-// (`next dev`) and Bun. This module is imported *lazily* by the collector (only
-// when `config.hud` is on, which is gated to a non-edge Node dev runtime), so
-// `node:http` is never pulled into the edge/browser bundle of the core package.
-//
-// The broker is a process-global singleton keyed by port (stored under a
-// `Symbol.for` so it survives module re-evaluation under `next dev`/`bun --hot`
-// HMR rather than leaking a second server on every reload).
-
 import {
   createServer,
   type IncomingMessage,

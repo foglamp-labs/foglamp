@@ -1,16 +1,3 @@
-// Trace-context layering shared by the v7 collector and `foglamp/wrap`.
-//
-// Contexts stack, later layers winning per field, `metadata` maps merging
-// (inner keys win) instead of replacing each other:
-//
-//   wrap()/foglamp() default  →  fog.run(...)  →  fog.with(...)  →  per-call
-//
-// `fog.run(context, fn)` is the ambient layer: it stores the context in
-// AsyncLocalStorage for the duration of `fn`, so every wrapped call inside —
-// however deeply nested — picks it up without threading parameters. This is
-// how a request handler attaches `workflowRunId`/`sessionId`/`metadata` to
-// everything a run does while agents stay module-level singletons.
-
 import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { IntegrationContext } from "./types";

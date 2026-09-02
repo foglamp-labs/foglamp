@@ -1,9 +1,3 @@
-// Server-side mock agent runs. Each "agent" is a deterministic MockLanguageModel
-// driving real `generateText` tool loops, instrumented with foglamp telemetry —
-// so the HUD shows genuine steps/tool-calls/tokens without any API key. In a
-// real app you delete all of this and keep `foglamp({ hud: true })` + the two
-// lines that attach `fog.integration(...)` to your calls.
-
 import { foglamp } from "foglamp";
 import { generateText, stepCountIs, tool, type ToolSet } from "ai";
 import { MockLanguageModelV4 } from "ai/test";

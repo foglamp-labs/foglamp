@@ -1,6 +1,3 @@
-// Canonical external links shared across the marketing surface (navbar, hero,
-// footer). Kept in one place so the GitHub repo URL can't drift — and so the
-// "we're open source" links all point at the real repo.
 export const GITHUB_URL = "https://github.com/foglamp-labs/foglamp";
 
 // Canonical public origin for the marketing site, used to build absolute URLs

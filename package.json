@@ -51,6 +51,7 @@
   "dependencies": {
     "@foglamp/env": "workspace:*",
     "border-beam": "^1.2.0",
+    "cn": "^0.2.4",
     "dotenv": "catalog:",
     "zod": "catalog:"
   },

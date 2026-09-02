@@ -1,9 +1,3 @@
-// Fold model/tool nodes into the nodes that use them. Instead of an agent
-// spider-webbing out to separate "Gemini" / "Web search" nodes, the agent node
-// carries those inline (model + tools shown below its name). This declutters
-// busy graphs dramatically. Edges to model/tool nodes are dropped; structural
-// edges (entry→agent, agent→store, agent→external, …) are kept.
-
 import type { GraphEdge, NodeKind, ScanData } from "@foglamp/contracts/scan";
 
 export interface Embed {

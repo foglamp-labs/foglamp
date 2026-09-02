@@ -1,8 +1,3 @@
-// AI provider / model brand logos.
-// Sourced from SVGL (https://svgl.app) via its shadcn registry (/r/<name>.json).
-// Monochrome marks were converted to `fill="currentColor"` so they adapt to the
-// active theme; multicolor marks keep their brand colors. Regenerate by re-fetching
-// the registry JSON and re-running the generator described in the Admin notes.
 import type { SVGProps } from "react";
 
 export function OpenAILogo(props: SVGProps<SVGSVGElement>) {

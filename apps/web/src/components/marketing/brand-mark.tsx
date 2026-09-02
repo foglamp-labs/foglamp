@@ -1,8 +1,3 @@
-/**
- * Foglamp brand mark — three overlapping circles (lead → blue → orange, back to
- * front). The lead circle is theme-aware: #1e1e1e in light mode, #EEE in dark.
- * Sized to its viewBox so it scales cleanly with whatever height `className` sets.
- */
 export function BrandMark({ className }: { className?: string }) {
 	return (
 		<svg

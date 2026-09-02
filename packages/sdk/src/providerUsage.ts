@@ -1,17 +1,3 @@
-// Best-effort extraction of billable web-search usage from a model step's
-// `providerMetadata` + tool calls. Returns the number of billable web searches,
-// or `undefined` when there were none (so non-search spans stay untouched).
-//
-// The Vercel AI SDK's `LanguageModelUsage` has no web-search field — the signal
-// lives in provider metadata (Google/Anthropic/Perplexity) or in provider-
-// executed web-search tool calls (OpenAI/xAI/others). Pricing is unchanged: the
-// count is stamped onto `usage.webSearchCount` and priced at ingest via
-// OpenRouter's per-model `web_search` rate (verified to match native billing for
-// anthropic/openai/google/xai/perplexity).
-//
-// Everything here is defensive — provider metadata shapes vary and evolve, so a
-// missing/unexpected shape yields `undefined` rather than throwing.
-
 type Dict = Record<string, unknown>;
 
 interface StepLike {
