@@ -10,7 +10,11 @@ import {
   CardTitle,
 } from "@foglamp/ui/components/card";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
-import { IconCode, IconFileHorizontalFilled } from "@tabler/icons-react";
+import {
+  IconCode,
+  IconFileDiff,
+  IconFileHorizontalFilled,
+} from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
@@ -277,6 +281,7 @@ function TemplatePane({
               variant="ghost"
               onClick={() => setShowDiff((d) => !d)}
             >
+              <IconFileDiff />
               {showDiff ? "Hide diff" : `Diff vs v${previous.number}`}
             </Button>
           )}
