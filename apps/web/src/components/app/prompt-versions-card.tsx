@@ -23,8 +23,9 @@ import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import { useDelayedLoading } from "@/components/app/hooks";
 import { EmptyState, ScrollFade } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
+import { estimateTokens, PromptProse } from "@/components/app/prompt-prose";
 import { RelativeTime } from "@/components/app/relative-time";
-import { formatCount, formatDateTime } from "@/lib/format";
+import { formatCount, formatDateTime, formatTokens } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
 
@@ -222,7 +223,8 @@ function VersionRow({
   );
 }
 
-/** The selected version's template, or its diff against the previous one. */
+/** The selected version's template — as prose by default, raw on request —
+ * or its diff against the previous version. */
 function TemplatePane({
   version: v,
   previous,
@@ -231,31 +233,64 @@ function TemplatePane({
   previous: Version | null;
 }) {
   const [showDiff, setShowDiff] = useState(false);
+  const [raw, setRaw] = useState(false);
   // A newly selected version opens on its template, not a stale diff toggle.
   useEffect(() => setShowDiff(false), [v.id]);
+  const tokens = estimateTokens(v.template);
   return (
     <div className="flex min-w-0 flex-col gap-2.5">
-      {previous && (
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            className={DRAWER_BUTTON_CLASS}
-            onClick={() => setShowDiff((d) => !d)}
-          >
-            {showDiff ? "Hide diff" : `Diff vs v${previous.number}`}
-          </Button>
-        </div>
-      )}
+      <div className="flex h-7 items-center gap-2">
+        <span
+          className="text-xs text-muted-foreground tabular-nums"
+          title="Estimated from the template's length, about four characters per token. Slot content adds to this."
+        >
+          ≈ {formatTokens(tokens)} tokens
+        </span>
+        <span className="ml-auto flex items-center gap-2">
+          {!showDiff && (
+            <Button
+              size="sm"
+              variant="secondary"
+              aria-pressed={raw}
+              className={cn(
+                DRAWER_BUTTON_CLASS,
+                raw && "bg-muted dark:bg-muted-foreground/25"
+              )}
+              onClick={() => setRaw((r) => !r)}
+            >
+              Raw
+            </Button>
+          )}
+          {previous && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className={DRAWER_BUTTON_CLASS}
+              onClick={() => setShowDiff((d) => !d)}
+            >
+              {showDiff ? "Hide diff" : `Diff vs v${previous.number}`}
+            </Button>
+          )}
+        </span>
+      </div>
       {showDiff && previous ? (
         <TemplateDiff from={previous.template} to={v.template} />
-      ) : (
+      ) : raw ? (
         <Template text={v.template} />
+      ) : (
+        <PromptProse
+          template={v.template}
+          versionId={v.id}
+          slotCount={v.slotCount}
+          className={PANE_CLASS}
+        />
       )}
     </div>
   );
 }
 
+const PANE_CLASS =
+  "max-h-72 overflow-auto rounded-md border border-border/60 bg-muted/30 px-3.5 py-3";
 const TEMPLATE_CLASS =
   "max-h-72 overflow-auto rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap wrap-anywhere";
 
@@ -362,7 +397,8 @@ function TemplateSkeleton({ skeleton }: { skeleton: boolean }) {
   return (
     <div className={cn("flex flex-col gap-2.5", !skeleton && "invisible")}>
       <div className="flex h-7 items-center">
-        <Skeleton className="h-7 w-24" />
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="ml-auto h-7 w-12" />
       </div>
       <Skeleton className="h-40 w-full" />
     </div>

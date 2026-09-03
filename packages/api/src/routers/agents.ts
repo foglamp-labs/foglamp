@@ -7,7 +7,10 @@ import {
 	getAgentList,
 	getAgentNames,
 } from "../services/agents";
-import { listPromptVersions } from "../services/promptVersions";
+import {
+	listPromptVersions,
+	promptSlotExamples,
+} from "../services/promptVersions";
 
 export const agentsRouter = router({
 	list: protectedProcedure
@@ -89,5 +92,11 @@ export const agentsRouter = router({
 		.input(z.object({ projectId: z.string(), agentName: z.string().optional() }))
 		.query(({ ctx, input }) =>
 			listPromptVersions(ctx.db, ctx.session.user.id, input),
+		),
+	// What a version's slots hold in practice (examples per slot).
+	promptSlotExamples: protectedProcedure
+		.input(z.object({ projectId: z.string(), versionId: z.string() }))
+		.query(({ ctx, input }) =>
+			promptSlotExamples(ctx.db, ctx.session.user.id, input),
 		),
 });

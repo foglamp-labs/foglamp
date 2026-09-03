@@ -7,3 +7,4 @@ export {
   SLOT_LINE,
 } from "./infer";
 export { normalizePrompt, PROMPT_HASH_CHARS, promptHash } from "./normalize";
+export { slotValues } from "./slots";

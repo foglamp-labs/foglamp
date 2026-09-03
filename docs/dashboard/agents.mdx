@@ -48,6 +48,13 @@ version to read its template beside the list, diff it against the previous
 version, or jump to the [traces](/dashboard/traces) that ran with it. The `v3` chip next to a trace's
 system prompt links back here.
 
+The template reads as a document: headings, lists and paragraphs are laid
+out, and values the versioning replaced (`{date}`, `{id}`, `{n}`, …) show as
+quiet tokens. Each slot is a **varies per run** chip; hover it to see the
+text runs actually put there, with how many runs carried each value. An
+estimated token count sits above the template. Use **Raw** to see the exact
+template text instead.
+
 Versions are inferred, so they can be re-grouped as more runs land — for
 example, a new prompt held with the current version until it has run a few
 times becomes its own version once it has.

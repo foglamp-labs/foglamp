@@ -1,6 +1,6 @@
 import { queryPromptHashActivity } from "@foglamp/clickhouse";
 import { promptHash, promptInferState, promptVersion } from "@foglamp/db/schema/prompt";
-import { inferVersions, normalizePrompt } from "@foglamp/prompts";
+import { inferVersions, normalizePrompt, slotValues } from "@foglamp/prompts";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { mapLimit, toClickHouseDateTime } from "../lib/util";
@@ -287,6 +287,54 @@ export async function listPromptVersions(
     })),
     // How far the job has read; runs newer than this aren't versioned yet.
     watermark: state?.watermark ?? null,
+  };
+}
+
+// Prompts read for a version's slot examples: the most-run ones, so the
+// examples are what the slot usually holds, not a one-off.
+const EXAMPLE_HASHES = 20;
+const EXAMPLES_PER_SLOT = 3;
+const EXAMPLE_CHARS = 600;
+
+/**
+ * What each slot of a version's template holds in practice: the most common
+ * values among the version's most-run prompts, with how many runs carried
+ * each. Slot order matches the template's `{…}` lines.
+ */
+export async function promptSlotExamples(
+  db: Db,
+  userId: string,
+  input: { projectId: string; versionId: string },
+): Promise<{ slots: { examples: { value: string; runs: number }[] }[] }> {
+  await requireProjectAccess(db, userId, input.projectId);
+  const version = await db.query.promptVersion.findFirst({
+    where: and(eq(promptVersion.id, input.versionId), eq(promptVersion.projectId, input.projectId)),
+  });
+  if (!version) return { slots: [] };
+  const members = await db.query.promptHash.findMany({
+    where: eq(promptHash.versionId, version.id),
+    orderBy: [desc(promptHash.runCount)],
+    limit: EXAMPLE_HASHES,
+  });
+  const tallies: Map<string, number>[] = Array.from({ length: version.slotCount }, () => new Map());
+  for (const m of members) {
+    const values = slotValues(version.template, m.text);
+    values.forEach((value, i) => {
+      const tally = tallies[i];
+      if (value === null || !tally) return;
+      tally.set(value, (tally.get(value) ?? 0) + m.runCount);
+    });
+  }
+  return {
+    slots: tallies.map((tally) => ({
+      examples: [...tally]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, EXAMPLES_PER_SLOT)
+        .map(([value, runs]) => ({
+          value: value.length > EXAMPLE_CHARS ? `${value.slice(0, EXAMPLE_CHARS)}…` : value,
+          runs,
+        })),
+    })),
   };
 }
 
