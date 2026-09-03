@@ -31,6 +31,8 @@ import {
   IconTag,
   IconTagFilled,
   IconUser,
+  IconFilter,
+  IconFilter2,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -129,6 +131,7 @@ function AddFilterMenu({
         render={
           <Button
             variant="outline"
+            size="icon"
             className="font-normal transition-[color,box-shadow] bg-card active:scale-100 text-muted-foreground/50 hover:text-muted-foreground/50 aria-expanded:text-muted-foreground/50"
             onMouseEnter={group.onTriggerMouseEnter}
           />
@@ -136,8 +139,7 @@ function AddFilterMenu({
       >
         {/* Raw hex like the FilterSelect trigger icons — opacity on icons
 				    reads muddier than on text. */}
-        <IconPlus className="text-[#B8B8B8] dark:text-[#5B5B5B]" />
-        Filter
+        <IconFilter2 className="text-[#B8B8B8] dark:text-[#5B5B5B]" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="w-auto min-w-36"
@@ -294,7 +296,7 @@ export function TracesClient() {
           value: v.id,
           label: `v${v.number}${v.current ? " · current" : ""}`,
         })),
-    [promptVersions.data],
+    [promptVersions.data]
   );
 
   // Workflow names for the filter dropdown.
@@ -491,6 +493,15 @@ export function TracesClient() {
             icon={IconCpu}
             options={modelOptions}
           />
+
+          <ToggleChip
+            active={errorsOnly}
+            onClick={() => patchParams({ errors: errorsOnly ? "" : "1" })}
+          >
+            <IconAlertTriangle className="size-3.5" />
+            Errors only
+          </ToggleChip>
+
           {showWorkflow && (
             <FilterSelect
               value={workflowFilter}
@@ -548,13 +559,6 @@ export function TracesClient() {
               onAdd={addFilter}
             />
           )}
-          <ToggleChip
-            active={errorsOnly}
-            onClick={() => patchParams({ errors: errorsOnly ? "" : "1" })}
-          >
-            <IconAlertTriangle className="size-3.5" />
-            Errors only
-          </ToggleChip>
           <ClearFiltersButton
             show={hasFilters}
             onClick={() => {

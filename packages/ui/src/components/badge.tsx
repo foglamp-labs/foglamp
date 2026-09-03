@@ -30,10 +30,12 @@ const badgeVariants = cva(
 					"bg-violet-500/10 text-violet-700 shadow-[var(--custom-shadow-violet)] focus-visible:ring-violet-500/20 dark:bg-violet-500/15 dark:text-violet-300 dark:focus-visible:ring-violet-500/40 [a]:hover:bg-violet-500/20",
 				fuchsia:
 					"bg-fuchsia-500/10 text-fuchsia-700 shadow-[var(--custom-shadow-fuchsia)] focus-visible:ring-fuchsia-500/20 dark:bg-fuchsia-500/15 dark:text-fuchsia-300 dark:focus-visible:ring-fuchsia-500/40 [a]:hover:bg-fuchsia-500/20",
+				sky: "bg-sky-500/10 text-sky-700 shadow-[var(--custom-shadow-sky)] focus-visible:ring-sky-500/20 dark:bg-sky-500/15 dark:text-sky-300 dark:focus-visible:ring-sky-500/40 [a]:hover:bg-sky-500/20",
 				outline:
 					"shadow-(--custom-shadow) text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
 			},
 			size: {
+				sm: "h-4 px-1.5 gap-1 text-[10px] has-[>svg:first-child]:pl-1 has-[>svg:last-child]:pr-1 [&_svg:not([class*='size-'])]:size-2.5!",
 				md: "h-5 px-2 gap-[5px] text-xs has-[>svg:first-child]:pl-1.5 has-[>svg:last-child]:pr-1.5 [&_svg:not([class*='size-'])]:size-3!",
 				lg: "h-6 px-2.5 gap-1.5 text-sm has-[>svg:first-child]:pl-2 has-[>svg:last-child]:pr-2 [&_svg:not([class*='size-'])]:size-3.5!",
 			},

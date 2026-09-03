@@ -29,14 +29,15 @@ export function PromptVersionChip({
   const classes = cn("font-mono tabular-nums", className);
   if (!agentName) {
     return (
-      <Badge variant="outline" className={classes} title="Prompt version">
+      <Badge variant="sky" size="sm" className={classes} title="Prompt version">
         {label}
       </Badge>
     );
   }
   return (
     <Badge
-      variant="outline"
+      variant="sky"
+      size="sm"
       className={classes}
       title="Prompt version — see all versions"
       // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
