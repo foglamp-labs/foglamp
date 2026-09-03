@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@foglamp/ui/components/card";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
-import { IconFileHorizontalFilled } from "@tabler/icons-react";
+import { IconCode, IconFileHorizontalFilled } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
@@ -262,23 +262,19 @@ function TemplatePane({
         <span className="ml-auto flex items-center gap-2">
           {!showDiff && (
             <Button
-              size="sm"
-              variant="secondary"
+              size="xs"
+              variant="ghost"
               aria-pressed={raw}
-              className={cn(
-                DRAWER_BUTTON_CLASS,
-                raw && "bg-muted dark:bg-muted-foreground/25"
-              )}
               onClick={() => setRaw((r) => !r)}
             >
+              <IconCode />
               Raw
             </Button>
           )}
           {previous && (
             <Button
-              size="sm"
-              variant="secondary"
-              className={DRAWER_BUTTON_CLASS}
+              size="xs"
+              variant="ghost"
               onClick={() => setShowDiff((d) => !d)}
             >
               {showDiff ? "Hide diff" : `Diff vs v${previous.number}`}
