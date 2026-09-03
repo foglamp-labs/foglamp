@@ -26,7 +26,7 @@ export function PromptVersionChip({
 }) {
   if (!version) return null;
   const label = `v${version.number}`;
-  const classes = cn("font-mono tabular-nums", className);
+  const classes = cn("font-mono normal-case tabular-nums", className);
   if (!agentName) {
     return (
       <Badge variant="sky" size="sm" className={classes} title="Prompt version">

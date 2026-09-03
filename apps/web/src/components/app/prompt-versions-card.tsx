@@ -163,7 +163,7 @@ function VersionRow({
             open && "rotate-90"
           )}
         />
-        <Badge variant="outline" className="font-mono tabular-nums">
+        <Badge variant="outline" className="font-mono normal-case tabular-nums">
           v{v.number}
         </Badge>
         {v.current && <Badge variant="green">current</Badge>}

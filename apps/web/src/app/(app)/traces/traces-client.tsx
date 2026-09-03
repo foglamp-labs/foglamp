@@ -21,18 +21,16 @@ import {
   IconAffiliateFilled,
   IconAlertTriangle,
   IconCpu,
+  IconFilter2,
   IconGhost,
-  IconVersions,
   IconMessage2Filled,
   IconPlayerStopFilled,
-  IconPlus,
   IconSitemap,
   IconSitemapFilled,
   IconTag,
   IconTagFilled,
   IconUser,
-  IconFilter,
-  IconFilter2,
+  IconVersions,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -70,7 +68,6 @@ import { ModelLogo, formatModelName } from "@/components/model-logo";
 import {
   formatCostFixed,
   formatCount,
-  formatDuration,
   formatSpanDuration,
   formatTokens,
 } from "@/lib/format";
