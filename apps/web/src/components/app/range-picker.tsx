@@ -14,7 +14,7 @@ import {
   IconCalendarFilled,
   IconChevronDown,
 } from "@tabler/icons-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
 import {
@@ -85,6 +85,26 @@ export function RangePicker({
   const [draft, setDraft] = useState<DateRange | undefined>(undefined);
   const [picking, setPicking] = useState(false);
 
+  // The label's width is animated in CSS rather than letting the button snap
+  // to its new size: the trigger sits at the end of a right-aligned toolbar
+  // group, so a width change moves its *left* edge, and the tween makes it
+  // grow/shrink leftwards while whatever follows it stays put. `width` can't
+  // tween from `auto`, so the label is measured and set as px; `labelRef`
+  // is a max-content span so its size is the intrinsic label width
+  // regardless of the (clipped, tweening) box it sits in.
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const [labelWidth, setLabelWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = labelRef.current;
+    if (!el) return;
+    const update = () => setLabelWidth(el.getBoundingClientRect().width);
+    update();
+    // Fonts settling after mount change the label width too.
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [value.label]);
+
   return (
     <Popover
       open={open}
@@ -114,9 +134,20 @@ export function RangePicker({
             compact ? "text-muted-foreground/50" : "text-foreground/95"
           )}
         />
-        {!compact && (
-          <span className="truncate pr-1 pl-0.5">{value.label}</span>
-        )}
+        <span
+          aria-hidden={compact}
+          className={cn(
+            "grid overflow-hidden transition-[width,margin] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            // Collapsed: zero width, and eat the flex gap that would
+            // otherwise sit between the icon and the chevron.
+            compact && "-ml-1.5"
+          )}
+          style={{ width: compact ? 0 : (labelWidth ?? undefined) }}
+        >
+          <span ref={labelRef} className="w-max pr-1 pl-0.5">
+            {value.label}
+          </span>
+        </span>
         <IconChevronDown className="ml-auto size-3.5 text-muted-foreground/50 mt-px" />
       </PopoverTrigger>
       <PopoverContent
@@ -124,13 +155,16 @@ export function RangePicker({
         sideOffset={10}
         className="flex-row w-auto gap-0 overflow-hidden p-0"
       >
-        <div className="flex w-40 flex-col gap-1 border-r dark:border-[#252525] border-[#EFEFEF] p-3">
+        <div className="flex w-40 flex-col gap-1 border-r-[0.5px] border-solid dark:border-[#252525] border-[#EFEFEF] p-3">
           {RANGE_PRESETS.map((p) => (
             <Button
               key={p.key}
               variant={value.key === p.key ? "secondary" : "ghost"}
               size="sm"
-              className={cn("justify-start font-normal transition-transform")}
+              // Concentric with the popover: its radius (8px, 24px squircle)
+              // minus this column's 12px padding — 12px under squircle, and
+              // a small floor where the plain radius would go negative.
+              className="justify-start font-normal transition-transform rounded-sm squircle:rounded-xl corner-squircle active:scale-100"
               onClick={() => {
                 onChange(resolvePreset(p.key));
                 setOpen(false);
@@ -140,7 +174,7 @@ export function RangePicker({
             </Button>
           ))}
         </div>
-        <div className="p-1">
+        <div className="p-1 pl-2 pt-2">
           <Calendar
             mode="range"
             className="**:data-day:transition-none"

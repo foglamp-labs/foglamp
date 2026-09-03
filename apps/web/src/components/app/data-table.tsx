@@ -342,12 +342,21 @@ export function Toolbar({
   // Shared-layout id: lifting swaps which parent the group renders in (a
   // remount), so the new instance slides from the old one's position instead
   // of snapping. layout="position" keeps the controls from scaling in flight.
+  //
+  // layoutDependency limits the layout animation to the lift itself. Without
+  // it, every re-render re-measures the group, and position mode anchors the
+  // snapshot to the *left* edge — so when the range picker's label shrinks
+  // (right-aligned group, right edge fixed), Motion reads it as "the group
+  // moved right" and springs everything, including the trailing "New …"
+  // button that never actually moved. The unmount path still snapshots
+  // (Motion does so for any layoutId), so the lift keeps its slide.
   const layoutId = useId();
   const trailingNode = trailing ? (
     <motion.div
       ref={trailingRef}
       layoutId={layoutId}
       layout="position"
+      layoutDependency={lifted}
       transition={{ type: "spring", stiffness: 520, damping: 44 }}
       className="ml-auto flex items-center gap-2"
     >
