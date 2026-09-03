@@ -524,6 +524,10 @@ export function FilterSelect<T extends string>({
       ? [{ value: value as T, label: value as string }, ...options]
       : options;
 
+  const selectedHint = (() => {
+    const o = value ? allOptions.find((x) => x.value === value) : undefined;
+    return o?.hint ? { label: o.label, hint: o.hint } : null;
+  })();
   // The trigger leads with the selected option's icon, falling back to the
   // filter's own icon (the "all"/placeholder state).
   const TriggerIcon =
@@ -580,20 +584,18 @@ export function FilterSelect<T extends string>({
         {TriggerIcon && (
           <TriggerIcon className="size-3.5 shrink-0 dark:text-[#5B5B5B] text-[#B8B8B8]" />
         )}
-        <SelectValue placeholder={allLabel}>
-          {(v: T | "") => {
-            const o = allOptions.find((x) => x.value === v);
-            if (!o) return null;
-            return (
-              <>
-                {o.label}
-                {o.hint && (
-                  <span className="ml-1 text-muted-foreground">({o.hint})</span>
-                )}
-              </>
-            );
-          }}
-        </SelectValue>
+        {/* A custom value renderer replaces the placeholder, so only take
+            over when the selected option carries a hint to render muted. */}
+        {selectedHint ? (
+          <SelectValue placeholder={allLabel}>
+            {selectedHint.label}
+            <span className="ml-1 text-muted-foreground">
+              ({selectedHint.hint})
+            </span>
+          </SelectValue>
+        ) : (
+          <SelectValue placeholder={allLabel} />
+        )}
       </SelectTrigger>
       {/* w-auto: size to the longest option (instead of the trigger's width)
           so long names aren't clipped; the truncate span caps the extremes. */}
