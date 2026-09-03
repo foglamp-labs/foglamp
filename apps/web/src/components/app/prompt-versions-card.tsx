@@ -167,11 +167,12 @@ function VersionRow({
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      // The highlight is a pseudo-element inset from the row box so it clears
-      // the dividers above and below instead of filling edge to edge.
+      // The highlight is a pseudo-element inset from the row box (12px of
+      // padding a side) so it clears the dividers: 2px above the content,
+      // 6px below, 10px past the text either side.
       className={cn(
         "group/row relative isolate flex w-full cursor-pointer items-center justify-between gap-6 px-2.5 py-3 text-left",
-        "before:absolute before:inset-x-0 before:top-0.5 before:bottom-1.5 before:-z-10 before:rounded-md before:transition-colors",
+        "before:absolute before:inset-x-0 before:top-2.5 before:bottom-1.5 before:-z-10 before:rounded-md before:transition-colors",
         selected ? "before:bg-muted" : "hover:before:bg-muted/50"
       )}
     >
