@@ -65,7 +65,7 @@ export function PromptVersionsCard({
   });
   const versions = useMemo(
     () => (query.data?.versions ?? []) as Version[],
-    [query.data],
+    [query.data]
   );
   const skeleton = useDelayedLoading(query.isLoading);
 
@@ -113,7 +113,7 @@ export function PromptVersionsCard({
           <EmptyState
             icon={IconVersions}
             title="No prompt versions yet"
-            description="Versions are read off the system prompts your runs record. They appear a minute or so after the first runs land — nothing to declare."
+            description="Versions are read off the system prompts your runs record."
             className="border-none"
           />
         ) : (
@@ -160,7 +160,7 @@ function VersionRow({
         <IconChevronRight
           className={cn(
             "size-3 shrink-0 text-muted-foreground transition-transform",
-            open && "rotate-90",
+            open && "rotate-90"
           )}
         />
         <Badge variant="outline" className="font-mono tabular-nums">
@@ -268,7 +268,7 @@ function TemplateDiff({ from, to }: { from: string; to: string }) {
             op.type === "add" &&
               "bg-green-500/10 text-green-800 dark:text-green-300",
             op.type === "del" &&
-              "bg-rose-500/10 text-rose-800 dark:text-rose-300",
+              "bg-rose-500/10 text-rose-800 dark:text-rose-300"
           )}
         >
           <span className="w-2 shrink-0 select-none text-muted-foreground/70">
