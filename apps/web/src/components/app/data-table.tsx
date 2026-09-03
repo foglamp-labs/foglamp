@@ -764,7 +764,7 @@ export function PaginationFooter({
   const range =
     shown === 0 ? "0" : `${page * pageSize + 1} to ${page * pageSize + shown}`;
   return (
-    <div className="flex items-center justify-end gap-1 border-t border-border/50 px-8 pt-4 dark:border-border/40">
+    <div className="flex items-center justify-end gap-1 border-t border-border/50 px-6 pt-4 dark:border-border/40">
       <span className="text-xs text-muted-foreground/50 tabular-nums">
         {formatCount(total)} {total === 1 ? noun[0] : noun[1]}
       </span>
