@@ -3,6 +3,43 @@ title: Changelog
 description: "What's new in Foglamp."
 ---
 
+<Update label="September 2, 2026">
+
+## New features
+
+**Prompt versions (SDK 0.10.0).** Foglamp now knows which system prompt each
+run used, and groups an agent's prompts into versions without you declaring
+anything.
+
+- **System prompt on every run.** The SDK records the `system` text (or an
+  agent's `instructions`) on the root span, plus free metadata: generation
+  settings (temperature, max output tokens, ...), the output schema, provider
+  warnings, and the served model id. The prompt shows in the
+  [trace detail](/dashboard/traces) side panel and the agent drawer. Capture
+  is on by default and follows `recordInputs`; set `recordSystemPrompt: false`
+  to keep the conversation but drop the prompt. See
+  [Configuration](/sdk/configuration).
+- **Versions on the agent page.** A background job normalizes the recorded
+  prompts, folds content that varies between runs (a user's name, a retrieved
+  snippet) into `{…}` slots, and opens a new version when the text actually
+  changes. Each version shows its template, run count, first-seen time, and a
+  diff against the previous version. See
+  [Prompt versions](/dashboard/agents#prompt-versions).
+- **`v3` chips and a traces filter.** Runs carry a prompt-version chip in the
+  trace detail sheet and agent drawer, and the traces list gains a
+  **Prompt** filter once an agent is selected.
+- **Evals pinned to a prompt version.** When creating an eval you can pin it
+  to one version of the agent's prompt so it only scores runs that used it.
+  Pinned evals show the version on the list and detail pages.
+
+Upgrade the `foglamp` package to **0.10.0** to start recording prompts.
+Traces from older SDK versions keep flowing; they simply show no system
+prompt and don't take part in versioning. Self-hosters: this release adds a
+ClickHouse migration (`0019_system_prompt`) and Postgres tables for versions;
+deploy ingest and server before upgrading clients.
+
+</Update>
+
 <Update label="August 28, 2026">
 
 ## New features
