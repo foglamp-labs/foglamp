@@ -172,7 +172,7 @@ function VersionRow({
       // 6px below, 10px past the text either side.
       className={cn(
         "group/row relative isolate flex w-full cursor-pointer items-center justify-between gap-6 px-2.5 py-3 text-left",
-        "before:absolute before:inset-x-0 before:top-2 before:bottom-1.5 before:-z-10 before:rounded-md before:transition-colors",
+        "before:absolute before:inset-x-0 before:inset-y-2 before:-z-10 before:rounded-md before:transition-colors",
         selected ? "before:bg-muted" : "hover:before:bg-muted/50"
       )}
     >
