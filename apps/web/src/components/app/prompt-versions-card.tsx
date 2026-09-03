@@ -10,13 +10,16 @@ import {
   CardTitle,
 } from "@foglamp/ui/components/card";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
-import { IconArrowUpRight, IconFileHorizontalFilled } from "@tabler/icons-react";
+import {
+  IconArrowUpRight,
+  IconCheck,
+  IconFileHorizontalFilled,
+} from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
-import { CopyButton } from "@/components/app/copy-button";
 import { useDelayedLoading } from "@/components/app/hooks";
 import { EmptyState, ScrollFade } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
@@ -106,7 +109,7 @@ export function PromptVersionsCard({
               {query.isLoading ? (
                 <VersionRowsSkeleton skeleton={skeleton} />
               ) : (
-                <div className="divide-y divide-border/40 pb-6">
+                <div className="-mx-2 divide-y divide-border/40 pb-6">
                   {ordered.map((v) => (
                     <VersionRow
                       key={v.id}
@@ -151,7 +154,10 @@ function VersionRow({
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className="group/row flex w-full cursor-pointer items-center justify-between gap-6 px-0.5 py-3 text-left first:pt-0 last:pb-0"
+      className={cn(
+        "group/row flex w-full cursor-pointer items-center justify-between gap-6 rounded-md px-2 py-2.5 text-left transition-colors",
+        selected ? "bg-muted" : "hover:bg-muted/50"
+      )}
     >
       {/* Left: version + secondary facts (mirrors the tools card row). */}
       <div className="min-w-0 flex-1">
@@ -173,9 +179,9 @@ function VersionRow({
           >
             v{v.number}
           </span>
-          {v.current && <Badge variant="green">current</Badge>}
         </div>
         <div className="mt-1 text-xs tabular-nums text-muted-foreground/70">
+          {v.current && <span className="text-primary">Current · </span>}
           <span title={`First seen ${formatDateTime(v.firstSeen)}`}>
             since <RelativeTime value={v.firstSeen} />
           </span>
@@ -231,34 +237,26 @@ function TemplatePane({
   return (
     <div className="flex min-w-0 flex-col gap-2.5">
       <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {showDiff && previous
-            ? `v${previous.number} → v${v.number}`
-            : `v${v.number} template`}
-        </span>
-        <span className="ml-auto flex items-center gap-2">
-          {previous && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className={DRAWER_BUTTON_CLASS}
-              onClick={() => setShowDiff((d) => !d)}
-            >
-              {showDiff ? "Hide diff" : `Diff vs v${previous.number}`}
-            </Button>
-          )}
+        {previous && (
           <Button
             size="sm"
             variant="secondary"
             className={DRAWER_BUTTON_CLASS}
-            // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
-            render={<Link href={tracesHref as any} />}
+            onClick={() => setShowDiff((d) => !d)}
           >
-            View traces
-            <IconArrowUpRight className="mt-px" />
+            {showDiff ? "Hide diff" : `Diff vs v${previous.number}`}
           </Button>
-          <CopyButton value={v.template} title="Copy template" />
-        </span>
+        )}
+        <Button
+          size="sm"
+          variant="secondary"
+          className={DRAWER_BUTTON_CLASS}
+          // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
+          render={<Link href={tracesHref as any} />}
+        >
+          View traces
+          <IconArrowUpRight className="mt-px" />
+        </Button>
       </div>
       {showDiff && previous ? (
         <TemplateDiff from={previous.template} to={v.template} />
@@ -336,13 +334,16 @@ function VersionRowsSkeleton({
 }) {
   return (
     <div
-      className={cn("divide-y divide-border/40 pb-6", !skeleton && "invisible")}
+      className={cn(
+        "-mx-2 divide-y divide-border/40 pb-6",
+        !skeleton && "invisible"
+      )}
     >
       {Array.from({ length: rows }).map((_, i) => (
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: static list
           key={i}
-          className="flex items-center justify-between gap-6 px-0.5 py-3 first:pt-0 last:pb-0"
+          className="flex items-center justify-between gap-6 px-2 py-2.5"
         >
           <div className="min-w-0 flex-1">
             <div className="flex h-5 items-center gap-1.75">
