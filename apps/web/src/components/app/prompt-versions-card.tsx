@@ -183,7 +183,7 @@ function VersionRow({
             className={cn(
               "size-3.25 shrink-0 transition-colors",
               selected
-                ? "text-orange-400 dark:text-orange-600"
+                ? "text-lime-400 dark:text-lime-600"
                 : "text-muted-foreground/50 group-hover/row:text-muted-foreground"
             )}
           />
@@ -227,7 +227,7 @@ function VersionRow({
         </span>
         <div className="h-0.5 w-14 overflow-hidden rounded-full bg-muted-foreground/10">
           <div
-            className="ml-auto h-full rounded-full bg-orange-400 dark:bg-orange-600"
+            className="ml-auto h-full rounded-full bg-lime-400 dark:bg-lime-600"
             style={{ width: `${barWidth}%` }}
           />
         </div>

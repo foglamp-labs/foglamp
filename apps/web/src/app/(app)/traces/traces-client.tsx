@@ -88,10 +88,10 @@ const WorkflowIconFilled = (p: { className?: string }) => (
 const MetaValueIcon = (p: { className?: string }) => (
   <IconTagFilled className={cn(p.className, "text-fuchsia-500")} />
 );
-// Prompt version option identity — orange, like the agent page's versions card.
+// Prompt version option identity — lime, like the agent page's versions card.
 const PromptVersionIcon = (p: { className?: string }) => (
   <IconFileHorizontalFilled
-    className={cn(p.className, "text-orange-400 dark:text-orange-600")}
+    className={cn(p.className, "text-lime-400 dark:text-lime-600")}
   />
 );
 
