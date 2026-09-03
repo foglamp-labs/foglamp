@@ -75,6 +75,7 @@ export function ToolBreakdownCard({
         {!query.isLoading && tools.length === 0 ? (
           <EmptyState
             icon={IconTool}
+            iconClassName="fill-current stroke-1"
             title="No tool calls in this range"
             description="Tool executions will show up here once they run."
             className="mb-12 h-full border-none"

@@ -692,18 +692,20 @@ export function EmptyState({
   description,
   children,
   className,
+  iconClassName,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description?: string;
   children?: React.ReactNode;
   className?: string;
+  iconClassName?: string;
 }) {
   return (
     <Empty className={cn("border border-dashed", className)}>
       <EmptyHeader>
         <EmptyMedia variant="icon">
-          <Icon className="opacity-40" />
+          <Icon className={cn("opacity-40", iconClassName)} />
         </EmptyMedia>
         <EmptyContent>
           <EmptyTitle>{title}</EmptyTitle>
