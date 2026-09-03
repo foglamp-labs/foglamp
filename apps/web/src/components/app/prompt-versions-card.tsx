@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@foglamp/ui/components/card";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
-import { IconArrowUpRight, IconVersions } from "@tabler/icons-react";
+import { IconArrowUpRight, IconFileHorizontalFilled } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -21,7 +21,7 @@ import { useDelayedLoading } from "@/components/app/hooks";
 import { EmptyState, ScrollFade } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { RelativeTime } from "@/components/app/relative-time";
-import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
+import { formatCount, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
 
@@ -40,7 +40,7 @@ type Version = {
 /**
  * The system prompts an agent has run with, grouped into versions by the
  * prompt job (see packages/prompts). Laid out like the tools card: a list of
- * versions (newest first) with run share on the right, and the selected
+ * versions (newest first) with run counts on the right, and the selected
  * version's template — or its diff against the previous version — beside it.
  * The current version is selected by default.
  */
@@ -70,7 +70,6 @@ export function PromptVersionsCard({
   // Share bars are scaled to the most-run version, like the tools card
   // scales to the most-called tool.
   const maxRuns = Math.max(1, ...versions.map((v) => v.runCount));
-  const totalRuns = versions.reduce((n, v) => n + v.runCount, 0);
 
   // Selection: the current version on first load; clicks take over after.
   // Falls back to the newest if a re-inference drops the selected id.
@@ -94,7 +93,7 @@ export function PromptVersionsCard({
       <CardContent className="mt-1">
         {!query.isLoading && versions.length === 0 ? (
           <EmptyState
-            icon={IconVersions}
+            icon={IconFileHorizontalFilled}
             title="No prompt versions yet"
             description="Versions are read off the system prompts your runs record."
             className="border-none"
@@ -113,7 +112,6 @@ export function PromptVersionsCard({
                       key={v.id}
                       version={v}
                       selected={v.id === selectedId}
-                      share={totalRuns > 0 ? v.runCount / totalRuns : 0}
                       barWidth={Math.max(2, (v.runCount / maxRuns) * 100)}
                       onSelect={() => setSelectedId(v.id)}
                     />
@@ -140,13 +138,11 @@ export function PromptVersionsCard({
 function VersionRow({
   version: v,
   selected,
-  share,
   barWidth,
   onSelect,
 }: {
   version: Version;
   selected: boolean;
-  share: number;
   barWidth: number;
   onSelect: () => void;
 }) {
@@ -160,18 +156,19 @@ function VersionRow({
       {/* Left: version + secondary facts (mirrors the tools card row). */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.75">
-          <IconVersions
+          <IconFileHorizontalFilled
             className={cn(
               "size-3.25 shrink-0 transition-colors",
               selected
-                ? "text-violet-500"
+                ? "text-orange-400 dark:text-orange-600"
                 : "text-muted-foreground/50 group-hover/row:text-muted-foreground"
             )}
           />
           <span
             className={cn(
               "truncate text-sm font-medium tabular-nums transition-colors",
-              !selected && "text-muted-foreground group-hover/row:text-foreground"
+              !selected &&
+                "text-muted-foreground group-hover/row:text-foreground"
             )}
           >
             v{v.number}
@@ -205,12 +202,9 @@ function VersionRow({
           {formatCount(v.runCount)}
           {v.runCount === 1 ? " run" : " runs"}
         </span>
-        <span className="text-xs tabular-nums text-muted-foreground/70">
-          {formatPercent(share)} of runs
-        </span>
         <div className="h-0.5 w-14 overflow-hidden rounded-full bg-muted-foreground/10">
           <div
-            className="ml-auto h-full rounded-full bg-violet-500"
+            className="ml-auto h-full rounded-full bg-orange-400 dark:bg-orange-600"
             style={{ width: `${barWidth}%` }}
           />
         </div>

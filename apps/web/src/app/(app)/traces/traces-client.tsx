@@ -30,7 +30,8 @@ import {
   IconTag,
   IconTagFilled,
   IconUser,
-  IconVersions,
+  IconFileHorizontal,
+  IconFileHorizontalFilled,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -86,6 +87,12 @@ const WorkflowIconFilled = (p: { className?: string }) => (
 // Metadata option identity — fuchsia, unclaimed by the other filter entities.
 const MetaValueIcon = (p: { className?: string }) => (
   <IconTagFilled className={cn(p.className, "text-fuchsia-500")} />
+);
+// Prompt version option identity — orange, like the agent page's versions card.
+const PromptVersionIcon = (p: { className?: string }) => (
+  <IconFileHorizontalFilled
+    className={cn(p.className, "text-orange-400 dark:text-orange-600")}
+  />
 );
 
 type SecondaryFilter = "workflow" | "customer" | "meta" | "prompt";
@@ -184,7 +191,7 @@ function AddFilterMenu({
               pendingAdd.current = "prompt";
             }}
           >
-            <IconVersions />
+            <IconFileHorizontal />
             Prompt version
           </DropdownMenuItem>
         )}
@@ -310,6 +317,7 @@ export function TracesClient() {
           label: `${agentFilter ? "" : `${v.agentName} · `}v${v.number}${
             v.current ? " · current" : ""
           }`,
+          icon: PromptVersionIcon,
         })),
     [promptVersions.data, agentFilter]
   );
@@ -580,7 +588,7 @@ export function TracesClient() {
                 if (!v) removeFilter("prompt");
               }}
               allLabel="Any prompt version"
-              icon={IconVersions}
+              icon={IconFileHorizontal}
               options={promptOptions}
             />
           )}
