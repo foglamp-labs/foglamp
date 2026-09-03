@@ -150,7 +150,7 @@ function Inline({ text }: { text: string }) {
         return (
           <span
             key={key}
-            className="rounded bg-muted px-1 py-px font-mono text-[0.8em] text-muted-foreground"
+            className="rounded bg-lime-400/20 px-1 py-px font-mono text-[0.8em] text-lime-700 dark:bg-lime-600/25 dark:text-lime-300"
             title={PLACEHOLDER_TITLE[name]}
           >
             {part}
