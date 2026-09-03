@@ -10,12 +10,8 @@ import {
   CardTitle,
 } from "@foglamp/ui/components/card";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
-import {
-  IconArrowUpRight,
-  IconFileHorizontalFilled,
-} from "@tabler/icons-react";
+import { IconFileHorizontalFilled } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
@@ -88,25 +84,6 @@ export function PromptVersionsCard({
     ? (versions.find((p) => p.number === selected.number - 1) ?? null)
     : null;
 
-  const tracesButton = selected && (
-    <Button
-      size="sm"
-      variant="secondary"
-      className={cn(DRAWER_BUTTON_CLASS, "ml-auto")}
-      render={
-        <Link
-          // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
-          href={
-            `/traces?agent=${encodeURIComponent(agentName)}&prompt=${encodeURIComponent(selected.id)}` as any
-          }
-        />
-      }
-    >
-      View traces
-      <IconArrowUpRight className="mt-px" />
-    </Button>
-  );
-
   if (!query.isLoading && versions.length === 0) {
     return (
       <Card size="sm" className={className} id="prompt-versions">
@@ -129,21 +106,24 @@ export function PromptVersionsCard({
     <Card size="sm" className={className} id="prompt-versions">
       {/* Two columns from the top: the card's title belongs to the list
           column, and the template column runs its own header row (token
-          estimate, Raw, Diff) at the same height. */}
+          estimate, Raw, Diff) at the same height. Traces for a version are
+          reached from the traces page's prompt filter. */}
       <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         {/* Split from the template by a hairline like the date picker's
             preset column. */}
         <div className="lg:border-r-[0.5px] lg:border-solid lg:border-[#EFEFEF] lg:pr-6 lg:dark:border-[#252525]">
-          <div className="flex h-7 items-center gap-2">
+          <div className="flex h-7 items-center">
             <CardTitle>Prompt versions</CardTitle>
-            {tracesButton}
           </div>
           {/* One ScrollFade for both the skeleton and the loaded rows so the
               fade never remounts when the data lands (mirrors the tools
               card). The scroll container clips negative margins, so it is
               pulled out by the room the row highlight bleeds into (10px past
-              the text, 4px above the first row's content). */}
-          <ScrollFade className="-mx-2 mt-1.5 max-h-72 px-2">
+              the text, 2px above the first row's content). */}
+          <ScrollFade
+            className="-mx-2 mt-1.5 max-h-72 px-2"
+            bottomFadeClassName="h-14 opacity-100"
+          >
             {query.isLoading ? (
               <VersionRowsSkeleton skeleton={skeleton} />
             ) : (
@@ -191,7 +171,7 @@ function VersionRow({
       // the dividers above and below instead of filling edge to edge.
       className={cn(
         "group/row relative isolate flex w-full cursor-pointer items-center justify-between gap-6 px-2.5 py-3 text-left",
-        "before:absolute before:inset-x-0 before:top-1 before:bottom-1.5 before:-z-10 before:rounded-md before:transition-colors",
+        "before:absolute before:inset-x-0 before:top-0.5 before:bottom-1.5 before:-z-10 before:rounded-md before:transition-colors",
         selected ? "before:bg-muted" : "hover:before:bg-muted/50"
       )}
     >
@@ -309,7 +289,7 @@ function TemplatePane({
           doesn't clip it; the same fade treatment as the list. */}
       <ScrollFade
         className="-mx-1.5 max-h-72 px-1.5"
-        bottomFadeClassName="h-14 opacity-100"
+        bottomFadeClassName="h-20 opacity-100"
       >
         {showDiff && previous ? (
           <TemplateDiff from={previous.template} to={v.template} />
