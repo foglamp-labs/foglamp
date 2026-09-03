@@ -83,9 +83,10 @@ export const agentsRouter = router({
 			});
 		}),
 
-	// Inferred prompt versions for one agent (all time; not range-bound).
+	// Inferred prompt versions for one agent, or every agent's when no agent is
+	// given (all time; not range-bound).
 	promptVersions: protectedProcedure
-		.input(z.object({ projectId: z.string(), agentName: z.string() }))
+		.input(z.object({ projectId: z.string(), agentName: z.string().optional() }))
 		.query(({ ctx, input }) =>
 			listPromptVersions(ctx.db, ctx.session.user.id, input),
 		),

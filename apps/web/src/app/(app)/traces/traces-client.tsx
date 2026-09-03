@@ -227,7 +227,7 @@ export function TracesClient() {
   const agentFilter = params.agent;
   // Prompt version (an id from agents.promptVersions) — only meaningful
   // together with the agent it belongs to.
-  const promptFilter = agentFilter ? params.prompt : "";
+  const promptFilter = params.prompt;
   const workflowFilter = params.workflow;
   const customerFilter = params.customer;
   const modelFilter = params.model;
@@ -291,12 +291,14 @@ export function TracesClient() {
   });
 
   // Prompt versions of the selected agent, for the version filter.
+  // Prompt versions for the filter: the picked agent's, or every agent's
+  // (labelled with the agent) when none is picked.
   const promptVersions = useQuery({
     ...trpc.agents.promptVersions.queryOptions({
       projectId: projectId!,
-      agentName: agentFilter,
+      agentName: agentFilter || undefined,
     }),
-    enabled: !!projectId && !!agentFilter,
+    enabled: !!projectId,
   });
   const promptOptions = useMemo(
     () =>
@@ -305,10 +307,15 @@ export function TracesClient() {
         .reverse()
         .map((v) => ({
           value: v.id,
-          label: `v${v.number}${v.current ? " · current" : ""}`,
+          label: `${agentFilter ? "" : `${v.agentName} · `}v${v.number}${
+            v.current ? " · current" : ""
+          }`,
         })),
-    [promptVersions.data]
+    [promptVersions.data, agentFilter]
   );
+  const promptAgentOf = (versionId: string) =>
+    promptVersions.data?.versions.find((v) => v.id === versionId)?.agentName ??
+    "";
 
   // Workflow names for the filter dropdown.
   const workflowsList = useQuery({
@@ -409,10 +416,9 @@ export function TracesClient() {
   const showWorkflow = added.has("workflow") || !!workflowFilter;
   const showCustomer = added.has("customer") || !!customerFilter;
   const showMeta = added.has("meta") || !!metaKeyFilter;
-  // Prompt version rides on the agent filter: offered once an agent is picked
-  // and that agent has inferred versions.
-  const canPrompt = !!agentFilter && promptOptions.length > 0;
-  const showPrompt = !!agentFilter && (added.has("prompt") || !!promptFilter);
+  // Prompt version is offered once any agent has inferred versions.
+  const canPrompt = promptOptions.length > 0;
+  const showPrompt = added.has("prompt") || !!promptFilter;
   const canAddFilter =
     !showWorkflow || !showCustomer || !showMeta || (canPrompt && !showPrompt);
   const agentOptions = (agentsList.data ?? []).map((name) => ({
@@ -565,7 +571,12 @@ export function TracesClient() {
             <FilterSelect
               value={promptFilter}
               onChange={(v) => {
-                patchParams({ prompt: v });
+                // A version belongs to one agent: picking it without an agent
+                // filter narrows to that agent as well, so the two agree.
+                patchParams({
+                  prompt: v,
+                  agent: agentFilter || (v ? promptAgentOf(v) : ""),
+                });
                 if (!v) removeFilter("prompt");
               }}
               allLabel="Any prompt version"

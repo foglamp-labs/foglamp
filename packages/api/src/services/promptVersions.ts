@@ -249,25 +249,33 @@ export async function reinferAgent(db: Db, projectId: string, agentName: string)
 export async function listPromptVersions(
   db: Db,
   userId: string,
-  input: { projectId: string; agentName: string },
+  /** Without `agentName`: every agent's versions (for project-wide pickers). */
+  input: { projectId: string; agentName?: string },
 ) {
   await requireProjectAccess(db, userId, input.projectId);
   const [versions, state] = await Promise.all([
     db.query.promptVersion.findMany({
       where: and(
         eq(promptVersion.projectId, input.projectId),
-        eq(promptVersion.agentName, input.agentName),
+        input.agentName ? eq(promptVersion.agentName, input.agentName) : undefined,
       ),
-      orderBy: [asc(promptVersion.number)],
+      orderBy: [asc(promptVersion.agentName), asc(promptVersion.number)],
     }),
     db.query.promptInferState.findFirst({ where: eq(promptInferState.id, STATE_ID) }),
   ]);
-  // "Current" = the version with the most recent run. Several can be live at
-  // once (a canary), so the flag is per version, not a single index.
-  const latest = versions.reduce<number>((max, v) => Math.max(max, v.lastSeen.getTime()), 0);
+  // "Current" = the agent's version with the most recent run. Several can be
+  // live at once (a canary), so the flag is per version, not a single index.
+  const latestByAgent = new Map<string, number>();
+  for (const v of versions) {
+    latestByAgent.set(
+      v.agentName,
+      Math.max(latestByAgent.get(v.agentName) ?? 0, v.lastSeen.getTime()),
+    );
+  }
   return {
     versions: versions.map((v) => ({
       id: v.id,
+      agentName: v.agentName,
       number: v.number,
       template: v.template,
       slotCount: v.slotCount,
@@ -275,7 +283,7 @@ export async function listPromptVersions(
       runCount: v.runCount,
       firstSeen: v.firstSeen,
       lastSeen: v.lastSeen,
-      current: v.lastSeen.getTime() === latest,
+      current: v.lastSeen.getTime() === latestByAgent.get(v.agentName),
     })),
     // How far the job has read; runs newer than this aren't versioned yet.
     watermark: state?.watermark ?? null,
