@@ -107,13 +107,13 @@ export function PromptVersionsCard({
                 fade never remounts when the data lands (mirrors the tools card). */}
             {/* The scroll container clips negative margins, so it is pulled
                 out by the room the row highlight bleeds into (10px past the
-                text, 4px above the first row). Text lands where the tools
+                text, 10px above the first row). Text lands where the tools
                 card's does: 2px in, flush with the content top. */}
-            <ScrollFade className="-mx-2 -mt-2 max-h-72 px-2">
+            <ScrollFade className="-mx-2 -mt-2.5 max-h-72 px-2">
               {query.isLoading ? (
                 <VersionRowsSkeleton skeleton={skeleton} />
               ) : (
-                <div className="-mx-2 -mt-1 divide-y divide-border/40 pb-3">
+                <div className="-mx-2 -mt-0.5 divide-y divide-border/40 pb-3">
                   {ordered.map((v) => (
                     <VersionRow
                       key={v.id}
@@ -158,7 +158,7 @@ function VersionRow({
       // the dividers above and below instead of filling edge to edge.
       className={cn(
         "group/row relative isolate flex w-full cursor-pointer items-center justify-between gap-6 px-2.5 py-3 text-left",
-        "before:absolute before:inset-x-0 before:inset-y-1 before:-z-10 before:rounded-md before:transition-colors",
+        "before:absolute before:inset-x-0 before:inset-y-0.5 before:-z-10 before:rounded-md before:transition-colors",
         selected ? "before:bg-muted" : "hover:before:bg-muted/50"
       )}
     >
@@ -324,7 +324,7 @@ function VersionRowsSkeleton({
   return (
     <div
       className={cn(
-        "-mx-2 -mt-1 divide-y divide-border/40 pb-3",
+        "-mx-2 -mt-0.5 divide-y divide-border/40 pb-3",
         !skeleton && "invisible"
       )}
     >
