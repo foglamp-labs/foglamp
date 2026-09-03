@@ -277,26 +277,28 @@ function TemplatePane({
           )}
         </span>
       </div>
-      {showDiff && previous ? (
-        <TemplateDiff from={previous.template} to={v.template} />
-      ) : raw ? (
-        <Template text={v.template} />
-      ) : (
-        <PromptProse
-          template={v.template}
-          versionId={v.id}
-          slotCount={v.slotCount}
-          className={PANE_CLASS}
-        />
-      )}
+      {/* Pulled out by the diff's line-tint bleed so the scroll container
+          doesn't clip it; the same fade treatment as the list. */}
+      <ScrollFade className="-mx-1.5 max-h-72 px-1.5">
+        {showDiff && previous ? (
+          <TemplateDiff from={previous.template} to={v.template} />
+        ) : raw ? (
+          <Template text={v.template} />
+        ) : (
+          <PromptProse
+            template={v.template}
+            versionId={v.id}
+            slotCount={v.slotCount}
+          />
+        )}
+      </ScrollFade>
     </div>
   );
 }
 
 // The template sits directly in the card, beside the list; no box of its own.
-const PANE_CLASS = "max-h-72 overflow-auto pr-1";
 const TEMPLATE_CLASS =
-  "max-h-72 overflow-auto pr-1 font-mono text-[11px] leading-relaxed whitespace-pre-wrap wrap-anywhere";
+  "font-mono text-[11px] leading-relaxed whitespace-pre-wrap wrap-anywhere";
 
 function SlotLine() {
   return (
