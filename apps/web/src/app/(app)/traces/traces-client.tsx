@@ -88,7 +88,7 @@ const MetaValueIcon = (p: { className?: string }) => (
   <IconTagFilled className={cn(p.className, "text-fuchsia-500")} />
 );
 
-type SecondaryFilter = "workflow" | "customer" | "meta";
+type SecondaryFilter = "workflow" | "customer" | "meta" | "prompt";
 
 /** The "+ Filter" menu that summons the collapsed secondary filters. A separate
  * component (rendered inside Toolbar) so useFilterGroupItem sees the toolbar's
@@ -98,11 +98,16 @@ function AddFilterMenu({
   showWorkflow,
   showCustomer,
   showMeta,
+  showPrompt,
+  canPrompt,
   onAdd,
 }: {
   showWorkflow: boolean;
   showCustomer: boolean;
   showMeta: boolean;
+  showPrompt: boolean;
+  /** Prompt version needs an agent with inferred versions. */
+  canPrompt: boolean;
   onAdd: (k: SecondaryFilter) => void;
 }) {
   const group = useFilterGroupItem();
@@ -173,6 +178,16 @@ function AddFilterMenu({
             Metadata
           </DropdownMenuItem>
         )}
+        {canPrompt && !showPrompt && (
+          <DropdownMenuItem
+            onClick={() => {
+              pendingAdd.current = "prompt";
+            }}
+          >
+            <IconVersions />
+            Prompt version
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -239,15 +254,14 @@ export function TracesClient() {
     errorsOnly
   );
 
-  // Secondary filters (workflow/customer/metadata) stay out of the toolbar
-  // until applied via the "+ Filter" menu — `added` tracks the ones summoned
-  // this session so an empty select can sit open before a value is picked.
-  const [added, setAdded] = useState<Set<"workflow" | "customer" | "meta">>(
-    () => new Set()
-  );
-  const addFilter = (k: "workflow" | "customer" | "meta") =>
+  // Secondary filters (workflow/customer/metadata/prompt version) stay out of
+  // the toolbar until applied via the "+ Filter" menu — `added` tracks the
+  // ones summoned this session so an empty select can sit open before a value
+  // is picked.
+  const [added, setAdded] = useState<Set<SecondaryFilter>>(() => new Set());
+  const addFilter = (k: SecondaryFilter) =>
     setAdded((s) => new Set(s).add(k));
-  const removeFilter = (k: "workflow" | "customer" | "meta") =>
+  const removeFilter = (k: SecondaryFilter) =>
     setAdded((s) => {
       const next = new Set(s);
       next.delete(k);
@@ -395,7 +409,12 @@ export function TracesClient() {
   const showWorkflow = added.has("workflow") || !!workflowFilter;
   const showCustomer = added.has("customer") || !!customerFilter;
   const showMeta = added.has("meta") || !!metaKeyFilter;
-  const canAddFilter = !showWorkflow || !showCustomer || !showMeta;
+  // Prompt version rides on the agent filter: offered once an agent is picked
+  // and that agent has inferred versions.
+  const canPrompt = !!agentFilter && promptOptions.length > 0;
+  const showPrompt = !!agentFilter && (added.has("prompt") || !!promptFilter);
+  const canAddFilter =
+    !showWorkflow || !showCustomer || !showMeta || (canPrompt && !showPrompt);
   const agentOptions = (agentsList.data ?? []).map((name) => ({
     value: name,
     label: name,
@@ -467,22 +486,16 @@ export function TracesClient() {
                 only occupy the toolbar while applied (or freshly summoned). */}
           <FilterSelect
             value={agentFilter}
-            onChange={(v) => patchParams({ agent: v, prompt: "" })}
+            onChange={(v) => {
+              patchParams({ agent: v, prompt: "" });
+              // Versions belong to one agent; a summoned prompt select
+              // doesn't carry over to the next.
+              removeFilter("prompt");
+            }}
             allLabel="Any agent"
             icon={IconGhost}
             options={agentOptions}
           />
-          {/* Prompt version rides on the agent filter: it only shows once an
-              agent is picked and that agent has inferred versions. */}
-          {agentFilter && (promptOptions.length > 0 || promptFilter) && (
-            <FilterSelect
-              value={promptFilter}
-              onChange={(v) => patchParams({ prompt: v })}
-              allLabel="Any prompt version"
-              icon={IconVersions}
-              options={promptOptions}
-            />
-          )}
           <FilterSelect
             value={modelFilter}
             onChange={(v) => patchParams({ model: v })}
@@ -548,11 +561,25 @@ export function TracesClient() {
               allowFreeText={metaValuesList.data?.truncated ?? false}
             />
           )}
+          {showPrompt && (
+            <FilterSelect
+              value={promptFilter}
+              onChange={(v) => {
+                patchParams({ prompt: v });
+                if (!v) removeFilter("prompt");
+              }}
+              allLabel="Any prompt version"
+              icon={IconVersions}
+              options={promptOptions}
+            />
+          )}
           {canAddFilter && (
             <AddFilterMenu
               showWorkflow={showWorkflow}
               showCustomer={showCustomer}
               showMeta={showMeta}
+              showPrompt={showPrompt}
+              canPrompt={canPrompt}
               onAdd={addFilter}
             />
           )}
