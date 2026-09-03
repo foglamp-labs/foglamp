@@ -588,9 +588,13 @@ export function FilterSelect<T extends string>({
             over when the selected option carries a hint to render muted. */}
         {selectedHint ? (
           <SelectValue placeholder={allLabel}>
-            {selectedHint.label}
-            <span className="ml-1 text-muted-foreground">
-              ({selectedHint.hint})
+            {/* One span: the value slot is a gapped flex row, so separate
+                children would sit a gap apart on top of the space. */}
+            <span className="truncate">
+              {selectedHint.label}{" "}
+              <span className="text-muted-foreground">
+                ({selectedHint.hint})
+              </span>
             </span>
           </SelectValue>
         ) : (
@@ -679,7 +683,10 @@ export function FilterSelect<T extends string>({
               <span className="block max-w-64 truncate" title={o.label}>
                 {o.label}
                 {o.hint && (
-                  <span className="ml-1 text-muted-foreground">({o.hint})</span>
+                  <>
+                    {" "}
+                    <span className="text-muted-foreground">({o.hint})</span>
+                  </>
                 )}
               </span>
             </SelectItem>
