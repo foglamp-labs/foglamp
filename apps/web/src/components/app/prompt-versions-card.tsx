@@ -279,7 +279,10 @@ function TemplatePane({
       </div>
       {/* Pulled out by the diff's line-tint bleed so the scroll container
           doesn't clip it; the same fade treatment as the list. */}
-      <ScrollFade className="-mx-1.5 max-h-72 px-1.5">
+      <ScrollFade
+        className="-mx-1.5 max-h-72 px-1.5"
+        bottomFadeClassName="h-14 opacity-100"
+      >
         {showDiff && previous ? (
           <TemplateDiff from={previous.template} to={v.template} />
         ) : raw ? (

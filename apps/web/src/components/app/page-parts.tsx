@@ -546,6 +546,7 @@ export function ScrollFade({
   className,
   containerClassName,
   fromClassName = "from-card",
+  bottomFadeClassName,
 }: {
   children: React.ReactNode;
   /** Classes for the scroll viewport (e.g. `max-h-88`, padding). */
@@ -554,6 +555,9 @@ export function ScrollFade({
    * flex column (`min-h-0 flex-1`) instead of a fixed max-height. */
   containerClassName?: string;
   fromClassName?: string;
+  /** Overrides for the bottom fade while it shows (e.g. `h-14 opacity-100`
+   * for a stronger edge). */
+  bottomFadeClassName?: string;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -594,7 +598,7 @@ export function ScrollFade({
         className={cn(
           "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t to-transparent transition-opacity duration-150",
           fromClassName,
-          edges.bottom ? "opacity-75" : "opacity-0"
+          edges.bottom ? cn("opacity-75", bottomFadeClassName) : "opacity-0"
         )}
       />
     </div>
