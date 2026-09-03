@@ -290,8 +290,11 @@ function BreakdownRow({
   color: string;
   href?: Route;
 }) {
+  // The list is `divide-y`, so each row draws the edge beneath it. Like the
+  // table rows, a hovered link hides its own bottom edge and the row above it
+  // hides its bottom edge too, so the highlight reads as one seamless block.
   const rowClassName =
-    "flex items-center justify-between gap-6 py-3 px-5";
+    "flex items-center justify-between gap-6 py-3 px-5 has-[+a:hover]:border-transparent";
   const inner = (
     <>
       {/* Left: name + secondary metrics. */}
@@ -321,7 +324,10 @@ function BreakdownRow({
     return (
       <Link
         href={href}
-        className={cn(rowClassName, "transition-colors hover:bg-muted/50")}
+        className={cn(
+          rowClassName,
+          "transition-colors hover:border-transparent hover:bg-muted/50"
+        )}
       >
         {inner}
       </Link>
