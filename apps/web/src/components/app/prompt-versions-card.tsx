@@ -5,6 +5,7 @@ import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
@@ -88,6 +89,26 @@ export function PromptVersionsCard({
     <Card size="sm" className={className} id="prompt-versions">
       <CardHeader>
         <CardTitle>Prompt versions</CardTitle>
+        {selected && (
+          <CardAction className="self-center">
+            <Button
+              size="sm"
+              variant="secondary"
+              className={DRAWER_BUTTON_CLASS}
+              render={
+                <Link
+                  // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
+                  href={
+                    `/traces?agent=${encodeURIComponent(agentName)}&prompt=${encodeURIComponent(selected.id)}` as any
+                  }
+                />
+              }
+            >
+              View traces
+              <IconArrowUpRight className="mt-px" />
+            </Button>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent className="mt-1">
         {!query.isLoading && versions.length === 0 ? (
@@ -124,11 +145,7 @@ export function PromptVersionsCard({
             {query.isLoading ? (
               <TemplateSkeleton skeleton={skeleton} />
             ) : selected ? (
-              <TemplatePane
-                version={selected}
-                previous={previous}
-                agentName={agentName}
-              />
+              <TemplatePane version={selected} previous={previous} />
             ) : null}
           </div>
         )}
@@ -221,25 +238,21 @@ function VersionRow({
   );
 }
 
-/** The selected version's template, or its diff against the previous one,
- * with the actions that belong to it. */
+/** The selected version's template, or its diff against the previous one. */
 function TemplatePane({
   version: v,
   previous,
-  agentName,
 }: {
   version: Version;
   previous: Version | null;
-  agentName: string;
 }) {
   const [showDiff, setShowDiff] = useState(false);
   // A newly selected version opens on its template, not a stale diff toggle.
   useEffect(() => setShowDiff(false), [v.id]);
-  const tracesHref = `/traces?agent=${encodeURIComponent(agentName)}&prompt=${encodeURIComponent(v.id)}`;
   return (
     <div className="flex min-w-0 flex-col gap-2.5">
-      <div className="flex items-center gap-2">
-        {previous && (
+      {previous && (
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
             variant="secondary"
@@ -248,18 +261,8 @@ function TemplatePane({
           >
             {showDiff ? "Hide diff" : `Diff vs v${previous.number}`}
           </Button>
-        )}
-        <Button
-          size="sm"
-          variant="secondary"
-          className={DRAWER_BUTTON_CLASS}
-          // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
-          render={<Link href={tracesHref as any} />}
-        >
-          View traces
-          <IconArrowUpRight className="mt-px" />
-        </Button>
-      </div>
+        </div>
+      )}
       {showDiff && previous ? (
         <TemplateDiff from={previous.template} to={v.template} />
       ) : (
@@ -374,8 +377,7 @@ function VersionRowsSkeleton({
 function TemplateSkeleton({ skeleton }: { skeleton: boolean }) {
   return (
     <div className={cn("flex flex-col gap-2.5", !skeleton && "invisible")}>
-      <div className="flex h-7 items-center gap-2">
-        <Skeleton className="h-7 w-24" />
+      <div className="flex h-7 items-center">
         <Skeleton className="h-7 w-24" />
       </div>
       <Skeleton className="h-40 w-full" />
