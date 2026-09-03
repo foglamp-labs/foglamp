@@ -5,7 +5,6 @@ import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
@@ -89,55 +88,84 @@ export function PromptVersionsCard({
     ? (versions.find((p) => p.number === selected.number - 1) ?? null)
     : null;
 
-  return (
-    <Card size="sm" className={className} id="prompt-versions">
-      <CardHeader>
-        <CardTitle>Prompt versions</CardTitle>
-      </CardHeader>
-      <CardContent className="mt-1">
-        {!query.isLoading && versions.length === 0 ? (
+  const tracesButton = selected && (
+    <Button
+      size="sm"
+      variant="secondary"
+      className={cn(DRAWER_BUTTON_CLASS, "ml-auto")}
+      render={
+        <Link
+          // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
+          href={
+            `/traces?agent=${encodeURIComponent(agentName)}&prompt=${encodeURIComponent(selected.id)}` as any
+          }
+        />
+      }
+    >
+      View traces
+      <IconArrowUpRight className="mt-px" />
+    </Button>
+  );
+
+  if (!query.isLoading && versions.length === 0) {
+    return (
+      <Card size="sm" className={className} id="prompt-versions">
+        <CardHeader>
+          <CardTitle>Prompt versions</CardTitle>
+        </CardHeader>
+        <CardContent className="mt-1">
           <EmptyState
             icon={IconFileHorizontalFilled}
             title="No prompt versions yet"
             description="Versions are read off the system prompts your runs record."
             className="border-none"
           />
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-            {/* The list sits in its own column, split from the template by a
-                hairline like the date picker's preset column. */}
-            <div className="lg:border-r-[0.5px] lg:border-solid lg:border-[#EFEFEF] lg:pr-6 lg:dark:border-[#252525]">
-              {/* One ScrollFade for both the skeleton and the loaded rows so
-                  the fade never remounts when the data lands (mirrors the
-                  tools card). The scroll container clips negative margins, so
-                  it is pulled out by the room the row highlight bleeds into
-                  (10px past the text, 6px above the first row). Text lands
-                  where the tools card's does: 2px in, flush with the top. */}
-              <ScrollFade className="-mx-2 -mt-1.5 max-h-72 px-2">
-                {query.isLoading ? (
-                  <VersionRowsSkeleton skeleton={skeleton} />
-                ) : (
-                  <div className="-mx-2 -mt-1.5 divide-y divide-border/40 pb-3">
-                    {ordered.map((v) => (
-                      <VersionRow
-                        key={v.id}
-                        version={v}
-                        selected={v.id === selectedId}
-                        barWidth={Math.max(2, (v.runCount / maxRuns) * 100)}
-                        onSelect={() => setSelectedId(v.id)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </ScrollFade>
-            </div>
-            {query.isLoading ? (
-              <TemplateSkeleton skeleton={skeleton} />
-            ) : selected ? (
-              <TemplatePane version={selected} previous={previous} />
-            ) : null}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card size="sm" className={className} id="prompt-versions">
+      {/* Two columns from the top: the card's title belongs to the list
+          column, and the template column runs its own header row (token
+          estimate, Raw, Diff) at the same height. */}
+      <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        {/* Split from the template by a hairline like the date picker's
+            preset column. */}
+        <div className="lg:border-r-[0.5px] lg:border-solid lg:border-[#EFEFEF] lg:pr-6 lg:dark:border-[#252525]">
+          <div className="flex h-7 items-center gap-2">
+            <CardTitle>Prompt versions</CardTitle>
+            {tracesButton}
           </div>
-        )}
+          {/* One ScrollFade for both the skeleton and the loaded rows so the
+              fade never remounts when the data lands (mirrors the tools
+              card). The scroll container clips negative margins, so it is
+              pulled out by the room the row highlight bleeds into (10px past
+              the text, 4px above the first row's content). */}
+          <ScrollFade className="-mx-2 mt-1.5 max-h-72 px-2">
+            {query.isLoading ? (
+              <VersionRowsSkeleton skeleton={skeleton} />
+            ) : (
+              <div className="-mx-2 -mt-1 divide-y divide-border/40 pb-3">
+                {ordered.map((v) => (
+                  <VersionRow
+                    key={v.id}
+                    version={v}
+                    selected={v.id === selectedId}
+                    barWidth={Math.max(2, (v.runCount / maxRuns) * 100)}
+                    onSelect={() => setSelectedId(v.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </ScrollFade>
+        </div>
+        {query.isLoading ? (
+          <TemplateSkeleton skeleton={skeleton} />
+        ) : selected ? (
+          <TemplatePane version={selected} previous={previous} />
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -163,7 +191,7 @@ function VersionRow({
       // the dividers above and below instead of filling edge to edge.
       className={cn(
         "group/row relative isolate flex w-full cursor-pointer items-center justify-between gap-6 px-2.5 py-3 text-left",
-        "before:absolute before:inset-x-0 before:inset-y-1.5 before:-z-10 before:rounded-md before:transition-colors",
+        "before:absolute before:inset-x-0 before:top-1 before:bottom-1.5 before:-z-10 before:rounded-md before:transition-colors",
         selected ? "before:bg-muted" : "hover:before:bg-muted/50"
       )}
     >
@@ -368,7 +396,7 @@ function VersionRowsSkeleton({
   return (
     <div
       className={cn(
-        "-mx-2 -mt-1.5 divide-y divide-border/40 pb-3",
+        "-mx-2 -mt-1 divide-y divide-border/40 pb-3",
         !skeleton && "invisible"
       )}
     >
