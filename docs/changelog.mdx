@@ -32,11 +32,18 @@ anything.
   carries the version chip too, so a drop in scores can be read against the
   prompt change that caused it.
 
-Upgrade the `foglamp` package to **0.10.0** to start recording prompts.
+Upgrade the `foglamp` package to **0.10.1** to start recording prompts.
 Traces from older SDK versions keep flowing; they simply show no system
 prompt and don't take part in versioning. Self-hosters: this release adds a
 ClickHouse migration (`0019_system_prompt`) and Postgres tables for versions;
 deploy ingest and server before upgrading clients.
+
+## Bug fixes
+
+**`foglamp` 0.10.0 could not be installed.** Its manifest shipped an
+unresolved `catalog:` dependency range for `uuidv7`, so bun refused to install
+it. 0.10.0 is deprecated on npm; 0.10.1 is the same code with the range
+resolved.
 
 </Update>
 
