@@ -43,10 +43,6 @@ export type EvalFilters = {
   spanType?: string;
   status?: string;
   metadata?: Record<string, string>;
-  // Pin to one inferred prompt version (see schema/prompt.ts): only runs whose
-  // root prompt hash belongs to it are scored (span-level evals reach the root
-  // prompt through the trace).
-  promptVersionId?: string;
 };
 
 // The judge model (llm scorers only). Provider must have a saved credential.

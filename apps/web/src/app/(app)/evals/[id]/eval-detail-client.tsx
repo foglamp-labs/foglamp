@@ -44,7 +44,6 @@ import {
   IconScissors,
   IconStack2Filled,
   IconTargetArrow,
-  IconVersions,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -52,10 +51,10 @@ import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { promptVersionsHref } from "@/components/app/prompt-version-chip";
 import { AgentIcon } from "@/components/app/agent-icon";
 import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import { ContextChip } from "@/components/app/context-chip";
+import { PromptVersionChip } from "@/components/app/prompt-version-chip";
 import {
   PaginationFooter,
   SortableHead,
@@ -115,8 +114,8 @@ import { FAMILY_ICON, presetMeta } from "../preset-meta";
 import { EvalChipPlaceholders } from "./chip-placeholders";
 
 type ScoreRow = RouterOutputs["evals"]["recentScores"]["scores"][number];
-// The deep-linked run comes from `evals.score`, which has no headline snippet.
-type BaseScoreRow = Omit<ScoreRow, "userMessage">;
+// The deep-linked run comes from `evals.score`; same shape, one row.
+type BaseScoreRow = ScoreRow;
 
 const PAGE_SIZES = [25, 50, 100];
 
@@ -439,21 +438,6 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                 label={ev.filters.agentName}
               />
             )}
-            {ev.promptVersion && (
-              <ContextChip
-                href={
-                  ev.promptVersion.agentName
-                    ? promptVersionsHref(ev.promptVersion.agentName)
-                    : undefined
-                }
-                icon={IconVersions}
-                label={
-                  ev.promptVersion.number != null
-                    ? `Prompt v${ev.promptVersion.number}`
-                    : "Prompt version removed"
-                }
-              />
-            )}
           </>
         ) : (
           <EvalChipPlaceholders />
@@ -601,6 +585,19 @@ export function EvalDetailClient({ evalId }: { evalId: string }) {
                               <span className="truncate">
                                 {s.userMessage ?? s.traceId}
                               </span>
+                              {/* Which prompt version the run used. Stop the
+                                click so the link doesn't also toggle the row. */}
+                              {s.promptVersion && (
+                                <span
+                                  className="shrink-0"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <PromptVersionChip
+                                    version={s.promptVersion}
+                                    agentName={s.agentName}
+                                  />
+                                </span>
+                              )}
                             </div>
                           </TableCell>
                           {/* Colored text, no pill — same weight in every row. */}
@@ -1076,6 +1073,18 @@ function Judgment({
           value={formatDateTime(score.scoredAt)}
           className="col-span-2"
         />
+        {score.promptVersion && (
+          <Meta
+            label="Prompt version"
+            className="col-span-2"
+            value={
+              <PromptVersionChip
+                version={score.promptVersion}
+                agentName={score.agentName}
+              />
+            }
+          />
+        )}
         {score.modelId && (
           <Meta
             label="Judge"

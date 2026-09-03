@@ -36,7 +36,7 @@ import { userMessageSnippet } from "../lib/user-message";
 import { decimalOrNull, num, toClickHouseDateTime } from "../lib/util";
 import type { Ch, Db } from "../types";
 import { requireProjectAccess } from "./access";
-import { PromptVersionGone, evalPromptVersions, resolveEvalPromptFilter } from "./promptVersions";
+import { hashKey, promptVersionsForHashes } from "./promptVersions";
 
 export type EvalInput = {
   projectId: string;
@@ -141,10 +141,6 @@ export async function listEvals(
       : [];
 
   const byEval = new Map(summaryRows.map((s) => [s.eval_id, s]));
-  const pinned = await evalPromptVersions(
-    db,
-    rows.map(({ ev }) => ev.filters ?? null),
-  );
 
   return rows.map(({ ev, st }) => {
     const s = byEval.get(ev.id);
@@ -158,11 +154,6 @@ export async function listEvals(
       scorerSource: ev.scorerSource,
       targetLevel: ev.targetLevel,
       filters: ev.filters ?? null,
-      // The pinned prompt version, when the eval has one (number is null if
-      // re-inference removed it).
-      promptVersion: ev.filters?.promptVersionId
-        ? (pinned.get(ev.filters.promptVersionId) ?? null)
-        : null,
       sampleRate: Number(ev.sampleRate),
       passThreshold: Number(ev.passThreshold),
       model: ev.model ?? null,
@@ -394,25 +385,55 @@ export async function listRecentScores(
       to,
     }),
   ]);
-  // Headline per run: the scored trace's user message (same snippet the
-  // traces list leads with), so rows read as content rather than raw ids.
-  const rootInputs = await getTraceRootInputs(ch, {
-    projectId: ev.projectId,
-    traceIds: [...new Set(rows.map((r) => r.trace_id))],
-  });
-  const snippetByTrace = new Map(
-    rootInputs.map((r) => [
-      r.trace_id,
-      userMessageSnippet(r.input, USER_MESSAGE_SNIPPET_CAP),
-    ]),
-  );
+  const runs = await scoredRuns(db, ch, ev.projectId, rows.map((r) => r.trace_id));
   return {
-    scores: rows.map((r) => ({
-      ...mapScore(r),
-      userMessage: snippetByTrace.get(r.trace_id) ?? null,
-    })),
+    scores: rows.map((r) => ({ ...mapScore(r), ...runOf(runs, r.trace_id) })),
     total,
   };
+}
+
+type ScoredRun = {
+  /** Headline: the run's user message (same snippet the traces list leads with). */
+  userMessage: string | null;
+  agentName: string | null;
+  /** Which inferred prompt version the run used; null until the prompt job
+   * has folded it, or when no system prompt was recorded. */
+  promptVersion: { id: string; number: number } | null;
+};
+
+const NO_RUN: ScoredRun = { userMessage: null, agentName: null, promptVersion: null };
+
+function runOf(runs: Map<string, ScoredRun>, traceId: string): ScoredRun {
+  return runs.get(traceId) ?? NO_RUN;
+}
+
+/** Per-trace context for a page of scores: headline snippet and prompt version. */
+async function scoredRuns(
+  db: Db,
+  ch: Ch,
+  projectId: string,
+  traceIds: string[],
+): Promise<Map<string, ScoredRun>> {
+  const roots = await getTraceRootInputs(ch, {
+    projectId,
+    traceIds: [...new Set(traceIds)],
+  });
+  const versions = await promptVersionsForHashes(db, {
+    projectId,
+    pairs: roots
+      .filter((r) => r.agent_name && r.prompt_hash)
+      .map((r) => ({ agentName: r.agent_name, hash: r.prompt_hash })),
+  });
+  return new Map(
+    roots.map((r) => [
+      r.trace_id,
+      {
+        userMessage: userMessageSnippet(r.input, USER_MESSAGE_SNIPPET_CAP),
+        agentName: r.agent_name || null,
+        promptVersion: versions.get(hashKey(r.agent_name, r.prompt_hash)) ?? null,
+      },
+    ]),
+  );
 }
 
 /** Scores for a single trace and its spans — for the trace detail view. */
@@ -445,7 +466,9 @@ export async function getEvalScore(
     scoreId: input.scoreId,
     threshold: Number(ev.passThreshold),
   });
-  return row ? mapScore(row) : null;
+  if (!row) return null;
+  const runs = await scoredRuns(db, ch, ev.projectId, [row.trace_id]);
+  return { ...mapScore(row), ...runOf(runs, row.trace_id) };
 }
 
 function mapScore(s: {
@@ -527,18 +550,11 @@ export async function preflightEval(
   }
   const filters = { ...(input.filters ?? {}) } as EvalFilters;
   if (preset.spanType && !filters.spanType) filters.spanType = preset.spanType;
-  let chFilters: Awaited<ReturnType<typeof resolveEvalPromptFilter>>;
-  try {
-    chFilters = await resolveEvalPromptFilter(db, input.projectId, filters);
-  } catch (err) {
-    if (!(err instanceof PromptVersionGone)) throw err;
-    throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
-  }
   const now = Date.now();
   const candidates = await queryEvalCandidates(ch, {
     projectId: input.projectId,
     level: input.targetLevel,
-    filters: chFilters,
+    filters,
     since: toClickHouseDateTime64(now - PREFLIGHT_LOOKBACK_MS),
     until: toClickHouseDateTime64(now),
     sampleThousandths: 1000,

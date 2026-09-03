@@ -28,9 +28,9 @@ anything.
 - **`v3` chips and a traces filter.** Runs carry a prompt-version chip in the
   trace detail sheet and agent drawer, and the traces list gains a
   **Prompt** filter once an agent is selected.
-- **Evals pinned to a prompt version.** When creating an eval you can pin it
-  to one version of the agent's prompt so it only scores runs that used it.
-  Pinned evals show the version on the list and detail pages.
+- **Prompt version per scored run.** On an eval's page, each scored run
+  carries the version chip too, so a drop in scores can be read against the
+  prompt change that caused it.
 
 Upgrade the `foglamp` package to **0.10.0** to start recording prompts.
 Traces from older SDK versions keep flowing; they simply show no system

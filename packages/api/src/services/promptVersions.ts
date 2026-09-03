@@ -1,5 +1,4 @@
-import { type EvalFilterParams, queryPromptHashActivity } from "@foglamp/clickhouse";
-import type { EvalFilters } from "@foglamp/db/schema/eval";
+import { queryPromptHashActivity } from "@foglamp/clickhouse";
 import { promptHash, promptInferState, promptVersion } from "@foglamp/db/schema/prompt";
 import { inferVersions, normalizePrompt } from "@foglamp/prompts";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
@@ -12,7 +11,7 @@ import { requireProjectAccess } from "./access";
 // (project, agent, prompt hash) ClickHouse has ingested since its watermark
 // into `prompt_hash`, then re-runs inference for each touched agent and
 // rewrites that agent's `prompt_version` rows. Version ids survive
-// re-inference (matched by shared hashes) so evals can pin one.
+// re-inference (matched by shared hashes) so links to a version keep working.
 
 const STATE_ID = "global";
 // Don't read spans newer than this, so late spans settle first.
@@ -322,61 +321,33 @@ export async function promptVersionHashes(
   return { agentName: version.agentName, hashes: rows.map((r) => r.hash) };
 }
 
-/** How far the prompt job has indexed runs (by ingested_at); null before its first pass. */
-export async function promptInferWatermark(db: Db): Promise<Date | null> {
-  const state = await db.query.promptInferState.findFirst({
-    where: eq(promptInferState.id, STATE_ID),
-  });
-  return state?.watermark ?? null;
-}
-
-/** An eval is pinned to a prompt version that re-inference has since removed. */
-export class PromptVersionGone extends Error {
-  constructor(versionId: string) {
-    super(`prompt version ${versionId} no longer exists — re-pin the eval`);
-    this.name = "PromptVersionGone";
-  }
-}
-
 /**
- * Turn an eval's filters into ClickHouse filter params: a pinned prompt
- * version becomes the set of root-prompt hashes behind it (and pins the
- * agent). Throws PromptVersionGone when the version was removed.
+ * Versions for many (agent, prompt hash) pairs at once — one query for a page
+ * of runs. Keyed by `hashKey`; pairs the job hasn't folded yet are absent.
  */
-export async function resolveEvalPromptFilter(
+export async function promptVersionsForHashes(
   db: Db,
-  projectId: string,
-  filters: EvalFilters,
-): Promise<EvalFilterParams> {
-  const { promptVersionId, ...rest } = filters;
-  if (!promptVersionId) return rest;
-  const version = await promptVersionHashes(db, { projectId, versionId: promptVersionId });
-  if (!version) throw new PromptVersionGone(promptVersionId);
-  return { ...rest, agentName: rest.agentName || version.agentName, promptHashes: version.hashes };
+  input: { projectId: string; pairs: { agentName: string; hash: string }[] },
+): Promise<Map<string, { id: string; number: number }>> {
+  const out = new Map<string, { id: string; number: number }>();
+  const hashes = [...new Set(input.pairs.map((p) => p.hash).filter(Boolean))];
+  if (hashes.length === 0) return out;
+  const rows = await db
+    .select({
+      agentName: promptHash.agentName,
+      hash: promptHash.hash,
+      id: promptVersion.id,
+      number: promptVersion.number,
+    })
+    .from(promptHash)
+    .innerJoin(promptVersion, eq(promptVersion.id, promptHash.versionId))
+    .where(and(eq(promptHash.projectId, input.projectId), inArray(promptHash.hash, hashes)));
+  for (const r of rows) out.set(hashKey(r.agentName, r.hash), { id: r.id, number: r.number });
+  return out;
 }
 
-export type EvalPromptVersion = {
-  id: string;
-  /** null when re-inference removed the version — surfaced, never silently unpinned. */
-  number: number | null;
-  agentName: string | null;
-};
-
-/** The pinned prompt version behind each eval's filters, resolved in one query. */
-export async function evalPromptVersions(
-  db: Db,
-  filtersList: (EvalFilters | null)[],
-): Promise<Map<string, EvalPromptVersion>> {
-  const ids = [...new Set(filtersList.flatMap((f) => (f?.promptVersionId ? [f.promptVersionId] : [])))];
-  const out = new Map<string, EvalPromptVersion>();
-  if (ids.length === 0) return out;
-  const rows = await db
-    .select({ id: promptVersion.id, number: promptVersion.number, agentName: promptVersion.agentName })
-    .from(promptVersion)
-    .where(inArray(promptVersion.id, ids));
-  for (const id of ids) out.set(id, { id, number: null, agentName: null });
-  for (const r of rows) out.set(r.id, r);
-  return out;
+export function hashKey(agentName: string, hash: string): string {
+  return `${agentName}\u0000${hash}`;
 }
 
 function fromClickHouse(s: string): Date {

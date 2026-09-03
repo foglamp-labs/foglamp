@@ -73,7 +73,6 @@ import {
   IconStack2,
   IconTool,
   IconTrashFilled,
-  IconVersions,
 } from "@tabler/icons-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
@@ -108,7 +107,7 @@ import {
 import { useProject } from "@/components/app/project-context";
 import { useRange } from "@/components/app/range-context";
 import { RangeControl } from "@/components/app/range-picker";
-import { formatCostFixed, formatDateTime, formatPercent } from "@/lib/format";
+import { formatCostFixed, formatPercent } from "@/lib/format";
 import { rowNav } from "@/lib/row-nav";
 import { trpc } from "@/utils/trpc";
 import { EvalsHeader } from "./header";
@@ -232,7 +231,6 @@ function AutoHeight({ children }: { children: React.ReactNode }) {
 const DEFAULT_FORM = {
   target: "trace" as TargetId,
   agentName: "",
-  promptVersionId: "",
   workflowName: "",
   status: "",
   presetId: "",
@@ -337,18 +335,6 @@ export function EvalsClient() {
   );
   // Existing agent names → combobox suggestions (free typing still allowed).
   const agentNames = agents.data ?? [];
-  // The chosen agent's inferred prompt versions, so the eval can pin one.
-  const promptVersions = useQuery({
-    ...trpc.agents.promptVersions.queryOptions({
-      projectId: projectId!,
-      agentName: form.agentName,
-    }),
-    enabled: !!projectId && agentNames.includes(form.agentName),
-  });
-  const promptVersionOptions = useMemo(
-    () => [...(promptVersions.data?.versions ?? [])].reverse(),
-    [promptVersions.data]
-  );
 
   const create = useMutation(
     trpc.evals.create.mutationOptions({
@@ -439,7 +425,6 @@ export function EvalsClient() {
     if (!selectedPreset) return;
     const filters = clean({
       agentName: form.agentName,
-      promptVersionId: form.promptVersionId,
       workflowName: form.workflowName,
       spanType: targetOf(form.target).spanType,
       status: form.status,
@@ -609,9 +594,7 @@ export function EvalsClient() {
                         <Combobox
                           items={agentNames}
                           inputValue={form.agentName}
-                          onInputValueChange={(v) =>
-                            set({ agentName: v, promptVersionId: "" })
-                          }
+                          onInputValueChange={(v) => set({ agentName: v })}
                         >
                           <ComboboxInput placeholder="any" className="w-full">
                             {/* Same treatment as the alert dialog's metric
@@ -644,65 +627,6 @@ export function EvalsClient() {
                           </ComboboxContent>
                         </Combobox>
                       </Field>
-                      {/* Pin the eval to one of the agent's inferred prompt
-                          versions; only offered once the agent has some. */}
-                      {promptVersionOptions.length > 0 && (
-                        <Field>
-                          <FieldLabel>Prompt version (optional)</FieldLabel>
-                          <Select
-                            value={form.promptVersionId}
-                            onValueChange={(v) =>
-                              set({ promptVersionId: v ?? "" })
-                            }
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="any">
-                                {(value) => {
-                                  const v = promptVersionOptions.find(
-                                    (x) => x.id === value
-                                  );
-                                  if (!v) return "any";
-                                  return (
-                                    <span className="flex items-center gap-1.5">
-                                      <IconVersions className="size-4 text-muted-foreground" />
-                                      v{v.number}
-                                      {v.current && (
-                                        <span className="text-muted-foreground">
-                                          · current
-                                        </span>
-                                      )}
-                                    </span>
-                                  );
-                                }}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="" label="any">
-                                any
-                              </SelectItem>
-                              {promptVersionOptions.map((v) => (
-                                <SelectItem
-                                  key={v.id}
-                                  value={v.id}
-                                  label={`v${v.number}`}
-                                >
-                                  <IconVersions className="size-4 text-muted-foreground mt-0.5" />
-                                  <span className="flex flex-col">
-                                    <span>
-                                      v{v.number}
-                                      {v.current ? " · current" : ""}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {v.runCount} runs · since{" "}
-                                      {formatDateTime(v.firstSeen)}
-                                    </span>
-                                  </span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </Field>
-                      )}
                     </div>
                   )}
 
@@ -782,7 +706,6 @@ export function EvalsClient() {
                       targetLevel={targetOf(form.target).level}
                       filters={clean({
                         agentName: form.agentName,
-                        promptVersionId: form.promptVersionId,
                         workflowName: form.workflowName,
                         spanType: targetOf(form.target).spanType,
                         status: form.status,
@@ -1032,9 +955,6 @@ export function EvalsClient() {
                               }
                               {r.filters?.agentName
                                 ? ` · ${r.filters.agentName}`
-                                : ""}
-                              {r.promptVersion?.number != null
-                                ? ` · v${r.promptVersion.number}`
                                 : ""}
                               <span className="tabular-nums">
                                 {` · ${Math.round(r.sampleRate * 100)}%`}

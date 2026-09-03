@@ -833,6 +833,8 @@ export function getSessionFirstInputs(
 export type TraceRootInputRow = {
 	trace_id: string;
 	input: string;
+	agent_name: string;
+	prompt_hash: string;
 };
 
 /**
@@ -848,7 +850,7 @@ export function getTraceRootInputs(
 	if (params.traceIds.length === 0) return Promise.resolve([]);
 	return rows<TraceRootInputRow>(
 		client,
-		`SELECT trace_id, input
+		`SELECT trace_id, input, agent_name, prompt_hash
      FROM spans FINAL
      WHERE project_id = {projectId:String}
        AND trace_id IN {ids:Array(String)}
@@ -2816,18 +2818,8 @@ export function queryEvalCandidates(
 		qp.agentName = filters.agentName;
 	}
 	if (filters.promptHashes !== undefined) {
+		where.push("prompt_hash IN {promptHashes:Array(String)}");
 		qp.promptHashes = filters.promptHashes;
-		// The prompt hash lives on the root agent span. Trace-level candidates
-		// *are* agent spans; span-level ones reach it through their trace.
-		if (level === "trace") {
-			where.push("prompt_hash IN {promptHashes:Array(String)}");
-		} else {
-			where.push(
-				`trace_id IN (SELECT DISTINCT trace_id FROM spans
-           WHERE project_id = {projectId:String} AND span_type = 'agent'
-             AND prompt_hash IN {promptHashes:Array(String)})`,
-			);
-		}
 	}
 	if (filters.workflowName) {
 		where.push("workflow_name = {workflowName:String}");
