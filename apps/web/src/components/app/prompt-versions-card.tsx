@@ -105,14 +105,15 @@ export function PromptVersionsCard({
           <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             {/* One ScrollFade for both the skeleton and the loaded rows so the
                 fade never remounts when the data lands (mirrors the tools card). */}
-            {/* The scroll container clips negative margins, so it gets the
-                side padding the row highlight bleeds into; text stays flush
-                with the card header. */}
-            <ScrollFade className="-mx-2.5 max-h-72 px-2.5">
+            {/* The scroll container clips negative margins, so it is pulled
+                out by the room the row highlight bleeds into (10px past the
+                text, 4px above the first row). Text lands where the tools
+                card's does: 2px in, flush with the content top. */}
+            <ScrollFade className="-mx-2 -mt-2 max-h-72 px-2">
               {query.isLoading ? (
                 <VersionRowsSkeleton skeleton={skeleton} />
               ) : (
-                <div className="-mx-2.5 divide-y divide-border/40 pb-6">
+                <div className="-mx-2 -mt-1 divide-y divide-border/40 pb-3">
                   {ordered.map((v) => (
                     <VersionRow
                       key={v.id}
@@ -323,7 +324,7 @@ function VersionRowsSkeleton({
   return (
     <div
       className={cn(
-        "-mx-2.5 divide-y divide-border/40 pb-6",
+        "-mx-2 -mt-1 divide-y divide-border/40 pb-3",
         !skeleton && "invisible"
       )}
     >
