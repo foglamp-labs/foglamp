@@ -104,11 +104,11 @@ export function PromptVersionsCard({
             {/* The scroll container clips negative margins, so it gets the
                 side padding the row highlight bleeds into; text stays flush
                 with the card header. */}
-            <ScrollFade className="-mx-2 max-h-72 px-2">
+            <ScrollFade className="-mx-3 max-h-72 px-3">
               {query.isLoading ? (
                 <VersionRowsSkeleton skeleton={skeleton} />
               ) : (
-                <div className="-mx-2 divide-y divide-border/40 pb-6">
+                <div className="-mx-3 divide-y divide-border/40 pb-6">
                   {ordered.map((v) => (
                     <VersionRow
                       key={v.id}
@@ -156,7 +156,7 @@ function VersionRow({
       // The highlight is a pseudo-element inset from the row box so it clears
       // the dividers above and below instead of filling edge to edge.
       className={cn(
-        "group/row relative isolate flex w-full cursor-pointer items-center justify-between gap-6 px-2 py-3 text-left",
+        "group/row relative isolate flex w-full cursor-pointer items-center justify-between gap-6 px-3 py-3 text-left",
         "before:absolute before:inset-x-0 before:inset-y-1 before:-z-10 before:rounded-md before:transition-colors",
         selected ? "before:bg-muted" : "hover:before:bg-muted/50"
       )}
@@ -337,7 +337,7 @@ function VersionRowsSkeleton({
   return (
     <div
       className={cn(
-        "-mx-2 divide-y divide-border/40 pb-6",
+        "-mx-3 divide-y divide-border/40 pb-6",
         !skeleton && "invisible"
       )}
     >
@@ -345,7 +345,7 @@ function VersionRowsSkeleton({
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: static list
           key={i}
-          className="flex items-center justify-between gap-6 px-2 py-3"
+          className="flex items-center justify-between gap-6 px-3 py-3"
         >
           <div className="min-w-0 flex-1">
             <div className="flex h-5 items-center gap-1.75">
