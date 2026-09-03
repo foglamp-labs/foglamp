@@ -190,7 +190,7 @@ function VersionRow({
         </span>
       </button>
       {open && (
-        <div className="flex flex-col gap-2.5 pb-1 pl-[22px]">
+        <div className="flex flex-col gap-2.5 pb-1 pl-5.5">
           <div className="flex items-center gap-2">
             <Button
               size="sm"
