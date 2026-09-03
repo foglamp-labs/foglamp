@@ -326,7 +326,7 @@ function BreakdownRow({
         href={href}
         className={cn(
           rowClassName,
-          "transition-colors hover:border-transparent hover:bg-muted/50"
+          "hover:border-transparent hover:bg-muted/50"
         )}
       >
         {inner}
