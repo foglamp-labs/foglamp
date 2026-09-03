@@ -104,29 +104,33 @@ export function PromptVersionsCard({
           />
         ) : (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-            {/* One ScrollFade for both the skeleton and the loaded rows so the
-                fade never remounts when the data lands (mirrors the tools card). */}
-            {/* The scroll container clips negative margins, so it is pulled
-                out by the room the row highlight bleeds into (10px past the
-                text, 6px above the first row). Text lands where the tools
-                card's does: 2px in, flush with the content top. */}
-            <ScrollFade className="-mx-2 -mt-1.5 max-h-72 px-2">
-              {query.isLoading ? (
-                <VersionRowsSkeleton skeleton={skeleton} />
-              ) : (
-                <div className="-mx-2 -mt-1.5 divide-y divide-border/40 pb-3">
-                  {ordered.map((v) => (
-                    <VersionRow
-                      key={v.id}
-                      version={v}
-                      selected={v.id === selectedId}
-                      barWidth={Math.max(2, (v.runCount / maxRuns) * 100)}
-                      onSelect={() => setSelectedId(v.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </ScrollFade>
+            {/* The list sits in its own column, split from the template by a
+                hairline like the date picker's preset column. */}
+            <div className="lg:border-r-[0.5px] lg:border-solid lg:border-[#EFEFEF] lg:pr-6 lg:dark:border-[#252525]">
+              {/* One ScrollFade for both the skeleton and the loaded rows so
+                  the fade never remounts when the data lands (mirrors the
+                  tools card). The scroll container clips negative margins, so
+                  it is pulled out by the room the row highlight bleeds into
+                  (10px past the text, 6px above the first row). Text lands
+                  where the tools card's does: 2px in, flush with the top. */}
+              <ScrollFade className="-mx-2 -mt-1.5 max-h-72 px-2">
+                {query.isLoading ? (
+                  <VersionRowsSkeleton skeleton={skeleton} />
+                ) : (
+                  <div className="-mx-2 -mt-1.5 divide-y divide-border/40 pb-3">
+                    {ordered.map((v) => (
+                      <VersionRow
+                        key={v.id}
+                        version={v}
+                        selected={v.id === selectedId}
+                        barWidth={Math.max(2, (v.runCount / maxRuns) * 100)}
+                        onSelect={() => setSelectedId(v.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </ScrollFade>
+            </div>
             {query.isLoading ? (
               <TemplateSkeleton skeleton={skeleton} />
             ) : selected ? (
@@ -289,10 +293,10 @@ function TemplatePane({
   );
 }
 
-const PANE_CLASS =
-  "max-h-72 overflow-auto rounded-md border border-border/60 bg-muted/30 px-3.5 py-3";
+// The template sits directly in the card, beside the list; no box of its own.
+const PANE_CLASS = "max-h-72 overflow-auto pr-1";
 const TEMPLATE_CLASS =
-  "max-h-72 overflow-auto rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap wrap-anywhere";
+  "max-h-72 overflow-auto pr-1 font-mono text-[11px] leading-relaxed whitespace-pre-wrap wrap-anywhere";
 
 function SlotLine() {
   return (
@@ -322,13 +326,13 @@ function Template({ text }: { text: string }) {
 function TemplateDiff({ from, to }: { from: string; to: string }) {
   const ops = useMemo<DiffOp[]>(() => lineDiff(from, to), [from, to]);
   return (
-    <div className={cn(TEMPLATE_CLASS, "px-0")}>
+    <div className={cn(TEMPLATE_CLASS, "-mx-1.5")}>
       {ops.map((op, i) => (
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: static list
           key={i}
           className={cn(
-            "flex min-h-[1.2em] gap-2 px-3",
+            "flex min-h-[1.2em] gap-2 rounded-sm px-1.5",
             op.type === "add" &&
               "bg-green-500/10 text-green-800 dark:text-green-300",
             op.type === "del" &&
@@ -400,7 +404,14 @@ function TemplateSkeleton({ skeleton }: { skeleton: boolean }) {
         <Skeleton className="h-3 w-20" />
         <Skeleton className="ml-auto h-7 w-12" />
       </div>
-      <Skeleton className="h-40 w-full" />
+      <div className="flex flex-col gap-2.5">
+        <Skeleton className="h-3.5 w-3/5" />
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-11/12" />
+        <Skeleton className="h-3.5 w-4/5" />
+        <Skeleton className="h-3.5 w-full" />
+        <Skeleton className="h-3.5 w-2/3" />
+      </div>
     </div>
   );
 }

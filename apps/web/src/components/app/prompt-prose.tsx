@@ -194,9 +194,9 @@ function SlotChip({
       <HoverCardTrigger
         delay={200}
         render={<button type="button" />}
-        className="inline-flex cursor-default items-center gap-1 rounded-md border border-orange-400/40 bg-orange-400/10 px-1.5 py-0.5 text-[11px] font-medium text-orange-700 transition-colors hover:bg-orange-400/20 dark:border-orange-600/40 dark:bg-orange-600/15 dark:text-orange-300 dark:hover:bg-orange-600/25"
+        className="inline-flex cursor-default items-center gap-1 rounded-md bg-orange-400/25 px-1.5 py-0.5 text-[11px] font-medium text-orange-800 ring-1 ring-orange-500/50 transition-colors ring-inset hover:bg-orange-400/35 dark:bg-orange-600/30 dark:text-orange-200 dark:ring-orange-500/50 dark:hover:bg-orange-600/40"
       >
-        <IconFileHorizontalFilled className="size-3 text-orange-400 dark:text-orange-600" />
+        <IconFileHorizontalFilled className="size-3 text-orange-500" />
         varies per run
       </HoverCardTrigger>
       <HoverCardContent side="bottom" align="start" className="w-80 p-0">
