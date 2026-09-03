@@ -505,6 +505,8 @@ export function FilterSelect<T extends string>({
   options: {
     value: T;
     label: string;
+    /** Muted "(hint)" after the label, e.g. "(current)". Not searched. */
+    hint?: string;
     icon?: ComponentType<{ className?: string }>;
   }[];
   /** Leading icon for the trigger; shown for the "all" state and as the
@@ -578,7 +580,20 @@ export function FilterSelect<T extends string>({
         {TriggerIcon && (
           <TriggerIcon className="size-3.5 shrink-0 dark:text-[#5B5B5B] text-[#B8B8B8]" />
         )}
-        <SelectValue placeholder={allLabel} />
+        <SelectValue placeholder={allLabel}>
+          {(v: T | "") => {
+            const o = allOptions.find((x) => x.value === v);
+            if (!o) return null;
+            return (
+              <>
+                {o.label}
+                {o.hint && (
+                  <span className="ml-1 text-muted-foreground">({o.hint})</span>
+                )}
+              </>
+            );
+          }}
+        </SelectValue>
       </SelectTrigger>
       {/* w-auto: size to the longest option (instead of the trigger's width)
           so long names aren't clipped; the truncate span caps the extremes. */}
@@ -651,12 +666,19 @@ export function FilterSelect<T extends string>({
         {visibleOptions.map((o) => {
           const OptIcon = o.icon;
           return (
-            <SelectItem key={o.value} value={o.value} label={o.label}>
+            <SelectItem
+              key={o.value}
+              value={o.value}
+              label={o.hint ? `${o.label} (${o.hint})` : o.label}
+            >
               {OptIcon && (
                 <OptIcon className="size-4 shrink-0 text-neutral-500 mt-0.5" />
               )}
               <span className="block max-w-64 truncate" title={o.label}>
                 {o.label}
+                {o.hint && (
+                  <span className="ml-1 text-muted-foreground">({o.hint})</span>
+                )}
               </span>
             </SelectItem>
           );

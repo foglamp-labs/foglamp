@@ -314,9 +314,8 @@ export function TracesClient() {
         .reverse()
         .map((v) => ({
           value: v.id,
-          label: `${agentFilter ? "" : `${v.agentName} · `}v${v.number}${
-            v.current ? " · current" : ""
-          }`,
+          label: `${agentFilter ? "" : `${v.agentName} · `}v${v.number}`,
+          hint: v.current ? "current" : undefined,
           icon: PromptVersionIcon,
         })),
     [promptVersions.data, agentFilter]
