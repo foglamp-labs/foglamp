@@ -101,7 +101,10 @@ export function PromptVersionsCard({
           <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             {/* One ScrollFade for both the skeleton and the loaded rows so the
                 fade never remounts when the data lands (mirrors the tools card). */}
-            <ScrollFade className="max-h-72 pr-1">
+            {/* The scroll container clips negative margins, so it gets the
+                side padding the row highlight bleeds into; text stays flush
+                with the card header. */}
+            <ScrollFade className="-mx-2 max-h-72 px-2">
               {query.isLoading ? (
                 <VersionRowsSkeleton skeleton={skeleton} />
               ) : (
