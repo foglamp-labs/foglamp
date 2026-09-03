@@ -10,11 +10,7 @@ import {
   CardTitle,
 } from "@foglamp/ui/components/card";
 import { Skeleton } from "@foglamp/ui/components/skeleton";
-import {
-  IconArrowUpRight,
-  IconChevronRight,
-  IconVersions,
-} from "@tabler/icons-react";
+import { IconArrowUpRight, IconVersions } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -22,10 +18,10 @@ import { useEffect, useMemo, useState } from "react";
 import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import { CopyButton } from "@/components/app/copy-button";
 import { useDelayedLoading } from "@/components/app/hooks";
-import { EmptyState } from "@/components/app/page-parts";
+import { EmptyState, ScrollFade } from "@/components/app/page-parts";
 import { useProject } from "@/components/app/project-context";
 import { RelativeTime } from "@/components/app/relative-time";
-import { formatCount, formatDateTime } from "@/lib/format";
+import { formatCount, formatDateTime, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
 
@@ -43,10 +39,10 @@ type Version = {
 
 /**
  * The system prompts an agent has run with, grouped into versions by the
- * prompt job (see packages/prompts). Newest first; the current version opens
- * by default. Each version shows its template — content that varies between
- * runs is folded into a `{…}` line — and, once expanded, a diff against the
- * previous version.
+ * prompt job (see packages/prompts). Laid out like the tools card: a list of
+ * versions (newest first) with run share on the right, and the selected
+ * version's template — or its diff against the previous version — beside it.
+ * The current version is selected by default.
  */
 export function PromptVersionsCard({
   agentName,
@@ -69,47 +65,34 @@ export function PromptVersionsCard({
   );
   const skeleton = useDelayedLoading(query.isLoading);
 
-  // Open the current version on first load; user toggles take over after.
-  const [open, setOpen] = useState<Set<string>>(new Set());
-  const [seeded, setSeeded] = useState(false);
-  useEffect(() => {
-    if (seeded || versions.length === 0) return;
-    const current = versions.find((v) => v.current) ?? versions[0];
-    if (current) setOpen(new Set([current.id]));
-    setSeeded(true);
-  }, [versions, seeded]);
-  const toggle = (id: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
   // Display order: newest first. `versions` is oldest-first from the API.
   const ordered = useMemo(() => [...versions].reverse(), [versions]);
-  const previousOf = (v: Version) =>
-    versions.find((p) => p.number === v.number - 1) ?? null;
+  // Share bars are scaled to the most-run version, like the tools card
+  // scales to the most-called tool.
+  const maxRuns = Math.max(1, ...versions.map((v) => v.runCount));
+  const totalRuns = versions.reduce((n, v) => n + v.runCount, 0);
+
+  // Selection: the current version on first load; clicks take over after.
+  // Falls back to the newest if a re-inference drops the selected id.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (versions.length === 0) return;
+    if (selectedId && versions.some((v) => v.id === selectedId)) return;
+    const current = versions.find((v) => v.current) ?? ordered[0];
+    if (current) setSelectedId(current.id);
+  }, [versions, ordered, selectedId]);
+  const selected = versions.find((v) => v.id === selectedId) ?? null;
+  const previous = selected
+    ? (versions.find((p) => p.number === selected.number - 1) ?? null)
+    : null;
 
   return (
     <Card size="sm" className={className} id="prompt-versions">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Prompt versions
-          {versions.length > 0 && (
-            <span className="text-xs font-normal text-muted-foreground tabular-nums">
-              {versions.length}
-            </span>
-          )}
-        </CardTitle>
+        <CardTitle>Prompt versions</CardTitle>
       </CardHeader>
       <CardContent className="mt-1">
-        {skeleton ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
-          </div>
-        ) : !query.isLoading && versions.length === 0 ? (
+        {!query.isLoading && versions.length === 0 ? (
           <EmptyState
             icon={IconVersions}
             title="No prompt versions yet"
@@ -117,18 +100,37 @@ export function PromptVersionsCard({
             className="border-none"
           />
         ) : (
-          <ul className="flex flex-col divide-y divide-border/60">
-            {ordered.map((v) => (
-              <VersionRow
-                key={v.id}
-                version={v}
-                previous={previousOf(v)}
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+            {/* One ScrollFade for both the skeleton and the loaded rows so the
+                fade never remounts when the data lands (mirrors the tools card). */}
+            <ScrollFade className="max-h-72 pr-1">
+              {query.isLoading ? (
+                <VersionRowsSkeleton skeleton={skeleton} />
+              ) : (
+                <div className="divide-y divide-border/40 pb-6">
+                  {ordered.map((v) => (
+                    <VersionRow
+                      key={v.id}
+                      version={v}
+                      selected={v.id === selectedId}
+                      share={totalRuns > 0 ? v.runCount / totalRuns : 0}
+                      barWidth={Math.max(2, (v.runCount / maxRuns) * 100)}
+                      onSelect={() => setSelectedId(v.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </ScrollFade>
+            {query.isLoading ? (
+              <TemplateSkeleton skeleton={skeleton} />
+            ) : selected ? (
+              <TemplatePane
+                version={selected}
+                previous={previous}
                 agentName={agentName}
-                open={open.has(v.id)}
-                onToggle={() => toggle(v.id)}
               />
-            ))}
-          </ul>
+            ) : null}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -137,98 +139,144 @@ export function PromptVersionsCard({
 
 function VersionRow({
   version: v,
-  previous,
-  agentName,
-  open,
-  onToggle,
+  selected,
+  share,
+  barWidth,
+  onSelect,
 }: {
   version: Version;
-  previous: Version | null;
-  agentName: string;
-  open: boolean;
-  onToggle: () => void;
+  selected: boolean;
+  share: number;
+  barWidth: number;
+  onSelect: () => void;
 }) {
-  const [showDiff, setShowDiff] = useState(false);
-  const tracesHref = `/traces?agent=${encodeURIComponent(agentName)}&prompt=${encodeURIComponent(v.id)}`;
   return (
-    <li className="flex flex-col py-2 first:pt-0 last:pb-0">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-md py-1.5 text-left text-xs transition-colors hover:text-foreground"
-      >
-        <IconChevronRight
-          className={cn(
-            "size-3 shrink-0 text-muted-foreground transition-transform",
-            open && "rotate-90"
-          )}
-        />
-        <Badge variant="outline" className="font-mono normal-case tabular-nums">
-          v{v.number}
-        </Badge>
-        {v.current && <Badge variant="green">current</Badge>}
-        <span
-          className="text-muted-foreground"
-          title={`First seen ${formatDateTime(v.firstSeen)}`}
-        >
-          since <RelativeTime value={v.firstSeen} />
-        </span>
-        <span className="ml-auto flex shrink-0 items-center gap-3 text-muted-foreground tabular-nums">
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className="group/row flex w-full cursor-pointer items-center justify-between gap-6 px-0.5 py-3 text-left first:pt-0 last:pb-0"
+    >
+      {/* Left: version + secondary facts (mirrors the tools card row). */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.75">
+          <IconVersions
+            className={cn(
+              "size-3.25 shrink-0 transition-colors",
+              selected
+                ? "text-violet-500"
+                : "text-muted-foreground/50 group-hover/row:text-muted-foreground"
+            )}
+          />
+          <span
+            className={cn(
+              "truncate text-sm font-medium tabular-nums transition-colors",
+              !selected && "text-muted-foreground group-hover/row:text-foreground"
+            )}
+          >
+            v{v.number}
+          </span>
+          {v.current && <Badge variant="green">current</Badge>}
+        </div>
+        <div className="mt-1 text-xs tabular-nums text-muted-foreground/70">
+          <span title={`First seen ${formatDateTime(v.firstSeen)}`}>
+            since <RelativeTime value={v.firstSeen} />
+          </span>
           {v.slotCount > 0 && (
             <span title="Stretches of the prompt that change between runs">
-              {v.slotCount} {v.slotCount === 1 ? "slot" : "slots"}
+              {" "}
+              · {v.slotCount} {v.slotCount === 1 ? "slot" : "slots"}
             </span>
           )}
           {v.hashCount > 1 && (
             <span title="Distinct prompt texts folded into this version">
-              {formatCount(v.hashCount)} variants
+              {" "}
+              · {formatCount(v.hashCount)} variants
             </span>
           )}
-          <span title={`Last seen ${formatDateTime(v.lastSeen)}`}>
-            {formatCount(v.runCount)} {v.runCount === 1 ? "run" : "runs"}
-          </span>
+        </div>
+      </div>
+      {/* Right: run count + share-of-runs bar. */}
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <span
+          className="text-sm tabular-nums"
+          title={`Last seen ${formatDateTime(v.lastSeen)}`}
+        >
+          {formatCount(v.runCount)}
+          {v.runCount === 1 ? " run" : " runs"}
         </span>
-      </button>
-      {open && (
-        <div className="flex flex-col gap-2.5 pb-1 pl-5.5">
-          <div className="flex items-center gap-2">
+        <span className="text-xs tabular-nums text-muted-foreground/70">
+          {formatPercent(share)} of runs
+        </span>
+        <div className="h-0.5 w-14 overflow-hidden rounded-full bg-muted-foreground/10">
+          <div
+            className="ml-auto h-full rounded-full bg-violet-500"
+            style={{ width: `${barWidth}%` }}
+          />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/** The selected version's template, or its diff against the previous one,
+ * with the actions that belong to it. */
+function TemplatePane({
+  version: v,
+  previous,
+  agentName,
+}: {
+  version: Version;
+  previous: Version | null;
+  agentName: string;
+}) {
+  const [showDiff, setShowDiff] = useState(false);
+  // A newly selected version opens on its template, not a stale diff toggle.
+  useEffect(() => setShowDiff(false), [v.id]);
+  const tracesHref = `/traces?agent=${encodeURIComponent(agentName)}&prompt=${encodeURIComponent(v.id)}`;
+  return (
+    <div className="flex min-w-0 flex-col gap-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {showDiff && previous
+            ? `v${previous.number} → v${v.number}`
+            : `v${v.number} template`}
+        </span>
+        <span className="ml-auto flex items-center gap-2">
+          {previous && (
             <Button
               size="sm"
               variant="secondary"
               className={DRAWER_BUTTON_CLASS}
-              // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
-              render={<Link href={tracesHref as any} />}
+              onClick={() => setShowDiff((d) => !d)}
             >
-              View traces
-              <IconArrowUpRight className="mt-px" />
+              {showDiff ? "Hide diff" : `Diff vs v${previous.number}`}
             </Button>
-            {previous && (
-              <Button
-                size="sm"
-                variant="secondary"
-                className={DRAWER_BUTTON_CLASS}
-                onClick={() => setShowDiff((d) => !d)}
-              >
-                {showDiff ? "Hide diff" : `Diff vs v${previous.number}`}
-              </Button>
-            )}
-            <span className="ml-auto">
-              <CopyButton value={v.template} title="Copy template" />
-            </span>
-          </div>
-          {showDiff && previous ? (
-            <TemplateDiff from={previous.template} to={v.template} />
-          ) : (
-            <Template text={v.template} />
           )}
-        </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            className={DRAWER_BUTTON_CLASS}
+            // biome-ignore lint/suspicious/noExplicitAny: typed-routes string href
+            render={<Link href={tracesHref as any} />}
+          >
+            View traces
+            <IconArrowUpRight className="mt-px" />
+          </Button>
+          <CopyButton value={v.template} title="Copy template" />
+        </span>
+      </div>
+      {showDiff && previous ? (
+        <TemplateDiff from={previous.template} to={v.template} />
+      ) : (
+        <Template text={v.template} />
       )}
-    </li>
+    </div>
   );
 }
 
 const TEMPLATE_CLASS =
-  "max-h-[420px] overflow-auto rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap wrap-anywhere";
+  "max-h-72 overflow-auto rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap wrap-anywhere";
 
 function SlotLine() {
   return (
@@ -279,6 +327,60 @@ function TemplateDiff({ from, to }: { from: string; to: string }) {
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Row-shaped placeholder matching the loaded version rows. Invisible until
+ * `skeleton` flips (see useDelayedLoading), like the tools card. */
+function VersionRowsSkeleton({
+  rows = 3,
+  skeleton,
+}: {
+  rows?: number;
+  skeleton: boolean;
+}) {
+  return (
+    <div
+      className={cn("divide-y divide-border/40 pb-6", !skeleton && "invisible")}
+    >
+      {Array.from({ length: rows }).map((_, i) => (
+        <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: static list
+          key={i}
+          className="flex items-center justify-between gap-6 px-0.5 py-3 first:pt-0 last:pb-0"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex h-5 items-center gap-1.75">
+              <Skeleton className="size-3.25 shrink-0 rounded-full squircle:rounded-full" />
+              <Skeleton className="h-3.5 w-8" />
+            </div>
+            <div className="mt-1 flex h-4 items-center">
+              <Skeleton className="h-3 w-36" />
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <div className="flex h-5 items-center">
+              <Skeleton className="h-3.5 w-14" />
+            </div>
+            <div className="flex h-4 items-center">
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <Skeleton className="h-0.5 w-14" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TemplateSkeleton({ skeleton }: { skeleton: boolean }) {
+  return (
+    <div className={cn("flex flex-col gap-2.5", !skeleton && "invisible")}>
+      <div className="flex h-7 items-center">
+        <Skeleton className="h-3 w-20" />
+      </div>
+      <Skeleton className="h-40 w-full" />
     </div>
   );
 }
