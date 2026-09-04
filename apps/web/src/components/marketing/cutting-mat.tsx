@@ -44,7 +44,7 @@ export function CuttingMat() {
           line colors are solid, one pair per theme, set as custom properties
           so the gradients and the diagonals share them. */}
       <div
-        className="absolute inset-0 [--mat-major:#e3e3e3] [--mat-minor:#f0f0f0] dark:[--mat-major:#2e2e2e] dark:[--mat-minor:#232323]"
+        className="absolute inset-0 [--mat-major:#e3e3e3] [--mat-minor:#f0f0f0] dark:[--mat-major:#1e1e1e] dark:[--mat-minor:#171717]"
         style={{
           backgroundImage: [
             "linear-gradient(to right, var(--mat-major) 1px, transparent 1px)",
