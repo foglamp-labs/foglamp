@@ -13,17 +13,25 @@ const CIRCLES = [
   { cx: 74, delay: "-3.2s" },
 ];
 
-// Grid geometry, in pixels. A heavier line every fifth cell, and the ruler
-// counts one unit per cell, so a major line is a multiple of five.
+// Grid geometry, in pixels. A heavier line every fifth cell.
 const CELL = 24;
 const MAJOR = CELL * 5;
 
-// The ruler is drawn in a fixed strip centered on the page, so its marks land
+// The diagonals are drawn in a fixed strip centered on the page, so they land
 // on the grid lines no matter the viewport. Wide enough for any screen; the
 // container crops the rest.
 const STRIP = 2400;
 const HALF = STRIP / 2;
-const MAJORS = Array.from({ length: STRIP / MAJOR + 1 }, (_, i) => i * MAJOR);
+
+// A few 45 degree guides, not a hatch: a cross through the center of the mat
+// and one mirrored line four cells out on each side. Each starts on the top
+// edge at a major line and runs down through the grid intersections.
+const DIAGONALS: { x: number; dir: 1 | -1 }[] = [
+  { x: HALF, dir: 1 },
+  { x: HALF, dir: -1 },
+  { x: HALF - 4 * MAJOR, dir: 1 },
+  { x: HALF + 4 * MAJOR, dir: -1 },
+];
 
 export function CuttingMat() {
   return (
@@ -32,7 +40,7 @@ export function CuttingMat() {
       className="pointer-events-none relative h-52 w-full select-none overflow-hidden sm:h-102"
     >
       {/* The mat: a fine grid with a heavier line every fifth cell, fading in
-          from the top so it doesn't hit the ruler as a hard edge. */}
+          from the top so it doesn't hit the copyright row as a hard edge. */}
       <div
         className="absolute inset-0 text-neutral-300 dark:text-border"
         style={{
@@ -47,33 +55,24 @@ export function CuttingMat() {
           WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 70%)",
           maskImage: "linear-gradient(to bottom, transparent, #000 70%)",
         }}
-      />
-
-      {/* The ruler along the top edge: a tick per cell, a taller one with a
-          number every fifth, counting outward from the center like a
-          centering rule. */}
-      <div
-        className="absolute left-1/2 top-12 -translate-x-1/2 text-neutral-300 dark:text-border opacity-75"
-        style={{
-          width: STRIP,
-          height: 10,
-          backgroundImage: [
-            "linear-gradient(to right, currentColor 1px, transparent 1px)",
-            "linear-gradient(to right, currentColor 1px, transparent 1px)",
-          ].join(", "),
-          backgroundSize: `${MAJOR}px 10px, ${CELL}px 5px`,
-          backgroundRepeat: "repeat-x",
-        }}
       >
-        {MAJORS.map((x) => (
-          <span
-            key={x}
-            className="absolute top-3.5 -translate-x-1/2 font-mono text-[10px] leading-none tabular-nums"
-            style={{ left: x }}
-          >
-            {Math.abs(x - HALF) / CELL}
-          </span>
-        ))}
+        <svg
+          className="absolute left-1/2 top-0 h-full -translate-x-1/2"
+          width={STRIP}
+          style={{ color: "color-mix(in oklab, currentColor 60%, transparent)" }}
+        >
+          {DIAGONALS.map((d) => (
+            <line
+              key={`${d.x}${d.dir}`}
+              x1={d.x}
+              y1={0}
+              x2={d.x + d.dir * 600}
+              y2={600}
+              stroke="currentColor"
+              strokeWidth={1}
+            />
+          ))}
+        </svg>
       </div>
 
       {/* The mark. Wider than the mat is tall on purpose: the container's
@@ -85,14 +84,6 @@ export function CuttingMat() {
       >
         {CIRCLES.map((c) => (
           <g key={c.cx}>
-            {/* center mark */}
-            <g
-              className="stroke-neutral-300 dark:stroke-[#3B3B3B]"
-              strokeWidth="0.25"
-            >
-              <line x1={c.cx - 1.5} y1="24" x2={c.cx + 1.5} y2="24" />
-              <line x1={c.cx} y1="22.5" x2={c.cx} y2="25.5" />
-            </g>
             <circle
               cx={c.cx}
               cy="24"
