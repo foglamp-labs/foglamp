@@ -146,7 +146,11 @@ function BreakdownRow({
 	color: string;
 	onClick?: () => void;
 }) {
-	const rowClassName = "flex w-full items-center justify-between gap-6 py-3 px-5";
+	// The list is `divide-y`, so each row draws the edge beneath it. Like the
+	// table rows, a hovered row hides its own bottom edge and the row above it
+	// hides its bottom edge too, so the highlight reads as one seamless block.
+	const rowClassName =
+		"flex w-full items-center justify-between gap-6 py-3 px-5 has-[+button:hover]:border-transparent";
 	const inner = (
 		<>
 			<div className="min-w-0 flex-1">
@@ -176,7 +180,7 @@ function BreakdownRow({
 				onClick={onClick}
 				className={cn(
 					rowClassName,
-					"cursor-pointer text-left transition-colors hover:bg-muted/50",
+					"cursor-pointer text-left hover:border-transparent hover:bg-muted/50",
 				)}
 			>
 				{inner}

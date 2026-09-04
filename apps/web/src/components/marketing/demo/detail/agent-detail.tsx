@@ -43,6 +43,8 @@ import {
 import { HeatCell } from "@/components/app/heat-cell";
 import { type FlowNode, NodeFlow } from "@/components/app/node-flow";
 import { StatCard } from "@/components/app/page-parts";
+import { PromptProseView } from "@/components/app/prompt-prose";
+import { PromptVersionsView } from "@/components/app/prompt-versions-card";
 import {
   Bubble,
   CustomerValue,
@@ -83,6 +85,8 @@ import {
   AGENT_SERIES,
   AGENT_TRACES,
   type AgentTrace,
+  PROMPT_VERSIONS,
+  SLOT_EXAMPLES,
   TRACE_MESSAGES,
   quintiles,
 } from "../mock-data";
@@ -322,6 +326,19 @@ export function AgentDetail({ agentName }: { agentName: string }) {
       <section className="grid gap-4 lg:grid-cols-2 px-8">
         <DemoCostBreakdownCard />
         <DemoToolBreakdownCard />
+      </section>
+
+      {/* The system prompts this agent has run with, grouped into versions —
+          the real card fed the mock versions and their slot examples. */}
+      <section className="px-8">
+        <PromptVersionsView
+          versions={PROMPT_VERSIONS.filter((v) => v.agentName === agent.name)}
+          loading={false}
+          skeleton={false}
+          renderProse={(v) => (
+            <PromptProseView template={v.template} slots={SLOT_EXAMPLES[v.id]} />
+          )}
+        />
       </section>
 
       {/* Traces table — click a row to open its drawer. */}

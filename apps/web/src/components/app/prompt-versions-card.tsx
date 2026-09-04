@@ -28,7 +28,7 @@ import { formatCount, formatDateTime, formatTokens } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
 
-type Version = {
+export type PromptVersion = {
   id: string;
   number: number;
   template: string;
@@ -39,6 +39,7 @@ type Version = {
   lastSeen: string | Date;
   current: boolean;
 };
+type Version = PromptVersion;
 
 /**
  * The system prompts an agent has run with, grouped into versions by the
@@ -67,7 +68,31 @@ export function PromptVersionsCard({
     [query.data]
   );
   const skeleton = useDelayedLoading(query.isLoading);
+  return (
+    <PromptVersionsView
+      versions={versions}
+      loading={query.isLoading}
+      skeleton={skeleton}
+      className={className}
+    />
+  );
+}
 
+/** The card itself, fed its versions — so the marketing demo can render it
+ * from static data. `renderProse` swaps the prose view's example source. */
+export function PromptVersionsView({
+  versions,
+  loading,
+  skeleton,
+  className,
+  renderProse,
+}: {
+  versions: Version[];
+  loading: boolean;
+  skeleton: boolean;
+  className?: string;
+  renderProse?: (version: Version) => React.ReactNode;
+}) {
   // Display order: newest first. `versions` is oldest-first from the API.
   const ordered = useMemo(() => [...versions].reverse(), [versions]);
   // Share bars are scaled to the most-run version, like the tools card
@@ -88,7 +113,7 @@ export function PromptVersionsCard({
     ? (versions.find((p) => p.number === selected.number - 1) ?? null)
     : null;
 
-  if (!query.isLoading && versions.length === 0) {
+  if (!loading && versions.length === 0) {
     return (
       <Card size="sm" className={className} id="prompt-versions">
         <CardHeader>
@@ -128,7 +153,7 @@ export function PromptVersionsCard({
             className="-mx-2 mt-1.5 max-h-72 px-2"
             bottomFadeClassName="h-14 opacity-100"
           >
-            {query.isLoading ? (
+            {loading ? (
               <VersionRowsSkeleton skeleton={skeleton} />
             ) : (
               <div className="-mx-2 -mt-1 divide-y divide-border/40 pb-3">
@@ -145,10 +170,14 @@ export function PromptVersionsCard({
             )}
           </ScrollFade>
         </div>
-        {query.isLoading ? (
+        {loading ? (
           <TemplateSkeleton skeleton={skeleton} />
         ) : selected ? (
-          <TemplatePane version={selected} previous={previous} />
+          <TemplatePane
+            version={selected}
+            previous={previous}
+            renderProse={renderProse}
+          />
         ) : null}
       </CardContent>
     </Card>
@@ -245,9 +274,11 @@ function VersionRow({
 function TemplatePane({
   version: v,
   previous,
+  renderProse,
 }: {
   version: Version;
   previous: Version | null;
+  renderProse?: (version: Version) => React.ReactNode;
 }) {
   const [showDiff, setShowDiff] = useState(false);
   const [raw, setRaw] = useState(false);
@@ -297,6 +328,8 @@ function TemplatePane({
           <TemplateDiff from={previous.template} to={v.template} />
         ) : raw ? (
           <Template text={v.template} />
+        ) : renderProse ? (
+          renderProse(v)
         ) : (
           <PromptProse
             template={v.template}

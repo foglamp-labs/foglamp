@@ -163,7 +163,9 @@ function Inline({ text }: { text: string }) {
 
 // --- slots ------------------------------------------------------------------
 
-type SlotExample = { value: string; runs: number };
+export type SlotExample = { value: string; runs: number };
+/** Per-slot examples, in slot order — the shape agents.promptSlotExamples returns. */
+export type SlotExamples = { slots: { examples: SlotExample[] }[] };
 
 /** What a version's slots hold in practice; fetched once per version. */
 export function useSlotExamples(versionId: string, slotCount: number) {
@@ -249,8 +251,36 @@ export function PromptProse({
   slotCount: number;
   className?: string;
 }) {
-  const blocks = useMemo(() => parsePrompt(template), [template]);
   const examples = useSlotExamples(versionId, slotCount);
+  return (
+    <PromptProseView
+      template={template}
+      slots={examples.data}
+      loading={examples.isLoading}
+      className={className}
+    />
+  );
+}
+
+/** The prose rendering alone, fed its slot examples — so the marketing demo
+ * can show a template without the query. */
+export function PromptProseView({
+  template,
+  slots,
+  loading = false,
+  className,
+}: {
+  template: string;
+  slots: SlotExamples | undefined;
+  loading?: boolean;
+  className?: string;
+}) {
+  const blocks = useMemo(() => parsePrompt(template), [template]);
+  // "Slot 2 of 3" — the count is the number of slot lines in the template.
+  const slotCount = useMemo(
+    () => blocks.filter((b) => b.type === "slot").length,
+    [blocks],
+  );
   return (
     <div className={cn("flex flex-col gap-2.5 text-[13px] leading-relaxed", className)}>
       {blocks.map((b, i) => {
@@ -312,8 +342,8 @@ export function PromptProse({
                 <SlotChip
                   index={b.index}
                   count={slotCount}
-                  examples={examples.data?.slots[b.index]?.examples}
-                  loading={examples.isLoading}
+                  examples={slots?.slots[b.index]?.examples}
+                  loading={loading}
                 />
               </div>
             );

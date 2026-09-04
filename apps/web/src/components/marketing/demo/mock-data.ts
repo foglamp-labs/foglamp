@@ -1,5 +1,9 @@
+import { SLOT_LINE } from "@foglamp/prompts";
+
 import { agentColor } from "@/components/app/agent-icon";
 import type { ChartConfig } from "@/components/evilcharts/ui/chart";
+import type { PromptVersion } from "@/components/app/prompt-versions-card";
+import type { SlotExamples } from "@/components/app/prompt-prose";
 
 export type DemoTab =
 	| "overview"
@@ -1702,3 +1706,330 @@ export const ALERTS: AlertRow[] = [
 		enabled: false,
 	},
 ];
+
+
+// ─── Prompt versions ─────────────────────────────────────────────────────────
+// The system prompts each agent has run with, as the prompt job would infer
+// them: templates in the normalizer's shape (numbers → {n}, dates → {date},
+// whole lines that vary between runs → a slot line), newest last per agent.
+
+export type DemoPromptVersion = PromptVersion & { agentName: string };
+
+const DAY = 24 * 60 * 60 * 1000;
+const daysAgo = (days: number, at = 0) =>
+	new Date(Date.now() - days * DAY - at * 60 * 60 * 1000);
+
+const SUPPORT_V1 = [
+	"You are a support triage agent. Classify the request, look up the order, and draft a concise reply.",
+].join("\n");
+
+const SUPPORT_V2 = [
+	"You are the support triage agent for Acme's customer support desk. Classify the request, look up the order, and draft a concise reply.",
+	"",
+	"Today is {date}.",
+	"",
+	"## What you can use",
+	"- fetch-order — order status, shipping events and refund eligibility by order number",
+	"- crm-lookup — the customer's account, past tickets and plan",
+	"- search-knowledge-base — policy articles (shipping windows, returns, refunds)",
+	"",
+	"## How to answer",
+	"{n}. Classify the request as shipping, billing, account or other before calling any tool.",
+	"{n}. Quote the order number back and give the exact status the tool returned.",
+	"{n}. Keep replies under {n} words.",
+	"",
+	"<customer_context>",
+	SLOT_LINE,
+	"</customer_context>",
+].join("\n");
+
+const SUPPORT_V3 = [
+	"You are the support triage agent for Acme's customer support desk. Classify the request, look up the order, and draft a concise reply.",
+	"",
+	"Today is {date}.",
+	"",
+	"## What you can use",
+	"- fetch-order — order status, shipping events and refund eligibility by order number",
+	"- crm-lookup — the customer's account, past tickets and plan",
+	"- search-knowledge-base — policy articles (shipping windows, returns, refunds)",
+	"- escalate-ticket — hand off to a human when the customer asks for a refund above their plan's limit",
+	"",
+	"## How to answer",
+	"{n}. Classify the request as shipping, billing, account or other before calling any tool.",
+	"{n}. Quote the order number back and give the exact status the tool returned.",
+	"{n}. Offer one concrete next step **with a date**, never \"soon\".",
+	"{n}. Keep replies under {n} words. No apology longer than one sentence.",
+	"",
+	"<customer_context>",
+	SLOT_LINE,
+	"</customer_context>",
+	"",
+	"<open_orders>",
+	SLOT_LINE,
+	"</open_orders>",
+].join("\n");
+
+const RESEARCH_V1 = [
+	"You are a research planner. Break the question into sub-questions, search for each, and return a ranked reading list.",
+	"",
+	"- Prefer primary sources and vendor documentation over blog posts.",
+	"- Cite every claim with the URL it came from.",
+].join("\n");
+
+const RESEARCH_V2 = [
+	"You are a research planner. Break the question into sub-questions, search for each, and return a ranked reading list.",
+	"",
+	"## Rules",
+	"- Prefer primary sources and vendor documentation over blog posts.",
+	"- Cite every claim with the URL it came from.",
+	"- Stop after {n} searches and say what is still unknown.",
+	"",
+	"<question>",
+	SLOT_LINE,
+	"</question>",
+].join("\n");
+
+const CODE_REVIEW_V1 = [
+	"You are a code reviewer. Review the diff for correctness bugs first, then readability. Be specific: file, line, and the failing input.",
+	"",
+	"<diff>",
+	SLOT_LINE,
+	"</diff>",
+].join("\n");
+
+const EMAIL_V1 = [
+	"You draft customer emails for Acme. Match the tone of the thread, keep to {n} short paragraphs, and end with one clear ask.",
+	"",
+	"<thread>",
+	SLOT_LINE,
+	"</thread>",
+].join("\n");
+
+export const PROMPT_VERSIONS: DemoPromptVersion[] = [
+	{
+		id: "pv_support_1",
+		agentName: "support-triage",
+		number: 1,
+		template: SUPPORT_V1,
+		slotCount: 0,
+		hashCount: 1,
+		runCount: 1840,
+		firstSeen: daysAgo(41),
+		lastSeen: daysAgo(19),
+		current: false,
+	},
+	{
+		id: "pv_support_2",
+		agentName: "support-triage",
+		number: 2,
+		template: SUPPORT_V2,
+		slotCount: 1,
+		hashCount: 612,
+		runCount: 2960,
+		firstSeen: daysAgo(19),
+		lastSeen: daysAgo(6),
+		current: false,
+	},
+	{
+		id: "pv_support_3",
+		agentName: "support-triage",
+		number: 3,
+		template: SUPPORT_V3,
+		slotCount: 2,
+		hashCount: 1380,
+		runCount: 3720,
+		firstSeen: daysAgo(6),
+		lastSeen: daysAgo(0, 0.01),
+		current: true,
+	},
+	{
+		id: "pv_research_1",
+		agentName: "research-planner",
+		number: 1,
+		template: RESEARCH_V1,
+		slotCount: 0,
+		hashCount: 1,
+		runCount: 410,
+		firstSeen: daysAgo(33),
+		lastSeen: daysAgo(12),
+		current: false,
+	},
+	{
+		id: "pv_research_2",
+		agentName: "research-planner",
+		number: 2,
+		template: RESEARCH_V2,
+		slotCount: 1,
+		hashCount: 318,
+		runCount: 640,
+		firstSeen: daysAgo(12),
+		lastSeen: daysAgo(0, 0.05),
+		current: true,
+	},
+	{
+		id: "pv_code_1",
+		agentName: "code-reviewer",
+		number: 1,
+		template: CODE_REVIEW_V1,
+		slotCount: 1,
+		hashCount: 2210,
+		runCount: 2210,
+		firstSeen: daysAgo(27),
+		lastSeen: daysAgo(0, 0.3),
+		current: true,
+	},
+	{
+		id: "pv_email_1",
+		agentName: "email-drafter",
+		number: 1,
+		template: EMAIL_V1,
+		slotCount: 1,
+		hashCount: 980,
+		runCount: 1120,
+		firstSeen: daysAgo(22),
+		lastSeen: daysAgo(0, 1.2),
+		current: true,
+	},
+];
+
+/** What runs actually put in each slot, per version (the real card fetches
+ * these on hover). */
+export const SLOT_EXAMPLES: Record<string, SlotExamples> = {
+	pv_support_2: {
+		slots: [
+			{
+				examples: [
+					{
+						value: "name: Dana Whitfield\nplan: enterprise\naccount since: 2024-03-11\nopen tickets: 1",
+						runs: 412,
+					},
+					{
+						value: "name: Priya Raman\nplan: pro\naccount since: 2025-09-02\nopen tickets: 0",
+						runs: 288,
+					},
+					{
+						value: "name: Tom Okafor\nplan: free\naccount since: 2026-08-19\nopen tickets: 0",
+						runs: 131,
+					},
+				],
+			},
+		],
+	},
+	pv_support_3: {
+		slots: [
+			{
+				examples: [
+					{
+						value: "name: Dana Whitfield\nplan: enterprise\naccount since: 2024-03-11\nopen tickets: 1\nrefund limit: $500",
+						runs: 526,
+					},
+					{
+						value: "name: Priya Raman\nplan: pro\naccount since: 2025-09-02\nopen tickets: 0\nrefund limit: $150",
+						runs: 344,
+					},
+					{
+						value: "name: Tom Okafor\nplan: free\naccount since: 2026-08-19\nopen tickets: 0\nrefund limit: $0",
+						runs: 197,
+					},
+				],
+			},
+			{
+				examples: [
+					{
+						value: "#48213 — processing since 2026-08-30 · 2 items · $184.00 · standard shipping",
+						runs: 611,
+					},
+					{
+						value: "#47990 — delivered 2026-08-28 · 1 item · $62.50\n#48102 — shipped 2026-09-01 · 3 items · $241.10",
+						runs: 302,
+					},
+					{ value: "", runs: 154 },
+				],
+			},
+		],
+	},
+	pv_research_2: {
+		slots: [
+			{
+				examples: [
+					{
+						value: "Compare vector DB options for a 50M-embedding workload",
+						runs: 96,
+					},
+					{
+						value: "What changed in the EU AI Act's obligations for general-purpose models in 2026?",
+						runs: 71,
+					},
+					{
+						value: "Is Postgres a reasonable queue for 5k jobs/minute, and where does it stop being one?",
+						runs: 44,
+					},
+				],
+			},
+		],
+	},
+	pv_code_1: {
+		slots: [
+			{
+				examples: [
+					{
+						value: "diff --git a/src/billing/invoice.ts b/src/billing/invoice.ts\n@@ -41,7 +41,9 @@ export function totalFor(lines: Line[]) {\n-  return lines.reduce((sum, l) => sum + l.amount, 0);\n+  return lines\n+    .filter((l) => !l.voided)\n+    .reduce((sum, l) => sum + l.amount, 0);",
+						runs: 1,
+					},
+				],
+			},
+		],
+	},
+	pv_email_1: {
+		slots: [
+			{
+				examples: [
+					{
+						value: "From: Dana Whitfield\nSubject: Renewal quote\n\nHi — can you send the renewal quote for 40 seats before Friday? Finance needs it for the Q4 plan.",
+						runs: 3,
+					},
+				],
+			},
+		],
+	},
+};
+
+/** The prompt version a given run used — the agent's current version for
+ * most runs, the one before it for a deterministic minority (mirrors a fleet
+ * mid-rollout). Null for agents without inferred versions. */
+export function promptVersionOf(
+	agentName: string,
+	traceId: string,
+): { id: string; number: number } | null {
+	const versions = PROMPT_VERSIONS.filter((v) => v.agentName === agentName);
+	if (versions.length === 0) return null;
+	const current = versions[versions.length - 1]!;
+	const previous = versions[versions.length - 2];
+	let h = 0;
+	for (const c of traceId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+	const pick = previous && h % 4 === 0 ? previous : current;
+	return { id: pick.id, number: pick.number };
+}
+
+/** The system prompt a run actually sent: its prompt version's template with
+ * the slot lines filled from the version's first example values and the
+ * inline placeholders resolved, so the trace inspector shows a real payload
+ * rather than the normalized template. */
+export function systemPromptOf(agentName: string, traceId: string): string {
+	const version = promptVersionOf(agentName, traceId);
+	const template = PROMPT_VERSIONS.find((v) => v.id === version?.id)?.template;
+	if (!template) return TRACE_MESSAGES[0]!.content;
+	const slots = SLOT_EXAMPLES[version!.id]?.slots ?? [];
+	let slot = 0;
+	let rule = 0;
+	return template
+		.split("\n")
+		.map((line) => {
+			if (line === SLOT_LINE) return slots[slot++]?.examples[0]?.value ?? "";
+			if (line.startsWith("{n}. ")) return `${++rule}. ${line.slice(5)}`;
+			return line;
+		})
+		.join("\n")
+		.replaceAll("{date}", "2026-09-04")
+		.replaceAll("{n}", "120");
+}

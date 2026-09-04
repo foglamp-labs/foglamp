@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@foglamp/ui/components/badge";
 import { Button } from "@foglamp/ui/components/button";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
@@ -192,5 +193,30 @@ export function DemoModelChip({ models }: { models: string[] }) {
 				label={`${models.length} models`}
 			/>
 		</span>
+	);
+}
+
+/** `v3` chip for a run's inferred prompt version — the real PromptVersionChip
+ * with its link to the agent page swapped for the demo's in-app navigation. */
+export function DemoPromptVersionChip({
+	version,
+	onClick,
+	className,
+}: {
+	version: { id: string; number: number } | null | undefined;
+	onClick?: () => void;
+	className?: string;
+}) {
+	if (!version) return null;
+	return (
+		<Badge
+			variant="sky"
+			size="sm"
+			className={cn("font-mono normal-case tabular-nums", className)}
+			title="Prompt version — see all versions"
+			render={<button type="button" onClick={onClick} />}
+		>
+			v{version.number}
+		</Badge>
 	);
 }

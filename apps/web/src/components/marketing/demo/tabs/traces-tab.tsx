@@ -20,6 +20,8 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
 	IconAlertTriangle,
 	IconCpu,
+	IconFileHorizontal,
+	IconFileHorizontalFilled,
 	IconGhost,
 	IconMessage2Filled,
 	IconPlus,
@@ -55,7 +57,14 @@ import {
 
 import { DemoListHeader, DemoRange } from "../demo-chrome";
 import { useDemo } from "../demo-context";
-import { AGENTS, TRACE_ROWS, type TraceRow, quintiles } from "../mock-data";
+import {
+	AGENTS,
+	PROMPT_VERSIONS,
+	TRACE_ROWS,
+	type TraceRow,
+	promptVersionOf,
+	quintiles,
+} from "../mock-data";
 
 // Quintiles drive the heat shade on the Duration and Cost cells.
 const COST_QUANTILES = quintiles(TRACE_ROWS.map((t) => t.costValue));
@@ -88,7 +97,14 @@ const META_VALUES: Record<(typeof META_KEYS)[number], string[]> = {
 const metaValueFor = (key: (typeof META_KEYS)[number], i: number) =>
 	META_VALUES[key][i % META_VALUES[key].length]!;
 
-type SecondaryFilter = "workflow" | "customer" | "meta";
+// Prompt version option identity — lime, like the agent page's versions card.
+const PromptVersionIcon = (p: { className?: string }) => (
+	<IconFileHorizontalFilled
+		className={cn(p.className, "text-lime-400 dark:text-lime-600")}
+	/>
+);
+
+type SecondaryFilter = "workflow" | "customer" | "meta" | "prompt";
 
 /** The "+ Filter" menu that summons the collapsed secondary filters — the real
  * page's AddFilterMenu, minus the URL plumbing. */
@@ -96,11 +112,13 @@ function AddFilterMenu({
 	showWorkflow,
 	showCustomer,
 	showMeta,
+	showPrompt,
 	onAdd,
 }: {
 	showWorkflow: boolean;
 	showCustomer: boolean;
 	showMeta: boolean;
+	showPrompt: boolean;
 	onAdd: (k: SecondaryFilter) => void;
 }) {
 	const group = useFilterGroupItem();
@@ -162,6 +180,16 @@ function AddFilterMenu({
 						Metadata
 					</DropdownMenuItem>
 				)}
+				{!showPrompt && (
+					<DropdownMenuItem
+						onClick={() => {
+							pendingAdd.current = "prompt";
+						}}
+					>
+						<IconFileHorizontal />
+						Prompt version
+					</DropdownMenuItem>
+				)}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
@@ -178,6 +206,9 @@ export function TracesTab() {
 	const [customerFilter, setCustomerFilter] = useState("");
 	const [metaKeyFilter, setMetaKeyFilter] = useState("");
 	const [metaValueFilter, setMetaValueFilter] = useState("");
+	// Prompt version (an id from PROMPT_VERSIONS) — versions belong to one
+	// agent, so this filter and the agent filter are kept in agreement.
+	const [promptFilter, setPromptFilter] = useState("");
 	const [errorsOnly, setErrorsOnly] = useState(false);
 	const [pageSize, setPageSize] = useState(25);
 	const { sort, toggle } = useTableSort<TraceSortKey>();
@@ -195,13 +226,16 @@ export function TracesTab() {
 	const showWorkflow = added.has("workflow") || !!workflowFilter;
 	const showCustomer = added.has("customer") || !!customerFilter;
 	const showMeta = added.has("meta") || !!metaKeyFilter;
-	const canAddFilter = !showWorkflow || !showCustomer || !showMeta;
+	const showPrompt = added.has("prompt") || !!promptFilter;
+	const canAddFilter =
+		!showWorkflow || !showCustomer || !showMeta || !showPrompt;
 	const hasFilters = !!(
 		agentFilter ||
 		modelFilter ||
 		workflowFilter ||
 		customerFilter ||
 		metaKeyFilter ||
+		promptFilter ||
 		errorsOnly
 	);
 
@@ -215,6 +249,8 @@ export function TracesTab() {
 			(!modelFilter || t.model === modelFilter) &&
 			(!workflowFilter || t.workflowName === workflowFilter) &&
 			(!customerFilter || t.customer === customerFilter) &&
+			(!promptFilter ||
+				promptVersionOf(t.agentName, t.traceId)?.id === promptFilter) &&
 			(!metaKey ||
 				!metaValueFilter ||
 				metaValueFor(metaKey, TRACE_ROWS.indexOf(t)) === metaValueFilter) &&
@@ -235,6 +271,21 @@ export function TracesTab() {
 			<AgentIcon name={a.name} className={p.className} />
 		),
 	}));
+	// Prompt versions for the filter: the picked agent's, or every agent's
+	// (labelled with the agent) when none is picked. Newest first.
+	const promptOptions = PROMPT_VERSIONS.filter(
+		(v) => !agentFilter || v.agentName === agentFilter,
+	)
+		.slice()
+		.reverse()
+		.map((v) => ({
+			value: v.id,
+			label: `${agentFilter ? "" : `${v.agentName} · `}v${v.number}`,
+			hint: v.current ? "current" : undefined,
+			icon: PromptVersionIcon,
+		}));
+	const promptAgentOf = (versionId: string) =>
+		PROMPT_VERSIONS.find((v) => v.id === versionId)?.agentName ?? "";
 	const modelOptions = MODELS.map((m) => ({
 		value: m,
 		label: formatModelName(m),
@@ -272,7 +323,13 @@ export function TracesTab() {
 				<Toolbar>
 					<FilterSelect
 						value={agentFilter}
-						onChange={setAgentFilter}
+						onChange={(v) => {
+							setAgentFilter(v);
+							// Versions belong to one agent; a summoned prompt select
+							// doesn't carry over to the next.
+							setPromptFilter("");
+							removeFilter("prompt");
+						}}
 						allLabel="Any agent"
 						icon={IconGhost}
 						options={agentOptions}
@@ -330,11 +387,27 @@ export function TracesTab() {
 							options={metaValueOptions}
 						/>
 					)}
+					{showPrompt && (
+						<FilterSelect
+							value={promptFilter}
+							onChange={(v) => {
+								// A version belongs to one agent: picking it without an
+								// agent filter narrows to that agent as well.
+								setPromptFilter(v);
+								if (v && !agentFilter) setAgentFilter(promptAgentOf(v));
+								if (!v) removeFilter("prompt");
+							}}
+							allLabel="Any prompt version"
+							icon={IconFileHorizontal}
+							options={promptOptions}
+						/>
+					)}
 					{canAddFilter && (
 						<AddFilterMenu
 							showWorkflow={showWorkflow}
 							showCustomer={showCustomer}
 							showMeta={showMeta}
+							showPrompt={showPrompt}
 							onAdd={addFilter}
 						/>
 					)}
@@ -354,6 +427,7 @@ export function TracesTab() {
 							setCustomerFilter("");
 							setMetaKeyFilter("");
 							setMetaValueFilter("");
+							setPromptFilter("");
 							setErrorsOnly(false);
 							setAdded(new Set());
 						}}

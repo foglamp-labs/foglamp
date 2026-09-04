@@ -17,6 +17,7 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
 	IconAffiliate,
 	IconChevronDown,
+	IconChevronRight,
 	IconChevronUp,
 	IconMessage2Filled,
 	IconSitemapFilled,
@@ -38,9 +39,20 @@ import {
 } from "@/lib/format";
 import type { TraceSpan } from "@/lib/trace-timeline";
 
-import { DemoContextChip, DemoModelChip, DetailHeader } from "../demo-chrome";
+import {
+	DemoContextChip,
+	DemoModelChip,
+	DemoPromptVersionChip,
+	DetailHeader,
+} from "../demo-chrome";
 import { useDemo } from "../demo-context";
-import { TRACE_MESSAGES, TRACE_ROWS, TRACE_SPANS } from "../mock-data";
+import {
+	promptVersionOf,
+	systemPromptOf,
+	TRACE_MESSAGES,
+	TRACE_ROWS,
+	TRACE_SPANS,
+} from "../mock-data";
 
 // The demo trace shape matches the fields TraceTimeline reads (span tree,
 // timing, tokens, cost); cast through `unknown` since the real type is deep
@@ -153,21 +165,28 @@ function Field({
 function TokenSplitBar({
 	input,
 	cached,
+	reasoning,
 	output,
 }: {
 	input: number;
 	cached: number;
+	reasoning: number;
 	output: number;
 }) {
 	const cachedPart = Math.min(Math.max(cached, 0), input);
 	const fresh = input - cachedPart;
+	// Reasoning tokens are billed as output, so they're carved out of the
+	// output total rather than added on top of it.
+	const reasoningPart = Math.min(Math.max(reasoning, 0), output);
+	const answer = output - reasoningPart;
 	return (
 		<BreakdownStrip
 			format={formatTokens}
 			parts={[
 				{ label: "Input", value: fresh, color: "#F97316" },
 				{ label: "Cached input", value: cachedPart, color: "#FDBA74" },
-				{ label: "Output", value: output, color: "#0090FD" },
+				{ label: "Reasoning", value: reasoningPart, color: "#93C5FD" },
+				{ label: "Output", value: answer, color: "#0090FD" },
 			].filter((p) => p.value > 0)}
 		/>
 	);
@@ -175,7 +194,7 @@ function TokenSplitBar({
 
 // ─── Fixed inspector numbers for the demo's support-triage trace ─────────────
 
-const USAGE = { input: 3180, cached: 1240, output: 1095 };
+const USAGE = { input: 3180, cached: 1240, reasoning: 310, output: 1095 };
 const COST_BY_CATEGORY: StripSegment[] = [
 	{ label: "Input", value: 0.0184, color: "#F97316" },
 	{ label: "Cached input", value: 0.0031, color: "#FDBA74" },
@@ -196,7 +215,12 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 	const { closeDetail, openDetail } = useDemo();
 	const [selected, setSelected] = useState<string | null>(null);
 	const [costMode, setCostMode] = useState<"category" | "model">("category");
+	// The system prompt is collapsed by default like the app's transcripts:
+	// the header (label, size, version chip) is the summary you scan first.
+	const [promptOpen, setPromptOpen] = useState(false);
 	const row = TRACE_ROWS.find((t) => t.traceId === traceId) ?? TRACE_ROWS[0]!;
+	const promptVersion = promptVersionOf(row.agentName, row.traceId);
+	const systemPrompt = systemPromptOf(row.agentName, row.traceId);
 	const models = [...new Set([row.model, "gemini-3.5-flash"])];
 
 	return (
@@ -354,6 +378,7 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 												<TokenSplitBar
 													input={USAGE.input}
 													cached={USAGE.cached}
+													reasoning={USAGE.reasoning}
 													output={USAGE.output}
 												/>
 											</span>
@@ -419,6 +444,49 @@ export function TraceDetail({ traceId }: { traceId: string }) {
 										total={row.durationMs}
 										format={formatDuration}
 									/>
+								</div>
+
+								{/* The run's system prompt, tagged with the prompt version
+								    the job inferred it belongs to. Copy sits beside the
+								    toggle rather than inside it (nested buttons are invalid). */}
+								<div className="flex flex-col gap-2 border-b border-border/40 px-5 py-5">
+									<div className="flex items-center justify-between">
+										<button
+											type="button"
+											onClick={() => setPromptOpen((o) => !o)}
+											className="flex min-w-0 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+										>
+											<IconChevronRight
+												className={cn(
+													"size-3 transition-transform",
+													promptOpen && "rotate-90",
+												)}
+											/>
+											System prompt
+											<span className="text-muted-foreground/60 tabular-nums">
+												{systemPrompt.length >= 1024
+													? `${(systemPrompt.length / 1024).toFixed(1)} KB`
+													: `${systemPrompt.length} chars`}
+											</span>
+										</button>
+										<div className="flex items-center gap-1.5">
+											<DemoPromptVersionChip
+												version={promptVersion}
+												onClick={() =>
+													openDetail({ type: "agent", id: row.agentName })
+												}
+											/>
+											<CopyButton
+												value={systemPrompt}
+												title="Copy system prompt"
+											/>
+										</div>
+									</div>
+									{promptOpen && (
+										<pre className="max-h-80 overflow-auto overscroll-none rounded-md bg-muted p-3 text-xs whitespace-pre-wrap wrap-break-word">
+											{systemPrompt}
+										</pre>
+									)}
 								</div>
 
 								{/* Root input/output — the conversation, readable without

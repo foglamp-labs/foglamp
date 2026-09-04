@@ -52,17 +52,34 @@ import {
 } from "@/components/app/run-exchange";
 import { formatCost, formatCostFixed } from "@/lib/format";
 
-import { DemoContextChip, DemoRange, DetailHeader } from "../demo-chrome";
+import {
+  DemoContextChip,
+  DemoPromptVersionChip,
+  DemoRange,
+  DetailHeader,
+} from "../demo-chrome";
 import { useDemo } from "../demo-context";
-import { EVAL_SAMPLES, EVALS, quintiles, TRACE_MESSAGES } from "../mock-data";
+import {
+  EVAL_SAMPLES,
+  EVALS,
+  promptVersionOf,
+  quintiles,
+  TRACE_MESSAGES,
+} from "../mock-data";
 
 const SAMPLE_WHEN = ["2m ago", "9m ago", "31m ago", "1h ago"];
 
-type SampleRow = (typeof EVAL_SAMPLES)[number] & { when: string };
+type SampleRow = (typeof EVAL_SAMPLES)[number] & {
+  when: string;
+  promptVersion: { id: string; number: number } | null;
+};
 
+// The demo eval scores the support-triage agent, so each scored run carries
+// the prompt version that agent ran with at the time.
 const SAMPLES: SampleRow[] = EVAL_SAMPLES.map((s, i) => ({
   ...s,
   when: SAMPLE_WHEN[i] ?? "2h ago",
+  promptVersion: promptVersionOf("support-triage", s.traceId),
 }));
 
 const SPEND_QUANTILES = quintiles(SAMPLES.map((s) => s.cost));
@@ -233,6 +250,21 @@ export function EvalDetail({ evalId }: { evalId: string }) {
                         <div className="flex items-center gap-2">
                           <ExpandChevron open={isOpen} />
                           <span className="truncate">{s.traceId}</span>
+                          {s.promptVersion && (
+                            // The chip opens the agent page; keep the click from
+                            // toggling the row underneath it.
+                            <span
+                              className="shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <DemoPromptVersionChip
+                                version={s.promptVersion}
+                                onClick={() =>
+                                  openDetail({ type: "agent", id: "support-triage" })
+                                }
+                              />
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -357,6 +389,20 @@ function ScoreDetail({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <Meta label="Scored" value={score.when} className="col-span-2" />
+              {score.promptVersion && (
+                <Meta
+                  label="Prompt version"
+                  className="col-span-2"
+                  value={
+                    <DemoPromptVersionChip
+                      version={score.promptVersion}
+                      onClick={() =>
+                        openDetail({ type: "agent", id: "support-triage" })
+                      }
+                    />
+                  }
+                />
+              )}
               <Meta
                 label="Cost"
                 value={formatCost(score.cost, 4)}
