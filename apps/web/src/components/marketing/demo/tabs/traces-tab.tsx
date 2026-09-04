@@ -22,9 +22,9 @@ import {
 	IconCpu,
 	IconFileHorizontal,
 	IconFileHorizontalFilled,
+	IconFilter2,
 	IconGhost,
 	IconMessage2Filled,
-	IconPlus,
 	IconSitemap,
 	IconSitemapFilled,
 	IconTag,
@@ -141,13 +141,15 @@ function AddFilterMenu({
 				render={
 					<Button
 						variant="outline"
+						size="icon"
 						className="font-normal transition-[color,box-shadow] bg-card active:scale-100 text-muted-foreground/50 hover:text-muted-foreground/50 aria-expanded:text-muted-foreground/50"
 						onMouseEnter={group.onTriggerMouseEnter}
 					/>
 				}
 			>
-				<IconPlus className="text-[#B8B8B8] dark:text-[#5B5B5B]" />
-				Filter
+				{/* Raw hex like the FilterSelect trigger icons — opacity on icons
+				    reads muddier than on text. */}
+				<IconFilter2 className="text-[#B8B8B8] dark:text-[#5B5B5B]" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="w-auto min-w-36" align="start" sideOffset={8}>
 				{!showWorkflow && (
@@ -341,6 +343,13 @@ export function TracesTab() {
 						icon={IconCpu}
 						options={modelOptions}
 					/>
+					<ToggleChip
+						active={errorsOnly}
+						onClick={() => setErrorsOnly((v) => !v)}
+					>
+						<IconAlertTriangle className="size-3.5" />
+						Errors only
+					</ToggleChip>
 					{showWorkflow && (
 						<FilterSelect
 							value={workflowFilter}
@@ -411,13 +420,6 @@ export function TracesTab() {
 							onAdd={addFilter}
 						/>
 					)}
-					<ToggleChip
-						active={errorsOnly}
-						onClick={() => setErrorsOnly((v) => !v)}
-					>
-						<IconAlertTriangle className="size-3.5" />
-						Errors only
-					</ToggleChip>
 					<ClearFiltersButton
 						show={hasFilters}
 						onClick={() => {

@@ -216,7 +216,7 @@ export function DemoPromptVersionChip({
 			title="Prompt version — see all versions"
 			render={<button type="button" onClick={onClick} />}
 		>
-			v{version.number}
+			{`v${version.number}`}
 		</Badge>
 	);
 }
