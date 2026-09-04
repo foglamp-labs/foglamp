@@ -40,15 +40,17 @@ export function CuttingMat() {
       className="pointer-events-none relative h-52 w-full select-none overflow-hidden sm:h-102"
     >
       {/* The mat: a fine grid with a heavier line every fifth cell, fading in
-          from the top so it doesn't hit the copyright row as a hard edge. */}
+          from the top so it doesn't hit the copyright row as a hard edge. The
+          line colors are solid, one pair per theme, set as custom properties
+          so the gradients and the diagonals share them. */}
       <div
-        className="absolute inset-0 text-neutral-300 dark:text-border"
+        className="absolute inset-0 [--mat-major:#e3e3e3] [--mat-minor:#f0f0f0] dark:[--mat-major:#2e2e2e] dark:[--mat-minor:#232323]"
         style={{
           backgroundImage: [
-            "linear-gradient(to right, color-mix(in oklab, currentColor 60%, transparent) 1px, transparent 1px)",
-            "linear-gradient(to bottom, color-mix(in oklab, currentColor 60%, transparent) 1px, transparent 1px)",
-            "linear-gradient(to right, color-mix(in oklab, currentColor 30%, transparent) 1px, transparent 1px)",
-            "linear-gradient(to bottom, color-mix(in oklab, currentColor 30%, transparent) 1px, transparent 1px)",
+            "linear-gradient(to right, var(--mat-major) 1px, transparent 1px)",
+            "linear-gradient(to bottom, var(--mat-major) 1px, transparent 1px)",
+            "linear-gradient(to right, var(--mat-minor) 1px, transparent 1px)",
+            "linear-gradient(to bottom, var(--mat-minor) 1px, transparent 1px)",
           ].join(", "),
           backgroundSize: `${MAJOR}px ${MAJOR}px, ${MAJOR}px ${MAJOR}px, ${CELL}px ${CELL}px, ${CELL}px ${CELL}px`,
           backgroundPosition: "center top",
@@ -59,7 +61,6 @@ export function CuttingMat() {
         <svg
           className="absolute left-1/2 top-0 h-full -translate-x-1/2"
           width={STRIP}
-          style={{ color: "color-mix(in oklab, currentColor 60%, transparent)" }}
         >
           {DIAGONALS.map((d) => (
             <line
@@ -68,7 +69,7 @@ export function CuttingMat() {
               y1={0}
               x2={d.x + d.dir * 600}
               y2={600}
-              stroke="currentColor"
+              stroke="var(--mat-major)"
               strokeWidth={1}
             />
           ))}
