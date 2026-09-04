@@ -35,7 +35,7 @@ function isPrivateIp(ip: string): boolean {
  * X-Forwarded-For, the rightmost public entry wins: it's the one appended by
  * the nearest trusted proxy, while leftmost entries are caller-supplied.
  */
-function clientIp(c: Context<AppEnv>): string {
+export function clientIp(c: Context<AppEnv>): string {
   let sock: string | null = null;
   try {
     sock = getConnInfo(c).remote.address ?? null;

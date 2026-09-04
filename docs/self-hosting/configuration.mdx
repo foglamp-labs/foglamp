@@ -96,6 +96,11 @@ Foggy turns on only when `GOOGLE_GENERATIVE_AI_API_KEY` is set.
 | `FOGGY_DAILY_LIMIT` | `200` | Per-user messages per day. |
 | `FOGGY_MAX_STEPS` | `6` | Max tool-use steps per answer. |
 | `FOGGY_MAX_OUTPUT_TOKENS` | `1500` | Output token cap per answer. |
+| `FOGGY_PUBLIC_RPM` | `5` | Landing-page Foggy: requests per minute per IP. |
+| `FOGGY_PUBLIC_DAILY_LIMIT` | `30` | Landing-page Foggy: messages per day per IP. |
+| `FOGGY_PUBLIC_GLOBAL_DAILY_LIMIT` | `2000` | Landing-page Foggy: messages per day across all visitors. |
+| `FOGGY_PUBLIC_MAX_STEPS` | `3` | Landing-page Foggy: max tool-use steps per answer. |
+| `FOGGY_PUBLIC_MAX_OUTPUT_TOKENS` | `700` | Landing-page Foggy: output token cap per answer. |
 | `FOGLAMP_API_KEY` | none | Optional: send Foggy's own LLM calls into a Foglamp project. |
 | `FOGLAMP_INGEST_URL` | none | Ingest endpoint for that key. |
 
