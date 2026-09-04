@@ -18,7 +18,7 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
     node: (
       <span className="flex items-center gap-1.5">
         <OlwenLogo className="size-6" />
-        <span className="font-display text-lg font-semibold tracking-tight">
+        <span className="font-display text-lg font-medium tracking-tight">
           Olwen
         </span>
       </span>
@@ -99,20 +99,12 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
 // reveal so it reads as the hero's payoff.
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-// A hairline frame around the product, with a schematic caption underneath in
-// the voice of the section marks: figure number left, a note right.
+// A hairline frame around the product.
 function DemoFrame({ children }: { children: React.ReactNode }) {
   return (
-    <figure className="m-0">
-      <div className="overflow-hidden rounded-xl ring-1 ring-border">
-        {children}
-      </div>
-      <figcaption className="mt-3 flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground/70">
-        <span>Fig. 01</span>
-        <span className="hidden md:inline">Live demo. Click around.</span>
-        <span className="md:hidden">Overview</span>
-      </figcaption>
-    </figure>
+    <div className="overflow-hidden rounded-xl ring-1 ring-border">
+      {children}
+    </div>
   );
 }
 
@@ -141,14 +133,14 @@ export function Hero() {
             {...rise(0.15)}
             className="font-display mt-6 md:text-5xl text-4xl font-medium tracking-tight text-balance"
           >
-            Know what your agents are doing.
+            Know what your agents are doing
           </motion.h1>
           <motion.p
             {...rise(0.27)}
             className="mt-5 max-w-md text-lg text-muted-foreground text-pretty"
           >
-            Cost, latency, and quality of every call your agents make. Two
-            lines of code, built for the Vercel AI SDK.
+            Cost, latency, and quality of every call your agents make. Two lines
+            of code, built for the Vercel AI SDK.
           </motion.p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">

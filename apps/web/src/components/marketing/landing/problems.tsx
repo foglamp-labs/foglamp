@@ -8,8 +8,8 @@ import { PassRateCurve, SpanWaterfall, SpendDial } from "./schematics";
 
 // Problems, not features. Three beats, each a hairline with a numbered mono
 // label, a headline, two sentences, a link to the feature page, and a
-// schematic. The schematics are static line drawings (see schematics.tsx),
-// so the section stays light next to the live demo in the hero.
+// schematic. The schematics are static line drawings (see schematics.tsx)
+// and carry their own labels, so there is no caption under them.
 
 type Beat = {
 	index: string;
@@ -18,36 +18,32 @@ type Beat = {
 	body: string;
 	link: { label: string; href: Route };
 	figure: ReactNode;
-	caption: string;
 };
 
 const BEATS: Beat[] = [
 	{
 		index: "01",
 		name: "Money",
-		title: "The bill is how you find out.",
+		title: "The bill is how you find out",
 		body: "Foglamp prices every call at ingest and rolls it up by model, agent, and customer. Set a threshold and get told before the invoice does.",
 		link: { label: "Cost intelligence", href: "/features/cost-intelligence" },
 		figure: <SpendDial className="w-full" />,
-		caption: "Fig. 02. Daily spend against an alert threshold.",
 	},
 	{
 		index: "02",
 		name: "Time",
-		title: "The 2am reconstruction.",
+		title: "The 2am reconstruction",
 		body: "One trace holds every span of a run: the tools, the model calls, the exact prompt and the exact response. You read what happened instead of guessing.",
 		link: { label: "Distributed traces", href: "/features/distributed-traces" },
 		figure: <SpanWaterfall className="w-full" />,
-		caption: "Fig. 03. One trace, five spans, one slow model call.",
 	},
 	{
 		index: "03",
 		name: "Safety",
-		title: "The regression nobody saw.",
+		title: "The regression nobody saw",
 		body: "Evals score real traffic with code checks and LLM judges. When the pass rate slips under your line, an alert fires the same day, not the next quarter.",
 		link: { label: "Evals", href: "/features/evals" },
 		figure: <PassRateCurve className="w-full" />,
-		caption: "Fig. 04. Pass rate over two weeks, crossing the alert line.",
 	},
 ];
 
@@ -70,11 +66,11 @@ export function Problems() {
 	return (
 		<section className="mx-auto mt-32 w-full max-w-7xl px-5 sm:mt-40 sm:px-8">
 			<header className="max-w-2xl">
-				<h2 className="font-display text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-					What you stop worrying about.
+				<h2 className="font-display text-3xl font-medium tracking-tight text-balance sm:text-4xl">
+					What you stop worrying about
 				</h2>
 				<p className="mt-3 max-w-md text-muted-foreground text-pretty">
-					Foglamp exists for three problems. Money, time, and safety.
+					Money, time, and safety.
 				</p>
 			</header>
 
@@ -84,7 +80,7 @@ export function Problems() {
 						<HairlineLabel index={beat.index} name={beat.name} />
 						<div className="grid gap-10 lg:grid-cols-2 lg:gap-20">
 							<div className="max-w-md">
-								<h3 className="font-display text-2xl font-semibold tracking-tight text-balance sm:text-[1.75rem]">
+								<h3 className="font-display text-2xl font-medium tracking-tight text-balance sm:text-[1.75rem]">
 									{beat.title}
 								</h3>
 								<p className="mt-4 text-muted-foreground text-pretty">{beat.body}</p>
@@ -92,19 +88,16 @@ export function Problems() {
 									{beat.link.label}
 								</Link>
 							</div>
-							<figure className="m-0 w-full max-w-md text-muted-foreground lg:ml-auto">
+							<div className="w-full max-w-md text-muted-foreground lg:ml-auto">
 								{beat.figure}
-								<figcaption className="mt-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground/70">
-									{beat.caption}
-								</figcaption>
-							</figure>
+							</div>
 						</div>
 					</li>
 				))}
 			</ol>
 
-			<p className="mt-20 font-display text-3xl font-semibold tracking-tight text-balance sm:mt-24 sm:text-4xl">
-				So you can ship on a Friday.
+			<p className="mt-20 font-display text-3xl font-medium tracking-tight text-balance sm:mt-24 sm:text-4xl">
+				So you can ship on a Friday
 			</p>
 
 			{/* Open source, one hairline row. Belongs with safety: you can read the
@@ -113,8 +106,8 @@ export function Problems() {
 				<HairlineLabel index="04" name="Open source" />
 				<div className="grid gap-6 lg:grid-cols-2 lg:gap-20">
 					<p className="max-w-md text-muted-foreground text-pretty">
-						Apache 2.0, the whole thing. Run the cloud version, or self-host with
-						one docker compose file and keep every prompt on your own machines.
+						Apache 2.0. Use the cloud, or self-host with one docker compose file
+						and keep every prompt on your machines.
 					</p>
 					<div className="flex flex-wrap gap-x-6 gap-y-2 lg:justify-end">
 						<a href={GITHUB_URL} target="_blank" rel="noreferrer" className={TEXT_LINK}>

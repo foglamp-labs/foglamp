@@ -161,12 +161,12 @@ export function CtaSection() {
 			{/* Headline block: above the fog, always fully legible. */}
 			<div className="relative z-30 mx-auto w-full max-w-7xl px-5 sm:px-8">
 				<div className="max-w-xl">
-					<h2 className="font-display text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl">
-						Your agents are running in the fog.
+					<h2 className="font-display text-3xl font-medium tracking-tight text-balance text-foreground sm:text-4xl">
+						Your agents are running in the fog
 					</h2>
 					<p className="mt-3 max-w-md text-muted-foreground text-pretty">
-						What they cost, when they break, what they say. You can&rsquo;t see
-						any of it. One prompt turns the light on.
+						What they cost, when they break, what they say. One prompt turns
+						the light on.
 					</p>
 					<div className="mt-7 flex flex-wrap items-center gap-3">
 						<CopyPromptButton />

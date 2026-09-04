@@ -20,7 +20,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 	return (
 		<span className="flex flex-col">
 			<span className="text-[11px] text-muted-foreground">{label}</span>
-			<span className="font-display text-lg font-semibold tabular-nums text-foreground">
+			<span className="font-display text-lg font-medium tabular-nums text-foreground">
 				{value}
 			</span>
 		</span>
@@ -42,7 +42,7 @@ export function AgentDetails({
 					<IconGhostFilled className="size-5" />
 				</span>
 				<span className="flex flex-col gap-0.5">
-					<span className="font-display text-sm font-semibold leading-tight">
+					<span className="font-display text-sm font-medium leading-tight">
 						Support Agent
 					</span>
 					<span className="flex items-center gap-1.5 text-sm text-muted-foreground">
