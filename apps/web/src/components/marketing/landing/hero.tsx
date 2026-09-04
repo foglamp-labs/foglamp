@@ -1,18 +1,11 @@
 "use client";
 
 import { Button } from "@foglamp/ui/components/button";
-import {
-  IconArrowBigRightFilled,
-  IconCircleChevronRightFilled,
-} from "@tabler/icons-react";
-import { BorderBeam } from "border-beam";
 import { type MotionProps, motion, useReducedMotion } from "motion/react";
+import Image from "next/image";
 import Link from "next/link";
-import { type SVGProps, useEffect, useState } from "react";
 
 import { OlwenLogo, OptionLogo } from "@/components/brand-logos";
-import { FilmGrain } from "@/components/marketing/noise-overlay";
-import Image from "next/image";
 import { CopyPromptButton } from "./copy-prompt-button";
 import { HeroDemo } from "./hero-demo";
 
@@ -101,70 +94,32 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
   },
 ];
 
-// interfere.com-style entrance: each element fades in while rising a touch and
-// sharpening from a soft blur, sequenced top-to-bottom. The dashboard follows
-// last with a longer, gently scaled reveal so it reads as the hero's payoff.
+// Entrance: each element fades in while rising a touch and sharpening from a
+// soft blur, sequenced top-to-bottom. The dashboard follows last with a longer
+// reveal so it reads as the hero's payoff.
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-// The border beam doesn't just appear — it powers on, counting its strength up
-// from 0 to its resting 0.4 in 0.01 steps so the frame's edge glows to life as
-// the chrome settles around it.
-const BEAM_STRENGTH = 0.3;
-const BEAM_STEP = 0.01;
-const BEAM_STEP_MS = 20;
-const BEAM_START_MS = 600;
-
-// Ramps the beam's strength prop one 0.01 step at a time after a short beat,
-// letting the chrome reveal get underway first. Reduced-motion users skip the
-// ramp and get the resting strength immediately.
-function useBeamStrength(reduce: boolean) {
-  const [strength, setStrength] = useState(reduce ? BEAM_STRENGTH : 0);
-
-  useEffect(() => {
-    if (reduce) return;
-    let interval: ReturnType<typeof setInterval> | undefined;
-    const start = setTimeout(() => {
-      let value = 0;
-      interval = setInterval(() => {
-        // toFixed(2) keeps the running sum free of float drift (0.30000004…).
-        value = Math.min(BEAM_STRENGTH, +(value + BEAM_STEP).toFixed(2));
-        setStrength(value);
-        if (value >= BEAM_STRENGTH && interval) clearInterval(interval);
-      }, BEAM_STEP_MS);
-    }, BEAM_START_MS);
-
-    return () => {
-      clearTimeout(start);
-      if (interval) clearInterval(interval);
-    };
-  }, [reduce]);
-
-  return strength;
-}
-
-// The dashboard demo wrapped in its house BorderBeam. Isolated into its own
-// component so the beam's strength ramp (a setState every 20ms for ~0.6s) only
-// re-renders the demo — not the hero copy, whose entrance animations shouldn't
-// churn (and risk flickering) while the beam powers on.
-function BeamedDemo({ reduce }: { reduce: boolean }) {
-  const beamStrength = useBeamStrength(reduce);
+// A hairline frame around the product, with a schematic caption underneath in
+// the voice of the section marks: figure number left, a note right.
+function DemoFrame({ children }: { children: React.ReactNode }) {
   return (
-    <BorderBeam
-      size="pulse-outside"
-      colorVariant="mono"
-      strength={beamStrength}
-      borderRadius={16}
-      className="w-full"
-    >
-      <HeroDemo />
-    </BorderBeam>
+    <figure className="m-0">
+      <div className="overflow-hidden rounded-xl ring-1 ring-border">
+        {children}
+      </div>
+      <figcaption className="mt-3 flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground/70">
+        <span>Fig. 01</span>
+        <span className="hidden md:inline">Live demo. Click around.</span>
+        <span className="md:hidden">Overview</span>
+      </figcaption>
+    </figure>
   );
 }
 
 export function Hero() {
   const reduce = useReducedMotion() ?? false;
 
-  // Motion props for a "blur up" reveal at a given delay — or nothing for
+  // Motion props for a "blur up" reveal at a given delay, or nothing for
   // reduced-motion users, so the element simply renders in place.
   const rise = (delay: number): MotionProps =>
     reduce
@@ -179,22 +134,6 @@ export function Hero() {
     // overflow-x-clip keeps the soft blur on the wide dashboard from ever
     // nudging a horizontal scrollbar during its entrance.
     <section className="relative isolate w-full overflow-x-clip pt-28">
-      {/* Subtle film-grain noise over the hero. A high-frequency feTurbulence
-          fractal, desaturated and dropped to a low opacity with screen blending
-          so it lifts the dark background without muddying the copy. Faded out
-          toward the bottom so the texture dissolves after the trusted-by strip
-          instead of stretching to the section edge and cutting. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          WebkitMaskImage: "linear-gradient(to top, #000 78%, transparent 97%)",
-          maskImage: "linear-gradient(to top, #000 78%, transparent 97%)",
-        }}
-      >
-        <FilmGrain id="hero-noise" className="opacity-15 mix-blend-screen" />
-      </div>
-
       {/* Copy: left-aligned, sharing the dashboard's max-w-7xl left edge. */}
       <div className="mx-auto flex max-w-7xl justify-between items-end px-5 sm:px-8">
         <div className="flex-col">
@@ -202,14 +141,14 @@ export function Hero() {
             {...rise(0.15)}
             className="font-display mt-6 md:text-5xl text-4xl font-medium tracking-tight text-balance"
           >
-            Ship AI agents like a pro
+            Know what your agents are doing.
           </motion.h1>
           <motion.p
             {...rise(0.27)}
             className="mt-5 max-w-md text-lg text-muted-foreground text-pretty"
           >
-            See the cost, latency, and quality of every LLM call. Catch bad
-            output before your users do.
+            Cost, latency, and quality of every call your agents make. Two
+            lines of code, built for the Vercel AI SDK.
           </motion.p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -224,45 +163,62 @@ export function Hero() {
                 variant="secondary"
               >
                 Start free
-                <IconArrowBigRightFilled className="size-4 text-muted-foreground ml-0.5" />
               </Button>
             </motion.div>
           </div>
         </div>
 
         <motion.div
-          {...rise(1.54)}
-          className="text-sm font-normal tracking-wide text-muted-foreground hidden md:flex gap-1.5 items-center"
+          {...rise(0.6)}
+          className="hidden items-center gap-2 text-sm tracking-wide text-muted-foreground md:flex"
         >
-          <span className="text-muted-foreground/40">|</span> Tailor made for{" "}
-          <div className="flex gap-1.5 items-center ">
-            <Image
-              src="/ai-sdk-logo.png"
-              alt="AI SDK"
-              className="w-12"
-              width={1080}
-              height={1080}
-            />
-          </div>
+          Built for the
+          <Image
+            src="/ai-sdk-logo.png"
+            alt="Vercel AI SDK"
+            className="w-12 invert dark:invert-0"
+            width={1080}
+            height={1080}
+          />
         </motion.div>
       </div>
 
-      {/* The dashboard demo, below the copy and centered. This is step 1 of the
-          demo's three-beat entrance: the chrome — the BorderBeam and the frame
-          it wraps — blurs in as one unit. The frame's inner surfaces start
-          hidden (their own opacity-0) and follow as steps 2 and 3 inside
-          DemoShell, so only the empty chrome shows during this reveal. */}
+      {/* The dashboard demo, below the copy and centered. Step 1 of the demo's
+          three-beat entrance: the frame blurs in as one unit, and its inner
+          surfaces follow as steps 2 and 3 inside DemoShell. */}
       <motion.div
-        initial={reduce ? false : { opacity: 0, filter: "blur(0px)" }}
+        initial={reduce ? false : { opacity: 0, filter: "blur(6px)" }}
         animate={reduce ? undefined : { opacity: 1, filter: "blur(0px)" }}
         transition={{ duration: 0.55, ease: EASE, delay: 0.6 }}
         // A touch wider than the copy's max-w-7xl so the dashboard breathes.
-        className="mx-auto mt-16 hidden w-full max-w-344 md:block"
+        className="mx-auto mt-16 hidden w-full max-w-344 px-5 sm:px-8 md:block"
       >
-        {/* Same house border beam as the pricing page's featured card. Its
-            circular-arc corners are matched by corner-round! on the demo frame
-            (see DemoShell). borderRadius 16 == the frame's rounded-3xl. */}
-        <BeamedDemo reduce={reduce} />
+        <DemoFrame>
+          <HeroDemo />
+        </DemoFrame>
+      </motion.div>
+
+      {/* Small screens get a still of the same dashboard in the same frame. */}
+      <motion.div
+        {...rise(0.6)}
+        className="mx-auto mt-12 w-full px-5 sm:px-8 md:hidden"
+      >
+        <DemoFrame>
+          <Image
+            src="/demo-overview-dark.png"
+            alt="The Foglamp overview dashboard"
+            width={2072}
+            height={1320}
+            className="hidden w-full dark:block"
+          />
+          <Image
+            src="/demo-overview-light.png"
+            alt="The Foglamp overview dashboard"
+            width={2072}
+            height={1320}
+            className="w-full dark:hidden"
+          />
+        </DemoFrame>
       </motion.div>
 
       {/* Trusted-by strip: left-aligned under the demo, still inside the

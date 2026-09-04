@@ -12,8 +12,8 @@ import { buildLandingPrompt } from "@/lib/agent-prompt";
 import { captureActivationEvent } from "@/lib/analytics";
 
 // The "paste into your coding agent" prompt button, shared by the hero and the
-// closing CTA. On copy, a colorful BorderBeam powers on around the button — the
-// same effect (and ramp) the hero uses on its dashboard chrome — then powers
+// closing CTA. On copy, a colorful BorderBeam powers on around the button, the
+// same effect (and ramp) the hero uses on its dashboard chrome, then powers
 // back off once the copied flag clears.
 
 const BEAM_TARGET = 0.6; // resting strength while a copy is fresh
