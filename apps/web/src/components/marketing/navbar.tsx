@@ -5,7 +5,7 @@ import { cn } from "@foglamp/ui/lib/utils";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
 import { DOCS_ORIGIN, GITHUB_URL } from "@/lib/links";
@@ -55,6 +55,18 @@ export function MarketingNavbar() {
 	const loggedIn = Boolean(session?.user);
 	const router = useRouter();
 
+	// The bottom hairline only appears once the page has scrolled under the
+	// bar. At the top the header sits flush with the page.
+	const [scrolled, setScrolled] = useState(false);
+	useEffect(() => {
+		function onScroll() {
+			setScrolled(window.scrollY > 0);
+		}
+		onScroll();
+		window.addEventListener("scroll", onScroll, { passive: true });
+		return () => window.removeEventListener("scroll", onScroll);
+	}, []);
+
 	// Press "L" to jump to login. Only active for logged-out visitors. Ignored
 	// while typing in a field so it never hijacks input.
 	useEffect(() => {
@@ -77,7 +89,12 @@ export function MarketingNavbar() {
 	}, [loggedIn, router]);
 
 	return (
-		<header className="sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-sm">
+		<header
+			className={cn(
+				"sticky top-0 z-50 border-b bg-background/70 backdrop-blur-sm transition-colors duration-200",
+				scrolled ? "border-border/50" : "border-transparent",
+			)}
+		>
 			<div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
 				<Link
 					href="/homepage"
