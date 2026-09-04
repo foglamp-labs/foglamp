@@ -1,47 +1,72 @@
 import type { Route } from "next";
 import Link from "next/link";
 
-import { GITHUB_URL } from "@/lib/links";
+import { ThemeSwitcher } from "@/components/theme-switcher";
+import { DOCS_ORIGIN, GITHUB_URL } from "@/lib/links";
 
-import { FooterFog } from "./footer-fog";
+import { CuttingMat } from "./cutting-mat";
 import { GithubLogo } from "./github-logo";
 import { Logo } from "./logo";
-
-const DOCS_URL = "https://docs.foglamp.dev";
+import { products } from "./products";
 
 type FooterLink = { label: string; href: string; external?: boolean };
+type FooterColumn = { heading: string; links: FooterLink[] };
 
-const productLinks: FooterLink[] = [
-	{ label: "Scan", href: "/scan" },
-	{ label: "HUD", href: "/hud" },
+const COLUMNS: FooterColumn[] = [
+	{
+		heading: "Product",
+		links: [
+			...products.map((p) => ({ label: p.label, href: p.href })),
+			{ label: "Pricing", href: "/pricing" },
+		],
+	},
+	{
+		heading: "Labs",
+		links: [
+			{ label: "Scan", href: "/scan" },
+			{ label: "HUD", href: "/hud" },
+		],
+	},
+	{
+		heading: "Resources",
+		links: [
+			{ label: "Docs", href: DOCS_ORIGIN, external: true },
+			{ label: "Quickstart", href: `${DOCS_ORIGIN}/quickstart`, external: true },
+			{ label: "Self-hosting", href: `${DOCS_ORIGIN}/self-hosting`, external: true },
+			{ label: "Changelog", href: `${DOCS_ORIGIN}/changelog`, external: true },
+			{ label: "GitHub", href: GITHUB_URL, external: true },
+		],
+	},
+	{
+		heading: "Company",
+		links: [
+			{ label: "About", href: "/about" },
+			{ label: "Privacy", href: "/privacy" },
+			{ label: "Terms", href: "/terms" },
+		],
+	},
 ];
 
-const resourceLinks: FooterLink[] = [
-	{ label: "Pricing", href: "/pricing" },
-	{ label: "Docs", href: DOCS_URL, external: true },
-];
-
-const headingClassName = "text-sm font-medium tracking-wide text-foreground";
+const LINK_CLASS =
+	"text-sm text-muted-foreground transition-colors duration-100 hover:text-foreground";
 
 function FooterAnchor({ link }: { link: FooterLink }) {
-	const className =
-		"text-sm text-muted-foreground transition-colors duration-100 hover:text-foreground";
 	if (link.external) {
 		return (
-			<a href={link.href} className={className}>
+			<a href={link.href} className={LINK_CLASS} rel="noreferrer">
 				{link.label}
 			</a>
 		);
 	}
 	return (
-		<Link href={link.href as Route} className={className}>
+		<Link href={link.href as Route} className={LINK_CLASS}>
 			{link.label}
 		</Link>
 	);
 }
 
-/** Brazilian flag glyph for the "Made in Brazil" mark. Sized via `className`
- * (defaults handled by the caller); decorative, so the adjacent text labels it. */
+/** Brazilian flag glyph for the "Made in Brazil" mark. Decorative, so the
+ * adjacent text labels it. */
 function BrazilFlag({ className }: { className?: string }) {
 	return (
 		<svg
@@ -70,29 +95,60 @@ function BrazilFlag({ className }: { className?: string }) {
 	);
 }
 
+// A small rubber stamp for where the product is made. Brand orange, a touch
+// rotated, so it reads as inked rather than typeset.
+function CuritibaStamp() {
+	return (
+		<svg
+			viewBox="0 0 104 44"
+			className="h-9 w-auto -rotate-3 text-[#FF5513] opacity-80"
+			aria-label="Curitiba, 2026"
+			role="img"
+		>
+			<rect
+				x="1.5"
+				y="1.5"
+				width="101"
+				height="41"
+				rx="4"
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="2"
+			/>
+			<text
+				x="52"
+				y="20"
+				textAnchor="middle"
+				fill="currentColor"
+				fontSize="11"
+				fontWeight="700"
+				letterSpacing="2.2"
+				className="font-mono"
+			>
+				CURITIBA
+			</text>
+			<text
+				x="52"
+				y="35"
+				textAnchor="middle"
+				fill="currentColor"
+				fontSize="10"
+				fontWeight="600"
+				letterSpacing="1"
+				className="font-mono"
+			>
+				&rsquo;26
+			</text>
+		</svg>
+	);
+}
+
 export function MarketingFooter() {
 	return (
-		<footer className="relative isolate bg-card/50 dark:shadow-(--custom-shadow)">
-			{/* Subtle film-grain texture over the footer. feTurbulence fills the
-          filter region with noise, grayscale strips its color, and
-          mix-blend-screen lets only the light specks ride on top. The filter
-          region is pinned to the element box (x/y/width/height) — without it,
-          SVG's default -10% region bleeds noise above the footer's top border. */}
-			<figure
-				aria-hidden
-				className="absolute inset-0 -z-10 pointer-events-none opacity-10 mix-blend-screen filter-[url('#noise-footer-fx')_grayscale(100%)]"
-			>
-				<svg className="size-full">
-					<filter id="noise-footer-fx" x="0%" y="0%" width="100%" height="100%">
-						<feTurbulence baseFrequency="0.8" />
-					</filter>
-				</svg>
-			</figure>
-			<div className="mx-auto max-w-7xl px-5 py-20 pb-28 sm:px-8">
-				{/* Trailing 1fr is a ghost column that keeps the link columns pulled
-            toward the brand instead of spread across the full width. */}
-				<div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
-					<div className="flex flex-col gap-4">
+		<footer className="relative isolate overflow-hidden border-t border-border/50 bg-background">
+			<div className="relative z-10 mx-auto max-w-7xl px-5 pt-16 sm:px-8">
+				<div className="grid grid-cols-2 gap-10 lg:grid-cols-[1.6fr_repeat(4,1fr)]">
+					<div className="col-span-2 flex flex-col gap-4 lg:col-span-1">
 						<Logo />
 						<p className="max-w-xs text-sm text-muted-foreground">
 							The missing observability layer for AI agents.
@@ -100,63 +156,45 @@ export function MarketingFooter() {
 						<a
 							href={GITHUB_URL}
 							aria-label="Foglamp on GitHub"
-							className="text-muted-foreground transition-colors duration-100 hover:text-foreground mt-2 w-fit"
+							className="mt-2 w-fit text-muted-foreground transition-colors duration-100 hover:text-foreground"
 						>
 							<GithubLogo className="size-4" />
 						</a>
 					</div>
-
-					<div className="flex flex-col gap-3">
-						<h3 className={headingClassName}></h3>
-					</div>
-
-					<div className="flex flex-col gap-3">
-						<h3 className={headingClassName}>Product</h3>
-						<ul className="flex flex-col gap-2.5">
-							{productLinks.map((link) => (
-								<li key={link.label}>
-									<FooterAnchor link={link} />
-								</li>
-							))}
-						</ul>
-					</div>
-
-					<div className="flex flex-col gap-3">
-						<h3 className={headingClassName}>Resources</h3>
-						<ul className="flex flex-col gap-2.5">
-							{resourceLinks.map((link) => (
-								<li key={link.label}>
-									<FooterAnchor link={link} />
-								</li>
-							))}
-						</ul>
-					</div>
+					{COLUMNS.map((col) => (
+						<div key={col.heading} className="flex flex-col gap-3">
+							<h3 className="text-sm font-medium tracking-wide text-foreground">
+								{col.heading}
+							</h3>
+							<ul className="flex flex-col gap-2.5">
+								{col.links.map((link) => (
+									<li key={link.label}>
+										<FooterAnchor link={link} />
+									</li>
+								))}
+							</ul>
+						</div>
+					))}
 				</div>
 
-				<div className="mt-16 flex items-center gap-6">
+				<div className="mt-16 flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-border/50 py-6">
+					<ThemeSwitcher />
 					<p className="text-xs text-muted-foreground">
-						© {new Date().getFullYear()} Foglamp
+						&copy; {new Date().getFullYear()} Foglamp
 					</p>
 					<span className="flex items-center gap-1.5 text-xs text-muted-foreground">
 						Made in
 						<BrazilFlag className="size-4" />
 					</span>
-					<Link
-						href="/privacy"
-						className="text-xs text-muted-foreground transition-colors duration-100 hover:text-foreground"
-					>
-						Privacy
-					</Link>
-					<Link
-						href="/terms"
-						className="text-xs text-muted-foreground transition-colors duration-100 hover:text-foreground"
-					>
-						Terms
-					</Link>
+					<span className="ml-auto">
+						<CuritibaStamp />
+					</span>
 				</div>
 			</div>
 
-			{/* <FooterFog /> */}
+			{/* The artistic ending: the brand mark as dashed cutting-mat guides,
+          bleeding off the bottom of the page. */}
+			<CuttingMat />
 		</footer>
 	);
 }
