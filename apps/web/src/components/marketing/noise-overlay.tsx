@@ -32,8 +32,10 @@ export function FilmGrain({
 }
 
 // The fog takes its color from CSS: the turbulence only supplies alpha, and an
-// feFlood in currentColor paints it. So one FogBank is grey-blue on the dark
-// theme and a mid grey on the light one, with no second render.
+// feFlood paints it. The flood color is set as a CSS property with a light
+// and a dark value, so one FogBank is a mid grey on the light theme and a
+// grey-blue on the dark one. Not currentColor: WebKit does not resolve it for
+// flood-color, and the fog vanished in Safari when it did.
 const NOISE_TO_ALPHA =
 	"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0.04";
 
@@ -42,23 +44,14 @@ export function FogBank({
 	freq,
 	seed,
 	octaves = 4,
-	className,
 }: {
 	id: string;
 	freq: number;
 	seed: number;
 	octaves?: number;
-	/** Sets the fog color via `color`. Defaults to the theme-aware grey. */
-	className?: string;
 }) {
 	return (
-		<div
-			aria-hidden
-			className={cn(
-				"absolute inset-0 overflow-hidden text-[#6b7078] dark:text-[#333639]",
-				className,
-			)}
-		>
+		<div aria-hidden className="absolute inset-0 overflow-hidden">
 			{/* The turbulence is rasterized at quarter resolution and scaled up 4x.
           It sits behind 12-24px of blur everywhere it's used, so the upscale
           is invisible, and the filter costs 1/16th to render. */}
@@ -86,7 +79,10 @@ export function FogBank({
 						values={NOISE_TO_ALPHA}
 						result="alpha"
 					/>
-					<feFlood floodColor="currentColor" result="tint" />
+					<feFlood
+						className="[flood-color:#6b7078] dark:[flood-color:#333639]"
+						result="tint"
+					/>
 					<feComposite in="tint" in2="alpha" operator="in" />
 				</filter>
 				<rect width="100%" height="100%" filter={`url(#${id})`} />
