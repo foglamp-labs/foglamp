@@ -8,71 +8,132 @@
 // normalizes every circle to 360 units, so the dash pattern is written in
 // degrees: 36 dashes of 6, gaps of 4.
 const CIRCLES = [
-	{ cx: 24, delay: "0s" },
-	{ cx: 48, delay: "-1.6s" },
-	{ cx: 72, delay: "-3.2s" },
+  { cx: 22, delay: "0s" },
+  { cx: 48, delay: "-1.6s" },
+  { cx: 74, delay: "-3.2s" },
 ];
 
-export function CuttingMat() {
-	return (
-		<div
-			aria-hidden
-			className="pointer-events-none relative h-52 w-full select-none overflow-hidden sm:h-64"
-		>
-			{/* The mat: a fine grid with a heavier line every fifth cell, fading
-          in from the top so it doesn't hit the copyright row as a hard edge. */}
-			<div
-				className="absolute inset-0 text-border"
-				style={{
-					backgroundImage: [
-						"linear-gradient(to right, color-mix(in oklab, currentColor 55%, transparent) 1px, transparent 1px)",
-						"linear-gradient(to bottom, color-mix(in oklab, currentColor 55%, transparent) 1px, transparent 1px)",
-						"linear-gradient(to right, color-mix(in oklab, currentColor 28%, transparent) 1px, transparent 1px)",
-						"linear-gradient(to bottom, color-mix(in oklab, currentColor 28%, transparent) 1px, transparent 1px)",
-					].join(", "),
-					backgroundSize: "120px 120px, 120px 120px, 24px 24px, 24px 24px",
-					backgroundPosition: "center top",
-					WebkitMaskImage:
-						"linear-gradient(to bottom, transparent, #000 45%)",
-					maskImage: "linear-gradient(to bottom, transparent, #000 45%)",
-				}}
-			/>
+// Grid geometry, in pixels. A heavier line every fifth cell, and the ruler
+// counts one unit per cell, so a major line is a multiple of five.
+const CELL = 24;
+const MAJOR = CELL * 5;
 
-			{/* The mark. Wider than the mat is tall on purpose: the container's
+// The ruler and the diagonals are drawn in a fixed strip centered on the
+// page, so their marks land on the grid lines no matter the viewport. Wide
+// enough for any screen; the container crops the rest.
+const STRIP = 2400;
+const HALF = STRIP / 2;
+const MAJORS = Array.from({ length: STRIP / MAJOR + 1 }, (_, i) => i * MAJOR);
+
+export function CuttingMat() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none relative h-52 w-full select-none overflow-hidden sm:h-102"
+    >
+      {/* The mat: a fine grid with a heavier line every fifth cell, fading in
+          from the top so it doesn't hit the ruler as a hard edge. */}
+      <div
+        className="absolute inset-0 text-neutral-300 dark:text-border"
+        style={{
+          backgroundImage: [
+            "linear-gradient(to right, color-mix(in oklab, currentColor 60%, transparent) 1px, transparent 1px)",
+            "linear-gradient(to bottom, color-mix(in oklab, currentColor 60%, transparent) 1px, transparent 1px)",
+            "linear-gradient(to right, color-mix(in oklab, currentColor 30%, transparent) 1px, transparent 1px)",
+            "linear-gradient(to bottom, color-mix(in oklab, currentColor 30%, transparent) 1px, transparent 1px)",
+          ].join(", "),
+          backgroundSize: `${MAJOR}px ${MAJOR}px, ${MAJOR}px ${MAJOR}px, ${CELL}px ${CELL}px, ${CELL}px ${CELL}px`,
+          backgroundPosition: "center top",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 70%)",
+          maskImage: "linear-gradient(to bottom, transparent, #000 70%)",
+        }}
+      >
+        {/* 45 degree guides through the major intersections, one direction
+            each way, at the weight of the fine grid. */}
+        <svg
+          className="absolute left-1/2 top-0 h-full -translate-x-1/2"
+          width={STRIP}
+          style={{ color: "color-mix(in oklab, currentColor 45%, transparent)" }}
+        >
+          {MAJORS.map((x) => (
+            <g key={x} stroke="currentColor" strokeWidth={1}>
+              <line x1={x} y1={0} x2={x + 600} y2={600} />
+              <line x1={x} y1={0} x2={x - 600} y2={600} />
+            </g>
+          ))}
+        </svg>
+      </div>
+
+      {/* The ruler along the top edge: a tick per cell, a taller one with a
+          number every fifth, counting outward from the center like a
+          centering rule. */}
+      <div
+        className="absolute left-1/2 top-0 -translate-x-1/2 text-neutral-400 dark:text-neutral-600"
+        style={{
+          width: STRIP,
+          height: 10,
+          backgroundImage: [
+            "linear-gradient(to right, currentColor 1px, transparent 1px)",
+            "linear-gradient(to right, currentColor 1px, transparent 1px)",
+          ].join(", "),
+          backgroundSize: `${MAJOR}px 10px, ${CELL}px 5px`,
+          backgroundRepeat: "repeat-x",
+        }}
+      >
+        {MAJORS.map((x) => (
+          <span
+            key={x}
+            className="absolute top-3.5 -translate-x-1/2 font-mono text-[10px] leading-none tabular-nums"
+            style={{ left: x }}
+          >
+            {Math.abs(x - HALF) / CELL}
+          </span>
+        ))}
+      </div>
+
+      {/* The mark. Wider than the mat is tall on purpose: the container's
           overflow crops the lower third of the circles. */}
-			<svg
-				viewBox="0 0 96 48"
-				className="absolute left-1/2 top-10 w-[min(640px,100%)] -translate-x-1/2 sm:top-12"
-				style={{ overflow: "visible" }}
-			>
-				{CIRCLES.map((c) => (
-					<g key={c.cx}>
-						<circle
-							cx={c.cx}
-							cy="24"
-							r="23.5"
-							pathLength={360}
-							fill="none"
-							className="stroke-muted-foreground/45"
-							strokeWidth="0.45"
-							strokeDasharray="6 4"
-							strokeLinecap="butt"
-						/>
-						<circle
-							cx={c.cx}
-							cy="24"
-							r="23.5"
-							pathLength={360}
-							fill="none"
-							className="mat-dash stroke-primary"
-							strokeWidth="0.45"
-							strokeDasharray="6 354"
-							strokeLinecap="butt"
-							style={{ animationDelay: c.delay }}
-						/>
-					</g>
-				))}
-			</svg>
-		</div>
-	);
+      <svg
+        viewBox="0 0 96 48"
+        className="absolute left-1/2 top-24 w-[min(960px,100%)] -translate-x-1/2 sm:top-30"
+        style={{ overflow: "visible" }}
+      >
+        {CIRCLES.map((c) => (
+          <g key={c.cx}>
+            {/* center mark */}
+            <g
+              className="stroke-neutral-300 dark:stroke-[#3B3B3B]"
+              strokeWidth="0.25"
+            >
+              <line x1={c.cx - 1.5} y1="24" x2={c.cx + 1.5} y2="24" />
+              <line x1={c.cx} y1="22.5" x2={c.cx} y2="25.5" />
+            </g>
+            <circle
+              cx={c.cx}
+              cy="24"
+              r="23.5"
+              pathLength={360}
+              fill="none"
+              className="stroke-neutral-300 dark:stroke-[#3B3B3B]"
+              strokeWidth="0.25"
+              strokeDasharray="6 4"
+              strokeLinecap="butt"
+            />
+            <circle
+              cx={c.cx}
+              cy="24"
+              r="23.5"
+              pathLength={360}
+              fill="none"
+              className="mat-dash stroke-primary"
+              strokeWidth="0.25"
+              strokeDasharray="6 354"
+              strokeLinecap="butt"
+              style={{ animationDelay: c.delay }}
+            />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
 }
