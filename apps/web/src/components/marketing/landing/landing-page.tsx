@@ -2,9 +2,7 @@ import { JsonLd } from "@/components/marketing/json-ld";
 import { CtaSection } from "@/components/marketing/landing/cta";
 import { Faq } from "@/components/marketing/landing/faq";
 import { Hero } from "@/components/marketing/landing/hero";
-import { Install } from "@/components/marketing/landing/install";
 import { Problems } from "@/components/marketing/landing/problems";
-import { Quote } from "@/components/marketing/landing/quote";
 import { GITHUB_URL, SITE_URL } from "@/lib/links";
 
 // schema.org graph for the homepage: who we are (Organization), the site
@@ -54,8 +52,8 @@ const homepageJsonLd = {
 
 // Shared landing content, rendered by both `/` (which redirects logged-in
 // users to the dashboard) and `/homepage` (which never redirects). Order:
-// the live demo in the hero, the three problems, the two-line setup, a quote,
-// the FAQ with the public Foggy under it, and the fog CTA into the footer.
+// the live demo in the hero, the three problems, the FAQ with the public Foggy
+// under it, and the fog CTA into the footer.
 export function LandingPage() {
 	return (
 		// No bottom padding: the CTA runs straight into the footer.
@@ -63,8 +61,6 @@ export function LandingPage() {
 			<JsonLd data={homepageJsonLd} />
 			<Hero />
 			<Problems />
-			<Install />
-			<Quote />
 			<Faq />
 			<div className="h-16 sm:h-24" />
 			<CtaSection />
