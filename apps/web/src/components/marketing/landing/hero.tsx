@@ -18,7 +18,7 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
     node: (
       <span className="flex items-center gap-1.5">
         <OlwenLogo className="size-6" />
-        <span className="font-display text-lg font-medium tracking-tight">
+        <span className="font-display text-lg font-semibold tracking-tight">
           Olwen
         </span>
       </span>
@@ -131,7 +131,7 @@ export function Hero() {
         <div className="flex-col">
           <motion.h1
             {...rise(0.15)}
-            className="font-display mt-6 md:text-5xl text-4xl font-medium tracking-tight text-balance"
+            className="font-display mt-6 md:text-5xl text-4xl font-[450] tracking-tight text-balance"
           >
             Know what your agents are doing
           </motion.h1>

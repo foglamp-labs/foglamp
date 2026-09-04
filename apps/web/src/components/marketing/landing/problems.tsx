@@ -66,7 +66,7 @@ export function Problems() {
 	return (
 		<section className="mx-auto mt-32 w-full max-w-7xl px-5 sm:mt-40 sm:px-8">
 			<header className="max-w-2xl">
-				<h2 className="font-display text-3xl font-medium tracking-tight text-balance sm:text-4xl">
+				<h2 className="font-display text-3xl font-[450] tracking-tight text-balance sm:text-4xl">
 					What you stop worrying about
 				</h2>
 				<p className="mt-3 max-w-md text-muted-foreground text-pretty">
@@ -80,7 +80,7 @@ export function Problems() {
 						<HairlineLabel index={beat.index} name={beat.name} />
 						<div className="grid gap-10 lg:grid-cols-2 lg:gap-20">
 							<div className="max-w-md">
-								<h3 className="font-display text-2xl font-medium tracking-tight text-balance sm:text-[1.75rem]">
+								<h3 className="font-display text-2xl font-[450] tracking-tight text-balance sm:text-[1.75rem]">
 									{beat.title}
 								</h3>
 								<p className="mt-4 text-muted-foreground text-pretty">{beat.body}</p>
@@ -96,7 +96,7 @@ export function Problems() {
 				))}
 			</ol>
 
-			<p className="mt-20 font-display text-3xl font-medium tracking-tight text-balance sm:mt-24 sm:text-4xl">
+			<p className="mt-20 font-display text-3xl font-[450] tracking-tight text-balance sm:mt-24 sm:text-4xl">
 				So you can ship on a Friday
 			</p>
 

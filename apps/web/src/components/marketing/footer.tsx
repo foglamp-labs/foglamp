@@ -77,7 +77,7 @@ function FooterAnchor({ link }: { link: FooterLink }) {
 function FooterGroup({ column, wide }: { column: FooterColumn; wide?: boolean }) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-medium tracking-wide text-foreground">
+      <h3 className="text-sm font-[450] tracking-wide text-foreground">
         {column.heading}
       </h3>
       <ul

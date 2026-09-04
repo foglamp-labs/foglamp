@@ -74,7 +74,7 @@ export function Faq() {
       <JsonLd data={faqJsonLd} />
       <div className="grid gap-10 lg:grid-cols-[1fr_2fr] lg:gap-20">
         <header>
-          <h2 className="font-display text-3xl font-medium tracking-tight text-balance sm:text-4xl">
+          <h2 className="font-display text-3xl font-[450] tracking-tight text-balance sm:text-4xl">
             Questions
           </h2>
           <p className="mt-3 max-w-xs text-muted-foreground text-pretty">
