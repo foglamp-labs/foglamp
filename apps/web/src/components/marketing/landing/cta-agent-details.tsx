@@ -1,6 +1,6 @@
 "use client";
 
-// The agent details that live under the CTA's fog: no card, no border — just
+// The agent details that live under the CTA's fog: no card, no border, just
 // type, trace bars and numbers sitting on the section itself. Shared by the
 // live CtaSection and the bake-off variants.
 
