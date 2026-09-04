@@ -18,9 +18,9 @@ const CIRCLES = [
 const CELL = 24;
 const MAJOR = CELL * 5;
 
-// The ruler and the diagonals are drawn in a fixed strip centered on the
-// page, so their marks land on the grid lines no matter the viewport. Wide
-// enough for any screen; the container crops the rest.
+// The ruler is drawn in a fixed strip centered on the page, so its marks land
+// on the grid lines no matter the viewport. Wide enough for any screen; the
+// container crops the rest.
 const STRIP = 2400;
 const HALF = STRIP / 2;
 const MAJORS = Array.from({ length: STRIP / MAJOR + 1 }, (_, i) => i * MAJOR);
@@ -47,28 +47,13 @@ export function CuttingMat() {
           WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 70%)",
           maskImage: "linear-gradient(to bottom, transparent, #000 70%)",
         }}
-      >
-        {/* 45 degree guides through the major intersections, one direction
-            each way, at the weight of the fine grid. */}
-        <svg
-          className="absolute left-1/2 top-0 h-full -translate-x-1/2"
-          width={STRIP}
-          style={{ color: "color-mix(in oklab, currentColor 45%, transparent)" }}
-        >
-          {MAJORS.map((x) => (
-            <g key={x} stroke="currentColor" strokeWidth={1}>
-              <line x1={x} y1={0} x2={x + 600} y2={600} />
-              <line x1={x} y1={0} x2={x - 600} y2={600} />
-            </g>
-          ))}
-        </svg>
-      </div>
+      />
 
       {/* The ruler along the top edge: a tick per cell, a taller one with a
           number every fifth, counting outward from the center like a
           centering rule. */}
       <div
-        className="absolute left-1/2 top-0 -translate-x-1/2 text-neutral-400 dark:text-neutral-600"
+        className="absolute left-1/2 top-12 -translate-x-1/2 text-neutral-300 dark:text-border opacity-75"
         style={{
           width: STRIP,
           height: 10,
