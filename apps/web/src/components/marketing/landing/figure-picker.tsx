@@ -2,21 +2,21 @@
 
 import { useSyncExternalStore } from "react";
 
-import { SCHEMATICS, type Section } from "./schematics";
+import { FIGURES, type Section } from "./figures";
 
-// A development aid for choosing between the candidate drawings. The
+// A development aid for choosing between the candidate figures. The
 // selection lives in a tiny store backed by localStorage, so it survives
 // reloads while comparing. The picker only mounts in development; production
 // always shows DEFAULTS.
 
 const DEFAULTS: Record<Section, string> = {
-  costs: "treemap",
-  traces: "rails",
-  quality: "frame",
+  costs: "breakdown",
+  traces: "waterfall",
+  quality: "scores",
 };
 
-const KEY = "landing-schematics";
-const SECTIONS = Object.keys(SCHEMATICS) as Section[];
+const KEY = "landing-figures";
+const SECTIONS = Object.keys(FIGURES) as Section[];
 
 let selection: Record<Section, string> = DEFAULTS;
 const listeners = new Set<() => void>();
@@ -59,14 +59,14 @@ function useSelection() {
 // The figure for one benefit section, whichever variant is selected.
 export function Figure({ section }: { section: Section }) {
   const current = useSelection();
-  const variants = SCHEMATICS[section];
+  const variants = FIGURES[section];
   const variant = variants.find((v) => v.id === current[section]) ?? variants[0];
   const Component = variant.component;
   return <Component />;
 }
 
 // A floating pill at the bottom center: one segmented control per section.
-export function SchematicControls() {
+export function FigureControls() {
   const current = useSelection();
   if (process.env.NODE_ENV !== "development") return null;
   return (
@@ -74,11 +74,11 @@ export function SchematicControls() {
       <div className="pointer-events-auto flex flex-col gap-y-1 rounded-2xl border border-border bg-background/95 px-3 py-2 shadow-lg backdrop-blur">
         {SECTIONS.map((section) => (
           <fieldset key={section} className="flex flex-wrap items-center gap-1.5">
-            <legend className="sr-only">{section} illustration</legend>
+            <legend className="sr-only">{section} figure</legend>
             <span className="w-14 pl-1 font-mono text-[11px] text-muted-foreground">
               {section}
             </span>
-            {SCHEMATICS[section].map((v) => {
+            {FIGURES[section].map((v) => {
               const on = current[section] === v.id;
               return (
                 <button

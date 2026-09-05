@@ -2,8 +2,8 @@ import { Button } from "@foglamp/ui/components/button";
 import type { Route } from "next";
 import Link from "next/link";
 
-import { Figure, SchematicControls } from "./schematic-picker";
-import type { Section } from "./schematics";
+import { Figure, FigureControls } from "./figure-picker";
+import type { Section } from "./figures";
 
 const BENEFITS: {
   id: Section;
@@ -38,7 +38,7 @@ export function Problems() {
         <section
           key={benefit.id}
           aria-labelledby={`${benefit.id}-heading`}
-          className="grid items-center gap-10 border-t border-border/60 py-12 sm:py-16 lg:grid-cols-[1fr_2fr] lg:gap-16"
+          className="grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1fr_2fr] lg:gap-16"
         >
           <div className="max-w-sm">
             <h2
@@ -62,7 +62,7 @@ export function Problems() {
           <Figure section={benefit.id} />
         </section>
       ))}
-      <SchematicControls />
+      <FigureControls />
     </div>
   );
 }
