@@ -42,7 +42,12 @@ export function CuttingMat() {
       {/* The mat: a fine grid with a heavier line every fourth cell, fading in
           from the top so it doesn't hit the copyright row as a hard edge. The
           line colors are solid, one pair per theme, set as custom properties
-          so the gradients and the diagonals share them. */}
+          so the gradients and the diagonals share them.
+
+          Every layer is anchored so a line runs through the page center. A
+          plain "center" would put a tile edge half a tile left of center, a
+          different half for the major and minor sizes, so the two grids would
+          drift apart and the diagonals would miss the intersections. */}
       <div
         className="absolute inset-0 [--mat-major:#e3e3e3] [--mat-minor:#f0f0f0] dark:[--mat-major:#1e1e1e] dark:[--mat-minor:#171717]"
         style={{
@@ -53,7 +58,12 @@ export function CuttingMat() {
             "linear-gradient(to bottom, var(--mat-minor) 1px, transparent 1px)",
           ].join(", "),
           backgroundSize: `${MAJOR}px ${MAJOR}px, ${MAJOR}px ${MAJOR}px, ${CELL}px ${CELL}px, ${CELL}px ${CELL}px`,
-          backgroundPosition: "center top",
+          backgroundPosition: [
+            `calc(50% - ${MAJOR / 2}px) 0`,
+            `calc(50% - ${MAJOR / 2}px) 0`,
+            `calc(50% - ${CELL / 2}px) 0`,
+            `calc(50% - ${CELL / 2}px) 0`,
+          ].join(", "),
           WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 70%)",
           maskImage: "linear-gradient(to bottom, transparent, #000 70%)",
         }}
