@@ -1,36 +1,32 @@
 import type { Route } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
 
-import { CostSchematic, QualitySchematic, TraceSchematic } from "./schematics";
+import { Figure, SchematicControls } from "./schematic-picker";
+import type { Section } from "./schematics";
 
 const BENEFITS: {
-  id: string;
+  id: Section;
   title: string;
   body: string;
   link: { label: string; href: Route };
-  figure: ReactNode;
 }[] = [
   {
     id: "costs",
     title: "Know where your money goes",
     body: "Track spending by model, agent, and customer. Get alerted when costs rise.",
     link: { label: "Explore costs", href: "/features/cost-intelligence" },
-    figure: <CostSchematic />,
   },
   {
     id: "traces",
     title: "See what happened",
     body: "Follow every model call and tool call, with the prompts and responses in one place.",
     link: { label: "Explore traces", href: "/features/distributed-traces" },
-    figure: <TraceSchematic />,
   },
   {
     id: "quality",
     title: "Catch bad answers",
     body: "Check your agents’ responses and get alerted when quality drops.",
     link: { label: "Explore evals", href: "/features/evals" },
-    figure: <QualitySchematic />,
   },
 ];
 
@@ -61,9 +57,10 @@ export function Problems() {
               <span aria-hidden="true">↗</span>
             </Link>
           </div>
-          {benefit.figure}
+          <Figure section={benefit.id} />
         </section>
       ))}
+      <SchematicControls />
     </div>
   );
 }
