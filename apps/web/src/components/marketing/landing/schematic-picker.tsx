@@ -10,8 +10,8 @@ import { SCHEMATICS, type Section } from "./schematics";
 // always shows DEFAULTS.
 
 const DEFAULTS: Record<Section, string> = {
-  costs: "bars",
-  traces: "waterfall",
+  costs: "treemap",
+  traces: "rows",
   quality: "scatter",
 };
 
