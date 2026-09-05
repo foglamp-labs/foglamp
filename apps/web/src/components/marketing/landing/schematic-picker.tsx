@@ -11,8 +11,8 @@ import { SCHEMATICS, type Section } from "./schematics";
 
 const DEFAULTS: Record<Section, string> = {
   costs: "treemap",
-  traces: "rows",
-  quality: "scatter",
+  traces: "rails",
+  quality: "frame",
 };
 
 const KEY = "landing-schematics";
@@ -70,12 +70,12 @@ export function SchematicControls() {
   const current = useSelection();
   if (process.env.NODE_ENV !== "development") return null;
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
-      <div className="pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-2 rounded-full border border-border bg-background/95 px-3 py-2 shadow-lg backdrop-blur">
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center pr-4 pl-20">
+      <div className="pointer-events-auto flex flex-col gap-y-1 rounded-2xl border border-border bg-background/95 px-3 py-2 shadow-lg backdrop-blur">
         {SECTIONS.map((section) => (
-          <fieldset key={section} className="flex items-center gap-1.5">
+          <fieldset key={section} className="flex flex-wrap items-center gap-1.5">
             <legend className="sr-only">{section} illustration</legend>
-            <span className="pl-1 font-mono text-[11px] text-muted-foreground">
+            <span className="w-14 pl-1 font-mono text-[11px] text-muted-foreground">
               {section}
             </span>
             {SCHEMATICS[section].map((v) => {

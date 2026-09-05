@@ -1,3 +1,4 @@
+import { Button } from "@foglamp/ui/components/button";
 import type { Route } from "next";
 import Link from "next/link";
 
@@ -30,9 +31,6 @@ const BENEFITS: {
   },
 ];
 
-const TEXT_LINK =
-  "inline-flex items-center gap-2 rounded-sm text-sm text-foreground underline decoration-foreground/25 underline-offset-4 transition-colors duration-150 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
-
 export function Problems() {
   return (
     <div className="mx-auto mt-12 w-full max-w-7xl px-5 sm:mt-20 sm:px-8">
@@ -52,10 +50,14 @@ export function Problems() {
             <p className="mt-4 text-base leading-relaxed text-muted-foreground text-pretty">
               {benefit.body}
             </p>
-            <Link href={benefit.link.href} className={`mt-6 ${TEXT_LINK}`}>
+            <Button
+              render={<Link href={benefit.link.href} />}
+              variant="secondary"
+              size="lg"
+              className="mt-6"
+            >
               {benefit.link.label}
-              <span aria-hidden="true">↗</span>
-            </Link>
+            </Button>
           </div>
           <Figure section={benefit.id} />
         </section>
