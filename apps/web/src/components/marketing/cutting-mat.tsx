@@ -13,9 +13,9 @@ const CIRCLES = [
   { cx: 74, delay: "-3.2s" },
 ];
 
-// Grid geometry, in pixels. A heavier line every fifth cell.
+// Grid geometry, in pixels. A heavier line every fourth cell.
 const CELL = 24;
-const MAJOR = CELL * 5;
+const MAJOR = CELL * 4;
 
 // The diagonals are drawn in a fixed strip centered on the page, so they land
 // on the grid lines no matter the viewport. Wide enough for any screen; the
@@ -37,9 +37,9 @@ export function CuttingMat() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none relative h-52 w-full select-none overflow-hidden sm:h-102"
+      className="pointer-events-none relative h-52 w-full select-none overflow-hidden sm:h-102 opacity-75"
     >
-      {/* The mat: a fine grid with a heavier line every fifth cell, fading in
+      {/* The mat: a fine grid with a heavier line every fourth cell, fading in
           from the top so it doesn't hit the copyright row as a hard edge. The
           line colors are solid, one pair per theme, set as custom properties
           so the gradients and the diagonals share them. */}
