@@ -9,29 +9,19 @@
 // degrees: 36 dashes of 6, gaps of 4.
 const CIRCLES = [
   { cx: 22, delay: "0s" },
-  { cx: 48, delay: "-1.6s" },
-  { cx: 74, delay: "-3.2s" },
+  { cx: 48, delay: "-3.2s" },
+  { cx: 74, delay: "-6.4s" },
 ];
 
 // Grid geometry, in pixels. A heavier line every fourth cell.
 const CELL = 24;
 const MAJOR = CELL * 4;
 
-// The diagonals are drawn in a fixed strip centered on the page, so they land
-// on the grid lines no matter the viewport. Wide enough for any screen; the
-// container crops the rest.
-const STRIP = 2400;
-const HALF = STRIP / 2;
-
-// A few 45 degree guides, not a hatch: a cross through the center of the mat
-// and one mirrored line four cells out on each side. Each starts on the top
-// edge at a major line and runs down through the grid intersections.
-const DIAGONALS: { x: number; dir: 1 | -1 }[] = [
-  { x: HALF, dir: 1 },
-  { x: HALF, dir: -1 },
-  { x: HALF - 4 * MAJOR, dir: 1 },
-  { x: HALF + 4 * MAJOR, dir: -1 },
-];
+// Each circle gets a 45 degree cross through its center. The lines are drawn
+// in the circles' own viewBox so they track the circles at any width; they
+// reach far enough that the mat's edges crop them. The svg scales uniformly,
+// so 45 degrees in viewBox units stays 45 degrees on screen.
+const REACH = 60;
 
 export function CuttingMat() {
   return (
@@ -52,10 +42,10 @@ export function CuttingMat() {
         className="absolute inset-0 [--mat-major:#e3e3e3] [--mat-minor:#f0f0f0] dark:[--mat-major:#1e1e1e] dark:[--mat-minor:#171717]"
         style={{
           backgroundImage: [
-            "linear-gradient(to right, var(--mat-major) 1px, transparent 1px)",
-            "linear-gradient(to bottom, var(--mat-major) 1px, transparent 1px)",
-            "linear-gradient(to right, var(--mat-minor) 1px, transparent 1px)",
-            "linear-gradient(to bottom, var(--mat-minor) 1px, transparent 1px)",
+            "linear-gradient(to right, var(--mat-major) 0.5px, transparent 0.5px)",
+            "linear-gradient(to bottom, var(--mat-major) 0.5px, transparent 0.5px)",
+            "linear-gradient(to right, var(--mat-minor) 0.5px, transparent 0.5px)",
+            "linear-gradient(to bottom, var(--mat-minor) 0.5px, transparent 0.5px)",
           ].join(", "),
           backgroundSize: `${MAJOR}px ${MAJOR}px, ${MAJOR}px ${MAJOR}px, ${CELL}px ${CELL}px, ${CELL}px ${CELL}px`,
           backgroundPosition: [
@@ -69,25 +59,30 @@ export function CuttingMat() {
         }}
       >
         <svg
-          className="absolute left-1/2 top-0 h-full -translate-x-1/2"
-          width={STRIP}
+          viewBox="0 0 96 48"
+          className="absolute left-1/2 top-24 w-[min(960px,100%)] -translate-x-1/2 sm:top-30"
+          style={{ overflow: "visible" }}
         >
-          {DIAGONALS.map((d) => (
-            <line
-              key={`${d.x}${d.dir}`}
-              x1={d.x}
-              y1={0}
-              x2={d.x + d.dir * 600}
-              y2={600}
-              stroke="var(--mat-major)"
-              strokeWidth={1}
-            />
-          ))}
+          {CIRCLES.map((c) =>
+            ([1, -1] as const).map((dir) => (
+              <line
+                key={`${c.cx}${dir}`}
+                x1={c.cx - dir * REACH}
+                y1={24 - REACH}
+                x2={c.cx + dir * REACH}
+                y2={24 + REACH}
+                stroke="var(--mat-major)"
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))
+          )}
         </svg>
       </div>
 
       {/* The mark. Wider than the mat is tall on purpose: the container's
-          overflow crops the lower third of the circles. */}
+          overflow crops the lower third of the circles. Same placement as the
+          crosses above, so they share centers. */}
       <svg
         viewBox="0 0 96 48"
         className="absolute left-1/2 top-24 w-[min(960px,100%)] -translate-x-1/2 sm:top-30"
@@ -102,7 +97,7 @@ export function CuttingMat() {
               pathLength={360}
               fill="none"
               className="stroke-neutral-300 dark:stroke-[#3B3B3B]"
-              strokeWidth="0.25"
+              strokeWidth="0.15"
               strokeDasharray="6 4"
               strokeLinecap="butt"
             />
@@ -113,7 +108,7 @@ export function CuttingMat() {
               pathLength={360}
               fill="none"
               className="mat-dash stroke-primary"
-              strokeWidth="0.25"
+              strokeWidth="0.15"
               strokeDasharray="6 354"
               strokeLinecap="butt"
               style={{ animationDelay: c.delay }}
