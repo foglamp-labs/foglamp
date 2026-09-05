@@ -24,10 +24,17 @@ function Placeholder() {
   );
 }
 
+type Scenes = typeof import("./figures-scenes");
 type Costs = typeof import("./figures-costs");
 type Traces = typeof import("./figures-traces");
 type Quality = typeof import("./figures-quality");
 
+// Scenes sit on the page with no surface, so they load behind a plain gap.
+const scene = (pick: (m: Scenes) => ComponentType) =>
+  dynamic(() => import("./figures-scenes").then(pick), {
+    ssr: false,
+    loading: () => <div className="h-104 w-full" />,
+  });
 const costs = (pick: (m: Costs) => ComponentType) =>
   dynamic(() => import("./figures-costs").then(pick), {
     ssr: false,
@@ -46,6 +53,7 @@ const quality = (pick: (m: Quality) => ComponentType) =>
 
 export const FIGURES: Record<Section, Variant[]> = {
   costs: [
+    { id: "cards", label: "Cards", component: scene((m) => m.CostCards) },
     { id: "breakdown", label: "Breakdown", component: costs((m) => m.CostBreakdown) },
     { id: "kpis", label: "KPIs", component: costs((m) => m.CostKpis) },
     { id: "dimensions", label: "Dimensions", component: costs((m) => m.CostDimensions) },
@@ -56,6 +64,7 @@ export const FIGURES: Record<Section, Variant[]> = {
     { id: "customers", label: "Customers", component: costs((m) => m.CostCustomers) },
   ],
   traces: [
+    { id: "story", label: "Story", component: scene((m) => m.TraceStory) },
     { id: "waterfall", label: "Waterfall", component: traces((m) => m.TraceWaterfall) },
     { id: "timeline", label: "Timeline", component: traces((m) => m.TraceRealTimeline) },
     { id: "list", label: "List", component: traces((m) => m.TraceList) },

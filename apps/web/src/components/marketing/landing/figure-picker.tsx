@@ -10,8 +10,8 @@ import { FIGURES, type Section } from "./figures";
 // always shows DEFAULTS.
 
 const DEFAULTS: Record<Section, string> = {
-  costs: "breakdown",
-  traces: "waterfall",
+  costs: "cards",
+  traces: "story",
   quality: "scores",
 };
 
