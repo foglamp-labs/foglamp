@@ -2,128 +2,68 @@ import type { Route } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { DOCS_ORIGIN, GITHUB_URL } from "@/lib/links";
+import { CostSchematic, QualitySchematic, TraceSchematic } from "./schematics";
 
-import { PassRateCurve, SpanWaterfall, SpendDial } from "./schematics";
-
-// Problems, not features. Three beats, each a hairline with a numbered mono
-// label, a headline, two sentences, a link to the feature page, and a
-// schematic. The schematics are static line drawings (see schematics.tsx)
-// and carry their own labels, so there is no caption under them.
-
-type Beat = {
-	index: string;
-	name: string;
-	title: string;
-	body: string;
-	link: { label: string; href: Route };
-	figure: ReactNode;
-};
-
-const BEATS: Beat[] = [
-	{
-		index: "01",
-		name: "Money",
-		title: "The bill is how you find out",
-		body: "Foglamp prices every call at ingest and rolls it up by model, agent, and customer. Set a threshold and get told before the invoice does.",
-		link: { label: "Cost intelligence", href: "/features/cost-intelligence" },
-		figure: <SpendDial className="w-full" />,
-	},
-	{
-		index: "02",
-		name: "Time",
-		title: "The 2am reconstruction",
-		body: "One trace holds every span of a run: the tools, the model calls, the exact prompt and the exact response. You read what happened instead of guessing.",
-		link: { label: "Distributed traces", href: "/features/distributed-traces" },
-		figure: <SpanWaterfall className="w-full" />,
-	},
-	{
-		index: "03",
-		name: "Safety",
-		title: "The regression nobody saw",
-		body: "Evals score real traffic with code checks and LLM judges. When the pass rate slips under your line, an alert fires the same day, not the next quarter.",
-		link: { label: "Evals", href: "/features/evals" },
-		figure: <PassRateCurve className="w-full" />,
-	},
+const BENEFITS: {
+  id: string;
+  title: string;
+  body: string;
+  link: { label: string; href: Route };
+  figure: ReactNode;
+}[] = [
+  {
+    id: "costs",
+    title: "Know where your money goes",
+    body: "Track spending by model, agent, and customer. Get alerted when costs rise.",
+    link: { label: "Explore costs", href: "/features/cost-intelligence" },
+    figure: <CostSchematic />,
+  },
+  {
+    id: "traces",
+    title: "See what happened",
+    body: "Follow every model call and tool call, with the prompts and responses in one place.",
+    link: { label: "Explore traces", href: "/features/distributed-traces" },
+    figure: <TraceSchematic />,
+  },
+  {
+    id: "quality",
+    title: "Catch bad answers",
+    body: "Check your agents’ responses and get alerted when quality drops.",
+    link: { label: "Explore evals", href: "/features/evals" },
+    figure: <QualitySchematic />,
+  },
 ];
 
-function HairlineLabel({ index, name }: { index: string; name: string }) {
-	return (
-		<div className="flex items-center gap-4">
-			<span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-				<span className="text-muted-foreground/60">{index}</span>{" "}
-				<span className="text-foreground">{name}</span>
-			</span>
-			<span aria-hidden className="h-px flex-1 bg-border/70" />
-		</div>
-	);
-}
-
 const TEXT_LINK =
-	"text-sm text-foreground underline decoration-foreground/25 underline-offset-4 transition-colors duration-100 hover:decoration-foreground";
+  "inline-flex items-center gap-2 rounded-sm text-sm text-foreground underline decoration-foreground/25 underline-offset-4 transition-colors duration-150 hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
 
 export function Problems() {
-	return (
-		<section className="mx-auto mt-32 w-full max-w-7xl px-5 sm:mt-40 sm:px-8">
-			<header className="max-w-2xl">
-				<h2 className="font-display text-3xl font-[450] tracking-tight text-balance sm:text-4xl">
-					What you stop worrying about
-				</h2>
-				<p className="mt-3 max-w-md text-muted-foreground text-pretty">
-					Money, time, and safety.
-				</p>
-			</header>
-
-			<ol className="mt-16 flex flex-col gap-16 sm:gap-20">
-				{BEATS.map((beat) => (
-					<li key={beat.index} className="flex flex-col gap-8">
-						<HairlineLabel index={beat.index} name={beat.name} />
-						<div className="grid gap-10 lg:grid-cols-2 lg:gap-20">
-							<div className="max-w-md">
-								<h3 className="font-display text-2xl font-[450] tracking-tight text-balance sm:text-[1.75rem]">
-									{beat.title}
-								</h3>
-								<p className="mt-4 text-muted-foreground text-pretty">{beat.body}</p>
-								<Link href={beat.link.href} className={`mt-6 inline-block ${TEXT_LINK}`}>
-									{beat.link.label}
-								</Link>
-							</div>
-							<div className="w-full max-w-md text-muted-foreground lg:ml-auto">
-								{beat.figure}
-							</div>
-						</div>
-					</li>
-				))}
-			</ol>
-
-			<p className="mt-20 font-display text-3xl font-[450] tracking-tight text-balance sm:mt-24 sm:text-4xl">
-				So you can ship on a Friday
-			</p>
-
-			{/* Open source, one hairline row. Belongs with safety: you can read the
-          code and you can keep the data. */}
-			<div className="mt-16 flex flex-col gap-6 sm:mt-20">
-				<HairlineLabel index="04" name="Open source" />
-				<div className="grid gap-6 lg:grid-cols-2 lg:gap-20">
-					<p className="max-w-md text-muted-foreground text-pretty">
-						Apache 2.0. Use the cloud, or self-host with one docker compose file
-						and keep every prompt on your machines.
-					</p>
-					<div className="flex flex-wrap gap-x-6 gap-y-2 lg:justify-end">
-						<a href={GITHUB_URL} target="_blank" rel="noreferrer" className={TEXT_LINK}>
-							GitHub
-						</a>
-						<a
-							href={`${DOCS_ORIGIN}/self-hosting`}
-							target="_blank"
-							rel="noreferrer"
-							className={TEXT_LINK}
-						>
-							Self-hosting guide
-						</a>
-					</div>
-				</div>
-			</div>
-		</section>
-	);
+  return (
+    <div className="mx-auto mt-12 w-full max-w-7xl px-5 sm:mt-20 sm:px-8">
+      {BENEFITS.map((benefit) => (
+        <section
+          key={benefit.id}
+          aria-labelledby={`${benefit.id}-heading`}
+          className="grid items-center gap-10 border-t border-border/60 py-12 sm:py-16 lg:grid-cols-[1fr_2fr] lg:gap-16"
+        >
+          <div className="max-w-sm">
+            <h2
+              id={`${benefit.id}-heading`}
+              className="font-display text-3xl font-[450] leading-[1.12] tracking-tight text-balance sm:text-4xl"
+            >
+              {benefit.title}
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-muted-foreground text-pretty">
+              {benefit.body}
+            </p>
+            <Link href={benefit.link.href} className={`mt-6 ${TEXT_LINK}`}>
+              {benefit.link.label}
+              <span aria-hidden="true">↗</span>
+            </Link>
+          </div>
+          {benefit.figure}
+        </section>
+      ))}
+    </div>
+  );
 }

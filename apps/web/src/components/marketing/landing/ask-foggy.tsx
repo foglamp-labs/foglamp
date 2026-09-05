@@ -96,26 +96,27 @@ export function AskFoggy() {
             className="-my-1"
             aria-label="Send"
             disabled={!input.trim()}
+            variant={!input.trim() ? "ghost" : "secondary"}
           >
             <IconArrowRight strokeWidth={3} />
           </Button>
         )}
       </form>
 
-      {(thinking || answerText || error) && (
-        <div className="pt-5 pb-6 text-[15px] leading-relaxed [&_a]:underline [&_a]:decoration-[0.5px] [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:first:mt-0 *:last:mb-0">
-          {thinking && <TextShimmerLoader text="Reading the docs" size="md" />}
-          {answerText && (
-            <Streamdown
-              components={markdownComponents}
-              controls={{ table: false }}
-            >
-              {answerText}
-            </Streamdown>
-          )}
-          {error && <p className="text-destructive">{errorMessage(error)}</p>}
-        </div>
-      )}
+      {/* Always rendered with a floor, so the answer does not push the page
+          around when it arrives. Long answers still grow past it. */}
+      <div className="min-h-44 pt-5 pb-6 text-[15px] leading-relaxed [&_a]:underline [&_a]:decoration-[0.5px] [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:first:mt-0 *:last:mb-0">
+        {thinking && <TextShimmerLoader text="Reading the docs" size="md" />}
+        {answerText && (
+          <Streamdown
+            components={markdownComponents}
+            controls={{ table: false }}
+          >
+            {answerText}
+          </Streamdown>
+        )}
+        {error && <p className="text-destructive">{errorMessage(error)}</p>}
+      </div>
     </div>
   );
 }

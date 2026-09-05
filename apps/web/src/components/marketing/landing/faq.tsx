@@ -48,11 +48,6 @@ const FAQS: Faq[] = [
     a: "Nothing on the request path. Spans are batched in memory and flushed in the background every five seconds. On serverless, call flush() before the function returns. If Foglamp is unreachable, your agent keeps running and the batch is dropped.",
     links: [{ label: "SDK reference", href: `${DOCS_ORIGIN}/sdk` }],
   },
-  {
-    q: "What is in the free plan?",
-    a: "10,000 spans a month, 3 days of retention, one project, one alert, and five evals. Agents, workflows, traces, sessions, and team members are unlimited. No card needed.",
-    links: [{ label: "Pricing", href: "/pricing" }],
-  },
 ];
 
 const faqJsonLd = {

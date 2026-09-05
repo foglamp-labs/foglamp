@@ -1,5 +1,5 @@
 import { JsonLd } from "@/components/marketing/json-ld";
-import { CtaSection } from "@/components/marketing/landing/cta";
+import { CompactCtaSection } from "@/components/marketing/landing/compact-cta";
 import { Faq } from "@/components/marketing/landing/faq";
 import { Hero } from "@/components/marketing/landing/hero";
 import { Problems } from "@/components/marketing/landing/problems";
@@ -52,18 +52,17 @@ const homepageJsonLd = {
 
 // Shared landing content, rendered by both `/` (which redirects logged-in
 // users to the dashboard) and `/homepage` (which never redirects). Order:
-// the live demo in the hero, the three problems, the FAQ with the public Foggy
-// under it, and the fog CTA into the footer.
+// the live demo in the hero, three illustrated benefits, the FAQ with the
+// public Foggy under it, and a compact setup CTA before the footer.
 export function LandingPage() {
 	return (
-		// No bottom padding: the CTA runs straight into the footer.
 		<div className="flex flex-col">
 			<JsonLd data={homepageJsonLd} />
 			<Hero />
 			<Problems />
 			<Faq />
 			<div className="h-16 sm:h-24" />
-			<CtaSection />
+			<CompactCtaSection />
 		</div>
 	);
 }
