@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@foglamp/ui/components
 import { cn } from "@foglamp/ui/lib/utils";
 import type { ReactNode } from "react";
 
+import { FAMILY_CHIP, presetMeta } from "@/app/(app)/evals/preset-meta";
+
 // Shared pieces for the benefit figures: the frame they all sit in (the same
 // chrome as the hero demo, so the page reads as one product), a few small
 // product-styled parts, and the mock data every section draws from.
@@ -112,6 +114,22 @@ export function Field({ label, value }: { label: string; value: ReactNode }) {
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-[13px] tabular-nums">{value}</span>
     </div>
+  );
+}
+
+/** The colored check chip the eval pages use for a preset. */
+export function CheckChip({ presetId, className }: { presetId: string; className?: string }) {
+  const { icon: Icon, family } = presetMeta(presetId);
+  return (
+    <span
+      className={cn(
+        "flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle",
+        FAMILY_CHIP[family],
+        className
+      )}
+    >
+      <Icon className="size-3" />
+    </span>
   );
 }
 

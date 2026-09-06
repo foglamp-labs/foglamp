@@ -75,6 +75,7 @@ export const FIGURES: Record<Section, Variant[]> = {
     { id: "session", label: "Session", component: traces((m) => m.TraceSession) },
   ],
   quality: [
+    { id: "review", label: "Review", component: scene((m) => m.QualityReview) },
     { id: "scores", label: "Scores", component: quality((m) => m.QualityScores) },
     { id: "evals", label: "Evals", component: quality((m) => m.QualityEvals) },
     { id: "runs", label: "Runs", component: quality((m) => m.QualityRuns) },

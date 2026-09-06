@@ -12,7 +12,7 @@ import { FIGURES, type Section } from "./figures";
 const DEFAULTS: Record<Section, string> = {
   costs: "cards",
   traces: "story",
-  quality: "scores",
+  quality: "review",
 };
 
 const KEY = "landing-figures";

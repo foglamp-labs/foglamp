@@ -22,7 +22,6 @@ import {
 } from "@tabler/icons-react";
 import { useState } from "react";
 
-import { FAMILY_CHIP, presetMeta } from "@/app/(app)/evals/preset-meta";
 import { AgentIcon } from "@/components/app/agent-icon";
 import { PillMeter, StatCard } from "@/components/app/page-parts";
 import {
@@ -38,29 +37,13 @@ import type { ChartConfig } from "@/components/evilcharts/ui/chart";
 import { ModelLogo } from "@/components/model-logo";
 import { formatCost } from "@/lib/format";
 
-import { BUCKETS, Mono, noise, Panel, REPLY, Tile, WINDOW_MS } from "./figure-kit";
+import { BUCKETS, CheckChip, Mono, noise, Panel, REPLY, Tile, WINDOW_MS } from "./figure-kit";
 
 const bucketLabel = makeBucketLabel(WINDOW_MS);
 const edgeTick = makeEdgeTick(bucketLabel);
 const ticks = thinTicks(BUCKETS, bucketLabel);
 
 const THRESHOLD = 0.7;
-
-/** The colored check chip the eval pages use for a preset. */
-function CheckChip({ presetId, className }: { presetId: string; className?: string }) {
-  const { icon: Icon, family } = presetMeta(presetId);
-  return (
-    <span
-      className={cn(
-        "flex size-5 shrink-0 items-center justify-center rounded-md corner-squircle",
-        FAMILY_CHIP[family],
-        className
-      )}
-    >
-      <Icon className="size-3" />
-    </span>
-  );
-}
 
 function Verdict({ pass }: { pass: boolean }) {
   return pass ? (
