@@ -119,7 +119,7 @@ export function CostCards() {
         ))}
       </BreakdownCard>
       <BreakdownCard title="Customers" className="sm:absolute sm:top-[22%] sm:right-0 sm:z-30 sm:w-[34%]">
-        {CUSTOMERS.slice(0, 4).map((c) => (
+        {CUSTOMERS.map((c) => (
           <BreakdownRow
             key={c.id}
             icon={

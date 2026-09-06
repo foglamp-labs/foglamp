@@ -2,8 +2,7 @@ import { Button } from "@foglamp/ui/components/button";
 import type { Route } from "next";
 import Link from "next/link";
 
-import { Figure, FigureControls } from "./figure-picker";
-import type { Section } from "./figures";
+import { Figure, type Section } from "./figures";
 
 const BENEFITS: {
   id: Section;
@@ -54,7 +53,7 @@ export function Problems() {
               render={<Link href={benefit.link.href} />}
               variant="secondary"
               size="lg"
-              className="mt-6"
+              className="mt-6 h-9.5 px-5"
             >
               {benefit.link.label}
             </Button>
@@ -62,7 +61,6 @@ export function Problems() {
           <Figure section={benefit.id} />
         </section>
       ))}
-      <FigureControls />
     </div>
   );
 }
