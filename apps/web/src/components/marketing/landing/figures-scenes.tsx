@@ -1,7 +1,12 @@
 "use client";
 
 import { Badge } from "@foglamp/ui/components/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@foglamp/ui/components/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@foglamp/ui/components/card";
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconGhostFilled,
@@ -13,14 +18,23 @@ import { type ReactNode, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
 import { Chip } from "@/components/app/context-chip";
-import { CustomerAvatar } from "@/components/app/customer-avatar";
 import { TraceTimeline } from "@/components/app/trace-timeline";
-import { SESSION_TURNS, TRACE_SPANS } from "@/components/marketing/demo/mock-data";
+import {
+  SESSION_TURNS,
+  TRACE_SPANS,
+} from "@/components/marketing/demo/mock-data";
 import { ModelLogo } from "@/components/model-logo";
 import { formatCost, formatSpanDuration } from "@/lib/format";
 import type { TraceSpan } from "@/lib/trace-timeline";
 
-import { AGENTS, CheckChip, CUSTOMERS, MODELS, Mono, noise } from "./figure-kit";
+import {
+  AGENTS,
+  CheckChip,
+  CUSTOMERS,
+  MODELS,
+  Mono,
+  noise,
+} from "./figure-kit";
 
 // Scenes: a few real product cards laid out on the page itself, with no
 // surface behind them. They overlap a little so the group reads as one
@@ -28,9 +42,15 @@ import { AGENTS, CheckChip, CUSTOMERS, MODELS, Mono, noise } from "./figure-kit"
 
 /** A card that can sit on top of another: the app's card plus a hairline so
  * the overlapping edges stay crisp on both themes. */
-function Scene({ className, children }: { className?: string; children: ReactNode }) {
+function Scene({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
   return (
-    <Card size="sm" className={cn("ring-1 ring-border", className)}>
+    <Card size="sm" className={cn(className)}>
       {children}
     </Card>
   );
@@ -62,7 +82,10 @@ function BreakdownRow({
         <div className="h-0.5 w-14 overflow-hidden rounded-full bg-muted-foreground/10">
           <div
             className="ml-auto h-full rounded-full"
-            style={{ width: `${Math.max(2, fraction * 100)}%`, backgroundColor: color }}
+            style={{
+              width: `${Math.max(2, fraction * 100)}%`,
+              backgroundColor: color,
+            }}
           />
         </div>
       </div>
@@ -91,14 +114,56 @@ function BreakdownCard({
   );
 }
 
+// Fake customer logos: a solid round mark with a simple white glyph, the
+// shape a real customer's image takes in the app.
+const LOGOS: Record<string, { color: string; glyph: ReactNode }> = {
+  cus_acme: {
+    color: "#0f766e",
+    glyph: <path d="M8 3 13 13H3Z" />,
+  },
+  cus_globex: {
+    color: "#4f46e5",
+    glyph: (
+      <path
+        fillRule="evenodd"
+        d="M8 2a6 6 0 1 1 0 12A6 6 0 0 1 8 2Zm0 2a4 4 0 0 0-3.87 3h7.74A4 4 0 0 0 8 4Zm3.87 5H4.13A4 4 0 0 0 11.87 9Z"
+      />
+    ),
+  },
+  cus_umbrella: {
+    color: "#e11d48",
+    glyph: <path d="M2 9a6 6 0 0 1 12 0Zm5 0h2v3a1 1 0 1 1-2 0Z" />,
+  },
+};
+
+function Logo({ id, className }: { id: string; className?: string }) {
+  const logo = LOGOS[id];
+  if (!logo) return null;
+  return (
+    <span
+      className={cn("flex shrink-0 items-center justify-center rounded-full", className)}
+      style={{ backgroundColor: logo.color }}
+    >
+      <svg viewBox="0 0 16 16" className="size-[70%] fill-white" aria-hidden>
+        {logo.glyph}
+      </svg>
+    </span>
+  );
+}
+
 export function CostCards() {
   return (
     <div className="grid gap-4 sm:relative sm:block sm:h-112">
-      <BreakdownCard title="Agents" className="sm:absolute sm:top-0 sm:left-[30%] sm:z-10 sm:w-[38%]">
+      <BreakdownCard
+        title="Agents"
+        className="sm:absolute sm:top-0 sm:left-[40%] sm:z-10 sm:w-[38%]"
+      >
         {AGENTS.map((a) => (
           <BreakdownRow
             key={a.name}
-            icon={<AgentIcon name={a.name} filled className="size-3.5 shrink-0" />}
+            icon={
+              <AgentIcon name={a.name} filled className="size-3.5 shrink-0" />
+            }
             title={a.name}
             value={formatCost(a.cost, 2)}
             fraction={a.cost / AGENTS[0].cost}
@@ -106,7 +171,10 @@ export function CostCards() {
           />
         ))}
       </BreakdownCard>
-      <BreakdownCard title="Models" className="sm:absolute sm:bottom-0 sm:left-0 sm:z-20 sm:w-[36%]">
+      <BreakdownCard
+        title="Models"
+        className="sm:absolute sm:bottom-0 sm:left-[20%] sm:z-20 sm:w-[36%]"
+      >
         {MODELS.map((m) => (
           <BreakdownRow
             key={m.id}
@@ -118,18 +186,14 @@ export function CostCards() {
           />
         ))}
       </BreakdownCard>
-      <BreakdownCard title="Customers" className="sm:absolute sm:top-[22%] sm:right-0 sm:z-30 sm:w-[34%]">
+      <BreakdownCard
+        title="Customers"
+        className="sm:absolute sm:top-[62%] sm:right-10 sm:z-30 sm:w-[34%]"
+      >
         {CUSTOMERS.map((c) => (
           <BreakdownRow
             key={c.id}
-            icon={
-              <CustomerAvatar
-                customerId={c.id}
-                customerName={c.name}
-                filled
-                className="size-3.5 shrink-0"
-              />
-            }
+            icon={<Logo id={c.id} className="size-3.5" />}
             title={c.name}
             value={formatCost(c.cost, 2)}
             fraction={c.cost / CUSTOMERS[0].cost}
@@ -177,22 +241,16 @@ export function TraceStory() {
   const [selected, setSelected] = useState<string | null>("s3");
   return (
     <div className="flex flex-col gap-4 sm:block">
-      <Scene className="relative z-10 sm:w-[60%]">
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle>Turn 1</CardTitle>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
-            <Mono>{turn.traceId}</Mono>
-            <span>{formatSpanDuration(turn.durationMs)}</span>
-            <span>{formatCost(turn.totalCost, 4)}</span>
-          </div>
-        </CardHeader>
+      <Scene className="relative z-10 sm:w-[45%]">
         <CardContent className="flex flex-col gap-4">
           <Bubble role="user" text={turn.userMessage} />
           <div className="flex flex-wrap items-center gap-1.5 pl-9">
             {turn.toolCalls?.map((tc) => (
               <Chip
                 key={tc.name}
-                icon={<IconTool className="mb-px size-3 shrink-0 fill-current stroke-1 text-blue-500" />}
+                icon={
+                  <IconTool className="mb-px size-3 shrink-0 fill-current stroke-1 text-blue-500" />
+                }
                 label={<span className="font-mono">{tc.name}</span>}
                 trailing={tc.count > 1 ? `×${tc.count}` : undefined}
               />
@@ -201,9 +259,13 @@ export function TraceStory() {
           <Bubble role="assistant" text={turn.assistantOutput} />
         </CardContent>
       </Scene>
-      <Scene className="sm:-mt-5 sm:ml-[12%]">
+      <Scene className="sm:-mt-12 sm:ml-[15%] z-0">
         <CardContent>
-          <TraceTimeline spans={spans} selected={selected} onSelect={setSelected} />
+          <TraceTimeline
+            spans={spans}
+            selected={selected}
+            onSelect={setSelected}
+          />
         </CardContent>
       </Scene>
     </div>
@@ -263,7 +325,10 @@ export function QualityReview() {
               ))}
             </div>
             <div className="relative h-56 border-b border-border">
-              <span aria-hidden className="absolute inset-x-0 top-1/2 border-t border-border" />
+              <span
+                aria-hidden
+                className="absolute inset-x-0 top-1/2 border-t border-border"
+              />
               <span
                 aria-hidden
                 className="absolute inset-x-0 border-t border-dashed border-rose-500"
@@ -284,9 +349,14 @@ export function QualityReview() {
                     className={cn(
                       "absolute -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-card",
                       pass ? "bg-emerald-500" : "bg-rose-500",
-                      picked ? "size-3.5 ring-rose-500 ring-offset-2 ring-offset-card" : "size-2"
+                      picked
+                        ? "size-3.5 ring-rose-500 ring-offset-2 ring-offset-card"
+                        : "size-2"
                     )}
-                    style={{ left: `${r.x * 100}%`, top: `${(1 - r.y) * 100}%` }}
+                    style={{
+                      left: `${r.x * 100}%`,
+                      top: `${(1 - r.y) * 100}%`,
+                    }}
                   />
                 );
               })}
@@ -313,7 +383,9 @@ export function QualityReview() {
             <Mono>tr_7c1f5a2b</Mono>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <span className="text-rose-600 tabular-nums dark:text-rose-400">0.42</span>
+            <span className="text-rose-600 tabular-nums dark:text-rose-400">
+              0.42
+            </span>
             <Badge variant="rose">Fail</Badge>
           </div>
         </CardHeader>
@@ -324,8 +396,8 @@ export function QualityReview() {
               Judge’s reason
             </span>
             <p className="mt-1 text-[13px] leading-relaxed">
-              Restates the status without checking the order. Gives no reason for
-              the delay and no next step.
+              Restates the status without checking the order. Gives no reason
+              for the delay and no next step.
             </p>
           </div>
           <Bubble role="assistant" text={BAD_REPLY} />
