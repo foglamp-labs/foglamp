@@ -38,7 +38,7 @@ distinct prompts an agent has run with into versions:
 
 - **Slots**: content that changes between runs (a user's name, a retrieved
   snippet, a date) is folded into the version's template as a `{…}` line, so
-  a personalised prompt is still one version.
+  a personalized prompt is still one version.
 - **Edits**: when the prompt text changes and the new text keeps being used
   for later runs, a new version opens. A one-off variation does not.
 
@@ -49,7 +49,7 @@ version. To see the runs behind a version, use the **Prompt version** filter
 on the [traces](/dashboard/traces) page; the `v3` chip next to a trace's
 system prompt links back here.
 
-The template reads as a document: headings, lists and paragraphs are laid
+The template reads as a document: headings, lists, and paragraphs are laid
 out, and values the versioning replaced (`{date}`, `{id}`, `{n}`, …) show as
 quiet tokens. Each slot is a **varies per run** chip; hover it to see the
 text runs actually put there, with how many runs carried each value. An
