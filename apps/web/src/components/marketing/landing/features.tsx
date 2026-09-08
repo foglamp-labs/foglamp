@@ -1,26 +1,26 @@
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   type Icon,
-  IconBriefcase,
-  IconBriefcaseFilled,
+  IconUser,
+  IconUserFilled,
 } from "@tabler/icons-react";
 
 import { nav } from "@/components/app/nav";
 
-// The product features a landing section leans on, listed under its button
+// The product features a landing section leans on, listed above its heading
 // with the same colored chip icons the sidebar uses.
 
 type Feature = { label: string; icon: Icon; iconClassName?: string };
 
 const CUSTOMERS: Feature = {
   label: "Customers",
-  icon: IconBriefcaseFilled,
+  icon: IconUserFilled,
   iconClassName:
     "bg-violet-100 dark:bg-violet-950 rounded-[5px] squircle:rounded-xl p-0.5 corner-squircle text-violet-500 shadow-[inset_0_0_0_1px_rgba(139,92,246,0.14),0_2px_6px_-2px_rgba(139,92,246,0.25)] dark:shadow-(--custom-shadow)",
 };
 
 /** Outline twin of the customers chip, for anywhere that wants both states. */
-export const CUSTOMERS_OUTLINE_ICON = IconBriefcase;
+export const CUSTOMERS_OUTLINE_ICON = IconUser;
 
 function fromNav(href: string): Feature {
   const item = nav.find((entry) => entry.href === href);
