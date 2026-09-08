@@ -52,7 +52,7 @@ export function FeatureList({
   className?: string;
 }) {
   return (
-    <ul className={cn("flex flex-col gap-1.5", className)}>
+    <ul className={cn("flex flex-wrap gap-x-4 gap-y-2", className)}>
       {features.map((id) => {
         const { label, icon: Icon, iconClassName } = FEATURES[id];
         return (
