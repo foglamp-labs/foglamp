@@ -22,7 +22,7 @@ export function HeroDemo() {
     // The persistent chrome frame, step 1 of the demo's entrance, revealed by
     // the hero's outer reveal one level up. The hairline around it belongs to
     // the hero's DemoFrame.
-    <div className="relative flex h-165 w-full overflow-hidden rounded-xl corner-round! bg-sidebar dark:bg-neutral-900/70">
+    <div className="relative flex h-165 w-full overflow-hidden rounded-xl corner-round! bg-sidebar">
       {/* Inset-surface placeholder. The real white inset panel lives inside the
           lazy DashboardDemo, so without this it would pop in a beat after the
           chrome mounts. This copy of the panel's shape sits in the persistent
