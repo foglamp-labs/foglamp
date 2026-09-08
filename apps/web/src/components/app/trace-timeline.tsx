@@ -554,9 +554,14 @@ export function TraceTimeline({
               // from an error, not counted toward error rate.
               const isAborted = span.status === "aborted";
               const isAgent = span.spanType === "agent";
-              // Agent spans take their reproducible per-name color, matching the
-              // agent icon elsewhere, instead of the flat type palette.
-              const accent = isAgent ? agentColor(span.name) : null;
+              // Agent spans take their reproducible per-name color and model
+              // calls their vendor's brand color, matching the icon chip on the
+              // row, instead of the flat type palette.
+              const accent = isAgent
+                ? agentColor(span.name)
+                : span.spanType === "llm"
+                  ? modelBrandColor(span.provider, span.modelId)
+                  : null;
               // Waiting-for-first-token stretch: the bar up to TTFT renders
               // hatched, the solid fill starts where tokens start flowing.
               const ttftPct =
@@ -608,13 +613,13 @@ export function TraceTimeline({
                   ? Math.max(0, span.durationMs - modelCallMs)
                   : 0;
               const rowScores = spanScores.get(span.spanId);
-              // Bar fill: error → rose, aborted → amber, agent → its accent
-              // (inline), else palette.
+              // Bar fill: error → rose, aborted → amber, agent or known model →
+              // its accent (inline), else palette.
               const barClass = isError
                 ? "bg-rose-500"
                 : isAborted
                   ? "bg-amber-500"
-                  : isAgent
+                  : accent
                     ? undefined
                     : spanTypeBar(span.spanType);
               const barStyle =
@@ -730,6 +735,7 @@ export function TraceTimeline({
                                 <TtftWait
                                   widthPct={ttftPct}
                                   barClass={barClass}
+                                  barStyle={barStyle}
                                 />
                                 <div
                                   className={cn(
@@ -957,9 +963,11 @@ const GRID_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
 function TtftWait({
   widthPct,
   barClass,
+  barStyle,
 }: {
   widthPct: number;
   barClass: string | undefined;
+  barStyle?: CSSProperties;
 }) {
   return (
     <div
@@ -967,7 +975,7 @@ function TtftWait({
         "absolute inset-y-0 left-0 rounded-l-xs opacity-30",
         barClass
       )}
-      style={{ width: `${widthPct}%` }}
+      style={{ ...barStyle, width: `${widthPct}%` }}
     />
   );
 }
