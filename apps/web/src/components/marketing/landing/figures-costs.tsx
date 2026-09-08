@@ -93,10 +93,35 @@ function Stage({
   );
 }
 
-function AgentsCard({ className }: { className?: string }) {
+/** Rows without a title: the card is just the data. */
+function DataCard({
+  className,
+  children,
+}: {
+  title?: string;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
-    <BreakdownCard title="Agents" className={className}>
-      {AGENTS.map((a) => (
+    <Scene className={cn("gap-0 py-0! group-data-[size=sm]/card:py-0!", className)}>
+      <div className="divide-y divide-border/40">{children}</div>
+    </Scene>
+  );
+}
+
+function AgentsCard({
+  className,
+  plain = false,
+  limit = AGENTS.length,
+}: {
+  className?: string;
+  plain?: boolean;
+  limit?: number;
+}) {
+  const Wrap = plain ? DataCard : BreakdownCard;
+  return (
+    <Wrap title="Agents" className={className}>
+      {AGENTS.slice(0, limit).map((a) => (
         <BreakdownRow
           key={a.name}
           icon={
@@ -108,7 +133,7 @@ function AgentsCard({ className }: { className?: string }) {
           color="var(--chart-2)"
         />
       ))}
-    </BreakdownCard>
+    </Wrap>
   );
 }
 
@@ -129,9 +154,16 @@ function ModelsCard({ className }: { className?: string }) {
   );
 }
 
-function CustomersCard({ className }: { className?: string }) {
+function CustomersCard({
+  className,
+  plain = false,
+}: {
+  className?: string;
+  plain?: boolean;
+}) {
+  const Wrap = plain ? DataCard : BreakdownCard;
   return (
-    <BreakdownCard title="Customers" className={className}>
+    <Wrap title="Customers" className={className}>
       {CUSTOMERS.map((c) => (
         <BreakdownRow
           key={c.id}
@@ -142,7 +174,7 @@ function CustomersCard({ className }: { className?: string }) {
           color="var(--chart-4)"
         />
       ))}
-    </BreakdownCard>
+    </Wrap>
   );
 }
 
@@ -321,6 +353,24 @@ function ModelLegend(props: {
   return <SeriesLegend items={MODEL_LEGEND} {...props} />;
 }
 
+// The chart keeps the three main models; the smaller two only add noise at
+// this size.
+const CHART_KEYS = ["m0", "m1", "m2"] as const;
+const CHART_CONFIG = {
+  m0: OVERVIEW_COST_CONFIG.m0,
+  m1: OVERVIEW_COST_CONFIG.m1,
+  m2: OVERVIEW_COST_CONFIG.m2,
+} satisfies ChartConfig;
+const CHART_SERIES = OVERVIEW_COST_SERIES.map(({ bucket, m0, m1, m2 }) => ({
+  bucket,
+  m0,
+  m1,
+  m2,
+}));
+const CHART_LEGEND = MODEL_LEGEND.filter((item) =>
+  (CHART_KEYS as readonly string[]).includes(item.key)
+);
+
 export function CostChart() {
   const [selected, setSelected] = useState<string | null>(null);
   return (
@@ -328,16 +378,18 @@ export function CostChart() {
       <Scene className="sm:absolute sm:inset-x-0 sm:top-0 sm:z-10">
         <CardHeader className="flex flex-col gap-2">
           <CardTitle>Cost over time</CardTitle>
-          <ModelLegend
+          {/* Kept clear of the agents card in the corner. */}
+          <SeriesLegend
+            items={CHART_LEGEND}
             selected={selected}
             onSelect={setSelected}
-            className="justify-start"
+            className="justify-start sm:max-w-[52%]"
           />
         </CardHeader>
         <CardContent className="mt-3">
           <BarChart.EvilBarChart
-            config={OVERVIEW_COST_CONFIG}
-            data={OVERVIEW_COST_SERIES}
+            config={CHART_CONFIG}
+            data={CHART_SERIES}
             stackType="stacked"
             selectedDataKey={selected}
             onSelectionChange={setSelected}
@@ -363,15 +415,24 @@ export function CostChart() {
               valueFormatter={(v) => formatCost(Number(v))}
               reverse
             />
-            {Object.keys(OVERVIEW_COST_CONFIG).map((k) => (
+            {CHART_KEYS.map((k) => (
               <BarChart.Bar key={k} dataKey={k} isClickable />
             ))}
           </BarChart.EvilBarChart>
         </CardContent>
       </Scene>
-      <CustomersCard
+      <AgentsCard
+        plain
+        limit={3}
         className={cn(
-          "sm:absolute sm:right-[4%] sm:bottom-0 sm:z-20 sm:w-[46%]",
+          "sm:absolute sm:-top-8 sm:right-[4%] sm:z-20 sm:w-[44%]",
+          LIFTED
+        )}
+      />
+      <CustomersCard
+        plain
+        className={cn(
+          "sm:absolute sm:right-[4%] sm:bottom-0 sm:z-20 sm:w-[44%]",
           LIFTED
         )}
       />

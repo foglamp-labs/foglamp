@@ -9,8 +9,15 @@ import {
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   IconArrowUp,
+  IconChecks,
   IconChevronDown,
-  IconPaperclip,
+  IconCopy,
+  IconDotsVertical,
+  IconMicrophone,
+  IconPlus,
+  IconRefresh,
+  IconThumbDown,
+  IconThumbUp,
   IconUserFilled,
 } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
@@ -34,7 +41,13 @@ import { Scene } from "./figures-scenes";
 // replies.
 
 const turn = SESSION_TURNS[0]!;
-const spans = TRACE_SPANS as unknown as TraceSpan[];
+// The model calls carry a model, so the timeline shows its logo in place of
+// the generic chip.
+const spans = TRACE_SPANS.map((s) =>
+  s.spanType === "llm"
+    ? { ...s, provider: "anthropic", modelId: "claude-fable-5" }
+    : s
+) as unknown as TraceSpan[];
 const ROOT = spans[0]!;
 const STEPS = spans.slice(1);
 const T0 = toMs(ROOT.startTime);
@@ -43,19 +56,33 @@ const LIFTED = "shadow-(--custom-shadow-lifted)";
 
 // ─── The chat window ────────────────────────────────────────────────────────
 
-function Avatar({ role }: { role: "user" | "assistant" }) {
-  return role === "user" ? (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted-foreground/15 text-muted-foreground">
-      <IconUserFilled className="size-3.5" />
+function AgentAvatar({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full bg-violet-500/10",
+        className
+      )}
+    >
+      <AgentIcon name={ROOT.name} filled className="size-[55%]" />
     </span>
-  ) : (
-    <AgentIcon name={ROOT.name} filled className="size-6 shrink-0" />
   );
 }
 
-/** A chat app, the way the customer sees the agent: a header, the turn, and
- * a composer. `activity` renders between the question and the reply, for
- * the variants that show the work inline. */
+function ToolPill({ name, count }: { name: string; count: number }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 py-0.5 pr-2 pl-1 text-[11px] text-muted-foreground">
+      <SpanTypeChip type="tool" className="size-3.5" />
+      <span className="font-mono">{name}</span>
+      {count > 1 && <span className="tabular-nums">×{count}</span>}
+    </span>
+  );
+}
+
+/** A support chat, the way the customer sees the agent: a header, one turn
+ * with the tools it used and the usual actions, and a composer. `activity`
+ * renders between the question and the reply, for the variants that show
+ * the work inline. */
 function ChatWindow({
   className,
   activity,
@@ -70,43 +97,78 @@ function ChatWindow({
 }) {
   return (
     <Scene className={cn("gap-0 pt-0 pb-0", className)}>
-      <div className="flex items-center gap-2.5 border-b border-border/60 px-5 py-3">
-        <AgentIcon name={ROOT.name} filled className="size-5" />
-        <span className="text-sm">Support</span>
-        <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="size-1.5 rounded-full bg-emerald-500" />
-          Online
+      <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
+        <AgentAvatar className="size-8" />
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="text-sm">Acme Support</span>
+          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            Replies in seconds
+          </span>
         </span>
+        <IconDotsVertical className="ml-auto size-4 text-muted-foreground" />
       </div>
-      <div className="flex flex-col gap-4 px-5 py-5">
-        <div className="flex justify-end">
-          <p className="max-w-[85%] rounded-2xl rounded-br-md bg-muted px-3.5 py-2.5 text-sm dark:bg-muted-foreground/10">
+      <div className="flex flex-col gap-5 px-4 py-5">
+        <span className="text-center text-[11px] text-muted-foreground">
+          Today
+        </span>
+        <div className="flex flex-col items-end gap-1">
+          <p className="max-w-[85%] rounded-3xl rounded-br-lg bg-muted px-4 py-2.5 text-sm dark:bg-muted-foreground/10">
             {turn.userMessage}
           </p>
+          <span className="flex items-center gap-1 pr-1 text-[11px] text-muted-foreground tabular-nums">
+            10:42
+            <IconChecks className="size-3.5 text-sky-500" />
+          </span>
         </div>
         {activity}
         <div className="flex gap-3">
-          <Avatar role="assistant" />
-          <p
-            className={cn(
-              "min-w-0 flex-1 text-sm leading-relaxed",
-              highlight &&
-                "-mx-2 -my-1.5 rounded-lg px-2 py-1.5 ring-1 ring-violet-500/50 ring-offset-2 ring-offset-card"
-            )}
-          >
-            {turn.assistantOutput}
-          </p>
+          <AgentAvatar className="mt-0.5 size-7" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+            <p
+              className={cn(
+                "text-sm leading-relaxed",
+                highlight &&
+                  "-mx-2 -my-1.5 rounded-lg px-2 py-1.5 ring-1 ring-violet-500/50 ring-offset-2 ring-offset-card"
+              )}
+            >
+              {turn.assistantOutput}
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {turn.toolCalls?.map((tc) => (
+                <ToolPill key={tc.name} name={tc.name} count={tc.count} />
+              ))}
+            </div>
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <IconCopy className="size-3.5" />
+              <IconThumbUp className="size-3.5" />
+              <IconThumbDown className="size-3.5" />
+              <IconRefresh className="size-3.5" />
+            </div>
+          </div>
         </div>
       </div>
       {composer && (
-        <div className="px-5 pb-5">
-          <div className="flex items-center gap-2 rounded-full border border-border/70 py-1.5 pr-1.5 pl-4 text-sm text-muted-foreground">
-            <IconPaperclip className="size-4" />
-            <span className="flex-1">Message Support</span>
-            <span className="flex size-7 items-center justify-center rounded-full bg-foreground text-background">
-              <IconArrowUp className="size-4" />
+        <div className="px-4 pb-3">
+          <div className="flex flex-col gap-2 rounded-3xl border border-border/70 px-3 pt-3 pb-2 shadow-(--custom-shadow)">
+            <span className="px-1 text-sm text-muted-foreground">
+              Message Acme Support
             </span>
+            <div className="flex items-center gap-1">
+              <span className="flex size-7 items-center justify-center rounded-full border border-border/70 text-muted-foreground">
+                <IconPlus className="size-4" />
+              </span>
+              <span className="ml-auto flex size-7 items-center justify-center text-muted-foreground">
+                <IconMicrophone className="size-4" />
+              </span>
+              <span className="flex size-7 items-center justify-center rounded-full bg-foreground text-background">
+                <IconArrowUp className="size-4" />
+              </span>
+            </div>
           </div>
+          <p className="pt-2.5 text-center text-[11px] text-muted-foreground">
+            Answers are generated by AI
+          </p>
         </div>
       )}
     </Scene>
@@ -118,7 +180,7 @@ function ChatWindow({
 export function TraceChat() {
   const [selected, setSelected] = useState<string | null>("s3");
   return (
-    <div className="grid gap-4 sm:relative sm:block sm:h-128">
+    <div className="grid gap-4 sm:relative sm:block sm:h-168">
       <ChatWindow className="sm:absolute sm:top-0 sm:left-0 sm:z-10 sm:w-[54%]" />
       <Scene
         className={cn(
@@ -138,72 +200,28 @@ export function TraceChat() {
   );
 }
 
-// ─── 3. X-ray: a lens over the reply shows the calls behind it ──────────────
-
-function MiniWaterfall() {
-  const total = ROOT.durationMs;
-  return (
-    <div className="flex flex-col gap-2">
-      {orderSpans(STEPS).map(({ span, depth }) => {
-        const left = ((toMs(span.startTime) - T0) / total) * 100;
-        const width = (span.durationMs / total) * 100;
-        return (
-          <div
-            key={span.spanId}
-            className="grid grid-cols-[9.5rem_1fr_3rem] items-center gap-3 text-xs"
-          >
-            <span
-              className="flex min-w-0 items-center gap-1.5"
-              style={{ paddingLeft: `${depth * 12}px` }}
-            >
-              <SpanTypeChip type={span.spanType} className="size-4" />
-              <span className="truncate">{span.name}</span>
-            </span>
-            <span className="relative h-1.5 rounded-full bg-muted-foreground/10">
-              <span
-                className={cn(
-                  "absolute inset-y-0 rounded-full",
-                  spanTypeBar(span.spanType)
-                )}
-                style={{ left: `${left}%`, width: `${width}%` }}
-              />
-            </span>
-            <span className="text-right text-muted-foreground tabular-nums">
-              {formatSpanDuration(span.durationMs)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+// ─── 3. X-ray: the chat in front, the trace behind the reply ────────────────
 
 export function TraceXray() {
+  const [selected, setSelected] = useState<string | null>("s5");
   return (
-    <div className="grid gap-4 sm:relative sm:block sm:h-128">
-      <ChatWindow
-        highlight
-        className="sm:absolute sm:top-0 sm:left-[6%] sm:z-10 sm:w-[58%]"
-      />
-      <Scene
-        className={cn(
-          "sm:absolute sm:top-[52%] sm:right-0 sm:z-20 sm:w-[62%]",
-          LIFTED
-        )}
-      >
-        <CardHeader className="flex flex-row items-center justify-between gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <AgentIcon name={ROOT.name} filled className="size-4" />
-            {ROOT.name}
-          </CardTitle>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {formatSpanDuration(ROOT.durationMs)} · {formatCost(turn.totalCost, 4)}
-          </span>
-        </CardHeader>
-        <CardContent className="mt-1">
-          <MiniWaterfall />
+    <div className="grid gap-4 sm:relative sm:block sm:h-176">
+      <Scene className="sm:absolute sm:bottom-0 sm:left-0 sm:z-10 sm:w-[84%]">
+        <CardContent>
+          <TraceTimeline
+            spans={spans}
+            selected={selected}
+            onSelect={setSelected}
+          />
         </CardContent>
       </Scene>
+      <ChatWindow
+        highlight
+        className={cn(
+          "sm:absolute sm:top-0 sm:right-0 sm:z-20 sm:w-[52%]",
+          LIFTED
+        )}
+      />
     </div>
   );
 }
