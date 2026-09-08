@@ -2,6 +2,7 @@ import { Button } from "@foglamp/ui/components/button";
 import type { Route } from "next";
 import Link from "next/link";
 
+import { type FeatureId, FeatureList } from "./features";
 import { Figure, type Section } from "./figures";
 
 const BENEFITS: {
@@ -9,24 +10,28 @@ const BENEFITS: {
   title: string;
   body: string;
   link: { label: string; href: Route };
+  features: FeatureId[];
 }[] = [
   {
     id: "costs",
     title: "Know where your money goes",
     body: "Track spending by model, agent, and customer. Get alerted when costs rise.",
     link: { label: "Explore costs", href: "/features/cost-intelligence" },
+    features: ["agents", "workflows", "customers", "alerts"],
   },
   {
     id: "traces",
     title: "See what happened",
     body: "Follow every model call and tool call, with the prompts and responses in one place.",
     link: { label: "Explore traces", href: "/features/distributed-traces" },
+    features: ["traces", "sessions", "agents"],
   },
   {
     id: "quality",
     title: "Catch bad answers",
     body: "Check your agents’ responses and get alerted when quality drops.",
     link: { label: "Explore evals", href: "/features/evals" },
+    features: ["evals", "alerts"],
   },
 ];
 
@@ -51,12 +56,13 @@ export function Problems() {
             </p>
             <Button
               render={<Link href={benefit.link.href} />}
-              variant="secondary"
+              variant="default"
               size="lg"
-              className="mt-6 h-9.5 px-5"
+              className="mt-6 h-10 px-5 text-[15px] bg-foreground/95 dark:bg-foreground/95"
             >
               {benefit.link.label}
             </Button>
+            <FeatureList features={benefit.features} className="mt-6" />
           </div>
           <Figure section={benefit.id} />
         </section>
