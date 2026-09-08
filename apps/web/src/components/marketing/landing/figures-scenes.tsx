@@ -376,7 +376,7 @@ export function QualityReview() {
           </div>
         </CardContent>
       </Scene>
-      <Scene className="relative z-10 sm:-mt-36 sm:ml-auto sm:w-[44%]">
+      <Scene className="relative z-10 shadow-(--custom-shadow-lifted) sm:-mt-36 sm:ml-auto sm:w-[44%]">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <CheckChip presetId="helpfulness" />
