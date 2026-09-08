@@ -374,16 +374,17 @@ const CHART_LEGEND = MODEL_LEGEND.filter((item) =>
 export function CostChart() {
   const [selected, setSelected] = useState<string | null>(null);
   return (
-    <Stage narrow>
-      <Scene className="sm:absolute sm:inset-x-0 sm:top-0 sm:z-10">
-        <CardHeader className="flex flex-col gap-2">
+    <Stage narrow className="sm:h-132">
+      {/* The agents card hangs over the top edge, clear of the inline legend;
+          the customers card overlaps the bottom. */}
+      <Scene className="sm:absolute sm:inset-x-0 sm:top-36 sm:z-10">
+        <CardHeader className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <CardTitle>Cost over time</CardTitle>
-          {/* Kept clear of the agents card in the corner. */}
           <SeriesLegend
             items={CHART_LEGEND}
             selected={selected}
             onSelect={setSelected}
-            className="justify-start sm:max-w-[52%]"
+            className="justify-start"
           />
         </CardHeader>
         <CardContent className="mt-3">
@@ -425,7 +426,7 @@ export function CostChart() {
         plain
         limit={3}
         className={cn(
-          "sm:absolute sm:-top-8 sm:right-[4%] sm:z-20 sm:w-[44%]",
+          "sm:absolute sm:top-0 sm:right-[4%] sm:z-20 sm:w-[44%]",
           LIFTED
         )}
       />
