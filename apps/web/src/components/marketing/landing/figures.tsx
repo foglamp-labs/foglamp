@@ -18,6 +18,7 @@ export type Variant = {
 
 type Scenes = typeof import("./figures-scenes");
 type Costs = typeof import("./figures-costs");
+type Traces = typeof import("./figures-traces");
 
 const gap = () => <div className="h-112 w-full" />;
 
@@ -28,6 +29,11 @@ const scene = (pick: (m: Scenes) => ComponentType) =>
   });
 const costs = (pick: (m: Costs) => ComponentType) =>
   dynamic(() => import("./figures-costs").then(pick), {
+    ssr: false,
+    loading: gap,
+  });
+const traces = (pick: (m: Traces) => ComponentType) =>
+  dynamic(() => import("./figures-traces").then(pick), {
     ssr: false,
     loading: gap,
   });
@@ -44,9 +50,19 @@ export const FIGURES: Record<Section, Variant[]> = {
     { id: "table", label: "Table", component: costs((m) => m.CostTable) },
     { id: "tabs", label: "Tabs", component: costs((m) => m.CostTabs) },
     { id: "shares", label: "Shares", component: costs((m) => m.CostShares) },
+    { id: "backdrop", label: "Backdrop", component: costs((m) => m.CostBackdrop) },
+    { id: "donut", label: "Donut", component: costs((m) => m.CostDonut) },
+    { id: "area", label: "Area", component: costs((m) => m.CostArea) },
+    { id: "small", label: "Small", component: costs((m) => m.CostSmall) },
+    { id: "flow", label: "Flow", component: costs((m) => m.CostFlow) },
   ],
   traces: [
     { id: "story", label: "Story", component: scene((m) => m.TraceStory) },
+    { id: "chat", label: "Chat", component: traces((m) => m.TraceChat) },
+    { id: "xray", label: "X-ray", component: traces((m) => m.TraceXray) },
+    { id: "steps", label: "Steps", component: traces((m) => m.TraceSteps) },
+    { id: "inspector", label: "Inspector", component: traces((m) => m.TraceInspector) },
+    { id: "graph", label: "Graph", component: traces((m) => m.TraceGraph) },
   ],
   quality: [
     { id: "review", label: "Review", component: scene((m) => m.QualityReview) },
