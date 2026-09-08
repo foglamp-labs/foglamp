@@ -594,6 +594,10 @@ export type MockTraceSpan = {
 	endTime: string;
 	durationMs: number;
 	ttftMs: number | null;
+	// Model calls carry their model, so the timeline shows the vendor's logo
+	// and color like the real app.
+	provider?: string;
+	modelId?: string;
 	// Total tokens + cost feed the per-span rows and the whole-trace rollup the
 	// timeline renders.
 	outputTokens: number;
@@ -630,6 +634,8 @@ export const TRACE_SPANS: MockTraceSpan[] = [
 		parentSpanId: "s0",
 		name: "classify-intent",
 		spanType: "llm",
+		provider: "google",
+		modelId: "gemini-3.5-flash",
 		status: "ok",
 		startTime: T(0, 120),
 		endTime: T(1, 40),
@@ -672,6 +678,8 @@ export const TRACE_SPANS: MockTraceSpan[] = [
 		parentSpanId: "s3",
 		name: "rerank-results",
 		spanType: "llm",
+		provider: "anthropic",
+		modelId: "claude-fable-5",
 		status: "ok",
 		startTime: T(2, 100),
 		endTime: T(3, 180),
@@ -686,6 +694,8 @@ export const TRACE_SPANS: MockTraceSpan[] = [
 		parentSpanId: "s0",
 		name: "draft-reply",
 		spanType: "llm",
+		provider: "openai",
+		modelId: "gpt-5.6-sol",
 		status: "ok",
 		startTime: T(3, 320),
 		endTime: T(5, 780),
