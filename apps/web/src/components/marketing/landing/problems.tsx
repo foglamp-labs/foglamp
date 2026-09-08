@@ -45,6 +45,7 @@ export function Problems() {
           className="grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1fr_2fr] lg:gap-16"
         >
           <div className="max-w-sm">
+            <FeatureList features={benefit.features} className="mb-5" />
             <h2
               id={`${benefit.id}-heading`}
               className="font-display text-3xl font-[450] leading-[1.12] tracking-tight text-balance sm:text-4xl"
@@ -62,7 +63,6 @@ export function Problems() {
             >
               {benefit.link.label}
             </Button>
-            <FeatureList features={benefit.features} className="mt-6" />
           </div>
           <Figure section={benefit.id} />
         </section>
