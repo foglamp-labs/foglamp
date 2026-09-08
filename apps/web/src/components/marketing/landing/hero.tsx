@@ -183,11 +183,20 @@ export function Hero() {
         animate={reduce ? undefined : { opacity: 1, filter: "blur(0px)" }}
         transition={{ duration: 0.55, ease: EASE, delay: 0.6 }}
         // A touch wider than the copy's max-w-7xl so the dashboard breathes.
-        className="mx-auto mt-16 hidden w-full max-w-344 px-5 sm:px-8 md:block"
+        className="relative mx-auto mt-16 hidden w-full max-w-344 px-5 sm:px-8 md:block"
       >
-        <DemoFrame>
-          <HeroDemo />
-        </DemoFrame>
+        {/* Dark mode only: a soft glow behind the frame lifts the page around
+            it, so the frame's dark sidebar sits on lighter ground instead of
+            sinking into the page. Hidden by the frame itself at its center. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-40 -inset-y-32 hidden dark:block [background:radial-gradient(farthest-side,oklch(0.27_0_0),transparent)]"
+        />
+        <div className="relative">
+          <DemoFrame>
+            <HeroDemo />
+          </DemoFrame>
+        </div>
       </motion.div>
 
       {/* Small screens get a still of the same dashboard in the same frame. */}
