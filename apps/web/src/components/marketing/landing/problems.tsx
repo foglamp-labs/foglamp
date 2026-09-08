@@ -42,7 +42,7 @@ export function Problems() {
         <section
           key={benefit.id}
           aria-labelledby={`${benefit.id}-heading`}
-          className="grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1fr_2fr] lg:gap-16"
+          className="grid items-center gap-10 py-16 sm:py-24 lg:grid-cols-[1fr_2fr] lg:gap-16"
         >
           <div className="max-w-sm">
             <FeatureList features={benefit.features} className="mb-5" />
