@@ -86,6 +86,10 @@
     0px 0px 0px 0.5px rgba(244, 63, 94, 0.25),
     0px 0.5px 2px -0.5px rgba(244, 63, 94, 0.18),
     0px 2px 4px 0px rgba(244, 63, 94, 0.12);
+  --custom-shadow-red:
+    0px 0px 0px 0.5px rgba(239, 68, 68, 0.25),
+    0px 0.5px 2px -0.5px rgba(239, 68, 68, 0.18),
+    0px 2px 4px 0px rgba(239, 68, 68, 0.12);
   --custom-shadow-slate:
     0px 0px 0px 0.5px rgba(100, 116, 139, 0.25),
     0px 0.5px 2px -0.5px rgba(100, 116, 139, 0.18),
@@ -181,6 +185,9 @@
   --custom-shadow-rose:
     inset 0 0.5px 0 0 rgba(244, 63, 94, 0.03),
     0 0 0 0.5px rgba(244, 63, 94, 0.18), 0 0.5px 2px 0 rgba(244, 63, 94, 0.1);
+  --custom-shadow-red:
+    inset 0 0.5px 0 0 rgba(239, 68, 68, 0.03),
+    0 0 0 0.5px rgba(239, 68, 68, 0.18), 0 0.5px 2px 0 rgba(239, 68, 68, 0.1);
   --custom-shadow-slate:
     inset 0 0.5px 0 0 rgba(100, 116, 139, 0.03),
     0 0 0 0.5px rgba(100, 116, 139, 0.18),
