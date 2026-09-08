@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@foglamp/ui/lib/utils";
 import {
   type Icon,
@@ -6,14 +8,24 @@ import {
 } from "@tabler/icons-react";
 
 import { nav } from "@/components/app/nav";
+import { type DemoTab, showInDemo } from "./demo-link";
 
 // The product features a landing section leans on, listed above its heading
-// with the same colored chip icons the sidebar uses.
+// with the same colored chip icons the sidebar uses. Each one opens its tab
+// in the hero demo.
 
-type Feature = { label: string; icon: Icon; iconClassName?: string };
+type Feature = {
+  label: string;
+  icon: Icon;
+  iconClassName?: string;
+  /** Where the hero demo shows this feature. */
+  tab: DemoTab;
+};
 
 const CUSTOMERS: Feature = {
   label: "Customers",
+  // Customers show up in the overview's breakdown.
+  tab: "overview",
   icon: IconUserFilled,
   iconClassName:
     "bg-violet-100 dark:bg-violet-950 rounded-[5px] squircle:rounded-xl p-0.5 corner-squircle text-violet-500 shadow-[inset_0_0_0_1px_rgba(139,92,246,0.14),0_2px_6px_-2px_rgba(139,92,246,0.25)] dark:shadow-(--custom-shadow)",
@@ -22,25 +34,34 @@ const CUSTOMERS: Feature = {
 /** Outline twin of the customers chip, for anywhere that wants both states. */
 export const CUSTOMERS_OUTLINE_ICON = IconUser;
 
-function fromNav(href: string): Feature {
+function fromNav(href: string, tab: DemoTab): Feature {
   const item = nav.find((entry) => entry.href === href);
   if (!item) throw new Error(`Unknown nav item ${href}`);
   return {
     label: item.label,
     icon: item.activeIcon,
     iconClassName: item.iconClassName,
+    tab,
   };
 }
 
 export const FEATURES = {
-  agents: fromNav("/agents"),
-  workflows: fromNav("/workflows"),
-  sessions: fromNav("/sessions"),
-  traces: fromNav("/traces"),
-  evals: fromNav("/evals"),
-  alerts: fromNav("/alerts"),
+  agents: fromNav("/agents", "agents"),
+  workflows: fromNav("/workflows", "workflows"),
+  sessions: fromNav("/sessions", "sessions"),
+  traces: fromNav("/traces", "traces"),
+  evals: fromNav("/evals", "evals"),
+  alerts: fromNav("/alerts", "alerts"),
   customers: CUSTOMERS,
 } satisfies Record<string, Feature>;
+
+/** Show a feature in the hero demo. Without a demo on the page (small
+ * screens) it scrolls back to the hero's still. */
+export function openFeature(id: FeatureId) {
+  if (!showInDemo(FEATURES[id].tab)) {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
 
 export type FeatureId = keyof typeof FEATURES;
 
@@ -56,19 +77,23 @@ export function FeatureList({
       {features.map((id) => {
         const { label, icon: Icon, iconClassName } = FEATURES[id];
         return (
-          <li
-            key={id}
-            className="flex items-center gap-1.5 text-[13px] text-muted-foreground"
-          >
-            <span
-              className={cn(
-                "grid size-4 place-items-center [&_svg]:size-full!",
-                iconClassName
-              )}
+          <li key={id}>
+            <button
+              type="button"
+              onClick={() => openFeature(id)}
+              title={`See ${label.toLowerCase()} in the demo`}
+              className="-mx-1.5 -my-1 flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <Icon />
-            </span>
-            {label}
+              <span
+                className={cn(
+                  "grid size-4 place-items-center [&_svg]:size-full!",
+                  iconClassName
+                )}
+              >
+                <Icon />
+              </span>
+              {label}
+            </button>
           </li>
         );
       })}
