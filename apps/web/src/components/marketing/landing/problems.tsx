@@ -3,7 +3,8 @@ import type { Route } from "next";
 import Link from "next/link";
 
 import { type FeatureId, FeatureList } from "./features";
-import { Figure, type Section } from "./figures";
+import { Figure, FigureControls } from "./figure-picker";
+import type { Section } from "./figures";
 
 const BENEFITS: {
   id: Section;
@@ -67,6 +68,7 @@ export function Problems() {
           <Figure section={benefit.id} />
         </section>
       ))}
+      <FigureControls />
     </div>
   );
 }

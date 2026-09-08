@@ -42,7 +42,7 @@ import {
 
 /** A card that can sit on top of another: the app's card plus a hairline so
  * the overlapping edges stay crisp on both themes. */
-function Scene({
+export function Scene({
   className,
   children,
 }: {
@@ -58,7 +58,7 @@ function Scene({
 
 // ─── Costs: the overview's breakdown cards, overlapped ──────────────────────
 
-function BreakdownRow({
+export function BreakdownRow({
   icon,
   title,
   value,
@@ -93,7 +93,7 @@ function BreakdownRow({
   );
 }
 
-function BreakdownCard({
+export function BreakdownCard({
   title,
   className,
   children,
@@ -136,7 +136,7 @@ const LOGOS: Record<string, { color: string; glyph: ReactNode }> = {
   },
 };
 
-function Logo({ id, className }: { id: string; className?: string }) {
+export function Logo({ id, className }: { id: string; className?: string }) {
   const logo = LOGOS[id];
   if (!logo) return null;
   return (

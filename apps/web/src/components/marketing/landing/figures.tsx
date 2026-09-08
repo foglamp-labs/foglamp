@@ -1,29 +1,54 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { ComponentType } from "react";
 
 // The figures for the three benefit sections: a few real product cards laid
-// out on the page. They render the app's timeline and depend on browser
-// measurement, so each one loads client-only, like the hero demo, behind a
-// gap that reserves its space.
+// out on the page. They render the app's charts and timeline and depend on
+// browser measurement, so each one loads client-only, like the hero demo,
+// behind a gap that reserves its space.
 
 export type Section = "costs" | "traces" | "quality";
 
-type Scenes = typeof import("./figures-scenes");
-
-const scene = (pick: (m: Scenes) => React.ComponentType) =>
-  dynamic(() => import("./figures-scenes").then(pick), {
-    ssr: false,
-    loading: () => <div className="h-112 w-full" />,
-  });
-
-export const FIGURES: Record<Section, React.ComponentType> = {
-  costs: scene((m) => m.CostCards),
-  traces: scene((m) => m.TraceStory),
-  quality: scene((m) => m.QualityReview),
+export type Variant = {
+  id: string;
+  label: string;
+  component: ComponentType;
 };
 
-export function Figure({ section }: { section: Section }) {
-  const Component = FIGURES[section];
-  return <Component />;
-}
+type Scenes = typeof import("./figures-scenes");
+type Costs = typeof import("./figures-costs");
+
+const gap = () => <div className="h-112 w-full" />;
+
+const scene = (pick: (m: Scenes) => ComponentType) =>
+  dynamic(() => import("./figures-scenes").then(pick), {
+    ssr: false,
+    loading: gap,
+  });
+const costs = (pick: (m: Costs) => ComponentType) =>
+  dynamic(() => import("./figures-costs").then(pick), {
+    ssr: false,
+    loading: gap,
+  });
+
+export const FIGURES: Record<Section, Variant[]> = {
+  costs: [
+    { id: "cards", label: "Cards", component: scene((m) => m.CostCards) },
+    { id: "stair", label: "Stair", component: costs((m) => m.CostStair) },
+    { id: "fan", label: "Fan", component: costs((m) => m.CostFan) },
+    { id: "shelf", label: "Shelf", component: costs((m) => m.CostShelf) },
+    { id: "total", label: "Total", component: costs((m) => m.CostTotal) },
+    { id: "chart", label: "Chart", component: costs((m) => m.CostChart) },
+    { id: "alert", label: "Alert", component: costs((m) => m.CostAlert) },
+    { id: "table", label: "Table", component: costs((m) => m.CostTable) },
+    { id: "tabs", label: "Tabs", component: costs((m) => m.CostTabs) },
+    { id: "shares", label: "Shares", component: costs((m) => m.CostShares) },
+  ],
+  traces: [
+    { id: "story", label: "Story", component: scene((m) => m.TraceStory) },
+  ],
+  quality: [
+    { id: "review", label: "Review", component: scene((m) => m.QualityReview) },
+  ],
+};

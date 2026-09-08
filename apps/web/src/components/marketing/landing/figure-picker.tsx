@@ -1,0 +1,112 @@
+"use client";
+
+import { useSyncExternalStore } from "react";
+
+import { FIGURES, type Section } from "./figures";
+
+// A development aid for choosing between candidate figures. The selection
+// lives in a tiny store backed by localStorage, so it survives reloads while
+// comparing. The picker only mounts in development; production always shows
+// the first variant of each section.
+
+const DEFAULTS: Record<Section, string> = {
+  costs: "cards",
+  traces: "story",
+  quality: "review",
+};
+
+const KEY = "landing-figures";
+
+let selection: Record<Section, string> = DEFAULTS;
+const listeners = new Set<() => void>();
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) selection = { ...DEFAULTS, ...JSON.parse(raw) };
+  } catch {
+    // Ignore a bad or unavailable store; keep the defaults.
+  }
+}
+
+function subscribe(fn: () => void) {
+  if (listeners.size === 0) load();
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+function select(section: Section, id: string) {
+  selection = { ...selection, [section]: id };
+  try {
+    localStorage.setItem(KEY, JSON.stringify(selection));
+  } catch {
+    // Same as above.
+  }
+  for (const fn of listeners) fn();
+}
+
+function useSelection() {
+  return useSyncExternalStore(
+    subscribe,
+    () => selection,
+    () => DEFAULTS
+  );
+}
+
+/** The figure for one benefit section, whichever variant is selected. */
+export function Figure({ section }: { section: Section }) {
+  const current = useSelection();
+  const variants = FIGURES[section];
+  const variant =
+    variants.find((v) => v.id === current[section]) ?? variants[0]!;
+  const Component = variant.component;
+  return <Component />;
+}
+
+/** A floating pill at the bottom center, one row per section that has more
+ * than one candidate. */
+export function FigureControls() {
+  const current = useSelection();
+  if (process.env.NODE_ENV !== "development") return null;
+  const sections = (Object.keys(FIGURES) as Section[]).filter(
+    (s) => FIGURES[s].length > 1
+  );
+  if (sections.length === 0) return null;
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center pr-4 pl-20">
+      <div className="pointer-events-auto flex flex-col gap-y-1 rounded-2xl border border-border bg-background/95 px-3 py-2 shadow-lg backdrop-blur">
+        {sections.map((section) => (
+          <fieldset
+            key={section}
+            className="flex flex-wrap items-center gap-1.5"
+          >
+            <legend className="sr-only">{section} figure</legend>
+            <span className="w-14 pl-1 font-mono text-[11px] text-muted-foreground">
+              {section}
+            </span>
+            {FIGURES[section].map((v) => {
+              const on = current[section] === v.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => select(section, v.id)}
+                  className={`rounded-full px-2 py-0.5 text-xs transition-colors ${
+                    on
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {v.label}
+                </button>
+              );
+            })}
+          </fieldset>
+        ))}
+      </div>
+    </div>
+  );
+}
