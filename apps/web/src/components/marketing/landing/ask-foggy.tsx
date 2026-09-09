@@ -104,8 +104,10 @@ export function AskFoggy() {
       </form>
 
       {/* Always rendered with a floor, so the answer does not push the page
-          around when it arrives. Long answers still grow past it. */}
-      <div className="min-h-60 pt-5 pb-6 text-[15px] leading-relaxed [&_a]:underline [&_a]:decoration-[0.5px] [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:first:mt-0 *:last:mb-0">
+          around when it arrives. Long answers still grow past it. Phones skip
+          the floor: it would sit as blank space above the closing call to
+          action, and a push there costs little. */}
+      <div className="sm:min-h-60 pt-5 pb-6 text-[15px] leading-relaxed [&_a]:underline [&_a]:decoration-[0.5px] [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_li]:my-0.5 [&_ol]:my-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1.5 [&_pre]:my-2 [&_ul]:my-1.5 [&_ul]:list-disc [&_ul]:pl-5 *:first:mt-0 *:last:mb-0">
         {thinking && <TextShimmerLoader text="Reading the docs" size="md" />}
         {answerText && (
           <Streamdown
