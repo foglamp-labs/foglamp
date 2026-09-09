@@ -21,7 +21,7 @@ const DashboardDemo = dynamic(
 // from the page instead of sinking into it. Each surface keeps its place in
 // the app's order (sidebar, then inset, then cards, then hover), just lifted.
 const DARK_LIFT =
-  "dark:[--sidebar:oklch(0.19_0_0)] dark:[--background:oklch(0.215_0_0)] dark:[--card:oklch(0.25_0_0)] dark:[--popover:oklch(0.25_0_0)] dark:[--muted:oklch(0.31_0_0)] dark:[--accent:oklch(0.31_0_0)] dark:[--secondary:oklch(0.31_0_0)] dark:[--sidebar-accent:oklch(0.31_0_0)]";
+  "dark:[--sidebar:oklch(0.2_0_0)] dark:[--background:oklch(0.215_0_0)] dark:[--card:oklch(0.25_0_0)] dark:[--popover:oklch(0.25_0_0)] dark:[--muted:oklch(0.31_0_0)] dark:[--accent:oklch(0.31_0_0)] dark:[--secondary:oklch(0.31_0_0)] dark:[--sidebar-accent:oklch(0.31_0_0)]";
 
 export function HeroDemo() {
   return (
