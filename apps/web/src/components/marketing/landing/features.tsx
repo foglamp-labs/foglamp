@@ -78,11 +78,13 @@ export function FeatureList({
         const { label, icon: Icon, iconClassName } = FEATURES[id];
         return (
           <li key={id}>
+            {/* The demo only renders from md up, so below that the chip is a
+                plain label: no pointer, no hover, no click. */}
             <button
               type="button"
               onClick={() => openFeature(id)}
               title={`See ${label.toLowerCase()} in the demo`}
-              className="-mx-1.5 -my-1 flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="-mx-1.5 -my-1 flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[13px] text-muted-foreground transition-colors max-md:pointer-events-none md:cursor-pointer md:hover:bg-muted md:hover:text-foreground"
             >
               <span
                 className={cn(
