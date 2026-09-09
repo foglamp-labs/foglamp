@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 // The dashboard replica is ~50–80kB and renders SSR-fragile charts, so we
 // lazy-load its innards client-only. Only the *inner* surfaces (sidebar + inset
 // content) are lazy. The chrome frame below is always present, so it reserves
-// the frame's 660px (no layout jump) and is what the hero's step-1 reveal
+// the frame's 720px (no layout jump) and is what the hero's step-1 reveal
 // animates in. While the inner chunk loads, the frame simply sits empty (no
 // skeleton); the sidebar and inset then blur in as steps 2 and 3 once it
 // resolves.
@@ -29,7 +29,7 @@ export function HeroDemo() {
     // the hero's outer reveal one level up. The hairline around it belongs to
     // the hero's DemoFrame.
     <div
-      className={`relative flex h-165 w-full overflow-hidden rounded-xl corner-round! bg-sidebar ${DARK_LIFT}`}
+      className={`relative flex h-180 w-full overflow-hidden rounded-xl corner-round! bg-sidebar ${DARK_LIFT}`}
     >
       {/* Inset-surface placeholder. The real white inset panel lives inside the
           lazy DashboardDemo, so without this it would pop in a beat after the

@@ -82,12 +82,6 @@ type LegendItem = {
 	logo?: React.ReactNode;
 };
 
-// Cost legend rows pair the swatch with the model's brand logo, like the app.
-const costItems: LegendItem[] = OVERVIEW_COST_ITEMS.map((it) => ({
-	...it,
-	logo: <ModelLogo modelId={it.label} className="size-3.5" />,
-}));
-
 // Clickable legend, mirroring overview-client's local items-based legend.
 function ChartLegend({
 	items,
@@ -234,6 +228,14 @@ export function OverviewTab() {
 			color: (mode === "dark" ? entry.colors.dark : entry.colors.light)[0],
 		}),
 	);
+	// Cost legend rows pair the swatch with the model's brand logo, like the
+	// app; swatches are picked per theme so they always match the bars.
+	const costItems: LegendItem[] = OVERVIEW_COST_ITEMS.map((it) => ({
+		key: it.key,
+		label: it.label,
+		color: it.colors[mode],
+		logo: <ModelLogo modelId={it.label} className="size-3.5" />,
+	}));
 
 	return (
 		<>

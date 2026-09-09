@@ -112,6 +112,19 @@ function deriveValue(
   }
 }
 
+/**
+ * True when an error-rate window holds at least one span and all of them
+ * failed. Such a window skips the sample floor: a 100% failure rate is
+ * unambiguous even on a handful of spans.
+ */
+function isTotalFailure(
+  metric: Metric,
+  value: number,
+  sampleCount: number,
+): boolean {
+  return metric === "error_rate" && sampleCount > 0 && value >= 1;
+}
+
 function isBreached(
   value: number,
   comparison: Comparison,
@@ -177,14 +190,21 @@ export type AlertTransition = {
  * after RESOLVE_STREAK consecutive sweeps clear of the threshold by
  * RESOLVE_MARGIN (a value back under the threshold but inside the margin
  * resets nothing toward resolve — it holds firing). Percentile/rate metrics
- * with fewer than MIN_SAMPLE_COUNT samples skip evaluation entirely.
+ * with fewer than MIN_SAMPLE_COUNT samples skip evaluation entirely, with one
+ * exception: an error-rate window where every span failed is a real signal no
+ * matter how small (a broken API key on a low-traffic agent must still page),
+ * so it bypasses the floor.
  */
 export function computeAlertTransition(
   input: AlertTransitionInput,
 ): AlertTransition {
   const { prev, value, threshold, comparison, metric, sampleCount } = input;
 
-  if (SAMPLED_METRICS.has(metric) && sampleCount < MIN_SAMPLE_COUNT) {
+  if (
+    SAMPLED_METRICS.has(metric) &&
+    sampleCount < MIN_SAMPLE_COUNT &&
+    !isTotalFailure(metric, value, sampleCount)
+  ) {
     return { ...prev, transitioned: false, skipped: true };
   }
 

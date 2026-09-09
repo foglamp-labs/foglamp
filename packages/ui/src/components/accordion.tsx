@@ -54,14 +54,20 @@ function AccordionContent({
   ...props
 }: AccordionPrimitive.Panel.Props) {
   return (
+    // Height transitions on Base UI's measured panel height: 0 in the
+    // starting/ending styles, the measured value in between. The curve is a
+    // fast-out, long-settle ease (same one the landing hero uses) so the panel
+    // decelerates into place rather than the default ease-out's flat finish.
+    // The content inside fades on the same clock, so it doesn't sit fully
+    // opaque in a sliver of panel at either end.
     <AccordionPrimitive.Panel
       data-slot="accordion-content"
-      className="overflow-hidden text-sm data-open:animate-accordion-down data-closed:animate-accordion-up"
+      className="group/accordion-content h-(--accordion-panel-height) overflow-hidden text-sm transition-[height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:h-0 data-starting-style:h-0"
       {...props}
     >
       <div
         className={cn(
-          "h-(--accordion-panel-height) pt-0 pb-4 data-ending-style:h-0 data-starting-style:h-0 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
+          "pt-0 pb-4 transition-opacity duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-ending-style/accordion-content:opacity-0 group-data-starting-style/accordion-content:opacity-0 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
           className
         )}
       >

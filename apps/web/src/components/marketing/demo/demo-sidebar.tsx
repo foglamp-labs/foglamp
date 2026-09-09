@@ -9,7 +9,6 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
   type Icon,
   IconChevronDown,
-  IconDotsVertical,
   IconHexagonFilled,
 } from "@tabler/icons-react";
 
@@ -75,11 +74,14 @@ export function DemoSidebar() {
   return (
     <div className="flex size-full flex-col text-sidebar-foreground">
       {/* Project switcher (display-only) */}
-      <div className="flex flex-col gap-2 p-2 px-3">
+      <div className="flex flex-col gap-2 p-2 px-3.5 pb-1">
         <button
           type="button"
           disabled
-          className={cn(BUTTON_BASE, "my-2 px-1 pr-2 pl-1.25 cursor-default")}
+          className={cn(
+            BUTTON_BASE,
+            "my-2 mb-1 px-1 pr-2 pl-1.25 cursor-default"
+          )}
         >
           <span className="grid size-5 shrink-0 place-items-center rounded-lg corner-squircle bg-primary/10 text-primary shadow-(--custom-shadow)">
             <IconHexagonFilled className="size-3.5" />
@@ -87,15 +89,15 @@ export function DemoSidebar() {
           <span className="ml-0.5 flex flex-1 flex-col text-left leading-tight">
             <span className="truncate font-medium">Acme</span>
           </span>
-          <IconChevronDown className="ml-auto size-4 opacity-30" />
+          <IconChevronDown className="ml-auto size-3.5 opacity-25" />
         </button>
       </div>
 
       {/* Scrollable nav body */}
-      <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto px-0.5">
+      <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto px-1">
         {/* Main nav — interactive */}
         <div className="flex w-full flex-col p-2">
-          <ul className="flex w-full flex-col gap-1">
+          <ul className="flex w-full flex-col gap-0.75">
             {nav.map((item) => {
               const itemTab = HREF_TO_TAB[item.href];
               const active = tab === itemTab;
@@ -127,8 +129,8 @@ export function DemoSidebar() {
       </div>
 
       {/* Footer — display-only account row */}
-      <div className="flex flex-col gap-1 p-2 px-2.5">
-        <ul className="flex w-full flex-col gap-1" aria-hidden>
+      <div className="flex flex-col gap-1 p-2 px-3 pb-3">
+        <ul className="flex w-full flex-col gap-0.75" aria-hidden>
           {account.map((item) => (
             <li key={item.href}>
               <div
@@ -154,7 +156,6 @@ export function DemoSidebar() {
           <span className="flex flex-1 flex-col text-left ml-0.5">
             <span className="truncate">Gustavo</span>
           </span>
-          <IconDotsVertical className="ml-auto size-4 opacity-20" />
         </div>
       </div>
     </div>

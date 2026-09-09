@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@foglamp/ui/components/button";
+import { cn } from "@foglamp/ui/lib/utils";
 import { type MotionProps, motion, useReducedMotion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -59,7 +60,10 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
     label: "Option",
     node: (
       <span className="flex items-center gap-2">
-        <OptionLogo className="size-3.5 text-[#676767]" />
+        {/* The mark's strokes overlap, so a translucent fill would darken at
+            the joins. Opaque fill, faded with opacity, lands on the same tone
+            as the wordmark's 60% color without the seams. */}
+        <OptionLogo className="size-3.5 text-muted-foreground opacity-60" />
         <span className="text-lg font-semibold tracking-normal">Option</span>
       </span>
     ),
@@ -94,16 +98,18 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
   },
 ];
 
-// Entrance: each element fades in while rising a touch and sharpening from a
-// soft blur, sequenced top-to-bottom. The dashboard follows last with a longer
-// reveal so it reads as the hero's payoff.
+// Entrance: the copy fades in while rising a touch and sharpening from a soft
+// blur, top to bottom. The dashboard's chrome and its glow are static; only
+// the content inside it follows (see DemoShell), then the AI SDK note.
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-// A hairline frame around the product.
+// A hairline frame around the product. The shadow lives on an overlay above
+// the content: an inset shadow paints under an element's children, and the
+// demo's opaque frame would cover the highlight ring entirely.
 function DemoFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl ring-1 ring-border">
-      {children}
+    <div className="relative rounded-xl after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:shadow-(--custom-shadow-chrome)">
+      <div className="overflow-hidden rounded-xl">{children}</div>
     </div>
   );
 }
@@ -130,28 +136,28 @@ export function Hero() {
       <div className="mx-auto flex max-w-7xl justify-between items-end px-5 sm:px-8">
         <div className="flex-col">
           <motion.h1
-            {...rise(0.15)}
-            className="font-display mt-6 md:text-5xl text-4xl font-[450] tracking-tight text-balance"
+            {...rise(0.3)}
+            className="font-display mt-16 md:text-5xl text-4xl font-[450] tracking-tight text-balance"
           >
             Know what your agents are doing
           </motion.h1>
           <motion.p
-            {...rise(0.27)}
-            className="mt-5 max-w-md text-lg text-muted-foreground text-pretty"
+            {...rise(0.4)}
+            className="mt-6 max-w-md text-lg text-muted-foreground text-pretty"
           >
             Cost, latency, and quality of every call your agents make. Two lines
             of code, built for the Vercel AI SDK.
           </motion.p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <motion.div {...rise(0.39)}>
-              <CopyPromptButton />
+            <motion.div {...rise(0.5)}>
+              <CopyPromptButton hero className="px-4.25 pl-4" />
             </motion.div>
-            <motion.div {...rise(0.49)}>
+            <motion.div {...rise(0.6)}>
               <Button
                 render={<Link href="/login" />}
                 size="lg"
-                className="text-base"
+                className="text-base h-10 px-4.5"
                 variant="secondary"
               >
                 Start free
@@ -161,8 +167,8 @@ export function Hero() {
         </div>
 
         <motion.div
-          {...rise(0.6)}
-          className="hidden items-center gap-2 text-sm tracking-wide text-muted-foreground md:flex"
+          {...rise(1.4)}
+          className="hidden items-center gap-2 text-[13px] tracking-wide text-muted-foreground md:flex border-l pl-3"
         >
           Built for the
           <Image
@@ -175,15 +181,12 @@ export function Hero() {
         </motion.div>
       </div>
 
-      {/* The dashboard demo, below the copy and centered. Step 1 of the demo's
-          three-beat entrance: the frame blurs in as one unit, and its inner
-          surfaces follow as steps 2 and 3 inside DemoShell. */}
-      <motion.div
-        initial={reduce ? false : { opacity: 0, filter: "blur(6px)" }}
-        animate={reduce ? undefined : { opacity: 1, filter: "blur(0px)" }}
-        transition={{ duration: 0.55, ease: EASE, delay: 0.6 }}
+      {/* The dashboard demo, below the copy and centered. The frame and its
+          glow render in place; the sidebar and inset content blur in after
+          the copy, inside DemoShell. */}
+      <div
         // A touch wider than the copy's max-w-7xl so the dashboard breathes.
-        className="relative mx-auto mt-16 hidden w-full max-w-344 px-5 sm:px-8 md:block"
+        className="relative mx-auto mt-20 hidden w-full max-w-376 px-5 sm:px-16 md:block"
       >
         {/* A soft stage behind the frame. In dark mode it lifts the page
             around the frame so the dark sidebar sits on lighter ground; in
@@ -198,12 +201,16 @@ export function Hero() {
             <HeroDemo />
           </DemoFrame>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Small screens get a still of the same dashboard in the same frame. */}
+      {/* Small screens get a still of the same dashboard in the same frame.
+          The frame runs wider than the screen and off its right edge, so the
+          desktop layout shows at a size where it reads as an app rather than
+          a thumbnail. The section clips the overflow, so the page never
+          scrolls sideways. */}
       <motion.div
         {...rise(0.6)}
-        className="mx-auto mt-12 w-full px-5 sm:px-8 md:hidden"
+        className="mt-12 w-[150%] pl-5 sm:pl-8 md:hidden"
       >
         <DemoFrame>
           <Image
@@ -224,18 +231,21 @@ export function Hero() {
       </motion.div>
 
       {/* Trusted-by strip: left-aligned under the demo, still inside the
-          hero's grain. Real projects running on Foglamp, all monochrome. */}
+          hero's grain. Real projects running on Foglamp, all monochrome.
+          Phones fit one row of three, so the rest wait for wider screens. */}
       <motion.div
         {...rise(1.7)}
-        className="mx-auto mt-18 flex w-full max-w-7xl flex-wrap items-center gap-x-20 gap-y-5 px-5 sm:px-8 pb-18"
+        className="mx-auto mt-18 w-full max-w-7xl px-5 sm:px-8 pb-18"
       >
-        <p className="text-sm text-muted-foreground/50">Trusted by</p>
-        <ul className="contents list-none">
-          {TRUSTED.map(({ label, node }) => (
+        <ul className="flex w-full flex-wrap items-center justify-between gap-y-5 list-none">
+          {TRUSTED.map(({ label, node }, i) => (
             <li
               key={label}
               title={label}
-              className="text-muted-foreground/60 grayscale"
+              className={cn(
+                "flex-1 flex justify-center text-muted-foreground/60 grayscale min-w-24 sm:min-w-30",
+                i >= 3 && "max-sm:hidden"
+              )}
             >
               {node}
             </li>

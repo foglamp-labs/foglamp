@@ -18,13 +18,21 @@ import {
   IconRefresh,
   IconThumbDown,
   IconThumbUp,
+  IconTool,
   IconUserFilled,
 } from "@tabler/icons-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/app/agent-icon";
-import { SpanTypeBadge, SpanTypeChip, spanTypeBar } from "@/components/app/span-type";
-import { TraceTimeline } from "@/components/app/trace-timeline";
+import {
+  SpanTypeBadge,
+  SpanTypeChip,
+  spanTypeBar,
+} from "@/components/app/span-type";
+import {
+  TIMELINE_REVEAL_SECONDS,
+  TraceTimeline,
+} from "@/components/app/trace-timeline";
 import {
   SESSION_TURNS,
   TRACE_MESSAGES,
@@ -34,6 +42,7 @@ import { ModelLogo } from "@/components/model-logo";
 import { formatCost, formatSpanDuration, formatTokens } from "@/lib/format";
 import { orderSpans, toMs, type TraceSpan } from "@/lib/trace-timeline";
 
+import { useReveal } from "./figure-reveal";
 import { Scene } from "./figures-scenes";
 
 // Candidate figures for the traces section. Each starts from the same idea:
@@ -71,10 +80,12 @@ function AgentAvatar({ className }: { className?: string }) {
 
 function ToolPill({ name, count }: { name: string; count: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 py-0.5 pr-2 pl-1 text-[11px] text-muted-foreground">
-      <SpanTypeChip type="tool" className="size-3.5" />
+    <span className="inline-flex items-center gap-1.25 text-[11px] text-muted-foreground">
+      <span className="size-3 flex items-center justify-center opacity-50">
+        <IconTool className="w-full h-full fill-current stroke-1" />
+      </span>
+
       <span className="font-mono">{name}</span>
-      {count > 1 && <span className="tabular-nums">×{count}</span>}
     </span>
   );
 }
@@ -96,66 +107,51 @@ function ChatWindow({
   composer?: boolean;
 }) {
   return (
-    <Scene className={cn("gap-0 pt-0 pb-0", className)}>
-      <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
-        <AgentAvatar className="size-8" />
-        <span className="flex min-w-0 flex-col leading-tight">
-          <span className="text-sm">Acme Support</span>
-          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="size-1.5 rounded-full bg-emerald-500" />
-            Replies in seconds
-          </span>
-        </span>
-        <IconDotsVertical className="ml-auto size-4 text-muted-foreground" />
-      </div>
-      <div className="flex flex-col gap-5 px-4 py-5">
-        <span className="text-center text-[11px] text-muted-foreground">
-          Today
-        </span>
+    <Scene
+      className={cn(
+        "gap-0 pt-0 pb-0 data-[size=sm]:pt-8 data-[size=sm]:pb-4 squircle:rounded-[60]",
+        className
+      )}
+    >
+      <div className="flex flex-col gap-5 px-4">
         <div className="flex flex-col items-end gap-1">
           <p className="max-w-[85%] rounded-3xl rounded-br-lg bg-muted px-4 py-2.5 text-sm dark:bg-muted-foreground/10">
             {turn.userMessage}
           </p>
           <span className="flex items-center gap-1 pr-1 text-[11px] text-muted-foreground tabular-nums">
             10:42
-            <IconChecks className="size-3.5 text-sky-500" />
+            <IconChecks className="size-3.5 text-blue-500" />
           </span>
         </div>
         {activity}
         <div className="flex gap-3">
-          <AgentAvatar className="mt-0.5 size-7" />
+          <AgentAvatar className="mt-0.5 size-6" />
           <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-            <p
-              className={cn(
-                "text-sm leading-relaxed",
-                highlight &&
-                  "-mx-2 -my-1.5 rounded-lg px-2 py-1.5 ring-1 ring-violet-500/50 ring-offset-2 ring-offset-card"
-              )}
-            >
+            <p className={cn("text-sm leading-relaxed text-balance")}>
               {turn.assistantOutput}
             </p>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-col gap-1.5">
               {turn.toolCalls?.map((tc) => (
                 <ToolPill key={tc.name} name={tc.name} count={tc.count} />
               ))}
             </div>
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <IconCopy className="size-3.5" />
-              <IconThumbUp className="size-3.5" />
-              <IconThumbDown className="size-3.5" />
-              <IconRefresh className="size-3.5" />
+            <div className="flex items-center gap-3 text-muted-foreground/50 mt-1">
+              <IconCopy className="size-3" />
+              <IconThumbUp className="size-3" />
+              <IconThumbDown className="size-3" />
+              <IconRefresh className="size-3" />
             </div>
           </div>
         </div>
       </div>
       {composer && (
-        <div className="px-4 pb-3">
-          <div className="flex flex-col gap-2 rounded-3xl border border-border/70 px-3 pt-3 pb-2 shadow-(--custom-shadow)">
+        <div className="px-3.5 mt-5">
+          <div className="flex flex-col gap-2 corner-squircle dark:bg-muted/50 squircle:rounded-[52px] px-3 pt-3 pb-2 shadow-(--custom-shadow)">
             <span className="px-1 text-sm text-muted-foreground">
               Message Acme Support
             </span>
             <div className="flex items-center gap-1">
-              <span className="flex size-7 items-center justify-center rounded-full border border-border/70 text-muted-foreground">
+              <span className="flex size-7 items-center justify-center rounded-full text-muted-foreground">
                 <IconPlus className="size-4" />
               </span>
               <span className="ml-auto flex size-7 items-center justify-center text-muted-foreground">
@@ -166,9 +162,6 @@ function ChatWindow({
               </span>
             </div>
           </div>
-          <p className="pt-2.5 text-center text-[11px] text-muted-foreground">
-            Answers are generated by AI
-          </p>
         </div>
       )}
     </Scene>
@@ -203,22 +196,34 @@ export function TraceChat() {
 // ─── 3. X-ray: the chat in front, the trace behind the reply ────────────────
 
 export function TraceXray() {
-  const [selected, setSelected] = useState<string | null>("s5");
+  // The timeline replays the trace: the bars grow in at their own offsets and
+  // speeds once the figure is in view, and the reply's model call is selected
+  // when they are done, so the eye lands on it last. Phones show only the
+  // timeline, at full width, so the waterfall has room to read.
+  const [selected, setSelected] = useState<string | null>(null);
+  const { shown, reduce } = useReveal();
+  useEffect(() => {
+    if (!shown) return;
+    const wait = reduce ? 0 : (TIMELINE_REVEAL_SECONDS + 0.1) * 1000;
+    const id = setTimeout(() => setSelected("s5"), wait);
+    return () => clearTimeout(id);
+  }, [shown, reduce]);
   return (
     <div className="grid gap-4 sm:relative sm:block sm:h-176">
-      <Scene className="sm:absolute sm:bottom-0 sm:left-0 sm:z-10 sm:w-[84%]">
+      <Scene className="sm:absolute sm:bottom-0 sm:right-0 sm:z-10 sm:w-[84%]">
         <CardContent>
           <TraceTimeline
             spans={spans}
             selected={selected}
             onSelect={setSelected}
+            reveal={reduce ? undefined : shown ? "play" : "hold"}
           />
         </CardContent>
       </Scene>
       <ChatWindow
         highlight
         className={cn(
-          "sm:absolute sm:top-0 sm:right-0 sm:z-20 sm:w-[52%]",
+          "max-sm:hidden sm:absolute sm:top-0 sm:-right-10 sm:z-20 sm:w-[52%]",
           LIFTED
         )}
       />
@@ -307,18 +312,29 @@ export function TraceInspector() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="grid grid-cols-4 gap-3 border-y border-border/60 py-3">
-            <Stat label="Duration" value={formatSpanDuration(DRAFT.durationMs)} />
-            <Stat label="First token" value={formatSpanDuration(DRAFT.ttftMs ?? 0)} />
+            <Stat
+              label="Duration"
+              value={formatSpanDuration(DRAFT.durationMs)}
+            />
+            <Stat
+              label="First token"
+              value={formatSpanDuration(DRAFT.ttftMs ?? 0)}
+            />
             <Stat label="Tokens" value={formatTokens(DRAFT.totalTokens)} />
             <Stat label="Cost" value={formatCost(DRAFT.totalCost ?? 0, 4)} />
           </div>
           <ol className="flex flex-col gap-3">
             {TRACE_MESSAGES.map((m) => (
-              <li key={m.role} className="grid grid-cols-[4.5rem_1fr] gap-3 text-xs">
+              <li
+                key={m.role}
+                className="grid grid-cols-[4.5rem_1fr] gap-3 text-xs"
+              >
                 <span className="pt-px font-mono text-muted-foreground">
                   {m.role}
                 </span>
-                <span className="line-clamp-2 leading-relaxed">{m.content}</span>
+                <span className="line-clamp-2 leading-relaxed">
+                  {m.content}
+                </span>
               </li>
             ))}
           </ol>
@@ -330,13 +346,7 @@ export function TraceInspector() {
 
 // ─── 6. Graph: the turn as a pipeline of calls ──────────────────────────────
 
-function Node({
-  span,
-  className,
-}: {
-  span: TraceSpan;
-  className?: string;
-}) {
+function Node({ span, className }: { span: TraceSpan; className?: string }) {
   return (
     <span
       className={cn(
@@ -383,7 +393,8 @@ export function TraceGraph() {
             {ROOT.name}
           </CardTitle>
           <span className="text-xs text-muted-foreground tabular-nums">
-            {formatSpanDuration(ROOT.durationMs)} · {formatTokens(turn.totalTokens)} tokens ·{" "}
+            {formatSpanDuration(ROOT.durationMs)} ·{" "}
+            {formatTokens(turn.totalTokens)} tokens ·{" "}
             {formatCost(turn.totalCost, 4)}
           </span>
         </CardHeader>

@@ -9,7 +9,13 @@ import { FAMILY_CHIP, presetMeta } from "@/app/(app)/evals/preset-meta";
 // the mock data the costs cards draw from.
 
 /** The colored check chip the eval pages use for a preset. */
-export function CheckChip({ presetId, className }: { presetId: string; className?: string }) {
+export function CheckChip({
+  presetId,
+  className,
+}: {
+  presetId: string;
+  className?: string;
+}) {
   const { icon: Icon, family } = presetMeta(presetId);
   return (
     <span
@@ -20,15 +26,6 @@ export function CheckChip({ presetId, className }: { presetId: string; className
       )}
     >
       <Icon className="size-3" />
-    </span>
-  );
-}
-
-/** A muted mono key, for ids and code. */
-export function Mono({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <span className={cn("font-mono text-xs text-muted-foreground", className)}>
-      {children}
     </span>
   );
 }
@@ -52,7 +49,6 @@ export const AGENTS = [
 export const CUSTOMERS = [
   { id: "cus_acme", name: "Acme Inc", cost: 241.6 },
   { id: "cus_globex", name: "Globex", cost: 188.3 },
-  { id: "cus_initech", name: "Initech", cost: 122.9 },
   { id: "cus_umbrella", name: "Umbrella", cost: 74.2 },
 ] as const;
 

@@ -16,10 +16,7 @@ import {
 } from "@foglamp/ui/components/table";
 import { Tabs, TabsList, TabsTrigger } from "@foglamp/ui/components/tabs";
 import { cn } from "@foglamp/ui/lib/utils";
-import {
-  IconAlertTriangleFilled,
-  IconCoinFilled,
-} from "@tabler/icons-react";
+import { IconAlertTriangleFilled, IconCoinFilled } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
 
 import { AgentIcon, agentColor } from "@/components/app/agent-icon";
@@ -45,6 +42,7 @@ import { ModelLogo } from "@/components/model-logo";
 import { formatCost } from "@/lib/format";
 
 import { AGENTS, CUSTOMERS, MODELS, noise } from "./figure-kit";
+import { useReveal } from "./figure-reveal";
 import { BreakdownCard, BreakdownRow, Logo, Scene } from "./figures-scenes";
 
 // Candidate figures for the costs section. The first (CostCards, in
@@ -103,7 +101,9 @@ function DataCard({
   children: ReactNode;
 }) {
   return (
-    <Scene className={cn("gap-0 py-0! group-data-[size=sm]/card:py-0!", className)}>
+    <Scene
+      className={cn("gap-0 py-0! group-data-[size=sm]/card:py-0!", className)}
+    >
       <div className="divide-y divide-border/40">{children}</div>
     </Scene>
   );
@@ -121,9 +121,10 @@ function AgentsCard({
   const Wrap = plain ? DataCard : BreakdownCard;
   return (
     <Wrap title="Agents" className={className}>
-      {AGENTS.slice(0, limit).map((a) => (
+      {AGENTS.slice(0, limit).map((a, i) => (
         <BreakdownRow
           key={a.name}
+          index={i}
           icon={
             <AgentIcon name={a.name} filled className="size-3.5 shrink-0" />
           }
@@ -164,9 +165,10 @@ function CustomersCard({
   const Wrap = plain ? DataCard : BreakdownCard;
   return (
     <Wrap title="Customers" className={className}>
-      {CUSTOMERS.map((c) => (
+      {CUSTOMERS.map((c, i) => (
         <BreakdownRow
           key={c.id}
+          index={i}
           icon={<Logo id={c.id} className="size-3.5" />}
           title={c.name}
           value={formatCost(c.cost, 2)}
@@ -373,10 +375,14 @@ const CHART_LEGEND = MODEL_LEGEND.filter((item) =>
 
 export function CostChart() {
   const [selected, setSelected] = useState<string | null>(null);
+  // The chart grows its bars in when it mounts, so it mounts once the figure
+  // is in view and the grow-in plays where the reader can see it.
+  const { shown } = useReveal();
   return (
     <Stage narrow className="sm:h-132">
       {/* The agents card hangs over the top edge, clear of the inline legend;
-          the customers card overlaps the bottom. */}
+          the customers card overlaps the bottom. Phones keep just the chart
+          with the agents card tucked over its bottom corner. */}
       <Scene className="sm:absolute sm:inset-x-0 sm:top-36 sm:z-10">
         <CardHeader className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <CardTitle>Cost over time</CardTitle>
@@ -384,56 +390,58 @@ export function CostChart() {
             items={CHART_LEGEND}
             selected={selected}
             onSelect={setSelected}
-            className="justify-start"
+            className="justify-start ml-auto"
           />
         </CardHeader>
         <CardContent className="mt-3">
-          <BarChart.EvilBarChart
-            config={CHART_CONFIG}
-            data={CHART_SERIES}
-            stackType="stacked"
-            selectedDataKey={selected}
-            onSelectionChange={setSelected}
-            className="h-52 w-full"
-            chartProps={{
-              margin: { top: 5, right: 5, bottom: 5, left: 2 },
-              barCategoryGap: "40%",
-            }}
-          >
-            <BarChart.Grid />
-            <BarChart.XAxis
-              dataKey="bucket"
-              ticks={ticks}
-              tickFormatter={bucketLabel}
-              interval={0}
-              tick={edgeTick}
-            />
-            <BarChart.YAxis
-              tickFormatter={(v) => axisUsd.format(Number(v))}
-            />
-            <BarChart.Tooltip
-              labelFormatter={(v) => formatBucketFull(String(v))}
-              valueFormatter={(v) => formatCost(Number(v))}
-              reverse
-            />
-            {CHART_KEYS.map((k) => (
-              <BarChart.Bar key={k} dataKey={k} isClickable />
-            ))}
-          </BarChart.EvilBarChart>
+          {shown ? (
+            <BarChart.EvilBarChart
+              config={CHART_CONFIG}
+              data={CHART_SERIES}
+              stackType="stacked"
+              selectedDataKey={selected}
+              onSelectionChange={setSelected}
+              className="h-52 w-full"
+              chartProps={{
+                margin: { top: 5, right: 5, bottom: 5, left: 2 },
+                barCategoryGap: "40%",
+              }}
+            >
+              <BarChart.Grid />
+              <BarChart.XAxis
+                dataKey="bucket"
+                ticks={ticks}
+                tickFormatter={bucketLabel}
+                interval={0}
+                tick={edgeTick}
+              />
+              <BarChart.YAxis tickFormatter={(v) => axisUsd.format(Number(v))} />
+              <BarChart.Tooltip
+                labelFormatter={(v) => formatBucketFull(String(v))}
+                valueFormatter={(v) => formatCost(Number(v))}
+                reverse
+              />
+              {CHART_KEYS.map((k) => (
+                <BarChart.Bar key={k} dataKey={k} isClickable />
+              ))}
+            </BarChart.EvilBarChart>
+          ) : (
+            <div className="h-52 w-full" />
+          )}
         </CardContent>
       </Scene>
       <AgentsCard
         plain
         limit={3}
         className={cn(
-          "sm:absolute sm:top-0 sm:right-[4%] sm:z-20 sm:w-[44%]",
+          "max-sm:z-20 max-sm:-mt-8 max-sm:ml-10 sm:absolute sm:top-10 sm:right-[-10%] sm:z-20 sm:w-[44%]",
           LIFTED
         )}
       />
       <CustomersCard
         plain
         className={cn(
-          "sm:absolute sm:right-[4%] sm:bottom-0 sm:z-20 sm:w-[44%]",
+          "max-sm:hidden sm:absolute sm:right-[4%] sm:bottom-0 sm:z-20 sm:w-[44%]",
           LIFTED
         )}
       />
@@ -452,9 +460,7 @@ const DAYS = Array.from({ length: 14 }, (_, i) => {
 const ALERT_DATA = DAYS.map((day, i) => ({
   day,
   cost:
-    i < 10
-      ? 640 + 180 * noise(i, 21)
-      : 900 + 120 * (i - 9) + 60 * noise(i, 22),
+    i < 10 ? 640 + 180 * noise(i, 21) : 900 + 120 * (i - 9) + 60 * noise(i, 22),
 }));
 
 const alertConfig = {
@@ -524,7 +530,11 @@ export function CostAlert() {
 
 const TABLE_ROWS = [
   { customer: CUSTOMERS[0], agent: "support-triage", model: "gpt-5.6-sol" },
-  { customer: CUSTOMERS[1], agent: "research-planner", model: "claude-fable-5" },
+  {
+    customer: CUSTOMERS[1],
+    agent: "research-planner",
+    model: "claude-fable-5",
+  },
   { customer: CUSTOMERS[2], agent: "code-reviewer", model: "gpt-5.6-sol" },
 ] as const;
 
@@ -646,7 +656,10 @@ export function CostTabs() {
         </CardHeader>
         <CardContent className="mt-2 flex flex-col gap-3.5">
           {bars.map((b) => (
-            <div key={b.key} className="grid grid-cols-[10rem_1fr_4.5rem] items-center gap-3">
+            <div
+              key={b.key}
+              className="grid grid-cols-[10rem_1fr_4.5rem] items-center gap-3"
+            >
               <span className="flex min-w-0 items-center gap-2 text-sm">
                 {b.icon}
                 <span className="truncate">{b.label}</span>
@@ -678,7 +691,13 @@ function ShareRow({
   parts,
 }: {
   title: string;
-  parts: { key: string; icon: ReactNode; label: string; cost: number; color: string }[];
+  parts: {
+    key: string;
+    icon: ReactNode;
+    label: string;
+    cost: number;
+    color: string;
+  }[];
 }) {
   const sum = parts.reduce((a, p) => a + p.cost, 0);
   return (
@@ -689,7 +708,10 @@ function ShareRow({
           <div
             key={p.key}
             className="h-full first:rounded-l-full last:rounded-r-full"
-            style={{ width: `${(p.cost / sum) * 100}%`, backgroundColor: p.color }}
+            style={{
+              width: `${(p.cost / sum) * 100}%`,
+              backgroundColor: p.color,
+            }}
           />
         ))}
       </div>
@@ -731,7 +753,9 @@ export function CostShares() {
             title="Agents"
             parts={AGENTS.map((a) => ({
               key: a.name,
-              icon: <AgentIcon name={a.name} filled className="size-3.5 shrink-0" />,
+              icon: (
+                <AgentIcon name={a.name} filled className="size-3.5 shrink-0" />
+              ),
               label: a.name,
               cost: a.cost,
               color: agentColor(a.name),
@@ -920,9 +944,7 @@ export function CostArea() {
               interval={0}
               tick={edgeTick}
             />
-            <AreaChart.YAxis
-              tickFormatter={(v) => axisUsd.format(Number(v))}
-            />
+            <AreaChart.YAxis tickFormatter={(v) => axisUsd.format(Number(v))} />
             <AreaChart.Tooltip
               labelFormatter={(v) => formatBucketFull(String(v))}
               valueFormatter={(v) => formatCost(Number(v))}
@@ -1071,7 +1093,14 @@ function columnLayout(totals: number[]) {
   });
 }
 
-function ribbon(x0: number, a0: number, a1: number, x1: number, b0: number, b1: number) {
+function ribbon(
+  x0: number,
+  a0: number,
+  a1: number,
+  x1: number,
+  b0: number,
+  b1: number
+) {
   const xm = (x0 + x1) / 2;
   return `M${x0} ${a0} C${xm} ${a0} ${xm} ${b0} ${x1} ${b0} L${x1} ${b1} C${xm} ${b1} ${xm} ${a1} ${x0} ${a1} Z`;
 }
@@ -1121,7 +1150,13 @@ const FLOW_M = columnLayout(
 
 const BAR_W = 1.6;
 const BANDS_CA = flowBands(FLOW_CA, FLOW_C, FLOW_A, BAR_W, 50 - BAR_W / 2);
-const BANDS_AM = flowBands(FLOW_AM, FLOW_A, FLOW_M, 50 + BAR_W / 2, 100 - BAR_W);
+const BANDS_AM = flowBands(
+  FLOW_AM,
+  FLOW_A,
+  FLOW_M,
+  50 + BAR_W / 2,
+  100 - BAR_W
+);
 
 function FlowLabels({
   nodes,

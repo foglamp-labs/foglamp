@@ -17,27 +17,21 @@ const CIRCLES = [
 const CELL = 24;
 const MAJOR = CELL * 4;
 
-// Each circle gets a 45 degree cross through its center. The lines are drawn
-// in the circles' own viewBox so they track the circles at any width; they
-// reach far enough that the mat's edges crop them. The svg scales uniformly,
-// so 45 degrees in viewBox units stays 45 degrees on screen.
-const REACH = 60;
-
 export function CuttingMat() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none relative h-52 w-full select-none overflow-hidden sm:h-102 opacity-75"
+      className="pointer-events-none relative h-52 w-full select-none overflow-hidden sm:h-72 opacity-75"
     >
       {/* The mat: a fine grid with a heavier line every fourth cell, fading in
           from the top so it doesn't hit the copyright row as a hard edge. The
           line colors are solid, one pair per theme, set as custom properties
-          so the gradients and the diagonals share them.
+          shared by the gradients.
 
-          Every layer is anchored so a line runs through the page center. A
+          Both grids are anchored so a line runs through the page center. A
           plain "center" would put a tile edge half a tile left of center, a
           different half for the major and minor sizes, so the two grids would
-          drift apart and the diagonals would miss the intersections. */}
+          drift apart. */}
       <div
         className="absolute inset-0 [--mat-major:#e3e3e3] [--mat-minor:#f0f0f0] dark:[--mat-major:#1e1e1e] dark:[--mat-minor:#171717]"
         style={{
@@ -57,32 +51,10 @@ export function CuttingMat() {
           WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 70%)",
           maskImage: "linear-gradient(to bottom, transparent, #000 70%)",
         }}
-      >
-        <svg
-          viewBox="0 0 96 48"
-          className="absolute left-1/2 top-24 w-[min(960px,100%)] -translate-x-1/2 sm:top-30"
-          style={{ overflow: "visible" }}
-        >
-          {CIRCLES.map((c) =>
-            ([1, -1] as const).map((dir) => (
-              <line
-                key={`${c.cx}${dir}`}
-                x1={c.cx - dir * REACH}
-                y1={24 - REACH}
-                x2={c.cx + dir * REACH}
-                y2={24 + REACH}
-                stroke="var(--mat-major)"
-                strokeWidth={1}
-                vectorEffect="non-scaling-stroke"
-              />
-            ))
-          )}
-        </svg>
-      </div>
+      />
 
       {/* The mark. Wider than the mat is tall on purpose: the container's
-          overflow crops the lower third of the circles. Same placement as the
-          crosses above, so they share centers. */}
+          overflow crops the lower third of the circles. */}
       <svg
         viewBox="0 0 96 48"
         className="absolute left-1/2 top-24 w-[min(960px,100%)] -translate-x-1/2 sm:top-30"

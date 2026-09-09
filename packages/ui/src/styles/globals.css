@@ -51,6 +51,9 @@
     0px 0px 0px 0.5px rgba(0, 0, 0, 0.06),
     0px 0.5px 2px -0.5px rgba(0, 0, 0, 0.06),
     0px 1px 4px 0px rgba(0, 0, 0, 0.04);
+  /* The landing demo's chrome. Same as --custom-shadow in light; dark brightens
+     the inset highlights so the frame's top edge catches more light. */
+  --custom-shadow-chrome: var(--custom-shadow);
   /* A card floating above other cards: the usual edge plus a wider, softer
      drop so it reads as clearly on top. */
   --custom-shadow-lifted:
@@ -155,6 +158,11 @@
   --custom-shadow:
     inset 0 0.75px 0 0 rgba(255, 255, 255, 0.03),
     inset 0 0 0 0.75px rgba(255, 255, 255, 0.03),
+    0 0 0 0.75px rgba(0, 0, 0, 0.1), 0 2px 2px 0 rgba(0, 0, 0, 0.1),
+    0 4px 4px 0 rgba(0, 0, 0, 0.1), 0 8px 8px 0 rgba(0, 0, 0, 0.1);
+  --custom-shadow-chrome:
+    inset 0 0.75px 0 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 0 0.75px rgba(255, 255, 255, 0.06),
     0 0 0 0.75px rgba(0, 0, 0, 0.1), 0 2px 2px 0 rgba(0, 0, 0, 0.1),
     0 4px 4px 0 rgba(0, 0, 0, 0.1), 0 8px 8px 0 rgba(0, 0, 0, 0.1);
   --custom-shadow-lifted:

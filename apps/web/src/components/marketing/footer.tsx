@@ -22,6 +22,7 @@ const PRODUCT: FooterColumn = {
 const RESOURCES: FooterColumn = {
   heading: "Resources",
   links: [
+    { label: "How it works", href: "/how-it-works" },
     { label: "Docs", href: DOCS_ORIGIN, external: true },
     {
       label: "Quickstart",
@@ -72,21 +73,14 @@ function FooterAnchor({ link }: { link: FooterLink }) {
   );
 }
 
-// A heading and its links. Product is the long list, so it flows its links
-// into two columns under one heading.
-function FooterGroup({ column, wide }: { column: FooterColumn; wide?: boolean }) {
+// A heading and its links.
+function FooterGroup({ column }: { column: FooterColumn }) {
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-[450] tracking-wide text-foreground">
+      <h3 className="text-sm font-[450] text-foreground">
         {column.heading}
       </h3>
-      <ul
-        className={
-          wide
-            ? "grid grid-cols-2 gap-x-10 gap-y-2.5"
-            : "flex flex-col gap-2.5"
-        }
-      >
+      <ul className="flex flex-col gap-2.5">
         {column.links.map((link) => (
           <li key={link.label}>
             <FooterAnchor link={link} />
@@ -130,38 +124,24 @@ function BrazilFlag({ className }: { className?: string }) {
 export function MarketingFooter() {
   return (
     <footer className="relative isolate overflow-hidden border-t border-border/50 bg-background">
-      <div className="relative z-10 mx-auto max-w-7xl px-5 pt-16 sm:px-8">
-        {/* Brand, then Product across two columns, Resources, and Labs
+      <div className="relative z-10 mx-auto max-w-7xl px-5 py-20 pb-10 sm:px-8">
+        {/* Brand, then three link columns: Product, Resources, and Labs
             stacked over Company. On phones the brand takes the first row and
-            Product the second, so the two-column list keeps its width. */}
-        <div className="grid grid-cols-2 gap-10 lg:grid-cols-[1.6fr_repeat(4,1fr)]">
-          <div className="col-span-2 flex flex-col gap-4 lg:col-span-1">
+            the link columns wrap beneath it two per row, with Labs and
+            Company side by side. */}
+        <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-[1.6fr_repeat(3,1fr)]">
+          <div className="col-span-2 flex flex-col gap-4 sm:col-span-3 lg:col-span-1">
             <Logo />
-            <p className="max-w-48 text-sm text-muted-foreground text-pretty">
+            <p className="max-w-48 text-sm text-muted-foreground text-pretty mb-2">
               Observability for AI agents.
             </p>
+            <ThemeSwitcher />
           </div>
-          <div className="col-span-2">
-            <FooterGroup column={PRODUCT} wide />
-          </div>
+          <FooterGroup column={PRODUCT} />
           <FooterGroup column={RESOURCES} />
-          <div className="flex flex-col gap-10">
+          <div className="contents sm:flex sm:flex-col sm:gap-10">
             <FooterGroup column={LABS} />
             <FooterGroup column={COMPANY} />
-          </div>
-        </div>
-
-        <div className="mt-16 flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-border/50 py-6">
-          <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Foglamp
-          </p>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Made in
-            <BrazilFlag className="size-4" />
-          </span>
-
-          <div className="ml-auto">
-            <ThemeSwitcher />
           </div>
         </div>
       </div>

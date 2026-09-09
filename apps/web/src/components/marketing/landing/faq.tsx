@@ -88,7 +88,7 @@ export function Faq() {
                 <AccordionTrigger className="rounded-none border-0 py-5 text-base cursor-pointer hover:opacity-70 font-normal hover:no-underline">
                   {f.q}
                 </AccordionTrigger>
-                <AccordionContent className="pb-6 text-[15px] leading-relaxed text-muted-foreground">
+                <AccordionContent className="pb-8 text-[15px] leading-relaxed text-muted-foreground">
                   <p>{f.a}</p>
                   {f.links && (
                     <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-sm mt-5">

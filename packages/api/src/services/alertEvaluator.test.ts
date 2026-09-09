@@ -119,4 +119,55 @@ describe("sample floor", () => {
     expect(t.skipped).toBe(false);
     expect(t.breachStreak).toBe(1);
   });
+
+  test("an error-rate window where every span failed bypasses the floor", () => {
+    const t = step(ok, 1, {
+      metric: "error_rate",
+      threshold: 0.05,
+      sampleCount: 2,
+    });
+    expect(t.skipped).toBe(false);
+    expect(t.breachStreak).toBe(1);
+  });
+
+  test("a total-failure window fires after FIRE_STREAK sweeps like any breach", () => {
+    let prev: AlertTransitionInput["prev"] = ok;
+    for (let i = 0; i < FIRE_STREAK; i++) {
+      prev = step(prev, 1, {
+        metric: "error_rate",
+        threshold: 0.05,
+        sampleCount: 1,
+      });
+    }
+    expect(prev.status).toBe("firing");
+  });
+
+  test("a partial-failure window under the floor still skips", () => {
+    const t = step(ok, 0.5, {
+      metric: "error_rate",
+      threshold: 0.05,
+      sampleCount: 2,
+    });
+    expect(t.skipped).toBe(true);
+    expect(t.breachStreak).toBe(0);
+  });
+
+  test("an empty error-rate window (rate 0) still skips", () => {
+    const t = step(ok, 0, {
+      metric: "error_rate",
+      threshold: 0.05,
+      sampleCount: 0,
+    });
+    expect(t.skipped).toBe(true);
+  });
+
+  test("total failure does not bypass the floor for other sampled metrics", () => {
+    const t = step(ok, 1, {
+      metric: "eval_pass_rate",
+      threshold: 0.5,
+      comparison: "lt",
+      sampleCount: 2,
+    });
+    expect(t.skipped).toBe(true);
+  });
 });
