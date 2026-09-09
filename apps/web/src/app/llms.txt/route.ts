@@ -24,6 +24,7 @@ const BODY = `# Foglamp
 
 ## Product
 - [Overview](${SITE_URL}): what Foglamp is and who it's for.
+- [How it works](${SITE_URL}/how-it-works): an illustrated guide to traces, agents, workflows, sessions, costs, evaluations, and alerts.
 - [Pricing](${SITE_URL}/pricing): usage-based plans — Free ($0), Pro ($49/mo), and Enterprise (custom).
 - [Distributed traces](${SITE_URL}/features/distributed-traces): waterfall every run down to the token, with the exact prompt and response per span.
 - [Cost intelligence](${SITE_URL}/features/cost-intelligence): spend broken down by model, agent, and customer.

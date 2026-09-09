@@ -235,6 +235,33 @@ function formatPrice(price: ModelPrice) {
   return { perMillionTokens, perUnit };
 }
 
+// The docs tool on its own: it is the only tool the public Foggy on the
+// landing page gets, so it is built here and shared with buildFoggyTools.
+export function docsTool() {
+  return tool({
+    description:
+      "Fetch the Foglamp documentation for how the product works (SDK usage, the data model, concepts, self-hosting). Use for 'how do I…' questions. Returns the docs index with per-page summaries; set full=true when you need the complete docs text to answer precisely.",
+    inputSchema: z.object({
+      full: z
+        .boolean()
+        .optional()
+        .describe(
+          "Fetch the full documentation text instead of the index. Slower and much larger; use only when the index isn't enough.",
+        ),
+    }),
+    execute: async ({ full }) => {
+      const text = await fetchDocs(full ?? false);
+      if (!text) {
+        return {
+          unavailable: true,
+          note: `The docs site is unreachable right now. Point the user at ${env.FOGGY_DOCS_URL}.`,
+        };
+      }
+      return { source: env.FOGGY_DOCS_URL, text };
+    },
+  });
+}
+
 export function buildFoggyTools({
   ch,
   userId,
@@ -803,27 +830,6 @@ export function buildFoggyTools({
       },
     }),
 
-    searchDocs: tool({
-      description:
-        "Fetch the Foglamp documentation for how the product works (SDK usage, the data model, concepts, self-hosting). Use for 'how do I…' questions. Returns the docs index with per-page summaries; set full=true when you need the complete docs text to answer precisely.",
-      inputSchema: z.object({
-        full: z
-          .boolean()
-          .optional()
-          .describe(
-            "Fetch the full documentation text instead of the index. Slower and much larger; use only when the index isn't enough.",
-          ),
-      }),
-      execute: async ({ full }) => {
-        const text = await fetchDocs(full ?? false);
-        if (!text) {
-          return {
-            unavailable: true,
-            note: `The docs site is unreachable right now. Point the user at ${env.FOGGY_DOCS_URL}.`,
-          };
-        }
-        return { source: env.FOGGY_DOCS_URL, text };
-      },
-    }),
+    searchDocs: docsTool(),
   });
 }

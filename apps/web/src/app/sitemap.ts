@@ -9,6 +9,7 @@ import { SITE_URL } from "@/lib/links";
 export default function sitemap(): MetadataRoute.Sitemap {
 	const entries: { path: string; priority: number }[] = [
 		{ path: "", priority: 1 },
+		{ path: "/how-it-works", priority: 0.8 },
 		{ path: "/pricing", priority: 0.9 },
 		...products.map((p) => ({ path: p.href as string, priority: 0.8 })),
 		{ path: "/about", priority: 0.5 },

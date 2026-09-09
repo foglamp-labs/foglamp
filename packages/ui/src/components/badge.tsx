@@ -26,6 +26,7 @@ const badgeVariants = cva(
 				emerald:
 					"bg-emerald-500/10 text-emerald-700 shadow-[var(--custom-shadow-emerald)] focus-visible:ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-300 dark:focus-visible:ring-emerald-500/40 [a]:hover:bg-emerald-500/20",
 				rose: "bg-rose-500/10 text-rose-700 shadow-[var(--custom-shadow-rose)] focus-visible:ring-rose-500/20 dark:bg-rose-500/15 dark:text-rose-400 dark:focus-visible:ring-rose-500/40 [a]:hover:bg-rose-500/20",
+				red: "bg-red-500/10 text-red-700 shadow-[var(--custom-shadow-red)] focus-visible:ring-red-500/20 dark:bg-red-500/15 dark:text-red-400 dark:focus-visible:ring-red-500/40 [a]:hover:bg-red-500/20",
 				violet:
 					"bg-violet-500/10 text-violet-700 shadow-[var(--custom-shadow-violet)] focus-visible:ring-violet-500/20 dark:bg-violet-500/15 dark:text-violet-300 dark:focus-visible:ring-violet-500/40 [a]:hover:bg-violet-500/20",
 				fuchsia:

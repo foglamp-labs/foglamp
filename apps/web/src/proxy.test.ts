@@ -30,6 +30,7 @@ describe("markdown pages", () => {
 	test("covers the whole indexable marketing surface (mirrors sitemap.ts)", () => {
 		const expected = [
 			"/",
+			"/how-it-works",
 			"/pricing",
 			"/privacy",
 			"/terms",

@@ -51,6 +51,16 @@
     0px 0px 0px 0.5px rgba(0, 0, 0, 0.06),
     0px 0.5px 2px -0.5px rgba(0, 0, 0, 0.06),
     0px 1px 4px 0px rgba(0, 0, 0, 0.04);
+  /* The landing demo's chrome. Same as --custom-shadow in light; dark brightens
+     the inset highlights so the frame's top edge catches more light. */
+  --custom-shadow-chrome: var(--custom-shadow);
+  /* A card floating above other cards: the usual edge plus a wider, softer
+     drop so it reads as clearly on top. */
+  --custom-shadow-lifted:
+    0px 0px 0px 0.5px rgba(0, 0, 0, 0.08),
+    0px 1px 2px -0.5px rgba(0, 0, 0, 0.06),
+    0px 6px 12px -4px rgba(0, 0, 0, 0.1),
+    0px 16px 32px -8px rgba(0, 0, 0, 0.16);
   --custom-shadow-primary:
     0px 0px 0px 0.5px rgba(0, 0, 0, 0.6),
     0px 0.5px 2px -0.5px rgba(0, 0, 0, 0.4), 0px 2px 4px 0px rgba(0, 0, 0, 0.18);
@@ -86,6 +96,10 @@
     0px 0px 0px 0.5px rgba(244, 63, 94, 0.25),
     0px 0.5px 2px -0.5px rgba(244, 63, 94, 0.18),
     0px 2px 4px 0px rgba(244, 63, 94, 0.12);
+  --custom-shadow-red:
+    0px 0px 0px 0.5px rgba(239, 68, 68, 0.25),
+    0px 0.5px 2px -0.5px rgba(239, 68, 68, 0.18),
+    0px 2px 4px 0px rgba(239, 68, 68, 0.12);
   --custom-shadow-slate:
     0px 0px 0px 0.5px rgba(100, 116, 139, 0.25),
     0px 0.5px 2px -0.5px rgba(100, 116, 139, 0.18),
@@ -146,6 +160,16 @@
     inset 0 0 0 0.75px rgba(255, 255, 255, 0.03),
     0 0 0 0.75px rgba(0, 0, 0, 0.1), 0 2px 2px 0 rgba(0, 0, 0, 0.1),
     0 4px 4px 0 rgba(0, 0, 0, 0.1), 0 8px 8px 0 rgba(0, 0, 0, 0.1);
+  --custom-shadow-chrome:
+    inset 0 0.75px 0 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 0 0.75px rgba(255, 255, 255, 0.06),
+    0 0 0 0.75px rgba(0, 0, 0, 0.1), 0 2px 2px 0 rgba(0, 0, 0, 0.1),
+    0 4px 4px 0 rgba(0, 0, 0, 0.1), 0 8px 8px 0 rgba(0, 0, 0, 0.1);
+  --custom-shadow-lifted:
+    inset 0 0.75px 0 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 0.75px rgba(255, 255, 255, 0.05),
+    0 0 0 0.75px rgba(0, 0, 0, 0.3), 0 4px 8px 0 rgba(0, 0, 0, 0.25),
+    0 12px 24px 0 rgba(0, 0, 0, 0.35), 0 24px 48px -8px rgba(0, 0, 0, 0.4);
   /* Dark outline buttons: the light-mode feel translated — a crisp 1px edge
      from an inset highlight ring (instead of a border), a brighter top bevel,
      and soft drop shadows for lift. */
@@ -181,6 +205,9 @@
   --custom-shadow-rose:
     inset 0 0.5px 0 0 rgba(244, 63, 94, 0.03),
     0 0 0 0.5px rgba(244, 63, 94, 0.18), 0 0.5px 2px 0 rgba(244, 63, 94, 0.1);
+  --custom-shadow-red:
+    inset 0 0.5px 0 0 rgba(239, 68, 68, 0.03),
+    0 0 0 0.5px rgba(239, 68, 68, 0.18), 0 0.5px 2px 0 rgba(239, 68, 68, 0.1);
   --custom-shadow-slate:
     inset 0 0.5px 0 0 rgba(100, 116, 139, 0.03),
     0 0 0 0.5px rgba(100, 116, 139, 0.18),

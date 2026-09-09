@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { registerDemo } from "@/components/marketing/landing/demo-link";
 import { DemoProvider, type DetailView } from "./demo-context";
 import { DemoShell } from "./demo-shell";
 import { DemoSidebar } from "./demo-sidebar";
@@ -26,7 +27,11 @@ import { WorkflowsTab } from "./tabs/workflows-tab";
 // which (if any) detail row is open — and hands them to every child through
 // DemoProvider. No tRPC, no routing, no auth: tabs read static mock data and
 // rows open detail views via openDetail/closeDetail. Lazy-loaded (ssr:false)
-// from the landing page since the charts inside are SSR-fragile.
+// from the landing page since the charts inside are SSR-fragile. The benefit
+// sections further down can also ask it to show a tab, through demo-link.
+
+// Room above the demo when scrolling to it: the fixed navbar plus a margin.
+const SCROLL_OFFSET = 96;
 
 function TabView({ tab }: { tab: DemoTab }) {
 	switch (tab) {
@@ -65,12 +70,31 @@ function DetailViewSwitch({ detail }: { detail: NonNullable<DetailView> }) {
 export function DashboardDemo() {
 	const [tab, setTabState] = useState<DemoTab>("overview");
 	const [detail, setDetail] = useState<DetailView>(null);
+	// Sits at the top of the inset surface, the page's scroll target when a
+	// section asks the demo to show a tab.
+	const anchorRef = useRef<HTMLSpanElement>(null);
 
 	// Switching tabs always drops any open detail view — you land on the list.
 	const setTab = (next: DemoTab) => {
 		setDetail(null);
 		setTabState(next);
 	};
+
+	useEffect(
+		() =>
+			registerDemo((next) => {
+				const anchor = anchorRef.current;
+				// No box means the frame is display:none (small screens).
+				if (!anchor || anchor.getClientRects().length === 0) return false;
+				setTab(next);
+				window.scrollTo({
+					top: window.scrollY + anchor.getBoundingClientRect().top - SCROLL_OFFSET,
+					behavior: "smooth",
+				});
+				return true;
+			}),
+		[],
+	);
 
 	return (
 		<DemoProvider
@@ -83,6 +107,11 @@ export function DashboardDemo() {
 			}}
 		>
 			<DemoShell sidebar={<DemoSidebar />}>
+				<span
+					ref={anchorRef}
+					aria-hidden
+					className="pointer-events-none absolute inset-x-0 top-0 h-px"
+				/>
 				{detail ? <DetailViewSwitch detail={detail} /> : <TabView tab={tab} />}
 			</DemoShell>
 		</DemoProvider>

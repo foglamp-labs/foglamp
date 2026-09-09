@@ -29,6 +29,7 @@ import {
   handleFoggyThreadGet,
   handleFoggyThreadList,
 } from "./foggy";
+import { handleFoggyPublic } from "./foggyPublic";
 import { pruneFoggyRateLimits } from "./foggyRateLimit";
 import {
   handlePlanApplied,
@@ -116,6 +117,16 @@ app.post(
 // Foggy chat history: list a project's threads, and load one to resume it.
 app.get("/foggy/threads", handleFoggyThreadList);
 app.get("/foggy/threads/:id", handleFoggyThreadGet);
+// Public Foggy for the landing page: docs only, no auth, no history. Limited
+// by IP and by a global daily cap inside the handler.
+app.post(
+  "/foggy/public",
+  bodyLimit({
+    maxSize: 32 * 1024,
+    onError: (c) => c.json({ error: "payload too large" }, 413),
+  }),
+  handleFoggyPublic,
+);
 
 // Codebase scan — public, anonymous. An agent uploads its scan JSON and
 // gets back a shareable foglamp.dev/scan/<slug> URL. Rate-limited by IP inside

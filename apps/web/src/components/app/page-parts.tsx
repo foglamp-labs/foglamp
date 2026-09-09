@@ -5,8 +5,6 @@ import { cn } from "@foglamp/ui/lib/utils";
 import {
   type Icon,
   IconArrowDownRight,
-  IconArrowMoveDownFilled,
-  IconArrowMoveUpFilled,
   IconArrowUpRight,
   IconChevronRight,
   IconFolderOff,
@@ -29,8 +27,8 @@ import { toast } from "sonner";
 import { Button } from "@foglamp/ui/components/button";
 
 import { authClient } from "@/lib/auth-client";
-import { useHeaderActionsSlot } from "./header-slot";
 import { trpc } from "@/utils/trpc";
+import { useHeaderActionsSlot } from "./header-slot";
 
 import type { Delta } from "@/lib/format";
 import {

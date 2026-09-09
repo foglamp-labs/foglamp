@@ -148,6 +148,14 @@ const serverSchema = {
   FOGGY_DAILY_LIMIT: z.coerce.number().default(200),
   FOGGY_MAX_STEPS: z.coerce.number().default(6),
   FOGGY_MAX_OUTPUT_TOKENS: z.coerce.number().default(1500),
+  // The public Foggy on the landing page (docs-only, no login). Tighter caps:
+  // per-IP per minute and per day, plus one global daily ceiling so a crawler
+  // hitting from many addresses still can't run up the bill.
+  FOGGY_PUBLIC_RPM: z.coerce.number().default(5),
+  FOGGY_PUBLIC_DAILY_LIMIT: z.coerce.number().default(30),
+  FOGGY_PUBLIC_GLOBAL_DAILY_LIMIT: z.coerce.number().default(2000),
+  FOGGY_PUBLIC_MAX_STEPS: z.coerce.number().default(3),
+  FOGGY_PUBLIC_MAX_OUTPUT_TOKENS: z.coerce.number().default(700),
 
   NODE_ENV: z
     .enum(["development", "production", "test"])

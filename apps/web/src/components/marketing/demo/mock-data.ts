@@ -6,24 +6,24 @@ import type { PromptVersion } from "@/components/app/prompt-versions-card";
 import type { SlotExamples } from "@/components/app/prompt-prose";
 
 export type DemoTab =
-	| "overview"
-	| "workflows"
-	| "agents"
-	| "sessions"
-	| "traces"
-	| "evals"
-	| "alerts";
+  | "overview"
+  | "workflows"
+  | "agents"
+  | "sessions"
+  | "traces"
+  | "evals"
+  | "alerts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Overview — KPI cards, time series, model/agent tables, live feed
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type KpiCard = {
-	label: string;
-	value: string;
-	delta: { pct: number; dir: "up" | "down" | "flat" } | null;
-	deltaInverted?: boolean;
-	hint: string;
+  label: string;
+  value: string;
+  delta: { pct: number; dir: "up" | "down" | "flat" } | null;
+  deltaInverted?: boolean;
+  hint: string;
 };
 
 // The four canonical overview KPIs, in the real dashboard's order
@@ -31,32 +31,32 @@ export type KpiCard = {
 // each card's icon + bottom chart (sparkline / pill); see OVERVIEW_PASS_RATE /
 // OVERVIEW_ERROR_RATE for the pill fractions.
 export const KPIS: KpiCard[] = [
-	{
-		label: "Tokens",
-		value: "42.8M",
-		delta: { pct: 0.18, dir: "up" },
-		hint: "31.2M in · 11.6M out",
-	},
-	{
-		label: "Total cost",
-		value: "$842.17",
-		delta: { pct: 0.124, dir: "up" },
-		deltaInverted: true,
-		hint: "~$25.3k/mo",
-	},
-	{
-		label: "Eval pass rate",
-		value: "94%",
-		delta: { pct: 0.04, dir: "up" },
-		hint: "6.1k checks",
-	},
-	{
-		label: "Error rate",
-		value: "0.8%",
-		delta: { pct: 0.31, dir: "down" },
-		deltaInverted: true,
-		hint: "142 of 18.2k spans",
-	},
+  {
+    label: "Tokens",
+    value: "46.6M",
+    delta: { pct: 0.18, dir: "up" },
+    hint: "33.9M in · 12.7M out",
+  },
+  {
+    label: "Total cost",
+    value: "$840.40",
+    delta: { pct: 0.124, dir: "up" },
+    deltaInverted: true,
+    hint: "~$25.2k/mo",
+  },
+  {
+    label: "Eval pass rate",
+    value: "94%",
+    delta: { pct: 0.04, dir: "up" },
+    hint: "6.1k checks",
+  },
+  {
+    label: "Error rate",
+    value: "0.8%",
+    delta: { pct: 0.31, dir: "down" },
+    deltaInverted: true,
+    hint: "162 of 19.6k spans",
+  },
 ];
 
 // Pill-meter fractions for the two ratio KPIs (pass rate, error rate).
@@ -64,59 +64,59 @@ export const OVERVIEW_PASS_RATE = 0.94;
 export const OVERVIEW_ERROR_RATE = 0.008;
 
 export type CostPoint = {
-	label: string;
-	"gpt-4o": number;
-	"claude-sonnet": number;
-	"gpt-4o-mini": number;
+  label: string;
+  "gpt-4o": number;
+  "claude-sonnet": number;
+  "gpt-4o-mini": number;
 };
 
 // 24 hourly buckets, stacked by model. Hand-shaped to look like a real workday
 // ramp (quiet overnight, busy midday) rather than random noise.
 export const COST_SERIES: CostPoint[] = [
-	["00:00", 4.2, 3.1, 0.8],
-	["02:00", 3.1, 2.4, 0.6],
-	["04:00", 2.8, 2.0, 0.5],
-	["06:00", 5.6, 4.2, 1.1],
-	["08:00", 12.4, 9.8, 2.4],
-	["10:00", 21.6, 16.2, 4.1],
-	["12:00", 28.3, 22.1, 5.6],
-	["14:00", 31.2, 24.8, 6.2],
-	["16:00", 26.7, 20.4, 5.1],
-	["18:00", 18.9, 14.3, 3.6],
-	["20:00", 11.2, 8.7, 2.2],
-	["22:00", 6.8, 5.1, 1.3],
+  ["00:00", 4.2, 3.1, 0.8],
+  ["02:00", 3.1, 2.4, 0.6],
+  ["04:00", 2.8, 2.0, 0.5],
+  ["06:00", 5.6, 4.2, 1.1],
+  ["08:00", 12.4, 9.8, 2.4],
+  ["10:00", 21.6, 16.2, 4.1],
+  ["12:00", 28.3, 22.1, 5.6],
+  ["14:00", 31.2, 24.8, 6.2],
+  ["16:00", 26.7, 20.4, 5.1],
+  ["18:00", 18.9, 14.3, 3.6],
+  ["20:00", 11.2, 8.7, 2.2],
+  ["22:00", 6.8, 5.1, 1.3],
 ].map(([label, a, b, c]) => ({
-	label: label as string,
-	"gpt-4o": a as number,
-	"claude-sonnet": b as number,
-	"gpt-4o-mini": c as number,
+  label: label as string,
+  "gpt-4o": a as number,
+  "claude-sonnet": b as number,
+  "gpt-4o-mini": c as number,
 }));
 
 export type LatencyPoint = {
-	label: string;
-	p50: number;
-	p95: number;
-	p99: number;
+  label: string;
+  p50: number;
+  p95: number;
+  p99: number;
 };
 
 export const LATENCY_SERIES: LatencyPoint[] = [
-	["00:00", 980, 2400, 3600],
-	["02:00", 920, 2200, 3400],
-	["04:00", 940, 2300, 3500],
-	["06:00", 1050, 2800, 4100],
-	["08:00", 1180, 3200, 4800],
-	["10:00", 1240, 3420, 5100],
-	["12:00", 1310, 3680, 5400],
-	["14:00", 1180, 3420, 5000],
-	["16:00", 1120, 3100, 4600],
-	["18:00", 1040, 2900, 4200],
-	["20:00", 990, 2600, 3800],
-	["22:00", 960, 2450, 3650],
+  ["00:00", 980, 2400, 3600],
+  ["02:00", 920, 2200, 3400],
+  ["04:00", 940, 2300, 3500],
+  ["06:00", 1050, 2800, 4100],
+  ["08:00", 1180, 3200, 4800],
+  ["10:00", 1240, 3420, 5100],
+  ["12:00", 1310, 3680, 5400],
+  ["14:00", 1180, 3420, 5000],
+  ["16:00", 1120, 3100, 4600],
+  ["18:00", 1040, 2900, 4200],
+  ["20:00", 990, 2600, 3800],
+  ["22:00", 960, 2450, 3650],
 ].map(([label, p50, p95, p99]) => ({
-	label: label as string,
-	p50: p50 as number,
-	p95: p95 as number,
-	p99: p99 as number,
+  label: label as string,
+  p50: p50 as number,
+  p95: p95 as number,
+  p99: p99 as number,
 }));
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,350 +127,387 @@ export const LATENCY_SERIES: LatencyPoint[] = [
 // a fixed recent hour, so makeBucketLabel/formatBucketFull parse them like the
 // real timeseries buckets.
 function hourBuckets(n: number): string[] {
-	const base = new Date("2026-06-15T14:00:00Z").getTime();
-	return Array.from({ length: n }, (_, i) => {
-		const d = new Date(base - (n - 1 - i) * 3_600_000);
-		return d.toISOString().slice(0, 19).replace("T", " ");
-	});
+  const base = new Date("2026-06-15T14:00:00Z").getTime();
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(base - (n - 1 - i) * 3_600_000);
+    return d.toISOString().slice(0, 19).replace("T", " ");
+  });
 }
 
 // 24 hourly buckets shared by every overview/detail trend chart.
 const OV_BUCKETS = hourBuckets(24);
 
 // A workday bell over the hour-of-day: ~0 in the small hours, ~1 mid-afternoon.
+// Used by the agent/workflow detail trends; the overview series below is
+// hand-authored instead.
 function wave(hour: number): number {
-	return 0.5 - 0.5 * Math.cos(((hour - 3) / 24) * 2 * Math.PI);
+  return 0.5 - 0.5 * Math.cos(((hour - 3) / 24) * 2 * Math.PI);
 }
 
 // Index-seeded jitter in [0,1) — deterministic (no Math.random) so renders are
 // stable across reloads.
 const jitter = (i: number, seed: number, mod: number) =>
-	((i * seed) % mod) / mod;
+  ((i * seed) % mod) / mod;
 
 export type OverviewPoint = {
-	bucket: string;
-	requests: number;
-	errors: number;
-	p50: number;
-	p95: number;
-	p99: number;
-	tokens: number;
-	cost: number;
+  bucket: string;
+  requests: number;
+  errors: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  tokens: number;
+  cost: number;
 };
 
+// One row per hourly bucket, oldest first (15:00 UTC yesterday → 14:00 UTC
+// today), hand-authored so the shape reads like a real day rather than a
+// formula: a US-afternoon peak that ebbs into a 03:00–05:00 UTC trough, then
+// the European morning ramps back up. Three events break the curve on
+// purpose — a retry storm at 18:00 (errors and tail latency jump while
+// requests spike on short, failing calls), a nightly batch at 02:00 (few
+// requests but huge contexts, so tokens and cost spike while latency climbs),
+// and a lone slow call at 04:00 that lifts p99 alone. Tokens per request and
+// cost per token drift hour to hour as the model mix shifts, so the sparklines
+// don't simply trace the request curve.
+//                req  err   p50   p95    p99     tokens  cost
+const OV_ROWS: [number, number, number, number, number, number, number][] = [
+  /* 15:00 */ [1120, 6, 1120, 3180, 5400, 2_510_000, 47.8],
+  /* 16:00 */ [1210, 4, 1210, 3460, 6100, 2_940_000, 54.2],
+  /* 17:00 */ [1080, 7, 1090, 3020, 4900, 2_230_000, 42.6],
+  /* 18:00 */ [1460, 48, 1640, 6240, 11400, 2_620_000, 61.9],
+  /* 19:00 */ [1150, 21, 1380, 4410, 8300, 2_710_000, 49.3],
+  /* 20:00 */ [990, 5, 1050, 2960, 5200, 2_080_000, 39.1],
+  /* 21:00 */ [1050, 3, 1130, 3310, 5600, 2_460_000, 44.7],
+  /* 22:00 */ [760, 4, 960, 2620, 4300, 1_520_000, 30.4],
+  /* 23:00 */ [610, 2, 890, 2410, 4800, 1_410_000, 25.9],
+  /* 00:00 */ [480, 3, 840, 2280, 3700, 930_000, 16.2],
+  /* 01:00 */ [420, 1, 810, 2190, 4100, 880_000, 14.8],
+  /* 02:00 */ [530, 12, 1920, 5080, 8200, 4_760_000, 41.6],
+  /* 03:00 */ [310, 2, 790, 2050, 3300, 610_000, 10.9],
+  /* 04:00 */ [290, 0, 830, 2340, 5600, 670_000, 12.4],
+  /* 05:00 */ [340, 1, 800, 2110, 3500, 620_000, 10.1],
+  /* 06:00 */ [410, 3, 870, 2380, 3900, 950_000, 19.3],
+  /* 07:00 */ [620, 2, 940, 2610, 4200, 1_380_000, 27.6],
+  /* 08:00 */ [840, 5, 1010, 2830, 4700, 1_710_000, 33.2],
+  /* 09:00 */ [910, 4, 1060, 2920, 5300, 2_240_000, 42.8],
+  /* 10:00 */ [1060, 7, 1180, 3390, 5900, 2_180_000, 40.1],
+  /* 11:00 */ [980, 3, 1090, 3070, 4800, 2_350_000, 45.9],
+  /* 12:00 */ [870, 6, 1020, 2780, 4600, 1_690_000, 32.3],
+  /* 13:00 */ [960, 5, 1150, 3240, 6400, 2_310_000, 43.6],
+  /* 14:00 */ [1190, 8, 1230, 3520, 5800, 2_830_000, 53.7],
+];
+
 export const OVERVIEW_SERIES: OverviewPoint[] = OV_BUCKETS.map((bucket, i) => {
-	const h = Number(bucket.slice(11, 13));
-	const w = wave(h);
-	const jA = jitter(i, 7919, 17);
-	const jB = jitter(i, 5077, 13);
-	const requests = Math.round(140 + w * 660 + jA * 120);
-	const errors = Math.round(requests * (0.004 + 0.018 * (1 - w) + 0.01 * jB));
-	const p50 = Math.round(880 + w * 460 + jB * 120);
-	const p95 = Math.round(p50 * (2.3 + 0.4 * jA));
-	const p99 = Math.round(p95 * (1.35 + 0.3 * w));
-	const tokens = Math.round(requests * (2000 + jA * 600));
-	const cost = +(requests * (0.008 + 0.004 * w)).toFixed(3);
-	return { bucket, requests, errors, p50, p95, p99, tokens, cost };
+  const [requests, errors, p50, p95, p99, tokens, cost] = OV_ROWS[i]!;
+  return { bucket, requests, errors, p50, p95, p99, tokens, cost };
 });
 
 // Per-model cost over time (m0 gpt-5.6-sol / m1 claude-fable-5 / m2
 // gemini-3.5-flash / m3 glm-5 / m4 minimax-m2.5), derived from the overview
 // cost so the bars and the "Models" breakdown agree.
 export type OverviewCostPoint = {
-	bucket: string;
-	m0: number;
-	m1: number;
-	m2: number;
-	m3: number;
-	m4: number;
+  bucket: string;
+  m0: number;
+  m1: number;
+  m2: number;
+  m3: number;
+  m4: number;
 };
 
 // Sine-hash noise in [0,1): stable per (bucket, seed) so renders never shift,
 // but jagged enough to read as real traffic instead of a smooth formula.
 const costNoise = (i: number, seed: number) => {
-	const x = Math.sin(i * 127.1 + seed * 311.7) * 43758.5453;
-	return x - Math.floor(x);
+  const x = Math.sin(i * 127.1 + seed * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+// Baseline model mix by cost share (matches the "Models" breakdown ranking).
+const COST_MIX = [0.42, 0.3, 0.13, 0.09, 0.06];
+
+// Hours whose mix deliberately departs from the baseline: the 18:00 retry
+// storm (bucket 3) hammered gpt-5.6-sol, and the 02:00 batch (bucket 11) ran
+// mostly on gemini-3.5-flash.
+const COST_MIX_OVERRIDES: Record<number, number[]> = {
+  3: [0.61, 0.22, 0.08, 0.05, 0.04],
+  11: [0.14, 0.12, 0.58, 0.1, 0.06],
 };
 
 export const OVERVIEW_COST_SERIES: OverviewCostPoint[] = OVERVIEW_SERIES.map(
-	(r, i) => {
-		// Per-model bursts (a batch job, a retry storm) and lulls (a paused
-		// pipeline) on top of two octaves of noise, so no two buckets rhyme.
-		const spike = (s: number) => {
-			const n = costNoise(i, s + 9);
-			if (n > 0.82) return 1.5 + costNoise(i, s + 17) * 0.9;
-			if (n < 0.12) return 0.35;
-			return 1;
-		};
-		const part = (share: number, s: number) => {
-			const rough =
-				0.25 + 1.1 * costNoise(i, s) + 0.45 * costNoise(i * 3 + 7, s + 29);
-			return +(r.cost * share * rough * spike(s)).toFixed(3);
-		};
-		return {
-			bucket: r.bucket,
-			m0: part(0.42, 1),
-			m1: part(0.3, 2),
-			m2: part(0.13, 3),
-			m3: part(0.09, 4),
-			m4: part(0.06, 5),
-		};
-	},
+  (r, i) => {
+    // Jostle each model's share around its baseline, then normalise so the
+    // stack sums exactly to the hour's cost — the bars and the total-cost
+    // sparkline tell the same story.
+    const base = COST_MIX_OVERRIDES[i] ?? COST_MIX;
+    const raw = base.map(
+      (share, m) => share * (0.7 + 0.6 * costNoise(i, m + 1))
+    );
+    const total = raw.reduce((a, b) => a + b, 0);
+    const part = (m: number) => +((r.cost * raw[m]!) / total).toFixed(3);
+    return {
+      bucket: r.bucket,
+      m0: part(0),
+      m1: part(1),
+      m2: part(2),
+      m3: part(3),
+      m4: part(4),
+    };
+  }
 );
 
 // Vendor brand accents (OpenAI / Anthropic / Google / Zhipu / MiniMax) reused
 // by the cost chart and its legend; the "Models" breakdown renders the real
 // ModelLogo per row.
 export const OVERVIEW_COST_CONFIG = {
-	m0: {
-		label: "gpt-5.6-sol",
-		colors: { light: ["#10a37f"], dark: ["#10a37f"] },
-	},
-	m1: {
-		label: "claude-fable-5",
-		colors: { light: ["#d97757"], dark: ["#d97757"] },
-	},
-	m2: {
-		label: "gemini-3.5-flash",
-		colors: { light: ["#1ba1e3"], dark: ["#1ba1e3"] },
-	},
-	m3: { label: "glm-5", colors: { light: ["#9CA3AF"], dark: ["#9CA3AF"] } },
-	m4: {
-		label: "minimax-m2.5",
-		colors: { light: ["#E2167E"], dark: ["#E2167E"] },
-	},
+  m0: {
+    label: "gpt-5.6-sol",
+    // A muted olive: neutral next to the vendor brand colors, and readable on
+    // both the dark and the white card.
+    colors: { light: ["#8c9a5b"], dark: ["#8c9a5b"] },
+  },
+  m1: {
+    label: "claude-fable-5",
+    colors: { light: ["#d97757"], dark: ["#d97757"] },
+  },
+  m2: {
+    label: "gemini-3.5-flash",
+    colors: { light: ["#1ba1e3"], dark: ["#1ba1e3"] },
+  },
+  m3: { label: "glm-5", colors: { light: ["#9CA3AF"], dark: ["#9CA3AF"] } },
+  m4: {
+    label: "minimax-m2.5",
+    colors: { light: ["#E2167E"], dark: ["#E2167E"] },
+  },
 } satisfies ChartConfig;
 
 export const OVERVIEW_COST_ITEMS: {
-	key: string;
-	label: string;
-	color: string;
-}[] = [
-	{ key: "m0", label: "gpt-5.6-sol", color: "#10a37f" },
-	{ key: "m1", label: "claude-fable-5", color: "#d97757" },
-	{ key: "m2", label: "gemini-3.5-flash", color: "#1ba1e3" },
-	{ key: "m3", label: "glm-5", color: "#9CA3AF" },
-	{ key: "m4", label: "minimax-m2.5", color: "#E2167E" },
-];
+  key: string;
+  label: string;
+  colors: { light: string; dark: string };
+}[] = Object.entries(OVERVIEW_COST_CONFIG).map(([key, entry]) => ({
+  key,
+  label: entry.label,
+  colors: { light: entry.colors.light[0]!, dark: entry.colors.dark[0]! },
+}));
 
 // Ranked Models / Agents / Workflows breakdown rows for the three overview list
 // cards. `fraction` is the row cost over its category max (drives the share bar);
 // `metrics` is the prebuilt secondary line.
 export type OverviewBreakdownItem = {
-	name: string;
-	cost: number;
-	fraction: number;
-	metrics: string;
-	color: string;
+  name: string;
+  cost: number;
+  fraction: number;
+  metrics: string;
+  color: string;
 };
 
 export const OVERVIEW_BREAKDOWN: {
-	models: OverviewBreakdownItem[];
-	agents: OverviewBreakdownItem[];
-	workflows: OverviewBreakdownItem[];
-	customers: OverviewBreakdownItem[];
+  models: OverviewBreakdownItem[];
+  agents: OverviewBreakdownItem[];
+  workflows: OverviewBreakdownItem[];
+  customers: OverviewBreakdownItem[];
 } = {
-	models: [
-		{
-			name: "gpt-5.6-sol",
-			cost: 512.4,
-			fraction: 1,
-			metrics: "8k req · 24M tok",
-			color: "#10a37f",
-		},
-		{
-			name: "claude-fable-5",
-			cost: 284.1,
-			fraction: 0.554,
-			metrics: "6k req · 14M tok",
-			color: "#d97757",
-		},
-		{
-			name: "gemini-3.5-flash",
-			cost: 45.67,
-			fraction: 0.089,
-			metrics: "5k req · 4M tok",
-			color: "#1ba1e3",
-		},
-		{
-			name: "glm-5",
-			cost: 38.2,
-			fraction: 0.075,
-			metrics: "2k req · 4M tok",
-			color: "#9CA3AF",
-		},
-		{
-			name: "minimax-m2.5",
-			cost: 21.9,
-			fraction: 0.043,
-			metrics: "1k req · 2M tok",
-			color: "#E2167E",
-		},
-	],
-	agents: [
-		{
-			name: "research-planner",
-			cost: 318.2,
-			fraction: 1,
-			metrics: "3.1k req · 12 err",
-			color: agentColor("research-planner"),
-		},
-		{
-			name: "support-triage",
-			cost: 214.8,
-			fraction: 0.675,
-			metrics: "6.2k req · 31 err",
-			color: agentColor("support-triage"),
-		},
-		{
-			name: "code-reviewer",
-			cost: 196.4,
-			fraction: 0.617,
-			metrics: "2.4k req · 8 err",
-			color: agentColor("code-reviewer"),
-		},
-		{
-			name: "email-drafter",
-			cost: 58.1,
-			fraction: 0.183,
-			metrics: "1.8k req · 4 err",
-			color: agentColor("email-drafter"),
-		},
-	],
-	workflows: [
-		{
-			name: "onboard-customer",
-			cost: 142.3,
-			fraction: 1,
-			metrics: "1.2k runs · 35 err",
-			color: "var(--color-emerald-500)",
-		},
-		{
-			name: "incident-summary",
-			cost: 96.1,
-			fraction: 0.675,
-			metrics: "318 runs · 22 err",
-			color: "var(--color-emerald-500)",
-		},
-		{
-			name: "weekly-digest",
-			cost: 88.4,
-			fraction: 0.621,
-			metrics: "842 runs · 6 err",
-			color: "var(--color-emerald-500)",
-		},
-	],
-	customers: [
-		{
-			name: "Acme Inc",
-			cost: 261.7,
-			fraction: 1,
-			metrics: "4.7k req · 14 err",
-			color: agentColor("Acme Inc"),
-		},
-		{
-			name: "Globex",
-			cost: 173.5,
-			fraction: 0.663,
-			metrics: "3.1k req · 9 err",
-			color: agentColor("Globex"),
-		},
-		{
-			name: "Initech",
-			cost: 132.9,
-			fraction: 0.508,
-			metrics: "2.6k req · 21 err",
-			color: agentColor("Initech"),
-		},
-		{
-			name: "Hooli",
-			cost: 64.2,
-			fraction: 0.245,
-			metrics: "1.4k req · 3 err",
-			color: agentColor("Hooli"),
-		},
-	],
+  models: [
+    {
+      name: "gpt-5.6-sol",
+      cost: 512.4,
+      fraction: 1,
+      metrics: "8k req · 24M tok",
+      color: "#8c9a5b",
+    },
+    {
+      name: "claude-fable-5",
+      cost: 284.1,
+      fraction: 0.554,
+      metrics: "6k req · 14M tok",
+      color: "#d97757",
+    },
+    {
+      name: "gemini-3.5-flash",
+      cost: 45.67,
+      fraction: 0.089,
+      metrics: "5k req · 4M tok",
+      color: "#1ba1e3",
+    },
+    {
+      name: "glm-5",
+      cost: 38.2,
+      fraction: 0.075,
+      metrics: "2k req · 4M tok",
+      color: "#9CA3AF",
+    },
+    {
+      name: "minimax-m2.5",
+      cost: 21.9,
+      fraction: 0.043,
+      metrics: "1k req · 2M tok",
+      color: "#E2167E",
+    },
+  ],
+  agents: [
+    {
+      name: "research-planner",
+      cost: 318.2,
+      fraction: 1,
+      metrics: "3.1k req · 12 err",
+      color: agentColor("research-planner"),
+    },
+    {
+      name: "support-triage",
+      cost: 214.8,
+      fraction: 0.675,
+      metrics: "6.2k req · 31 err",
+      color: agentColor("support-triage"),
+    },
+    {
+      name: "code-reviewer",
+      cost: 196.4,
+      fraction: 0.617,
+      metrics: "2.4k req · 8 err",
+      color: agentColor("code-reviewer"),
+    },
+    {
+      name: "email-drafter",
+      cost: 58.1,
+      fraction: 0.183,
+      metrics: "1.8k req · 4 err",
+      color: agentColor("email-drafter"),
+    },
+  ],
+  workflows: [
+    {
+      name: "onboard-customer",
+      cost: 142.3,
+      fraction: 1,
+      metrics: "1.2k runs · 35 err",
+      color: "var(--color-emerald-500)",
+    },
+    {
+      name: "incident-summary",
+      cost: 96.1,
+      fraction: 0.675,
+      metrics: "318 runs · 22 err",
+      color: "var(--color-emerald-500)",
+    },
+    {
+      name: "weekly-digest",
+      cost: 88.4,
+      fraction: 0.621,
+      metrics: "842 runs · 6 err",
+      color: "var(--color-emerald-500)",
+    },
+  ],
+  customers: [
+    {
+      name: "Acme Inc",
+      cost: 261.7,
+      fraction: 1,
+      metrics: "4.7k req · 14 err",
+      color: agentColor("Acme Inc"),
+    },
+    {
+      name: "Globex",
+      cost: 173.5,
+      fraction: 0.663,
+      metrics: "3.1k req · 9 err",
+      color: agentColor("Globex"),
+    },
+    {
+      name: "Initech",
+      cost: 132.9,
+      fraction: 0.508,
+      metrics: "2.6k req · 21 err",
+      color: agentColor("Initech"),
+    },
+    {
+      name: "Hooli",
+      cost: 64.2,
+      fraction: 0.245,
+      metrics: "1.4k req · 3 err",
+      color: agentColor("Hooli"),
+    },
+  ],
 };
 
 // The 20/40/60/80th percentile thresholds of the positive values — paired with
 // `percentileBucket` (from heat-cell) to traffic-light cost cells in card grids.
 export function quintiles(values: number[]): number[] {
-	const xs = values.filter((v) => v > 0).sort((a, b) => a - b);
-	if (xs.length === 0) return [];
-	return [0.2, 0.4, 0.6, 0.8].map(
-		(q) => xs[Math.min(xs.length - 1, Math.floor(q * xs.length))]!,
-	);
+  const xs = values.filter((v) => v > 0).sort((a, b) => a - b);
+  if (xs.length === 0) return [];
+  return [0.2, 0.4, 0.6, 0.8].map(
+    (q) => xs[Math.min(xs.length - 1, Math.floor(q * xs.length))]!
+  );
 }
 
 export type ModelRow = {
-	modelId: string;
-	requests: string;
-	tokens: string;
-	p95: string;
-	cost: string;
+  modelId: string;
+  requests: string;
+  tokens: string;
+  p95: string;
+  cost: string;
 };
 
 export const MODEL_ROWS: ModelRow[] = [
-	{
-		modelId: "openai/gpt-4o",
-		requests: "8.1k",
-		tokens: "24.2M",
-		p95: "3.61s",
-		cost: "$512.40",
-	},
-	{
-		modelId: "anthropic/claude-sonnet-4.6",
-		requests: "5.6k",
-		tokens: "14.1M",
-		p95: "2.98s",
-		cost: "$284.10",
-	},
-	{
-		modelId: "openai/gpt-4o-mini",
-		requests: "4.5k",
-		tokens: "4.5M",
-		p95: "1.42s",
-		cost: "$45.67",
-	},
+  {
+    modelId: "openai/gpt-4o",
+    requests: "8.1k",
+    tokens: "24.2M",
+    p95: "3.61s",
+    cost: "$512.40",
+  },
+  {
+    modelId: "anthropic/claude-sonnet-4.6",
+    requests: "5.6k",
+    tokens: "14.1M",
+    p95: "2.98s",
+    cost: "$284.10",
+  },
+  {
+    modelId: "openai/gpt-4o-mini",
+    requests: "4.5k",
+    tokens: "4.5M",
+    p95: "1.42s",
+    cost: "$45.67",
+  },
 ];
 
 export type AgentRow = {
-	agentName: string;
-	requests: string;
-	errors: string;
-	p95: string;
-	cost: string;
+  agentName: string;
+  requests: string;
+  errors: string;
+  p95: string;
+  cost: string;
 };
 
 export const AGENT_ROWS: AgentRow[] = [
-	{
-		agentName: "support-triage",
-		requests: "6.2k",
-		errors: "31",
-		p95: "2.81s",
-		cost: "$214.80",
-	},
-	{
-		agentName: "research-planner",
-		requests: "3.1k",
-		errors: "12",
-		p95: "4.12s",
-		cost: "$318.20",
-	},
-	{
-		agentName: "code-reviewer",
-		requests: "2.4k",
-		errors: "8",
-		p95: "3.94s",
-		cost: "$196.40",
-	},
-	{
-		agentName: "email-drafter",
-		requests: "1.8k",
-		errors: "4",
-		p95: "1.62s",
-		cost: "$58.10",
-	},
+  {
+    agentName: "support-triage",
+    requests: "6.2k",
+    errors: "31",
+    p95: "2.81s",
+    cost: "$214.80",
+  },
+  {
+    agentName: "research-planner",
+    requests: "3.1k",
+    errors: "12",
+    p95: "4.12s",
+    cost: "$318.20",
+  },
+  {
+    agentName: "code-reviewer",
+    requests: "2.4k",
+    errors: "8",
+    p95: "3.94s",
+    cost: "$196.40",
+  },
+  {
+    agentName: "email-drafter",
+    requests: "1.8k",
+    errors: "4",
+    p95: "1.62s",
+    cost: "$58.10",
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -478,245 +515,255 @@ export const AGENT_ROWS: AgentRow[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type TraceRow = {
-	traceId: string;
-	/** Content-first title — the trace's user message, like the real list. */
-	title: string;
-	model: string;
-	agentName: string;
-	workflowName: string | null;
-	sessionId: string | null;
-	customer: string | null;
-	spans: number;
-	tokens: number;
-	durationMs: number;
-	costValue: number;
-	when: string;
-	errors?: number;
+  traceId: string;
+  /** Content-first title — the trace's user message, like the real list. */
+  title: string;
+  model: string;
+  agentName: string;
+  workflowName: string | null;
+  sessionId: string | null;
+  customer: string | null;
+  spans: number;
+  tokens: number;
+  durationMs: number;
+  costValue: number;
+  when: string;
+  errors?: number;
 };
 
 export const TRACE_ROWS: TraceRow[] = [
-	{
-		traceId: "tr_9f2a4c8e1b7d3a6f5e0c",
-		title:
-			'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
-		model: "gpt-5.6-sol",
-		agentName: "support-triage",
-		workflowName: "onboard-customer",
-		sessionId: "ses_a91f",
-		customer: "Acme Inc",
-		spans: 8,
-		tokens: 4200,
-		durationMs: 5840,
-		costValue: 0.0418,
-		when: "12s ago",
-	},
-	{
-		traceId: "tr_3b8e1d6a9c2f7b4e0a5d",
-		title: "Compare vector DB options for a 50M-embedding workload",
-		model: "claude-fable-5",
-		agentName: "research-planner",
-		workflowName: null,
-		sessionId: null,
-		customer: "Globex",
-		spans: 14,
-		tokens: 11800,
-		durationMs: 9120,
-		costValue: 0.124,
-		when: "48s ago",
-	},
-	{
-		traceId: "tr_2d9a6c3f1b8e5d4a7c0f",
-		title: "Draft a renewal reminder for dormant workspaces",
-		model: "gemini-3.5-flash",
-		agentName: "email-drafter",
-		workflowName: null,
-		sessionId: null,
-		customer: "Initech",
-		spans: 3,
-		tokens: 1900,
-		durationMs: 1580,
-		costValue: 0.0094,
-		when: "3m ago",
-	},
-	{
-		traceId: "tr_4c7d2e9f6a1b8c3e5d0a",
-		title:
-			"Which accounts drove the Q3 revenue dip? Break it down by plan tier",
-		model: "claude-fable-5",
-		agentName: "sql-analyst",
-		workflowName: null,
-		sessionId: "ses_b44c",
-		customer: "Globex",
-		spans: 17,
-		tokens: 15_400,
-		durationMs: 12_680,
-		costValue: 0.162,
-		when: "8m ago",
-		errors: 2,
-	},
-	{
-		traceId: "tr_1b6f3d8c5a9e2b7d4c0e",
-		title: "Translate the onboarding guide to Japanese, keep the code blocks",
-		model: "glm-5",
-		agentName: "doc-translator",
-		workflowName: null,
-		sessionId: null,
-		customer: "Initech",
-		spans: 5,
-		tokens: 9800,
-		durationMs: 2140,
-		costValue: 0.0121,
-		when: "14m ago",
-	},
-	{
-		traceId: "tr_0e5a8c2f7d3b9e6a1c4d",
-		title: "Reconcile the Stripe payout against invoices for July",
-		model: "minimax-m2.5",
-		agentName: "billing-reconciler",
-		workflowName: "weekly-digest",
-		sessionId: null,
-		customer: "Hooli",
-		spans: 4,
-		tokens: 1400,
-		durationMs: 920,
-		costValue: 0.0038,
-		when: "19m ago",
-	},
+  {
+    traceId: "tr_9f2a4c8e1b7d3a6f5e0c",
+    title:
+      'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
+    model: "gpt-5.6-sol",
+    agentName: "support-triage",
+    workflowName: "onboard-customer",
+    sessionId: "ses_a91f",
+    customer: "Acme Inc",
+    spans: 8,
+    tokens: 4200,
+    durationMs: 5840,
+    costValue: 0.0418,
+    when: "12s ago",
+  },
+  {
+    traceId: "tr_3b8e1d6a9c2f7b4e0a5d",
+    title: "Compare vector DB options for a 50M-embedding workload",
+    model: "claude-fable-5",
+    agentName: "research-planner",
+    workflowName: null,
+    sessionId: null,
+    customer: "Globex",
+    spans: 14,
+    tokens: 11800,
+    durationMs: 9120,
+    costValue: 0.124,
+    when: "48s ago",
+  },
+  {
+    traceId: "tr_2d9a6c3f1b8e5d4a7c0f",
+    title: "Draft a renewal reminder for dormant workspaces",
+    model: "gemini-3.5-flash",
+    agentName: "email-drafter",
+    workflowName: null,
+    sessionId: null,
+    customer: "Initech",
+    spans: 3,
+    tokens: 1900,
+    durationMs: 1580,
+    costValue: 0.0094,
+    when: "3m ago",
+  },
+  {
+    traceId: "tr_4c7d2e9f6a1b8c3e5d0a",
+    title:
+      "Which accounts drove the Q3 revenue dip? Break it down by plan tier",
+    model: "claude-fable-5",
+    agentName: "sql-analyst",
+    workflowName: null,
+    sessionId: "ses_b44c",
+    customer: "Globex",
+    spans: 17,
+    tokens: 15_400,
+    durationMs: 12_680,
+    costValue: 0.162,
+    when: "8m ago",
+    errors: 2,
+  },
+  {
+    traceId: "tr_1b6f3d8c5a9e2b7d4c0e",
+    title: "Translate the onboarding guide to Japanese, keep the code blocks",
+    model: "glm-5",
+    agentName: "doc-translator",
+    workflowName: null,
+    sessionId: null,
+    customer: "Initech",
+    spans: 5,
+    tokens: 9800,
+    durationMs: 2140,
+    costValue: 0.0121,
+    when: "14m ago",
+  },
+  {
+    traceId: "tr_0e5a8c2f7d3b9e6a1c4d",
+    title: "Reconcile the Stripe payout against invoices for July",
+    model: "minimax-m2.5",
+    agentName: "billing-reconciler",
+    workflowName: "weekly-digest",
+    sessionId: null,
+    customer: "Hooli",
+    spans: 4,
+    tokens: 1400,
+    durationMs: 920,
+    costValue: 0.0038,
+    when: "19m ago",
+  },
 ];
 
 export type MockTraceSpan = {
-	spanId: string;
-	parentSpanId: string | null;
-	name: string;
-	spanType: "agent" | "llm" | "tool";
-	status: "ok" | "error";
-	startTime: string;
-	endTime: string;
-	durationMs: number;
-	ttftMs: number | null;
-	// Total tokens + cost feed the per-span rows and the whole-trace rollup the
-	// timeline renders.
-	outputTokens: number;
-	totalTokens: number;
-	totalCost: number | null;
+  spanId: string;
+  parentSpanId: string | null;
+  name: string;
+  spanType: "agent" | "llm" | "tool";
+  status: "ok" | "error";
+  startTime: string;
+  endTime: string;
+  durationMs: number;
+  ttftMs: number | null;
+  // Model calls carry their model, so the timeline shows the vendor's logo
+  // and color like the real app.
+  provider?: string;
+  modelId?: string;
+  // Total tokens + cost feed the per-span rows and the whole-trace rollup the
+  // timeline renders.
+  outputTokens: number;
+  totalTokens: number;
+  totalCost: number | null;
 };
 
 // Base timestamps as ClickHouse datetime strings ('YYYY-MM-DD HH:MM:SS', UTC).
 // One support-triage run: root agent → classify (llm) → fetch order (tool) →
 // search KB (tool, llm child) → draft reply (llm).
 const T = (sec: number, ms = 0) => {
-	const base = new Date("2026-06-07T14:30:00Z").getTime();
-	const d = new Date(base + sec * 1000 + ms);
-	return d.toISOString().slice(0, 19).replace("T", " ");
+  const base = new Date("2026-06-07T14:30:00Z").getTime();
+  const d = new Date(base + sec * 1000 + ms);
+  return d.toISOString().slice(0, 19).replace("T", " ");
 };
 
 export const TRACE_SPANS: MockTraceSpan[] = [
-	{
-		spanId: "s0",
-		parentSpanId: null,
-		name: "support-triage",
-		spanType: "agent",
-		status: "ok",
-		startTime: T(0),
-		endTime: T(5, 840),
-		durationMs: 5840,
-		ttftMs: null,
-		outputTokens: 0,
-		totalTokens: 0,
-		totalCost: null,
-	},
-	{
-		spanId: "s1",
-		parentSpanId: "s0",
-		name: "classify-intent",
-		spanType: "llm",
-		status: "ok",
-		startTime: T(0, 120),
-		endTime: T(1, 40),
-		durationMs: 920,
-		ttftMs: 280,
-		outputTokens: 142,
-		totalTokens: 612,
-		totalCost: 0.0011,
-	},
-	{
-		spanId: "s2",
-		parentSpanId: "s0",
-		name: "fetch-order",
-		spanType: "tool",
-		status: "ok",
-		startTime: T(1, 100),
-		endTime: T(1, 720),
-		durationMs: 620,
-		ttftMs: null,
-		outputTokens: 0,
-		totalTokens: 0,
-		totalCost: null,
-	},
-	{
-		spanId: "s3",
-		parentSpanId: "s0",
-		name: "search-knowledge-base",
-		spanType: "tool",
-		status: "ok",
-		startTime: T(1, 780),
-		endTime: T(3, 240),
-		durationMs: 1460,
-		ttftMs: null,
-		outputTokens: 0,
-		totalTokens: 0,
-		totalCost: null,
-	},
-	{
-		spanId: "s4",
-		parentSpanId: "s3",
-		name: "rerank-results",
-		spanType: "llm",
-		status: "ok",
-		startTime: T(2, 100),
-		endTime: T(3, 180),
-		durationMs: 1080,
-		ttftMs: 340,
-		outputTokens: 264,
-		totalTokens: 1486,
-		totalCost: 0.0042,
-	},
-	{
-		spanId: "s5",
-		parentSpanId: "s0",
-		name: "draft-reply",
-		spanType: "llm",
-		status: "ok",
-		startTime: T(3, 320),
-		endTime: T(5, 780),
-		durationMs: 2460,
-		ttftMs: 520,
-		outputTokens: 689,
-		totalTokens: 2961,
-		totalCost: 0.0089,
-	},
+  {
+    spanId: "s0",
+    parentSpanId: null,
+    name: "support-triage",
+    spanType: "agent",
+    status: "ok",
+    startTime: T(0),
+    endTime: T(5, 840),
+    durationMs: 5840,
+    ttftMs: null,
+    outputTokens: 0,
+    totalTokens: 0,
+    totalCost: null,
+  },
+  {
+    spanId: "s1",
+    parentSpanId: "s0",
+    name: "classify-intent",
+    spanType: "llm",
+    provider: "google",
+    modelId: "gemini-3.5-flash",
+    status: "ok",
+    startTime: T(0, 120),
+    endTime: T(1, 40),
+    durationMs: 920,
+    ttftMs: 280,
+    outputTokens: 142,
+    totalTokens: 612,
+    totalCost: 0.0011,
+  },
+  {
+    spanId: "s2",
+    parentSpanId: "s0",
+    name: "fetch-order",
+    spanType: "tool",
+    status: "ok",
+    startTime: T(1, 100),
+    endTime: T(1, 720),
+    durationMs: 620,
+    ttftMs: null,
+    outputTokens: 0,
+    totalTokens: 0,
+    totalCost: null,
+  },
+  {
+    spanId: "s3",
+    parentSpanId: "s0",
+    name: "search-knowledge-base",
+    spanType: "tool",
+    status: "ok",
+    startTime: T(1, 780),
+    endTime: T(3, 240),
+    durationMs: 1460,
+    ttftMs: null,
+    outputTokens: 0,
+    totalTokens: 0,
+    totalCost: null,
+  },
+  {
+    spanId: "s4",
+    parentSpanId: "s3",
+    name: "rerank-results",
+    spanType: "llm",
+    provider: "anthropic",
+    modelId: "claude-fable-5",
+    status: "ok",
+    startTime: T(2, 100),
+    endTime: T(3, 180),
+    durationMs: 1080,
+    ttftMs: 340,
+    outputTokens: 264,
+    totalTokens: 1486,
+    totalCost: 0.0042,
+  },
+  {
+    spanId: "s5",
+    parentSpanId: "s0",
+    name: "draft-reply",
+    spanType: "llm",
+    provider: "openai",
+    modelId: "gpt-5.6-sol",
+    status: "ok",
+    startTime: T(3, 320),
+    endTime: T(5, 780),
+    durationMs: 2460,
+    ttftMs: 520,
+    outputTokens: 689,
+    totalTokens: 2961,
+    totalCost: 0.0089,
+  },
 ];
 
 // The user/assistant payload shown when a trace span is selected.
 export const TRACE_MESSAGES: {
-	role: "system" | "user" | "assistant";
-	content: string;
+  role: "system" | "user" | "assistant";
+  content: string;
 }[] = [
-	{
-		role: "system",
-		content:
-			"You are a support triage agent. Classify the request, look up the order, and draft a concise reply.",
-	},
-	{
-		role: "user",
-		content:
-			'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
-	},
-	{
-		role: "assistant",
-		content:
-			"I looked into order #48213. It was held by an address-verification flag and cleared this morning. It's now packed and ships today, with delivery expected Tuesday. I've added expedited shipping at no charge for the delay.",
-	},
+  {
+    role: "system",
+    content:
+      "You are a support triage agent. Classify the request, look up the order, and draft a concise reply.",
+  },
+  {
+    role: "user",
+    content:
+      'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
+  },
+  {
+    role: "assistant",
+    content:
+      "I looked into order #48213. It was held by an address-verification flag and cleared this morning. It's now packed and ships today, with delivery expected Tuesday. I've added expedited shipping at no charge for the delay.",
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -724,302 +771,302 @@ export const TRACE_MESSAGES: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type AgentCard = {
-	name: string;
-	spanCount: number;
-	totalTokens: number;
-	errorRate: string;
-	errorCount: number;
-	p50Ms: number;
-	p95Ms: number;
-	costValue: number;
-	passRate: string;
-	lastRun: string;
-	models: string[];
+  name: string;
+  spanCount: number;
+  totalTokens: number;
+  errorRate: string;
+  errorCount: number;
+  p50Ms: number;
+  p95Ms: number;
+  costValue: number;
+  passRate: string;
+  lastRun: string;
+  models: string[];
 };
 
 export const AGENTS: AgentCard[] = [
-	{
-		name: "support-triage",
-		spanCount: 8400,
-		totalTokens: 18_200_000,
-		errorRate: "0.5%",
-		errorCount: 31,
-		p50Ms: 1120,
-		p95Ms: 2810,
-		costValue: 214.8,
-		passRate: "96%",
-		lastRun: "12s ago",
-		models: ["gpt-5.6-sol", "gemini-3.5-flash"],
-	},
-	{
-		name: "research-planner",
-		spanCount: 5100,
-		totalTokens: 14_600_000,
-		errorRate: "0.4%",
-		errorCount: 12,
-		p50Ms: 1840,
-		p95Ms: 4120,
-		costValue: 318.2,
-		passRate: "91%",
-		lastRun: "48s ago",
-		models: ["claude-fable-5"],
-	},
-	{
-		name: "code-reviewer",
-		spanCount: 3600,
-		totalTokens: 9_400_000,
-		errorRate: "0.3%",
-		errorCount: 8,
-		p50Ms: 1420,
-		p95Ms: 3940,
-		costValue: 196.4,
-		passRate: "93%",
-		lastRun: "2m ago",
-		models: ["gpt-5.6-sol", "claude-fable-5"],
-	},
-	{
-		name: "email-drafter",
-		spanCount: 2100,
-		totalTokens: 3_800_000,
-		errorRate: "0%",
-		errorCount: 0,
-		p50Ms: 680,
-		p95Ms: 1620,
-		costValue: 58.1,
-		passRate: "98%",
-		lastRun: "3m ago",
-		models: ["gemini-3.5-flash"],
-	},
-	{
-		name: "sql-analyst",
-		spanCount: 1450,
-		totalTokens: 6_200_000,
-		errorRate: "1.8%",
-		errorCount: 26,
-		p50Ms: 2340,
-		p95Ms: 6810,
-		costValue: 84.6,
-		passRate: "87%",
-		lastRun: "6m ago",
-		models: ["claude-fable-5", "gpt-5.6-sol"],
-	},
-	{
-		name: "doc-translator",
-		spanCount: 5200,
-		totalTokens: 11_300_000,
-		errorRate: "0%",
-		errorCount: 0,
-		p50Ms: 540,
-		p95Ms: 1240,
-		costValue: 43.9,
-		passRate: "99%",
-		lastRun: "18m ago",
-		models: ["glm-5", "gemini-3.5-flash"],
-	},
-	{
-		name: "billing-reconciler",
-		spanCount: 940,
-		totalTokens: 1_100_000,
-		errorRate: "0%",
-		errorCount: 0,
-		p50Ms: 420,
-		p95Ms: 980,
-		costValue: 12.4,
-		passRate: "99%",
-		lastRun: "26m ago",
-		models: ["minimax-m2.5"],
-	},
+  {
+    name: "support-triage",
+    spanCount: 8400,
+    totalTokens: 18_200_000,
+    errorRate: "0.5%",
+    errorCount: 31,
+    p50Ms: 1120,
+    p95Ms: 2810,
+    costValue: 214.8,
+    passRate: "96%",
+    lastRun: "12s ago",
+    models: ["gpt-5.6-sol", "gemini-3.5-flash"],
+  },
+  {
+    name: "research-planner",
+    spanCount: 5100,
+    totalTokens: 14_600_000,
+    errorRate: "0.4%",
+    errorCount: 12,
+    p50Ms: 1840,
+    p95Ms: 4120,
+    costValue: 318.2,
+    passRate: "91%",
+    lastRun: "48s ago",
+    models: ["claude-fable-5"],
+  },
+  {
+    name: "code-reviewer",
+    spanCount: 3600,
+    totalTokens: 9_400_000,
+    errorRate: "0.3%",
+    errorCount: 8,
+    p50Ms: 1420,
+    p95Ms: 3940,
+    costValue: 196.4,
+    passRate: "93%",
+    lastRun: "2m ago",
+    models: ["gpt-5.6-sol", "claude-fable-5"],
+  },
+  {
+    name: "email-drafter",
+    spanCount: 2100,
+    totalTokens: 3_800_000,
+    errorRate: "0%",
+    errorCount: 0,
+    p50Ms: 680,
+    p95Ms: 1620,
+    costValue: 58.1,
+    passRate: "98%",
+    lastRun: "3m ago",
+    models: ["gemini-3.5-flash"],
+  },
+  {
+    name: "sql-analyst",
+    spanCount: 1450,
+    totalTokens: 6_200_000,
+    errorRate: "1.8%",
+    errorCount: 26,
+    p50Ms: 2340,
+    p95Ms: 6810,
+    costValue: 84.6,
+    passRate: "87%",
+    lastRun: "6m ago",
+    models: ["claude-fable-5", "gpt-5.6-sol"],
+  },
+  {
+    name: "doc-translator",
+    spanCount: 5200,
+    totalTokens: 11_300_000,
+    errorRate: "0%",
+    errorCount: 0,
+    p50Ms: 540,
+    p95Ms: 1240,
+    costValue: 43.9,
+    passRate: "99%",
+    lastRun: "18m ago",
+    models: ["glm-5", "gemini-3.5-flash"],
+  },
+  {
+    name: "billing-reconciler",
+    spanCount: 940,
+    totalTokens: 1_100_000,
+    errorRate: "0%",
+    errorCount: 0,
+    p50Ms: 420,
+    p95Ms: 980,
+    costValue: 12.4,
+    passRate: "99%",
+    lastRun: "26m ago",
+    models: ["minimax-m2.5"],
+  },
 ];
 
 // Per-agent trend buckets (spans/errors + latency band) for the agent detail.
 export type AgentSeriesPoint = {
-	bucket: string;
-	spans: number;
-	errors: number;
-	p50: number;
-	p95: number;
-	p99: number;
+  bucket: string;
+  spans: number;
+  errors: number;
+  p50: number;
+  p95: number;
+  p99: number;
 };
 
 export const AGENT_SERIES: AgentSeriesPoint[] = OV_BUCKETS.map((bucket, i) => {
-	const h = Number(bucket.slice(11, 13));
-	const w = wave(h);
-	const jA = jitter(i, 4231, 17);
-	const spans = Math.round(60 + w * 340 + jA * 70);
-	const errors = Math.round(spans * (0.003 + 0.02 * (1 - w) * jA));
-	const p50 = Math.round(900 + w * 500 + jA * 150);
-	const p95 = Math.round(p50 * (2.2 + 0.5 * jA));
-	const p99 = Math.round(p95 * (1.35 + 0.3 * w));
-	return { bucket, spans, errors, p50, p95, p99 };
+  const h = Number(bucket.slice(11, 13));
+  const w = wave(h);
+  const jA = jitter(i, 4231, 17);
+  const spans = Math.round(60 + w * 340 + jA * 70);
+  const errors = Math.round(spans * (0.003 + 0.02 * (1 - w) * jA));
+  const p50 = Math.round(900 + w * 500 + jA * 150);
+  const p95 = Math.round(p50 * (2.2 + 0.5 * jA));
+  const p99 = Math.round(p95 * (1.35 + 0.3 * w));
+  return { bucket, spans, errors, p50, p95, p99 };
 });
 
 // Recent traces for the agent detail table.
 export type AgentTrace = {
-	traceId: string;
-	name: string;
-	/** Opening user message — the content-first title the real table leads with. */
-	userMessage: string;
-	workflow: string | null;
-	spans: number;
-	tokens: number;
-	durationMs: number;
-	cost: number;
-	when: string;
-	/** Absolute start (ClickHouse datetime) for the drawer's "Started" field. */
-	startedAt: string;
-	customer: string | null;
-	sessionId: string | null;
-	/** Models the trace ran on, in order of first use. */
-	models: string[];
-	errors?: number;
+  traceId: string;
+  name: string;
+  /** Opening user message — the content-first title the real table leads with. */
+  userMessage: string;
+  workflow: string | null;
+  spans: number;
+  tokens: number;
+  durationMs: number;
+  cost: number;
+  when: string;
+  /** Absolute start (ClickHouse datetime) for the drawer's "Started" field. */
+  startedAt: string;
+  customer: string | null;
+  sessionId: string | null;
+  /** Models the trace ran on, in order of first use. */
+  models: string[];
+  errors?: number;
 };
 
 export const AGENT_TRACES: AgentTrace[] = [
-	{
-		traceId: "tr_9f2a4c8e",
-		name: "classify + resolve",
-		userMessage:
-			'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
-		workflow: "onboard-customer",
-		spans: 8,
-		tokens: 4200,
-		durationMs: 5840,
-		cost: 0.0418,
-		when: "12s ago",
-		startedAt: T(-12),
-		customer: "Acme Inc",
-		sessionId: "ses_a91f",
-		models: ["gemini-3.5-flash", "gpt-5.6-sol"],
-	},
-	{
-		traceId: "tr_3b8e1d6a",
-		name: "multi-hop lookup",
-		userMessage:
-			"Which of my three open tickets are blocked on the billing team?",
-		workflow: null,
-		spans: 11,
-		tokens: 8100,
-		durationMs: 7320,
-		cost: 0.082,
-		when: "1m ago",
-		startedAt: T(-60),
-		customer: "Hooli",
-		sessionId: "ses_3c7d",
-		models: ["gpt-5.6-sol", "claude-sonnet-5", "gemini-3.5-flash"],
-	},
-	{
-		traceId: "tr_7c1f5a2b",
-		name: "refund policy",
-		userMessage:
-			"Can I get a refund on a subscription I forgot to cancel last month?",
-		workflow: "incident-summary",
-		spans: 6,
-		tokens: 5100,
-		durationMs: 4360,
-		cost: 0.0521,
-		when: "3m ago",
-		startedAt: T(-180),
-		customer: "Initech",
-		sessionId: null,
-		models: ["gpt-5.6-sol"],
-		errors: 1,
-	},
-	{
-		traceId: "tr_2d9a6c3f",
-		name: "address update",
-		userMessage:
-			"Please update the shipping address on my account to 14 Harbor St.",
-		workflow: null,
-		spans: 4,
-		tokens: 2100,
-		durationMs: 3120,
-		cost: 0.0194,
-		when: "5m ago",
-		startedAt: T(-300),
-		customer: "Acme Inc",
-		sessionId: "ses_a91f",
-		models: ["gemini-3.5-flash"],
-	},
-	{
-		traceId: "tr_5e0b8d4a",
-		name: "order status",
-		userMessage:
-			"Where is order #48190? The tracking link hasn't moved since Monday.",
-		workflow: "onboard-customer",
-		spans: 9,
-		tokens: 4800,
-		durationMs: 6210,
-		cost: 0.0472,
-		when: "8m ago",
-		startedAt: T(-480),
-		customer: "Globex",
-		sessionId: "ses_8e2b",
-		models: ["gemini-3.5-flash", "gpt-5.6-sol"],
-	},
-	{
-		traceId: "tr_8a3f1c6b",
-		name: "escalation",
-		userMessage:
-			"I've been charged twice this month and support chat keeps timing out.",
-		workflow: null,
-		spans: 12,
-		tokens: 10200,
-		durationMs: 8740,
-		cost: 0.108,
-		when: "11m ago",
-		startedAt: T(-660),
-		customer: null,
-		sessionId: null,
-		models: ["claude-sonnet-5"],
-	},
+  {
+    traceId: "tr_9f2a4c8e",
+    name: "classify + resolve",
+    userMessage:
+      'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
+    workflow: "onboard-customer",
+    spans: 8,
+    tokens: 4200,
+    durationMs: 5840,
+    cost: 0.0418,
+    when: "12s ago",
+    startedAt: T(-12),
+    customer: "Acme Inc",
+    sessionId: "ses_a91f",
+    models: ["gemini-3.5-flash", "gpt-5.6-sol"],
+  },
+  {
+    traceId: "tr_3b8e1d6a",
+    name: "multi-hop lookup",
+    userMessage:
+      "Which of my three open tickets are blocked on the billing team?",
+    workflow: null,
+    spans: 11,
+    tokens: 8100,
+    durationMs: 7320,
+    cost: 0.082,
+    when: "1m ago",
+    startedAt: T(-60),
+    customer: "Hooli",
+    sessionId: "ses_3c7d",
+    models: ["gpt-5.6-sol", "claude-sonnet-5", "gemini-3.5-flash"],
+  },
+  {
+    traceId: "tr_7c1f5a2b",
+    name: "refund policy",
+    userMessage:
+      "Can I get a refund on a subscription I forgot to cancel last month?",
+    workflow: "incident-summary",
+    spans: 6,
+    tokens: 5100,
+    durationMs: 4360,
+    cost: 0.0521,
+    when: "3m ago",
+    startedAt: T(-180),
+    customer: "Initech",
+    sessionId: null,
+    models: ["gpt-5.6-sol"],
+    errors: 1,
+  },
+  {
+    traceId: "tr_2d9a6c3f",
+    name: "address update",
+    userMessage:
+      "Please update the shipping address on my account to 14 Harbor St.",
+    workflow: null,
+    spans: 4,
+    tokens: 2100,
+    durationMs: 3120,
+    cost: 0.0194,
+    when: "5m ago",
+    startedAt: T(-300),
+    customer: "Acme Inc",
+    sessionId: "ses_a91f",
+    models: ["gemini-3.5-flash"],
+  },
+  {
+    traceId: "tr_5e0b8d4a",
+    name: "order status",
+    userMessage:
+      "Where is order #48190? The tracking link hasn't moved since Monday.",
+    workflow: "onboard-customer",
+    spans: 9,
+    tokens: 4800,
+    durationMs: 6210,
+    cost: 0.0472,
+    when: "8m ago",
+    startedAt: T(-480),
+    customer: "Globex",
+    sessionId: "ses_8e2b",
+    models: ["gemini-3.5-flash", "gpt-5.6-sol"],
+  },
+  {
+    traceId: "tr_8a3f1c6b",
+    name: "escalation",
+    userMessage:
+      "I've been charged twice this month and support chat keeps timing out.",
+    workflow: null,
+    spans: 12,
+    tokens: 10200,
+    durationMs: 8740,
+    cost: 0.108,
+    when: "11m ago",
+    startedAt: T(-660),
+    customer: null,
+    sessionId: null,
+    models: ["claude-sonnet-5"],
+  },
 ];
 
 // Per-agent step flow (drives NodeFlow on the agent detail view).
 export const AGENT_FLOW: {
-	id: string;
-	label: string;
-	sublabel: string | null;
-	status: "ok" | "error";
-	timestamp: string;
-	durationMs: number;
-	type: "llm" | "tool" | "agent";
+  id: string;
+  label: string;
+  sublabel: string | null;
+  status: "ok" | "error";
+  timestamp: string;
+  durationMs: number;
+  type: "llm" | "tool" | "agent";
 }[] = [
-	{
-		id: "f0",
-		label: "classify-intent",
-		sublabel: "gemini-3.5-flash",
-		status: "ok",
-		timestamp: T(0, 120),
-		durationMs: 920,
-		type: "llm",
-	},
-	{
-		id: "f1",
-		label: "fetch-order",
-		sublabel: "tool",
-		status: "ok",
-		timestamp: T(1, 100),
-		durationMs: 620,
-		type: "tool",
-	},
-	{
-		id: "f2",
-		label: "search-kb",
-		sublabel: "tool",
-		status: "ok",
-		timestamp: T(1, 780),
-		durationMs: 1460,
-		type: "tool",
-	},
-	{
-		id: "f3",
-		label: "draft-reply",
-		sublabel: "gpt-5.6-sol",
-		status: "ok",
-		timestamp: T(3, 320),
-		durationMs: 2460,
-		type: "llm",
-	},
+  {
+    id: "f0",
+    label: "classify-intent",
+    sublabel: "gemini-3.5-flash",
+    status: "ok",
+    timestamp: T(0, 120),
+    durationMs: 920,
+    type: "llm",
+  },
+  {
+    id: "f1",
+    label: "fetch-order",
+    sublabel: "tool",
+    status: "ok",
+    timestamp: T(1, 100),
+    durationMs: 620,
+    type: "tool",
+  },
+  {
+    id: "f2",
+    label: "search-kb",
+    sublabel: "tool",
+    status: "ok",
+    timestamp: T(1, 780),
+    durationMs: 1460,
+    type: "tool",
+  },
+  {
+    id: "f3",
+    label: "draft-reply",
+    sublabel: "gpt-5.6-sol",
+    status: "ok",
+    timestamp: T(3, 320),
+    durationMs: 2460,
+    type: "llm",
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1027,275 +1074,275 @@ export const AGENT_FLOW: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type WorkflowRow = {
-	name: string;
-	runs: number;
-	traces: number;
-	errorRate: string;
-	errors: number;
-	p50: string;
-	p95: string;
-	costValue: number;
-	tokens: number;
-	lastRun: string;
+  name: string;
+  runs: number;
+  traces: number;
+  errorRate: string;
+  errors: number;
+  p50: string;
+  p95: string;
+  costValue: number;
+  tokens: number;
+  lastRun: string;
 };
 
 export const WORKFLOWS: WorkflowRow[] = [
-	{
-		name: "onboard-customer",
-		runs: 1200,
-		traces: 5900,
-		errorRate: "0.6%",
-		errors: 35,
-		p50: "6.40s",
-		p95: "12.4s",
-		costValue: 142.3,
-		tokens: 8_400_000,
-		lastRun: "2m ago",
-	},
-	{
-		name: "incident-summary",
-		runs: 318,
-		traces: 1900,
-		errorRate: "1.2%",
-		errors: 22,
-		p50: "9.80s",
-		p95: "18.2s",
-		costValue: 96.1,
-		tokens: 3_600_000,
-		lastRun: "6m ago",
-	},
-	{
-		name: "weekly-digest",
-		runs: 842,
-		traces: 3400,
-		errorRate: "0%",
-		errors: 0,
-		p50: "4.21s",
-		p95: "8.91s",
-		costValue: 88.4,
-		tokens: 5_100_000,
-		lastRun: "18m ago",
-	},
+  {
+    name: "onboard-customer",
+    runs: 1200,
+    traces: 5900,
+    errorRate: "0.6%",
+    errors: 35,
+    p50: "6.40s",
+    p95: "12.4s",
+    costValue: 142.3,
+    tokens: 8_400_000,
+    lastRun: "2m ago",
+  },
+  {
+    name: "incident-summary",
+    runs: 318,
+    traces: 1900,
+    errorRate: "1.2%",
+    errors: 22,
+    p50: "9.80s",
+    p95: "18.2s",
+    costValue: 96.1,
+    tokens: 3_600_000,
+    lastRun: "6m ago",
+  },
+  {
+    name: "weekly-digest",
+    runs: 842,
+    traces: 3400,
+    errorRate: "0%",
+    errors: 0,
+    p50: "4.21s",
+    p95: "8.91s",
+    costValue: 88.4,
+    tokens: 5_100_000,
+    lastRun: "18m ago",
+  },
 ];
 
 // Per-workflow trend buckets (runs/errors + duration band) for the detail page.
 export type WorkflowSeriesPoint = {
-	bucket: string;
-	runs: number;
-	errors: number;
-	p50: number;
-	p95: number;
-	p99: number;
+  bucket: string;
+  runs: number;
+  errors: number;
+  p50: number;
+  p95: number;
+  p99: number;
 };
 
 export const WORKFLOW_SERIES: WorkflowSeriesPoint[] = OV_BUCKETS.map(
-	(bucket, i) => {
-		const h = Number(bucket.slice(11, 13));
-		const w = wave(h);
-		const jA = jitter(i, 6151, 13);
-		const runs = Math.round(8 + w * 42 + jA * 8);
-		const errors = Math.round(runs * (0.01 + 0.04 * (1 - w) * jA));
-		const p50 = Math.round(6200 + w * 3200 + jA * 900);
-		const p95 = Math.round(p50 * (1.7 + 0.4 * jA));
-		const p99 = Math.round(p95 * (1.3 + 0.25 * w));
-		return { bucket, runs, errors, p50, p95, p99 };
-	},
+  (bucket, i) => {
+    const h = Number(bucket.slice(11, 13));
+    const w = wave(h);
+    const jA = jitter(i, 6151, 13);
+    const runs = Math.round(8 + w * 42 + jA * 8);
+    const errors = Math.round(runs * (0.01 + 0.04 * (1 - w) * jA));
+    const p50 = Math.round(6200 + w * 3200 + jA * 900);
+    const p95 = Math.round(p50 * (1.7 + 0.4 * jA));
+    const p99 = Math.round(p95 * (1.3 + 0.25 * w));
+    return { bucket, runs, errors, p50, p95, p99 };
+  }
 );
 
 // Recent runs for the workflow detail table.
 export type WorkflowRun = {
-	runId: string;
-	displayName: string | null;
-	/** Opening user message of the run's first trace (null when the run had no
-	 * conversational input — the table falls back to the id). */
-	userMessage: string | null;
-	/** Agents involved, in hand-off order. */
-	agentNames: string[];
-	traces: number;
-	spans: number;
-	tokens: number;
-	durationMs: number;
-	cost: number;
-	when: string;
-	startedAt: string;
-	customer: string | null;
-	sessionId: string | null;
-	models: string[];
-	errorCount: number;
-	status: "ok" | "error";
+  runId: string;
+  displayName: string | null;
+  /** Opening user message of the run's first trace (null when the run had no
+   * conversational input — the table falls back to the id). */
+  userMessage: string | null;
+  /** Agents involved, in hand-off order. */
+  agentNames: string[];
+  traces: number;
+  spans: number;
+  tokens: number;
+  durationMs: number;
+  cost: number;
+  when: string;
+  startedAt: string;
+  customer: string | null;
+  sessionId: string | null;
+  models: string[];
+  errorCount: number;
+  status: "ok" | "error";
 };
 
 export const WORKFLOW_RUNS: WorkflowRun[] = [
-	{
-		runId: "run_8f21ac",
-		displayName: "acme-corp",
-		userMessage:
-			"Onboard Acme Corp — 40 seats, SSO via Okta, EU data residency",
-		agentNames: ["research-planner", "email-drafter"],
-		spans: 31,
-		tokens: 12400,
-		traces: 5,
-		durationMs: 11200,
-		cost: 0.142,
-		when: "2m ago",
-		startedAt: T(-120),
-		customer: "Acme Inc",
-		sessionId: "ses_a91f",
-		models: ["gpt-5.6-sol", "gemini-3.5-flash"],
-		errorCount: 0,
-		status: "ok",
-	},
-	{
-		runId: "run_3b90fe",
-		displayName: "globex",
-		userMessage:
-			"Set up Globex on the enterprise plan and migrate their Zendesk macros",
-		agentNames: ["research-planner", "support-triage", "email-drafter"],
-		spans: 38,
-		tokens: 15900,
-		traces: 6,
-		durationMs: 14800,
-		cost: 0.198,
-		when: "8m ago",
-		startedAt: T(-480),
-		customer: "Globex",
-		sessionId: "ses_8e2b",
-		models: ["gpt-5.6-sol", "claude-sonnet-5"],
-		errorCount: 1,
-		status: "error",
-	},
-	{
-		runId: "run_c712da",
-		displayName: null,
-		userMessage:
-			"Research Vandelay Industries and draft an intro email to their VP of Sales",
-		agentNames: ["research-planner", "email-drafter"],
-		spans: 22,
-		tokens: 8100,
-		traces: 4,
-		durationMs: 9400,
-		cost: 0.094,
-		when: "15m ago",
-		startedAt: T(-900),
-		customer: null,
-		sessionId: null,
-		models: ["gemini-3.5-flash"],
-		errorCount: 0,
-		status: "ok",
-	},
-	{
-		runId: "run_5de034",
-		displayName: "initech",
-		userMessage:
-			"Onboard Initech: import 1.2k contacts and schedule the kickoff",
-		agentNames: ["research-planner", "email-drafter"],
-		spans: 29,
-		tokens: 11300,
-		traces: 5,
-		durationMs: 12600,
-		cost: 0.131,
-		when: "23m ago",
-		startedAt: T(-1380),
-		customer: "Initech",
-		sessionId: null,
-		models: ["gpt-5.6-sol"],
-		errorCount: 0,
-		status: "ok",
-	},
-	{
-		runId: "run_9a14bb",
-		displayName: "umbrella",
-		userMessage:
-			"Umbrella needs a HIPAA addendum before the pilot starts on Monday",
-		agentNames: [
-			"research-planner",
-			"support-triage",
-			"email-drafter",
-			"compliance-check",
-			"billing-sync",
-		],
-		spans: 46,
-		tokens: 19800,
-		traces: 7,
-		durationMs: 18200,
-		cost: 0.221,
-		when: "31m ago",
-		startedAt: T(-1860),
-		customer: "Umbrella Corp",
-		sessionId: "ses_3c7d",
-		models: ["gpt-5.6-sol", "claude-sonnet-5", "gemini-3.5-flash"],
-		errorCount: 2,
-		status: "error",
-	},
-	{
-		runId: "run_2c88ef",
-		displayName: null,
-		userMessage:
-			"Find the latest funding news on Stark Labs and draft a follow-up for the AE",
-		agentNames: ["research-planner", "email-drafter"],
-		spans: 21,
-		tokens: 7600,
-		traces: 4,
-		durationMs: 8800,
-		cost: 0.087,
-		when: "44m ago",
-		startedAt: T(-2640),
-		customer: null,
-		sessionId: null,
-		models: ["gemini-3.5-flash"],
-		errorCount: 0,
-		status: "ok",
-	},
+  {
+    runId: "run_8f21ac",
+    displayName: "acme-corp",
+    userMessage:
+      "Onboard Acme Corp — 40 seats, SSO via Okta, EU data residency",
+    agentNames: ["research-planner", "email-drafter"],
+    spans: 31,
+    tokens: 12400,
+    traces: 5,
+    durationMs: 11200,
+    cost: 0.142,
+    when: "2m ago",
+    startedAt: T(-120),
+    customer: "Acme Inc",
+    sessionId: "ses_a91f",
+    models: ["gpt-5.6-sol", "gemini-3.5-flash"],
+    errorCount: 0,
+    status: "ok",
+  },
+  {
+    runId: "run_3b90fe",
+    displayName: "globex",
+    userMessage:
+      "Set up Globex on the enterprise plan and migrate their Zendesk macros",
+    agentNames: ["research-planner", "support-triage", "email-drafter"],
+    spans: 38,
+    tokens: 15900,
+    traces: 6,
+    durationMs: 14800,
+    cost: 0.198,
+    when: "8m ago",
+    startedAt: T(-480),
+    customer: "Globex",
+    sessionId: "ses_8e2b",
+    models: ["gpt-5.6-sol", "claude-sonnet-5"],
+    errorCount: 1,
+    status: "error",
+  },
+  {
+    runId: "run_c712da",
+    displayName: null,
+    userMessage:
+      "Research Vandelay Industries and draft an intro email to their VP of Sales",
+    agentNames: ["research-planner", "email-drafter"],
+    spans: 22,
+    tokens: 8100,
+    traces: 4,
+    durationMs: 9400,
+    cost: 0.094,
+    when: "15m ago",
+    startedAt: T(-900),
+    customer: null,
+    sessionId: null,
+    models: ["gemini-3.5-flash"],
+    errorCount: 0,
+    status: "ok",
+  },
+  {
+    runId: "run_5de034",
+    displayName: "initech",
+    userMessage:
+      "Onboard Initech: import 1.2k contacts and schedule the kickoff",
+    agentNames: ["research-planner", "email-drafter"],
+    spans: 29,
+    tokens: 11300,
+    traces: 5,
+    durationMs: 12600,
+    cost: 0.131,
+    when: "23m ago",
+    startedAt: T(-1380),
+    customer: "Initech",
+    sessionId: null,
+    models: ["gpt-5.6-sol"],
+    errorCount: 0,
+    status: "ok",
+  },
+  {
+    runId: "run_9a14bb",
+    displayName: "umbrella",
+    userMessage:
+      "Umbrella needs a HIPAA addendum before the pilot starts on Monday",
+    agentNames: [
+      "research-planner",
+      "support-triage",
+      "email-drafter",
+      "compliance-check",
+      "billing-sync",
+    ],
+    spans: 46,
+    tokens: 19800,
+    traces: 7,
+    durationMs: 18200,
+    cost: 0.221,
+    when: "31m ago",
+    startedAt: T(-1860),
+    customer: "Umbrella Corp",
+    sessionId: "ses_3c7d",
+    models: ["gpt-5.6-sol", "claude-sonnet-5", "gemini-3.5-flash"],
+    errorCount: 2,
+    status: "error",
+  },
+  {
+    runId: "run_2c88ef",
+    displayName: null,
+    userMessage:
+      "Find the latest funding news on Stark Labs and draft a follow-up for the AE",
+    agentNames: ["research-planner", "email-drafter"],
+    spans: 21,
+    tokens: 7600,
+    traces: 4,
+    durationMs: 8800,
+    cost: 0.087,
+    when: "44m ago",
+    startedAt: T(-2640),
+    customer: null,
+    sessionId: null,
+    models: ["gemini-3.5-flash"],
+    errorCount: 0,
+    status: "ok",
+  },
 ];
 
 export const WORKFLOW_FLOW: {
-	id: string;
-	label: string;
-	sublabel: string | null;
-	status: "ok" | "error";
-	timestamp: string;
-	durationMs: number;
+  id: string;
+  label: string;
+  sublabel: string | null;
+  status: "ok" | "error";
+  timestamp: string;
+  durationMs: number;
 }[] = [
-	{
-		id: "w0",
-		label: "fetch-profile",
-		sublabel: "tool",
-		status: "ok",
-		timestamp: T(0),
-		durationMs: 410,
-	},
-	{
-		id: "w1",
-		label: "research-planner",
-		sublabel: "agent",
-		status: "ok",
-		timestamp: T(0, 500),
-		durationMs: 3200,
-	},
-	{
-		id: "w2",
-		label: "enrich-context",
-		sublabel: "tool",
-		status: "ok",
-		timestamp: T(3, 800),
-		durationMs: 880,
-	},
-	{
-		id: "w3",
-		label: "email-drafter",
-		sublabel: "agent",
-		status: "ok",
-		timestamp: T(4, 800),
-		durationMs: 1900,
-	},
-	{
-		id: "w4",
-		label: "send",
-		sublabel: "tool",
-		status: "ok",
-		timestamp: T(6, 800),
-		durationMs: 240,
-	},
+  {
+    id: "w0",
+    label: "fetch-profile",
+    sublabel: "tool",
+    status: "ok",
+    timestamp: T(0),
+    durationMs: 410,
+  },
+  {
+    id: "w1",
+    label: "research-planner",
+    sublabel: "agent",
+    status: "ok",
+    timestamp: T(0, 500),
+    durationMs: 3200,
+  },
+  {
+    id: "w2",
+    label: "enrich-context",
+    sublabel: "tool",
+    status: "ok",
+    timestamp: T(3, 800),
+    durationMs: 880,
+  },
+  {
+    id: "w3",
+    label: "email-drafter",
+    sublabel: "agent",
+    status: "ok",
+    timestamp: T(4, 800),
+    durationMs: 1900,
+  },
+  {
+    id: "w4",
+    label: "send",
+    sublabel: "tool",
+    status: "ok",
+    timestamp: T(6, 800),
+    durationMs: 240,
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1303,180 +1350,180 @@ export const WORKFLOW_FLOW: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type SessionRow = {
-	sessionId: string;
-	/** First user message — the content-first title the real list leads with. */
-	userMessage: string;
-	agentName: string;
-	customer: string | null;
-	turns: number;
-	tokens: number;
-	costValue: number;
-	errorCount: number;
-	when: string;
-	/** Models the session ran on, in order of first use. */
-	models: string[];
+  sessionId: string;
+  /** First user message — the content-first title the real list leads with. */
+  userMessage: string;
+  agentName: string;
+  customer: string | null;
+  turns: number;
+  tokens: number;
+  costValue: number;
+  errorCount: number;
+  when: string;
+  /** Models the session ran on, in order of first use. */
+  models: string[];
 };
 
 export const SESSIONS: SessionRow[] = [
-	{
-		sessionId: "ses_a91f",
-		userMessage:
-			'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
-		agentName: "support-triage",
-		customer: "Acme Inc",
-		turns: 12,
-		tokens: 18_400,
-		costValue: 0.182,
-		errorCount: 0,
-		when: "1m ago",
-		models: ["gpt-5.6-sol"],
-	},
-	{
-		sessionId: "ses_3c7d",
-		userMessage: "Summarize this week's churn-risk accounts with sources",
-		agentName: "research-planner",
-		customer: "Hooli",
-		turns: 7,
-		tokens: 9200,
-		costValue: 0.094,
-		errorCount: 1,
-		when: "4m ago",
-		models: ["claude-fable-5"],
-	},
-	{
-		sessionId: "ses_e02b",
-		userMessage: "I can't connect my Slack workspace — the OAuth flow loops",
-		agentName: "support-triage",
-		customer: "Globex",
-		turns: 21,
-		tokens: 31_600,
-		costValue: 0.318,
-		errorCount: 0,
-		when: "9m ago",
-		models: ["gpt-5.6-sol", "claude-fable-5"],
-	},
-	{
-		sessionId: "ses_5d8a",
-		userMessage: "Draft a renewal reminder for dormant workspaces",
-		agentName: "email-drafter",
-		customer: null,
-		turns: 4,
-		tokens: 4100,
-		costValue: 0.041,
-		errorCount: 0,
-		when: "14m ago",
-		models: ["gemini-3.5-flash"],
-	},
-	{
-		sessionId: "ses_b44c",
-		userMessage:
-			"Which accounts drove the Q3 revenue dip? Break it down by plan tier",
-		agentName: "sql-analyst",
-		customer: "Globex",
-		turns: 9,
-		tokens: 42_800,
-		costValue: 0.412,
-		errorCount: 2,
-		when: "18m ago",
-		models: ["glm-5"],
-	},
-	{
-		sessionId: "ses_9e1d",
-		userMessage: "My invoice shows two seats but we only have one active user",
-		agentName: "support-triage",
-		customer: "Umbrella",
-		turns: 6,
-		tokens: 7400,
-		costValue: 0.068,
-		errorCount: 0,
-		when: "28m ago",
-		models: ["gpt-5.6-sol"],
-	},
+  {
+    sessionId: "ses_a91f",
+    userMessage:
+      'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
+    agentName: "support-triage",
+    customer: "Acme Inc",
+    turns: 12,
+    tokens: 18_400,
+    costValue: 0.182,
+    errorCount: 0,
+    when: "1m ago",
+    models: ["gpt-5.6-sol"],
+  },
+  {
+    sessionId: "ses_3c7d",
+    userMessage: "Summarize this week's churn-risk accounts with sources",
+    agentName: "research-planner",
+    customer: "Hooli",
+    turns: 7,
+    tokens: 9200,
+    costValue: 0.094,
+    errorCount: 1,
+    when: "4m ago",
+    models: ["claude-fable-5"],
+  },
+  {
+    sessionId: "ses_e02b",
+    userMessage: "I can't connect my Slack workspace — the OAuth flow loops",
+    agentName: "support-triage",
+    customer: "Globex",
+    turns: 21,
+    tokens: 31_600,
+    costValue: 0.318,
+    errorCount: 0,
+    when: "9m ago",
+    models: ["gpt-5.6-sol", "claude-fable-5"],
+  },
+  {
+    sessionId: "ses_5d8a",
+    userMessage: "Draft a renewal reminder for dormant workspaces",
+    agentName: "email-drafter",
+    customer: null,
+    turns: 4,
+    tokens: 4100,
+    costValue: 0.041,
+    errorCount: 0,
+    when: "14m ago",
+    models: ["gemini-3.5-flash"],
+  },
+  {
+    sessionId: "ses_b44c",
+    userMessage:
+      "Which accounts drove the Q3 revenue dip? Break it down by plan tier",
+    agentName: "sql-analyst",
+    customer: "Globex",
+    turns: 9,
+    tokens: 42_800,
+    costValue: 0.412,
+    errorCount: 2,
+    when: "18m ago",
+    models: ["glm-5"],
+  },
+  {
+    sessionId: "ses_9e1d",
+    userMessage: "My invoice shows two seats but we only have one active user",
+    agentName: "support-triage",
+    customer: "Umbrella",
+    turns: 6,
+    tokens: 7400,
+    costValue: 0.068,
+    errorCount: 0,
+    when: "28m ago",
+    models: ["gpt-5.6-sol"],
+  },
 ];
 
 // Per-turn detail for the session detail view. One turn = one trace; each
 // carries the user prompt + assistant output (plain text — the demo skips
 // markdown), plus the rollup stats the turn-block meta row renders.
 export type SessionTurn = {
-	traceId: string;
-	startTime: string;
-	status: "ok" | "error";
-	userMessage: string;
-	assistantOutput: string;
-	workflowName: string | null;
-	totalCost: number;
-	totalTokens: number;
-	durationMs: number;
-	toolCalls?: { name: string; count: number; errorCount: number }[];
+  traceId: string;
+  startTime: string;
+  status: "ok" | "error";
+  userMessage: string;
+  assistantOutput: string;
+  workflowName: string | null;
+  totalCost: number;
+  totalTokens: number;
+  durationMs: number;
+  toolCalls?: { name: string; count: number; errorCount: number }[];
 };
 
 export const SESSION_TURNS: SessionTurn[] = [
-	{
-		traceId: "tr_9f2a4c8e",
-		startTime: T(0),
-		status: "ok",
-		userMessage:
-			'Hey, my order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
-		assistantOutput:
-			"I looked into order #48213. It was held by an address-verification flag and cleared this morning. It's now packed and ships today, with delivery expected Tuesday.",
-		workflowName: "onboard-customer",
-		totalCost: 0.0142,
-		totalTokens: 2840,
-		durationMs: 5840,
-		toolCalls: [
-			{ name: "fetch-order", count: 1, errorCount: 0 },
-			{ name: "search-knowledge-base", count: 2, errorCount: 0 },
-		],
-	},
-	{
-		traceId: "tr_3b8e1d6a",
-		startTime: T(64, 320),
-		status: "ok",
-		userMessage: "Can you also add expedited shipping since it was delayed?",
-		assistantOutput:
-			"Done. I've upgraded #48213 to expedited shipping at no charge for the delay. You'll get a new tracking number by email within the hour.",
-		workflowName: null,
-		totalCost: 0.0098,
-		totalTokens: 1960,
-		durationMs: 3120,
-	},
-	{
-		traceId: "tr_7c1f5a2b",
-		startTime: T(141, 80),
-		status: "error",
-		userMessage: "What's the refund policy if it arrives damaged?",
-		assistantOutput: "",
-		workflowName: null,
-		totalCost: 0.0021,
-		totalTokens: 420,
-		durationMs: 1180,
-		toolCalls: [{ name: "search-knowledge-base", count: 1, errorCount: 1 }],
-	},
-	{
-		traceId: "tr_2d9a6c3f",
-		startTime: T(212, 540),
-		status: "ok",
-		userMessage:
-			"Never mind that error, just tell me the return window for damaged items.",
-		assistantOutput:
-			"Damaged items can be returned within 30 days of delivery for a full refund or replacement. I can start a claim for you the moment it arrives. Just send a photo and I'll handle the rest.",
-		workflowName: "onboard-customer",
-		totalCost: 0.0116,
-		totalTokens: 2310,
-		durationMs: 4260,
-	},
-	{
-		traceId: "tr_5e0b8d41",
-		startTime: T(298, 210),
-		status: "ok",
-		userMessage: "Perfect, thanks for the help!",
-		assistantOutput:
-			"Anytime! Your order ships today and you're all set on the return window. I'll keep an eye on #48213 and ping you if anything changes.",
-		workflowName: null,
-		totalCost: 0.0049,
-		totalTokens: 980,
-		durationMs: 1640,
-	},
+  {
+    traceId: "tr_9f2a4c8e",
+    startTime: T(0),
+    status: "ok",
+    userMessage:
+      'Hey, order #48213 still says "processing" after 5 days. Can you check what\'s going on?',
+    assistantOutput:
+      "I looked into order #48213. It was held by an address-verification flag and cleared this morning. It's now packed and ships today, with delivery expected Tuesday.",
+    workflowName: "onboard-customer",
+    totalCost: 0.0142,
+    totalTokens: 2840,
+    durationMs: 5840,
+    toolCalls: [
+      { name: "fetch-order", count: 1, errorCount: 0 },
+      { name: "search-knowledge-base", count: 2, errorCount: 0 },
+    ],
+  },
+  {
+    traceId: "tr_3b8e1d6a",
+    startTime: T(64, 320),
+    status: "ok",
+    userMessage: "Can you also add expedited shipping since it was delayed?",
+    assistantOutput:
+      "Done. I've upgraded #48213 to expedited shipping at no charge for the delay. You'll get a new tracking number by email within the hour.",
+    workflowName: null,
+    totalCost: 0.0098,
+    totalTokens: 1960,
+    durationMs: 3120,
+  },
+  {
+    traceId: "tr_7c1f5a2b",
+    startTime: T(141, 80),
+    status: "error",
+    userMessage: "What's the refund policy if it arrives damaged?",
+    assistantOutput: "",
+    workflowName: null,
+    totalCost: 0.0021,
+    totalTokens: 420,
+    durationMs: 1180,
+    toolCalls: [{ name: "search-knowledge-base", count: 1, errorCount: 1 }],
+  },
+  {
+    traceId: "tr_2d9a6c3f",
+    startTime: T(212, 540),
+    status: "ok",
+    userMessage:
+      "Never mind that error, just tell me the return window for damaged items.",
+    assistantOutput:
+      "Damaged items can be returned within 30 days of delivery for a full refund or replacement. I can start a claim for you the moment it arrives. Just send a photo and I'll handle the rest.",
+    workflowName: "onboard-customer",
+    totalCost: 0.0116,
+    totalTokens: 2310,
+    durationMs: 4260,
+  },
+  {
+    traceId: "tr_5e0b8d41",
+    startTime: T(298, 210),
+    status: "ok",
+    userMessage: "Perfect, thanks for the help!",
+    assistantOutput:
+      "Anytime! Your order ships today and you're all set on the return window. I'll keep an eye on #48213 and ping you if anything changes.",
+    workflowName: null,
+    totalCost: 0.0049,
+    totalTokens: 980,
+    durationMs: 1640,
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1484,158 +1531,158 @@ export const SESSION_TURNS: SessionTurn[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type EvalRow = {
-	id: string;
-	name: string;
-	// The check-catalog preset this eval runs (matches the real preset ids), used
-	// to pull the same colored icon chip the New-eval dialog shows.
-	presetId: string;
-	presetName: string;
-	type: "code" | "llm-judge";
-	level: "trace" | "span";
-	/** For span evals, which calls get scored. */
-	spanType?: "tool" | "llm";
-	/** Target agent name, or null for "all agents". */
-	agentName: string | null;
-	/** Sampling percentage, 0–100. */
-	sample: number;
-	scored: string;
-	passRate: number;
-	avgScore: number;
-	spend: number;
-	enabled: boolean;
-	status: "ok" | "error" | "paused_no_key";
+  id: string;
+  name: string;
+  // The check-catalog preset this eval runs (matches the real preset ids), used
+  // to pull the same colored icon chip the New-eval dialog shows.
+  presetId: string;
+  presetName: string;
+  type: "code" | "llm-judge";
+  level: "trace" | "span";
+  /** For span evals, which calls get scored. */
+  spanType?: "tool" | "llm";
+  /** Target agent name, or null for "all agents". */
+  agentName: string | null;
+  /** Sampling percentage, 0–100. */
+  sample: number;
+  scored: string;
+  passRate: number;
+  avgScore: number;
+  spend: number;
+  enabled: boolean;
+  status: "ok" | "error" | "paused_no_key";
 };
 
 export const EVALS: EvalRow[] = [
-	{
-		id: "ev_toxicity",
-		name: "Toxicity / safety",
-		presetId: "toxicity",
-		presetName: "Toxicity",
-		type: "llm-judge",
-		level: "trace",
-		agentName: null,
-		sample: 100,
-		scored: "2.4k",
-		passRate: 0.99,
-		avgScore: 0.99,
-		spend: 4.21,
-		enabled: true,
-		status: "ok",
-	},
-	{
-		id: "ev_tool",
-		name: "Tool selection",
-		presetId: "tool_selection",
-		presetName: "Tool selection",
-		type: "llm-judge",
-		level: "span",
-		spanType: "tool",
-		agentName: "support-triage",
-		sample: 25,
-		scored: "1.2k",
-		passRate: 0.92,
-		avgScore: 0.88,
-		spend: 2.84,
-		enabled: true,
-		status: "ok",
-	},
-	{
-		id: "ev_faithfulness",
-		name: "Faithfulness (RAG)",
-		presetId: "faithfulness",
-		presetName: "Faithfulness",
-		type: "llm-judge",
-		level: "trace",
-		agentName: "research-planner",
-		sample: 50,
-		scored: "1.4k",
-		passRate: 0.88,
-		avgScore: 0.85,
-		spend: 3.62,
-		enabled: true,
-		status: "error",
-	},
-	{
-		id: "ev_pii",
-		name: "No PII",
-		presetId: "pii",
-		presetName: "Regex match",
-		type: "code",
-		level: "span",
-		spanType: "llm",
-		agentName: null,
-		sample: 100,
-		scored: "2.1k",
-		passRate: 1.0,
-		avgScore: 1.0,
-		spend: 0,
-		enabled: true,
-		status: "ok",
-	},
-	{
-		id: "ev_helpfulness",
-		name: "Helpfulness",
-		presetId: "helpfulness",
-		presetName: "Helpfulness",
-		type: "llm-judge",
-		level: "trace",
-		agentName: "email-drafter",
-		sample: 10,
-		scored: "1.9k",
-		passRate: 0.94,
-		avgScore: 0.91,
-		spend: 1.18,
-		enabled: false,
-		status: "ok",
-	},
+  {
+    id: "ev_toxicity",
+    name: "Toxicity / safety",
+    presetId: "toxicity",
+    presetName: "Toxicity",
+    type: "llm-judge",
+    level: "trace",
+    agentName: null,
+    sample: 100,
+    scored: "2.4k",
+    passRate: 0.99,
+    avgScore: 0.99,
+    spend: 4.21,
+    enabled: true,
+    status: "ok",
+  },
+  {
+    id: "ev_tool",
+    name: "Tool selection",
+    presetId: "tool_selection",
+    presetName: "Tool selection",
+    type: "llm-judge",
+    level: "span",
+    spanType: "tool",
+    agentName: "support-triage",
+    sample: 25,
+    scored: "1.2k",
+    passRate: 0.92,
+    avgScore: 0.88,
+    spend: 2.84,
+    enabled: true,
+    status: "ok",
+  },
+  {
+    id: "ev_faithfulness",
+    name: "Faithfulness (RAG)",
+    presetId: "faithfulness",
+    presetName: "Faithfulness",
+    type: "llm-judge",
+    level: "trace",
+    agentName: "research-planner",
+    sample: 50,
+    scored: "1.4k",
+    passRate: 0.88,
+    avgScore: 0.85,
+    spend: 3.62,
+    enabled: true,
+    status: "error",
+  },
+  {
+    id: "ev_pii",
+    name: "No PII",
+    presetId: "pii",
+    presetName: "Regex match",
+    type: "code",
+    level: "span",
+    spanType: "llm",
+    agentName: null,
+    sample: 100,
+    scored: "2.1k",
+    passRate: 1.0,
+    avgScore: 1.0,
+    spend: 0,
+    enabled: true,
+    status: "ok",
+  },
+  {
+    id: "ev_helpfulness",
+    name: "Helpfulness",
+    presetId: "helpfulness",
+    presetName: "Helpfulness",
+    type: "llm-judge",
+    level: "trace",
+    agentName: "email-drafter",
+    sample: 10,
+    scored: "1.9k",
+    passRate: 0.94,
+    avgScore: 0.91,
+    spend: 1.18,
+    enabled: false,
+    status: "ok",
+  },
 ];
 
 // Score distribution for the eval detail (0–1 buckets).
 export const EVAL_DISTRIBUTION: { bucket: string; count: number }[] = [
-	{ bucket: "0.0", count: 8 },
-	{ bucket: "0.2", count: 14 },
-	{ bucket: "0.4", count: 41 },
-	{ bucket: "0.6", count: 132 },
-	{ bucket: "0.8", count: 386 },
-	{ bucket: "1.0", count: 819 },
+  { bucket: "0.0", count: 8 },
+  { bucket: "0.2", count: 14 },
+  { bucket: "0.4", count: 41 },
+  { bucket: "0.6", count: 132 },
+  { bucket: "0.8", count: 386 },
+  { bucket: "1.0", count: 819 },
 ];
 
 export const EVAL_SAMPLES: {
-	traceId: string;
-	score: number;
-	verdict: "pass" | "fail";
-	note: string;
-	cost: number;
+  traceId: string;
+  score: number;
+  verdict: "pass" | "fail";
+  note: string;
+  cost: number;
 }[] = [
-	{
-		traceId: "tr_9f2a4c8e",
-		score: 0.97,
-		verdict: "pass",
-		note: "Polite, acknowledges delay, offers remedy.",
-		cost: 0.0012,
-	},
-	{
-		traceId: "tr_3b8e1d6a",
-		score: 0.91,
-		verdict: "pass",
-		note: "Clear and courteous; slightly terse closing.",
-		cost: 0.0009,
-	},
-	{
-		traceId: "tr_7c1f5a2b",
-		score: 0.42,
-		verdict: "fail",
-		note: "Curt tone; no acknowledgement of the issue.",
-		cost: 0.0014,
-	},
-	{
-		traceId: "tr_2d9a6c3f",
-		score: 0.95,
-		verdict: "pass",
-		note: "Warm, on-brand, well-structured.",
-		cost: 0.0008,
-	},
+  {
+    traceId: "tr_9f2a4c8e",
+    score: 0.97,
+    verdict: "pass",
+    note: "Polite, acknowledges delay, offers remedy.",
+    cost: 0.0012,
+  },
+  {
+    traceId: "tr_3b8e1d6a",
+    score: 0.91,
+    verdict: "pass",
+    note: "Clear and courteous; slightly terse closing.",
+    cost: 0.0009,
+  },
+  {
+    traceId: "tr_7c1f5a2b",
+    score: 0.42,
+    verdict: "fail",
+    note: "Curt tone; no acknowledgement of the issue.",
+    cost: 0.0014,
+  },
+  {
+    traceId: "tr_2d9a6c3f",
+    score: 0.95,
+    verdict: "pass",
+    note: "Warm, on-brand, well-structured.",
+    cost: 0.0008,
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1643,70 +1690,69 @@ export const EVAL_SAMPLES: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type AlertRow = {
-	id: string;
-	name: string;
-	/** Real alert metric keys — drive the same icon/label lookup as the app. */
-	metric: "cost" | "latency_p95" | "error_rate" | "eval_pass_rate";
-	comparison: "gt" | "gte" | "lt" | "lte";
-	threshold: number;
-	currentValue: number;
-	lastFired: string | null;
-	windowSeconds: number;
-	status: "firing" | "ok";
-	enabled: boolean;
+  id: string;
+  name: string;
+  /** Real alert metric keys — drive the same icon/label lookup as the app. */
+  metric: "cost" | "latency_p95" | "error_rate" | "eval_pass_rate";
+  comparison: "gt" | "gte" | "lt" | "lte";
+  threshold: number;
+  currentValue: number;
+  lastFired: string | null;
+  windowSeconds: number;
+  status: "firing" | "ok";
+  enabled: boolean;
 };
 
 export const ALERTS: AlertRow[] = [
-	{
-		id: "al_cost",
-		name: "Cost above $1,000",
-		metric: "cost",
-		comparison: "gt",
-		threshold: 1000,
-		currentValue: 684.32,
-		lastFired: "4d ago",
-		windowSeconds: 86_400,
-		status: "ok",
-		enabled: true,
-	},
-	{
-		id: "al_err",
-		name: "Error rate above 2%",
-		metric: "error_rate",
-		comparison: "gt",
-		threshold: 0.02,
-		currentValue: 0.034,
-		lastFired: "12m ago",
-		windowSeconds: 300,
-		status: "firing",
-		enabled: true,
-	},
-	{
-		id: "al_lat",
-		name: "Latency p95 above 5s",
-		metric: "latency_p95",
-		comparison: "gt",
-		threshold: 5000,
-		currentValue: 3840,
-		lastFired: "2d ago",
-		windowSeconds: 900,
-		status: "ok",
-		enabled: true,
-	},
-	{
-		id: "al_eval",
-		name: "Eval pass rate below 85%",
-		metric: "eval_pass_rate",
-		comparison: "lt",
-		threshold: 0.85,
-		currentValue: 0.92,
-		lastFired: null,
-		windowSeconds: 3600,
-		status: "ok",
-		enabled: false,
-	},
+  {
+    id: "al_cost",
+    name: "Cost above $1,000",
+    metric: "cost",
+    comparison: "gt",
+    threshold: 1000,
+    currentValue: 684.32,
+    lastFired: "4d ago",
+    windowSeconds: 86_400,
+    status: "ok",
+    enabled: true,
+  },
+  {
+    id: "al_err",
+    name: "Error rate above 2%",
+    metric: "error_rate",
+    comparison: "gt",
+    threshold: 0.02,
+    currentValue: 0.034,
+    lastFired: "12m ago",
+    windowSeconds: 300,
+    status: "firing",
+    enabled: true,
+  },
+  {
+    id: "al_lat",
+    name: "Latency p95 above 5s",
+    metric: "latency_p95",
+    comparison: "gt",
+    threshold: 5000,
+    currentValue: 3840,
+    lastFired: "2d ago",
+    windowSeconds: 900,
+    status: "ok",
+    enabled: true,
+  },
+  {
+    id: "al_eval",
+    name: "Eval pass rate below 85%",
+    metric: "eval_pass_rate",
+    comparison: "lt",
+    threshold: 0.85,
+    currentValue: 0.92,
+    lastFired: null,
+    windowSeconds: 3600,
+    status: "ok",
+    enabled: false,
+  },
 ];
-
 
 // ─── Prompt versions ─────────────────────────────────────────────────────────
 // The system prompts each agent has run with, as the prompt job would infer
@@ -1717,298 +1763,310 @@ export type DemoPromptVersion = PromptVersion & { agentName: string };
 
 const DAY = 24 * 60 * 60 * 1000;
 const daysAgo = (days: number, at = 0) =>
-	new Date(Date.now() - days * DAY - at * 60 * 60 * 1000);
+  new Date(Date.now() - days * DAY - at * 60 * 60 * 1000);
 
 const SUPPORT_V1 = [
-	"You are a support triage agent. Classify the request, look up the order, and draft a concise reply.",
+  "You are a support triage agent. Classify the request, look up the order, and draft a concise reply.",
 ].join("\n");
 
 const SUPPORT_V2 = [
-	"You are the support triage agent for Acme's customer support desk. Classify the request, look up the order, and draft a concise reply.",
-	"",
-	"Today is {date}.",
-	"",
-	"## What you can use",
-	"- fetch-order — order status, shipping events and refund eligibility by order number",
-	"- crm-lookup — the customer's account, past tickets and plan",
-	"- search-knowledge-base — policy articles (shipping windows, returns, refunds)",
-	"",
-	"## How to answer",
-	"{n}. Classify the request as shipping, billing, account or other before calling any tool.",
-	"{n}. Quote the order number back and give the exact status the tool returned.",
-	"{n}. Keep replies under {n} words.",
-	"",
-	"<customer_context>",
-	SLOT_LINE,
-	"</customer_context>",
+  "You are the support triage agent for Acme's customer support desk. Classify the request, look up the order, and draft a concise reply.",
+  "",
+  "Today is {date}.",
+  "",
+  "## What you can use",
+  "- fetch-order — order status, shipping events and refund eligibility by order number",
+  "- crm-lookup — the customer's account, past tickets and plan",
+  "- search-knowledge-base — policy articles (shipping windows, returns, refunds)",
+  "",
+  "## How to answer",
+  "{n}. Classify the request as shipping, billing, account or other before calling any tool.",
+  "{n}. Quote the order number back and give the exact status the tool returned.",
+  "{n}. Keep replies under {n} words.",
+  "",
+  "<customer_context>",
+  SLOT_LINE,
+  "</customer_context>",
 ].join("\n");
 
 const SUPPORT_V3 = [
-	"You are the support triage agent for Acme's customer support desk. Classify the request, look up the order, and draft a concise reply.",
-	"",
-	"Today is {date}.",
-	"",
-	"## What you can use",
-	"- fetch-order — order status, shipping events and refund eligibility by order number",
-	"- crm-lookup — the customer's account, past tickets and plan",
-	"- search-knowledge-base — policy articles (shipping windows, returns, refunds)",
-	"- escalate-ticket — hand off to a human when the customer asks for a refund above their plan's limit",
-	"",
-	"## How to answer",
-	"{n}. Classify the request as shipping, billing, account or other before calling any tool.",
-	"{n}. Quote the order number back and give the exact status the tool returned.",
-	"{n}. Offer one concrete next step **with a date**, never \"soon\".",
-	"{n}. Keep replies under {n} words. No apology longer than one sentence.",
-	"",
-	"<customer_context>",
-	SLOT_LINE,
-	"</customer_context>",
-	"",
-	"<open_orders>",
-	SLOT_LINE,
-	"</open_orders>",
+  "You are the support triage agent for Acme's customer support desk. Classify the request, look up the order, and draft a concise reply.",
+  "",
+  "Today is {date}.",
+  "",
+  "## What you can use",
+  "- fetch-order — order status, shipping events and refund eligibility by order number",
+  "- crm-lookup — the customer's account, past tickets and plan",
+  "- search-knowledge-base — policy articles (shipping windows, returns, refunds)",
+  "- escalate-ticket — hand off to a human when the customer asks for a refund above their plan's limit",
+  "",
+  "## How to answer",
+  "{n}. Classify the request as shipping, billing, account or other before calling any tool.",
+  "{n}. Quote the order number back and give the exact status the tool returned.",
+  '{n}. Offer one concrete next step **with a date**, never "soon".',
+  "{n}. Keep replies under {n} words. No apology longer than one sentence.",
+  "",
+  "<customer_context>",
+  SLOT_LINE,
+  "</customer_context>",
+  "",
+  "<open_orders>",
+  SLOT_LINE,
+  "</open_orders>",
 ].join("\n");
 
 const RESEARCH_V1 = [
-	"You are a research planner. Break the question into sub-questions, search for each, and return a ranked reading list.",
-	"",
-	"- Prefer primary sources and vendor documentation over blog posts.",
-	"- Cite every claim with the URL it came from.",
+  "You are a research planner. Break the question into sub-questions, search for each, and return a ranked reading list.",
+  "",
+  "- Prefer primary sources and vendor documentation over blog posts.",
+  "- Cite every claim with the URL it came from.",
 ].join("\n");
 
 const RESEARCH_V2 = [
-	"You are a research planner. Break the question into sub-questions, search for each, and return a ranked reading list.",
-	"",
-	"## Rules",
-	"- Prefer primary sources and vendor documentation over blog posts.",
-	"- Cite every claim with the URL it came from.",
-	"- Stop after {n} searches and say what is still unknown.",
-	"",
-	"<question>",
-	SLOT_LINE,
-	"</question>",
+  "You are a research planner. Break the question into sub-questions, search for each, and return a ranked reading list.",
+  "",
+  "## Rules",
+  "- Prefer primary sources and vendor documentation over blog posts.",
+  "- Cite every claim with the URL it came from.",
+  "- Stop after {n} searches and say what is still unknown.",
+  "",
+  "<question>",
+  SLOT_LINE,
+  "</question>",
 ].join("\n");
 
 const CODE_REVIEW_V1 = [
-	"You are a code reviewer. Review the diff for correctness bugs first, then readability. Be specific: file, line, and the failing input.",
-	"",
-	"<diff>",
-	SLOT_LINE,
-	"</diff>",
+  "You are a code reviewer. Review the diff for correctness bugs first, then readability. Be specific: file, line, and the failing input.",
+  "",
+  "<diff>",
+  SLOT_LINE,
+  "</diff>",
 ].join("\n");
 
 const EMAIL_V1 = [
-	"You draft customer emails for Acme. Match the tone of the thread, keep to {n} short paragraphs, and end with one clear ask.",
-	"",
-	"<thread>",
-	SLOT_LINE,
-	"</thread>",
+  "You draft customer emails for Acme. Match the tone of the thread, keep to {n} short paragraphs, and end with one clear ask.",
+  "",
+  "<thread>",
+  SLOT_LINE,
+  "</thread>",
 ].join("\n");
 
 export const PROMPT_VERSIONS: DemoPromptVersion[] = [
-	{
-		id: "pv_support_1",
-		agentName: "support-triage",
-		number: 1,
-		template: SUPPORT_V1,
-		slotCount: 0,
-		hashCount: 1,
-		runCount: 1840,
-		firstSeen: daysAgo(41),
-		lastSeen: daysAgo(19),
-		current: false,
-	},
-	{
-		id: "pv_support_2",
-		agentName: "support-triage",
-		number: 2,
-		template: SUPPORT_V2,
-		slotCount: 1,
-		hashCount: 612,
-		runCount: 2960,
-		firstSeen: daysAgo(19),
-		lastSeen: daysAgo(6),
-		current: false,
-	},
-	{
-		id: "pv_support_3",
-		agentName: "support-triage",
-		number: 3,
-		template: SUPPORT_V3,
-		slotCount: 2,
-		hashCount: 1380,
-		runCount: 3720,
-		firstSeen: daysAgo(6),
-		lastSeen: daysAgo(0, 0.01),
-		current: true,
-	},
-	{
-		id: "pv_research_1",
-		agentName: "research-planner",
-		number: 1,
-		template: RESEARCH_V1,
-		slotCount: 0,
-		hashCount: 1,
-		runCount: 410,
-		firstSeen: daysAgo(33),
-		lastSeen: daysAgo(12),
-		current: false,
-	},
-	{
-		id: "pv_research_2",
-		agentName: "research-planner",
-		number: 2,
-		template: RESEARCH_V2,
-		slotCount: 1,
-		hashCount: 318,
-		runCount: 640,
-		firstSeen: daysAgo(12),
-		lastSeen: daysAgo(0, 0.05),
-		current: true,
-	},
-	{
-		id: "pv_code_1",
-		agentName: "code-reviewer",
-		number: 1,
-		template: CODE_REVIEW_V1,
-		slotCount: 1,
-		hashCount: 2210,
-		runCount: 2210,
-		firstSeen: daysAgo(27),
-		lastSeen: daysAgo(0, 0.3),
-		current: true,
-	},
-	{
-		id: "pv_email_1",
-		agentName: "email-drafter",
-		number: 1,
-		template: EMAIL_V1,
-		slotCount: 1,
-		hashCount: 980,
-		runCount: 1120,
-		firstSeen: daysAgo(22),
-		lastSeen: daysAgo(0, 1.2),
-		current: true,
-	},
+  {
+    id: "pv_support_1",
+    agentName: "support-triage",
+    number: 1,
+    template: SUPPORT_V1,
+    slotCount: 0,
+    hashCount: 1,
+    runCount: 1840,
+    firstSeen: daysAgo(41),
+    lastSeen: daysAgo(19),
+    current: false,
+  },
+  {
+    id: "pv_support_2",
+    agentName: "support-triage",
+    number: 2,
+    template: SUPPORT_V2,
+    slotCount: 1,
+    hashCount: 612,
+    runCount: 2960,
+    firstSeen: daysAgo(19),
+    lastSeen: daysAgo(6),
+    current: false,
+  },
+  {
+    id: "pv_support_3",
+    agentName: "support-triage",
+    number: 3,
+    template: SUPPORT_V3,
+    slotCount: 2,
+    hashCount: 1380,
+    runCount: 3720,
+    firstSeen: daysAgo(6),
+    lastSeen: daysAgo(0, 0.01),
+    current: true,
+  },
+  {
+    id: "pv_research_1",
+    agentName: "research-planner",
+    number: 1,
+    template: RESEARCH_V1,
+    slotCount: 0,
+    hashCount: 1,
+    runCount: 410,
+    firstSeen: daysAgo(33),
+    lastSeen: daysAgo(12),
+    current: false,
+  },
+  {
+    id: "pv_research_2",
+    agentName: "research-planner",
+    number: 2,
+    template: RESEARCH_V2,
+    slotCount: 1,
+    hashCount: 318,
+    runCount: 640,
+    firstSeen: daysAgo(12),
+    lastSeen: daysAgo(0, 0.05),
+    current: true,
+  },
+  {
+    id: "pv_code_1",
+    agentName: "code-reviewer",
+    number: 1,
+    template: CODE_REVIEW_V1,
+    slotCount: 1,
+    hashCount: 2210,
+    runCount: 2210,
+    firstSeen: daysAgo(27),
+    lastSeen: daysAgo(0, 0.3),
+    current: true,
+  },
+  {
+    id: "pv_email_1",
+    agentName: "email-drafter",
+    number: 1,
+    template: EMAIL_V1,
+    slotCount: 1,
+    hashCount: 980,
+    runCount: 1120,
+    firstSeen: daysAgo(22),
+    lastSeen: daysAgo(0, 1.2),
+    current: true,
+  },
 ];
 
 /** What runs actually put in each slot, per version (the real card fetches
  * these on hover). */
 export const SLOT_EXAMPLES: Record<string, SlotExamples> = {
-	pv_support_2: {
-		slots: [
-			{
-				examples: [
-					{
-						value: "name: Dana Whitfield\nplan: enterprise\naccount since: 2024-03-11\nopen tickets: 1",
-						runs: 412,
-					},
-					{
-						value: "name: Priya Raman\nplan: pro\naccount since: 2025-09-02\nopen tickets: 0",
-						runs: 288,
-					},
-					{
-						value: "name: Tom Okafor\nplan: free\naccount since: 2026-08-19\nopen tickets: 0",
-						runs: 131,
-					},
-				],
-			},
-		],
-	},
-	pv_support_3: {
-		slots: [
-			{
-				examples: [
-					{
-						value: "name: Dana Whitfield\nplan: enterprise\naccount since: 2024-03-11\nopen tickets: 1\nrefund limit: $500",
-						runs: 526,
-					},
-					{
-						value: "name: Priya Raman\nplan: pro\naccount since: 2025-09-02\nopen tickets: 0\nrefund limit: $150",
-						runs: 344,
-					},
-					{
-						value: "name: Tom Okafor\nplan: free\naccount since: 2026-08-19\nopen tickets: 0\nrefund limit: $0",
-						runs: 197,
-					},
-				],
-			},
-			{
-				examples: [
-					{
-						value: "#48213 — processing since 2026-08-30 · 2 items · $184.00 · standard shipping",
-						runs: 611,
-					},
-					{
-						value: "#47990 — delivered 2026-08-28 · 1 item · $62.50\n#48102 — shipped 2026-09-01 · 3 items · $241.10",
-						runs: 302,
-					},
-					{ value: "", runs: 154 },
-				],
-			},
-		],
-	},
-	pv_research_2: {
-		slots: [
-			{
-				examples: [
-					{
-						value: "Compare vector DB options for a 50M-embedding workload",
-						runs: 96,
-					},
-					{
-						value: "What changed in the EU AI Act's obligations for general-purpose models in 2026?",
-						runs: 71,
-					},
-					{
-						value: "Is Postgres a reasonable queue for 5k jobs/minute, and where does it stop being one?",
-						runs: 44,
-					},
-				],
-			},
-		],
-	},
-	pv_code_1: {
-		slots: [
-			{
-				examples: [
-					{
-						value: "diff --git a/src/billing/invoice.ts b/src/billing/invoice.ts\n@@ -41,7 +41,9 @@ export function totalFor(lines: Line[]) {\n-  return lines.reduce((sum, l) => sum + l.amount, 0);\n+  return lines\n+    .filter((l) => !l.voided)\n+    .reduce((sum, l) => sum + l.amount, 0);",
-						runs: 1,
-					},
-				],
-			},
-		],
-	},
-	pv_email_1: {
-		slots: [
-			{
-				examples: [
-					{
-						value: "From: Dana Whitfield\nSubject: Renewal quote\n\nHi — can you send the renewal quote for 40 seats before Friday? Finance needs it for the Q4 plan.",
-						runs: 3,
-					},
-				],
-			},
-		],
-	},
+  pv_support_2: {
+    slots: [
+      {
+        examples: [
+          {
+            value:
+              "name: Dana Whitfield\nplan: enterprise\naccount since: 2024-03-11\nopen tickets: 1",
+            runs: 412,
+          },
+          {
+            value:
+              "name: Priya Raman\nplan: pro\naccount since: 2025-09-02\nopen tickets: 0",
+            runs: 288,
+          },
+          {
+            value:
+              "name: Tom Okafor\nplan: free\naccount since: 2026-08-19\nopen tickets: 0",
+            runs: 131,
+          },
+        ],
+      },
+    ],
+  },
+  pv_support_3: {
+    slots: [
+      {
+        examples: [
+          {
+            value:
+              "name: Dana Whitfield\nplan: enterprise\naccount since: 2024-03-11\nopen tickets: 1\nrefund limit: $500",
+            runs: 526,
+          },
+          {
+            value:
+              "name: Priya Raman\nplan: pro\naccount since: 2025-09-02\nopen tickets: 0\nrefund limit: $150",
+            runs: 344,
+          },
+          {
+            value:
+              "name: Tom Okafor\nplan: free\naccount since: 2026-08-19\nopen tickets: 0\nrefund limit: $0",
+            runs: 197,
+          },
+        ],
+      },
+      {
+        examples: [
+          {
+            value:
+              "#48213 — processing since 2026-08-30 · 2 items · $184.00 · standard shipping",
+            runs: 611,
+          },
+          {
+            value:
+              "#47990 — delivered 2026-08-28 · 1 item · $62.50\n#48102 — shipped 2026-09-01 · 3 items · $241.10",
+            runs: 302,
+          },
+          { value: "", runs: 154 },
+        ],
+      },
+    ],
+  },
+  pv_research_2: {
+    slots: [
+      {
+        examples: [
+          {
+            value: "Compare vector DB options for a 50M-embedding workload",
+            runs: 96,
+          },
+          {
+            value:
+              "What changed in the EU AI Act's obligations for general-purpose models in 2026?",
+            runs: 71,
+          },
+          {
+            value:
+              "Is Postgres a reasonable queue for 5k jobs/minute, and where does it stop being one?",
+            runs: 44,
+          },
+        ],
+      },
+    ],
+  },
+  pv_code_1: {
+    slots: [
+      {
+        examples: [
+          {
+            value:
+              "diff --git a/src/billing/invoice.ts b/src/billing/invoice.ts\n@@ -41,7 +41,9 @@ export function totalFor(lines: Line[]) {\n-  return lines.reduce((sum, l) => sum + l.amount, 0);\n+  return lines\n+    .filter((l) => !l.voided)\n+    .reduce((sum, l) => sum + l.amount, 0);",
+            runs: 1,
+          },
+        ],
+      },
+    ],
+  },
+  pv_email_1: {
+    slots: [
+      {
+        examples: [
+          {
+            value:
+              "From: Dana Whitfield\nSubject: Renewal quote\n\nHi — can you send the renewal quote for 40 seats before Friday? Finance needs it for the Q4 plan.",
+            runs: 3,
+          },
+        ],
+      },
+    ],
+  },
 };
 
 /** The prompt version a given run used — the agent's current version for
  * most runs, the one before it for a deterministic minority (mirrors a fleet
  * mid-rollout). Null for agents without inferred versions. */
 export function promptVersionOf(
-	agentName: string,
-	traceId: string,
+  agentName: string,
+  traceId: string
 ): { id: string; number: number } | null {
-	const versions = PROMPT_VERSIONS.filter((v) => v.agentName === agentName);
-	if (versions.length === 0) return null;
-	const current = versions[versions.length - 1]!;
-	const previous = versions[versions.length - 2];
-	let h = 0;
-	for (const c of traceId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-	const pick = previous && h % 4 === 0 ? previous : current;
-	return { id: pick.id, number: pick.number };
+  const versions = PROMPT_VERSIONS.filter((v) => v.agentName === agentName);
+  if (versions.length === 0) return null;
+  const current = versions[versions.length - 1]!;
+  const previous = versions[versions.length - 2];
+  let h = 0;
+  for (const c of traceId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const pick = previous && h % 4 === 0 ? previous : current;
+  return { id: pick.id, number: pick.number };
 }
 
 /** The system prompt a run actually sent: its prompt version's template with
@@ -2016,20 +2074,20 @@ export function promptVersionOf(
  * inline placeholders resolved, so the trace inspector shows a real payload
  * rather than the normalized template. */
 export function systemPromptOf(agentName: string, traceId: string): string {
-	const version = promptVersionOf(agentName, traceId);
-	const template = PROMPT_VERSIONS.find((v) => v.id === version?.id)?.template;
-	if (!template) return TRACE_MESSAGES[0]!.content;
-	const slots = SLOT_EXAMPLES[version!.id]?.slots ?? [];
-	let slot = 0;
-	let rule = 0;
-	return template
-		.split("\n")
-		.map((line) => {
-			if (line === SLOT_LINE) return slots[slot++]?.examples[0]?.value ?? "";
-			if (line.startsWith("{n}. ")) return `${++rule}. ${line.slice(5)}`;
-			return line;
-		})
-		.join("\n")
-		.replaceAll("{date}", "2026-09-04")
-		.replaceAll("{n}", "120");
+  const version = promptVersionOf(agentName, traceId);
+  const template = PROMPT_VERSIONS.find((v) => v.id === version?.id)?.template;
+  if (!template) return TRACE_MESSAGES[0]!.content;
+  const slots = SLOT_EXAMPLES[version!.id]?.slots ?? [];
+  let slot = 0;
+  let rule = 0;
+  return template
+    .split("\n")
+    .map((line) => {
+      if (line === SLOT_LINE) return slots[slot++]?.examples[0]?.value ?? "";
+      if (line.startsWith("{n}. ")) return `${++rule}. ${line.slice(5)}`;
+      return line;
+    })
+    .join("\n")
+    .replaceAll("{date}", "2026-09-04")
+    .replaceAll("{n}", "120");
 }

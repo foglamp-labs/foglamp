@@ -1,4 +1,5 @@
 import { DOCS_ORIGIN, GITHUB_URL, SITE_URL } from "@/lib/links";
+import { chapters } from "@/components/marketing/how-it-works/chapters";
 
 // Markdown representations of the marketing pages, served to agents via
 // `Accept: text/markdown` content negotiation (acceptmarkdown.com) and at the
@@ -94,6 +95,15 @@ Overview: ${SITE_URL} · Pricing: ${SITE_URL}/pricing · Docs: ${DOCS_ORIGIN}`;
 
 const PAGES: Record<string, string> = {
 	"/": HOME,
+	"/how-it-works": `# AI observability, illustrated
+
+Follow a request through an AI app. See how traces, evaluations, and alerts help you understand what happened, and whether the answer was good.
+
+Your app does the work. Foglamp helps you see it. The workshop and its data are illustrative examples.
+
+${chapters.map((chapter, index) => `## ${index + 1}. ${chapter.title}\n\n${chapter.description}\n\n${chapter.note}\n\n[${chapter.link}](${chapter.href.startsWith("https:") ? chapter.href : `${SITE_URL}${chapter.href}`})`).join("\n\n")}
+
+See it in Foglamp: ${SITE_URL}/login`,
 	"/homepage": HOME,
 	"/pricing": PRICING,
 	"/about": ABOUT,

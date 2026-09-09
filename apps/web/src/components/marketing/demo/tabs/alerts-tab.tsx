@@ -89,18 +89,18 @@ export function AlertsTab() {
 
 	return (
 		<>
-			<DemoListHeader
-				href="/alerts"
-				title="Alerts"
-				actions={
-					<Button size="sm">
-						<IconPlus strokeWidth={2.4} />
-						New alert
-					</Button>
-				}
-			/>
+			<DemoListHeader href="/alerts" title="Alerts" />
 			<div className="flex flex-col gap-4 mt-1">
-				<Toolbar>
+				{/* Like the app: "New alert" trails the filters on the toolbar row,
+				    not the page header. */}
+				<Toolbar
+					trailing={
+						<Button variant="secondary">
+							<IconPlus strokeWidth={2.4} />
+							New alert
+						</Button>
+					}
+				>
 					<SearchInput
 						value={search}
 						onChange={setSearch}

@@ -12,7 +12,7 @@ export function FilmGrain({
 	id,
 	className,
 }: {
-	/** Unique per page — SVG filter ids are document-global. */
+	/** Unique per page, since SVG filter ids are document-global. */
 	id: string;
 	className?: string;
 }) {
@@ -31,8 +31,13 @@ export function FilmGrain({
 	);
 }
 
-// The fog's cool blue-grey tint, as an feColorMatrix `values` string.
-const TINT_COOL = "0 0 0 0 0.20 0 0 0 0 0.21 0 0 0 0 0.23 0 0 0 0.6 0.04";
+// The fog takes its color from CSS: the turbulence only supplies alpha, and an
+// feFlood paints it. The flood color is set as a CSS property with a light
+// and a dark value, so one FogBank is a mid grey on the light theme and a
+// grey-blue on the dark one. Not currentColor: WebKit does not resolve it for
+// flood-color, and the fog vanished in Safari when it did.
+const NOISE_TO_ALPHA =
+	"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0.04";
 
 export function FogBank({
 	id,
@@ -49,7 +54,7 @@ export function FogBank({
 		<div aria-hidden className="absolute inset-0 overflow-hidden">
 			{/* The turbulence is rasterized at quarter resolution and scaled up 4x.
           It sits behind 12-24px of blur everywhere it's used, so the upscale
-          is invisible — but the filter costs 1/16th to render. */}
+          is invisible, and the filter costs 1/16th to render. */}
 			<svg
 				className="absolute left-0 top-0 h-1/4 w-1/4 origin-top-left scale-[4.02]"
 				aria-hidden
@@ -66,9 +71,19 @@ export function FogBank({
 						stitchTiles="stitch"
 						result="noise"
 					/>
-					{/* Single-line `values` — the browser normalises this SVG attribute
+					{/* Single-line `values`: the browser normalises this SVG attribute
               to single spaces; a multi-line string mismatches on hydration. */}
-					<feColorMatrix in="noise" type="matrix" values={TINT_COOL} />
+					<feColorMatrix
+						in="noise"
+						type="matrix"
+						values={NOISE_TO_ALPHA}
+						result="alpha"
+					/>
+					<feFlood
+						className="[flood-color:#6b7078] dark:[flood-color:#333639]"
+						result="tint"
+					/>
+					<feComposite in="tint" in2="alpha" operator="in" />
 				</filter>
 				<rect width="100%" height="100%" filter={`url(#${id})`} />
 			</svg>

@@ -21,7 +21,7 @@ import { checkFoggyRateLimit } from "./foggyRateLimit";
 import { buildFoggyTools, untrusted } from "./foggyTools";
 
 // Foggy is enabled only when a Google key is configured.
-const google = env.GOOGLE_GENERATIVE_AI_API_KEY
+export const google = env.GOOGLE_GENERATIVE_AI_API_KEY
   ? createGoogleGenerativeAI({ apiKey: env.GOOGLE_GENERATIVE_AI_API_KEY })
   : null;
 
@@ -29,7 +29,7 @@ const google = env.GOOGLE_GENERATIVE_AI_API_KEY
 // `hud: true` also streams Foggy's own execution to the local HUD overlay in
 // dev (self-gated off in production/edge/serverless), so asking Foggy a question
 // lights up the <FoglampHUD/> in the dashboard — no API key required for that.
-const fog = foglamp({ hud: true });
+export const fog = foglamp({ hud: true });
 
 // Maps the in-app pathname the user is viewing into a short, trusted sentence
 // for the system prompt. Detail pages also surface their id/name so Foggy can

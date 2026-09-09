@@ -206,12 +206,41 @@ function groupRepeatedSiblings(
   return out;
 }
 
+export type TimelineReveal = "hold" | "play";
+
+/** How long the whole trace takes to grow in when `reveal` plays. */
+export const TIMELINE_REVEAL_SECONDS = 1.2;
+
+// The grow-in replays the trace: each bar starts at its span's offset and
+// takes its duration, both scaled so the whole trace fits the reveal window.
+// Bars grow at a constant rate, so it's a plain transition on scaleX with the
+// span's own timing; the tiny ones get a floor so they don't pop. Holding
+// keeps a bar at zero width until the reveal plays.
+function revealStyle(
+  reveal: TimelineReveal | undefined,
+  offsetFraction: number,
+  durationFraction: number,
+): CSSProperties | undefined {
+  if (!reveal) return undefined;
+  const seconds = Math.max(0.15, durationFraction * TIMELINE_REVEAL_SECONDS);
+  const delay = offsetFraction * TIMELINE_REVEAL_SECONDS;
+  return {
+    transformOrigin: "left",
+    transform: reveal === "play" ? "scaleX(1)" : "scaleX(0)",
+    transition:
+      reveal === "play" ? `transform ${seconds}s linear ${delay}s` : "none",
+  };
+}
+
 /**
  * The trace hero: a span waterfall on one shared time axis, topped by a time
- * ruler. A shared 3-column grid (`[11rem | track | 6.5rem]`) keeps the
+ * ruler. A shared 3-column grid (`[15rem | track | 6.5rem]`) keeps the
  * gridlines and bars in perfect column alignment; the same
- * `left-[11rem] right-[6.5rem]` insets position the absolute overlays over the
- * track. Selecting a bar drives the inspector the parent renders alongside.
+ * `left-60 right-26` insets position the absolute overlays over the track.
+ * In a narrow container (a phone, or a tight panel) the label and total
+ * columns shrink and the cost line under each duration hides, so the track
+ * keeps enough room for the bars to mean something. Selecting a bar drives
+ * the inspector the parent renders alongside.
  */
 export function TraceTimeline({
   spans,
@@ -223,6 +252,7 @@ export function TraceTimeline({
   expandedGroups: expandedGroupsProp,
   onToggleGroup,
   onNavChange,
+  reveal,
 }: {
   spans: TraceSpan[];
   selected: string | null;
@@ -241,6 +271,10 @@ export function TraceTimeline({
   /** Reports the keyboard-navigable rows whenever the visible rows change, so
    * the parent's ↑/↓ walk what's on screen instead of every span. */
   onNavChange?: (entries: TimelineNavEntry[]) => void;
+  /** Grow the bars in, in trace time (see revealStyle). "hold" keeps them at
+   * zero width; "play" runs the grow-in. Off by default; the landing figure
+   * sets it. */
+  reveal?: TimelineReveal;
 }) {
   const window = useMemo(() => computeWindow(spans), [spans]);
   const ordered = useMemo(() => orderSpans(spans), [spans]);
@@ -419,12 +453,12 @@ export function TraceTimeline({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: purely decorative hover cursor
     <div
-      className="relative flex flex-col"
+      className="@container relative flex flex-col"
       onMouseMove={moveCursor}
       onMouseLeave={hideCursor}
     >
       {/* Time ruler, aligned to the bar track. */}
-      <div className="grid grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center">
+      <div className="grid grid-cols-[9.5rem_minmax(0,1fr)_3.25rem] @lg:grid-cols-[15rem_minmax(0,1fr)_6.5rem] items-center">
         <div />
         <TimeRuler total={total} />
         <div />
@@ -434,7 +468,7 @@ export function TraceTimeline({
           elapsed-time chip up in the ruler row. Same insets as the gridlines. */}
       <div
         ref={trackOverlayRef}
-        className="pointer-events-none absolute inset-y-0 left-60 right-26 z-20"
+        className="pointer-events-none absolute inset-y-0 left-38 right-13 @lg:left-60 @lg:right-26 z-20"
       >
         <div
           ref={cursorRef}
@@ -450,8 +484,8 @@ export function TraceTimeline({
 
       <div className="relative">
         {/* Quarter-point time gridlines, behind the bars. */}
-        {/* left-60/right-26 mirror the grid template's 15rem/6.5rem columns. */}
-        <div className="pointer-events-none absolute inset-y-0 left-60 right-26 z-0">
+        {/* The insets mirror the grid template's label and total columns. */}
+        <div className="pointer-events-none absolute inset-y-0 left-38 right-13 @lg:left-60 @lg:right-26 z-0">
           {GRID_FRACTIONS.map((f) => (
             <div
               key={f}
@@ -476,7 +510,7 @@ export function TraceTimeline({
                 onSelect(selected === WHOLE_TRACE_ID ? null : WHOLE_TRACE_ID)
               }
               className={cn(
-                "grid w-full cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-r-sm rounded-l-md py-0.5 text-left text-sm",
+                "grid w-full cursor-pointer grid-cols-[9.5rem_minmax(0,1fr)_3.25rem] @lg:grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-r-sm rounded-l-md py-0.5 text-left text-xs @lg:text-sm",
                 selected === WHOLE_TRACE_ID
                   ? "bg-accent dark:bg-accent/70"
                   : "hover:bg-accent/80 dark:hover:bg-accent/50",
@@ -503,7 +537,10 @@ export function TraceTimeline({
                 </div>
               </div>
               <div className="relative h-5">
-                <div className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full">
+                <div
+                  className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full"
+                  style={revealStyle(reveal, 0, 1)}
+                >
                   <div className="h-full w-full rounded-xs bg-primary/50" />
                 </div>
               </div>
@@ -512,7 +549,7 @@ export function TraceTimeline({
                   {formatDuration(total)}
                 </span>
                 {(traceTotals.cost != null || traceTotals.tokens > 0) && (
-                  <span className="whitespace-nowrap text-[10px] text-muted-foreground tabular-nums">
+                  <span className="hidden whitespace-nowrap text-[10px] text-muted-foreground tabular-nums @lg:inline">
                     {traceTotals.cost != null && formatCost(traceTotals.cost)}
                     {traceTotals.cost != null &&
                       traceTotals.tokens > 0 &&
@@ -535,6 +572,7 @@ export function TraceTimeline({
                     // A folded run answers for its head span, so keyboard
                     // selection landing there highlights the group row.
                     selected={!row.expanded && selected === row.spans[0].spanId}
+                    reveal={reveal}
                   />
                 );
               }
@@ -554,9 +592,14 @@ export function TraceTimeline({
               // from an error, not counted toward error rate.
               const isAborted = span.status === "aborted";
               const isAgent = span.spanType === "agent";
-              // Agent spans take their reproducible per-name color, matching the
-              // agent icon elsewhere, instead of the flat type palette.
-              const accent = isAgent ? agentColor(span.name) : null;
+              // Agent spans take their reproducible per-name color and model
+              // calls their vendor's brand color, matching the icon chip on the
+              // row, instead of the flat type palette.
+              const accent = isAgent
+                ? agentColor(span.name)
+                : span.spanType === "llm"
+                  ? modelBrandColor(span.provider, span.modelId)
+                  : null;
               // Waiting-for-first-token stretch: the bar up to TTFT renders
               // hatched, the solid fill starts where tokens start flowing.
               const ttftPct =
@@ -608,13 +651,13 @@ export function TraceTimeline({
                   ? Math.max(0, span.durationMs - modelCallMs)
                   : 0;
               const rowScores = spanScores.get(span.spanId);
-              // Bar fill: error → rose, aborted → amber, agent → its accent
-              // (inline), else palette.
+              // Bar fill: error → rose, aborted → amber, agent or known model →
+              // its accent (inline), else palette.
               const barClass = isError
                 ? "bg-rose-500"
                 : isAborted
                   ? "bg-amber-500"
-                  : isAgent
+                  : accent
                     ? undefined
                     : spanTypeBar(span.spanType);
               const barStyle =
@@ -630,15 +673,15 @@ export function TraceTimeline({
                   type="button"
                   onClick={() => onSelect(span.spanId)}
                   className={cn(
-                    "grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm",
+                    "grid cursor-pointer grid-cols-[9.5rem_minmax(0,1fr)_3.25rem] @lg:grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-xs @lg:text-sm",
                     span.spanId === selected
                       ? "bg-accent dark:bg-accent/70"
                       : "hover:bg-accent/80 dark:hover:bg-accent/50",
                   )}
                 >
                   <div
-                    className="flex min-w-0 items-center gap-2 pr-3"
-                    style={{ paddingLeft: (depth + 1) * 12 + 4 }}
+                    className={cn("flex min-w-0 items-center gap-2 pr-3", INDENT)}
+                    style={{ "--depth": depth } as CSSProperties}
                   >
                     {/* Collapse chevron — a styled span (not a nested button,
                         which would be invalid inside the row button). Rows
@@ -720,7 +763,15 @@ export function TraceTimeline({
                         render={
                           <div
                             className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs"
-                            style={{ left: `${offset}%`, width: `${width}%` }}
+                            style={{
+                              left: `${offset}%`,
+                              width: `${width}%`,
+                              ...revealStyle(
+                                reveal,
+                                offsetMs / total,
+                                span.durationMs / total,
+                              ),
+                            }}
                           >
                             {/* Base track. Up to TTFT the bar renders as a
                                 faded "waiting" stretch, and the solid fill
@@ -730,6 +781,7 @@ export function TraceTimeline({
                                 <TtftWait
                                   widthPct={ttftPct}
                                   barClass={barClass}
+                                  barStyle={barStyle}
                                 />
                                 <div
                                   className={cn(
@@ -820,7 +872,7 @@ export function TraceTimeline({
                       {formatSpanDuration(span.durationMs)}
                     </span>
                     {(span.totalCost != null || span.totalTokens > 0) && (
-                      <span className="whitespace-nowrap text-[10px] text-muted-foreground tabular-nums">
+                      <span className="hidden whitespace-nowrap text-[10px] text-muted-foreground tabular-nums @lg:inline">
                         {span.totalCost != null && formatCost(span.totalCost)}
                         {span.totalCost != null &&
                           span.totalTokens > 0 &&
@@ -851,12 +903,14 @@ function GroupedRow({
   total,
   onToggle,
   selected,
+  reveal,
 }: {
   row: GroupRow;
   window: { start: number; span: number };
   total: number;
   onToggle: () => void;
   selected?: boolean;
+  reveal?: TimelineReveal;
 }) {
   const { spans, depth, expanded } = row;
   const starts = spans.map((s) => toMs(s.startTime) - window.start);
@@ -884,17 +938,17 @@ function GroupedRow({
       onClick={onToggle}
       title={expanded ? "Fold repeated calls" : "Show each call"}
       className={cn(
-        "grid cursor-pointer grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-sm",
+        "grid cursor-pointer grid-cols-[9.5rem_minmax(0,1fr)_3.25rem] @lg:grid-cols-[15rem_minmax(0,1fr)_6.5rem] min-h-10 items-center rounded-md py-1 text-left text-xs @lg:text-sm",
         selected
           ? "bg-accent dark:bg-accent/70"
           : "hover:bg-accent/80 dark:hover:bg-accent/50",
       )}
     >
       <div
-        className="flex min-w-0 items-center gap-2 pr-3"
         // Same indent formula as SpanRow, so the expanded calls (same depth)
         // line up chip-to-chip with this row.
-        style={{ paddingLeft: (depth + 1) * 12 + 4 }}
+        className={cn("flex min-w-0 items-center gap-2 pr-3", INDENT)}
+        style={{ "--depth": depth } as CSSProperties}
       >
         <span className="flex size-3.5 shrink-0 items-center justify-center text-muted-foreground/50">
           <IconChevronRight
@@ -915,7 +969,11 @@ function GroupedRow({
       <div className="relative h-5">
         <div
           className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs bg-muted-foreground/25"
-          style={{ left: `${offset}%`, width: `${width}%` }}
+          style={{
+            left: `${offset}%`,
+            width: `${width}%`,
+            ...revealStyle(reveal, first / total, durationMs / total),
+          }}
         >
           {/* One tick per call, positioned within the run's span. */}
           {spans.map((s, i) => (
@@ -934,7 +992,7 @@ function GroupedRow({
           {formatSpanDuration(durationMs)}
         </span>
         {(cost != null || tokens > 0) && (
-          <span className="whitespace-nowrap text-[10px] text-muted-foreground tabular-nums">
+          <span className="hidden whitespace-nowrap text-[10px] text-muted-foreground tabular-nums @lg:inline">
             {cost != null && formatCost(cost)}
             {cost != null && tokens > 0 && " · "}
             {tokens > 0 && formatTokens(tokens)}
@@ -949,6 +1007,12 @@ function GroupedRow({
 // ruler's tick positions so the gridlines and time labels all align.
 const GRID_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
 
+/** A row's left padding by nesting depth (`--depth` set inline): one 12px step
+ * per level from a 16px base, and tighter 8px steps in a narrow container
+ * where the label column has less to give. */
+const INDENT =
+  "pl-[calc(var(--depth)*8px+12px)] @lg:pl-[calc(var(--depth)*12px+16px)]";
+
 /**
  * The pre-first-token stretch of an LLM bar: the bar's own color at reduced
  * opacity, so the wait reads as part of the span while the solid fill starts
@@ -957,9 +1021,11 @@ const GRID_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
 function TtftWait({
   widthPct,
   barClass,
+  barStyle,
 }: {
   widthPct: number;
   barClass: string | undefined;
+  barStyle?: CSSProperties;
 }) {
   return (
     <div
@@ -967,7 +1033,7 @@ function TtftWait({
         "absolute inset-y-0 left-0 rounded-l-xs opacity-30",
         barClass
       )}
-      style={{ width: `${widthPct}%` }}
+      style={{ ...barStyle, width: `${widthPct}%` }}
     />
   );
 }
@@ -986,6 +1052,9 @@ function TimeRuler({ total }: { total: number }) {
           className={cn(
             "absolute top-0 text-[10px] text-muted-foreground/50 tabular-nums",
             frac === 1 && "-translate-x-full",
+            // The inner labels collide on a short track, so only the two
+            // ends show there.
+            frac !== 0 && frac !== 1 && "hidden @lg:inline",
           )}
           style={{ left: `${frac * 100}%` }}
         >

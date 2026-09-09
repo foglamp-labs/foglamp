@@ -56,7 +56,6 @@ export function EvalsTab() {
 	const [search, setSearch] = useState("");
 	const [statusFilter, setStatusFilter] = useState("");
 	const [sourceFilter, setSourceFilter] = useState("");
-	const [levelFilter, setLevelFilter] = useState("");
 	const [enabledById, setEnabledById] = useState<Record<string, boolean>>(() =>
 		Object.fromEntries(EVALS.map((e) => [e.id, e.enabled])),
 	);
@@ -70,8 +69,7 @@ export function EvalsTab() {
 				e.presetId.toLowerCase().includes(q)) &&
 			(!statusFilter || e.status === statusFilter) &&
 			(!sourceFilter ||
-				(sourceFilter === "llm" ? e.type === "llm-judge" : e.type === "code")) &&
-			(!levelFilter || e.level === levelFilter),
+				(sourceFilter === "llm" ? e.type === "llm-judge" : e.type === "code")),
 	);
 	const visible = sortRows<EvalRow, EvalSortKey>(filtered, sort, {
 		name: (e) => e.name,
@@ -82,18 +80,21 @@ export function EvalsTab() {
 
 	return (
 		<>
-			<DemoListHeader
-				href="/evals"
-				title="Evals"
-				actions={
-					<Button size="sm">
-						<IconPlus />
-						New eval
-					</Button>
-				}
-			/>
+			<DemoListHeader href="/evals" title="Evals" />
 			<div className="flex flex-col gap-4 mt-1">
-				<Toolbar>
+				{/* Like the app: the range picker and the "New eval" button trail
+				    the filters on the toolbar row, not the page header. */}
+				<Toolbar
+					trailing={
+						<>
+							<DemoRange />
+							<Button variant="secondary">
+								<IconPlus strokeWidth={2.4} />
+								New eval
+							</Button>
+						</>
+					}
+				>
 					<SearchInput
 						value={search}
 						onChange={setSearch}
@@ -120,28 +121,14 @@ export function EvalsTab() {
 							{ value: "llm", label: "LLM judge", icon: IconSparkles },
 						]}
 					/>
-					<FilterSelect
-						value={levelFilter}
-						onChange={setLevelFilter}
-						allLabel="Any level"
-						icon={IconStack2}
-						options={[
-							{ value: "trace", label: "Traces", icon: IconAffiliate },
-							{ value: "span", label: "Spans", icon: IconStack2 },
-						]}
-					/>
 					<ClearFiltersButton
-						show={!!(search || statusFilter || sourceFilter || levelFilter)}
+						show={!!(search || statusFilter || sourceFilter)}
 						onClick={() => {
 							setSearch("");
 							setStatusFilter("");
 							setSourceFilter("");
-							setLevelFilter("");
 						}}
 					/>
-					<div className="ml-auto flex items-center gap-3">
-						<DemoRange />
-					</div>
 				</Toolbar>
 
 				<TooltipProvider delay={150}>

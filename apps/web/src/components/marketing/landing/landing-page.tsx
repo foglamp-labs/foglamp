@@ -1,8 +1,8 @@
 import { JsonLd } from "@/components/marketing/json-ld";
-import { CtaSection } from "@/components/marketing/landing/cta";
-import { DriftStory } from "@/components/marketing/landing/drift-story";
+import { CompactCtaSection } from "@/components/marketing/landing/compact-cta";
+import { Faq } from "@/components/marketing/landing/faq";
 import { Hero } from "@/components/marketing/landing/hero";
-import { HowItWorks } from "@/components/marketing/landing/how-it-works";
+import { Problems } from "@/components/marketing/landing/problems";
 import { GITHUB_URL, SITE_URL } from "@/lib/links";
 
 // schema.org graph for the homepage: who we are (Organization), the site
@@ -51,18 +51,18 @@ const homepageJsonLd = {
 };
 
 // Shared landing content, rendered by both `/` (which redirects logged-in
-// users to the dashboard) and `/homepage` (which never redirects). The live
-// dashboard demo and the provider strip live inside <Hero>; HowItWorks tells
-// the prompt-first story.
+// users to the dashboard) and `/homepage` (which never redirects). Order:
+// the live demo in the hero, three illustrated benefits, the FAQ with the
+// public Foggy under it, and a compact setup CTA before the footer.
 export function LandingPage() {
 	return (
-		// No bottom padding: the CTA runs straight into the footer.
 		<div className="flex flex-col">
 			<JsonLd data={homepageJsonLd} />
 			<Hero />
-			<DriftStory />
-			<HowItWorks />
-			<CtaSection />
+			<Problems />
+			<Faq />
+			<div className="h-16 sm:h-24" />
+			<CompactCtaSection />
 		</div>
 	);
 }

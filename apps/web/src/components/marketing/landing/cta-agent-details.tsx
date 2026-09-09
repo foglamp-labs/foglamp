@@ -1,6 +1,6 @@
 "use client";
 
-// The agent details that live under the CTA's fog: no card, no border — just
+// The agent details that live under the CTA's fog: no card, no border, just
 // type, trace bars and numbers sitting on the section itself. Shared by the
 // live CtaSection and the bake-off variants.
 
@@ -20,7 +20,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 	return (
 		<span className="flex flex-col">
 			<span className="text-[11px] text-muted-foreground">{label}</span>
-			<span className="font-display text-lg font-semibold tabular-nums text-foreground">
+			<span className="font-display text-lg font-[450] tabular-nums text-foreground">
 				{value}
 			</span>
 		</span>
@@ -42,14 +42,14 @@ export function AgentDetails({
 					<IconGhostFilled className="size-5" />
 				</span>
 				<span className="flex flex-col gap-0.5">
-					<span className="font-display text-sm font-semibold leading-tight">
+					<span className="font-display text-sm font-[450] leading-tight">
 						Support Agent
 					</span>
 					<span className="flex items-center gap-1.5 text-sm text-muted-foreground">
 						<ClaudeLogo className="size-3" /> Claude Fable 5
 					</span>
 				</span>
-				<span className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs flex items-center pl-2 gap-1 font-medium text-emerald-500">
+				<span className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs flex items-center pl-2 gap-1 font-[450] text-emerald-500">
 					<IconCircleCheckFilled className="size-3 mb-px" />
 					Passed
 				</span>

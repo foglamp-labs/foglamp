@@ -42,7 +42,7 @@
 /* Match the light inset's exact three-layer geometry while Foggy is carved
    into the bottom edge. Only the colors change for dark mode: a faint light
    perimeter plus compact dark depth, with the same 0 / 0.5 / 1px offsets.
-   Set as box-shadow on the inset itself — redefining --custom-shadow here
+   Set as box-shadow on the inset itself, since redefining --custom-shadow here
    would cascade into every descendant using the var (page-header icon tiles,
    cards), splitting them from their siblings outside the panel. */
 .dark .foggy-inset-closed {
@@ -50,7 +50,7 @@
 		rgba(0, 0, 0, 0.24), 0 1px 4px 0 rgba(0, 0, 0, 0.16);
 }
 
-/* Poster map edge pulses — CSS-driven so dozens of edges don't each run a JS
+/* Poster map edge pulses, CSS-driven so dozens of edges don't each run a JS
    animation loop. Offset matches the "4 156" dash pattern (one period = 160). */
 @keyframes poster-pulse {
 	to {
@@ -63,7 +63,7 @@
 	}
 }
 
-/* Page entrance — opacity-only fade, played once per hard load (gated by a
+/* Page entrance, opacity-only fade, played once per hard load (gated by a
    module-scope flag at the call site, Linear-style): client-side navigations
    back to the page render instantly. */
 @keyframes page-fade-in {
@@ -80,7 +80,7 @@
 	}
 }
 
-/* Marketing fog drift — CSS keyframes instead of JS-driven Motion so the
+/* Marketing fog drift, CSS keyframes instead of JS-driven Motion so the
    transform animates on the compositor: the blurred/masked layers rasterize
    once and only their transforms change, keeping the main thread free (the
    JS version made every hover on the page feel laggy). will-change pins the
@@ -158,4 +158,21 @@
 .agent-beam [data-beam][data-active],
 .agent-beam[data-beam][data-active] {
 	animation-delay: var(--beam-phase, 0s), 0s;
+}
+
+/* Footer cutting mat: the single highlighted dash on each brand circle walks
+   the ring one dash at a time. The ring is normalized to pathLength 360 with a
+   10-unit dash period, so 36 steps of -360 land exactly on the next dash. */
+@keyframes mat-dash {
+	to {
+		stroke-dashoffset: -360;
+	}
+}
+.mat-dash {
+	animation: mat-dash 4.8s steps(36, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+	.mat-dash {
+		animation: none;
+	}
 }

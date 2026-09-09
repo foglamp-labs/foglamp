@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
   headers: async () => [
     {
       source:
-        "/(|homepage|pricing|about|privacy|terms|features/cost-intelligence|features/evals|features/alerts|features/agents|features/distributed-traces|features/sdk)",
+        "/(|homepage|how-it-works|pricing|about|privacy|terms|features/cost-intelligence|features/evals|features/alerts|features/agents|features/distributed-traces|features/sdk)",
       headers: [{ key: "Vary", value: "Accept" }],
     },
   ],
