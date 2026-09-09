@@ -17,12 +17,20 @@ const DashboardDemo = dynamic(
   }
 );
 
+// In dark mode the demo runs one step lighter than the app so it stands out
+// from the page instead of sinking into it. Each surface keeps its place in
+// the app's order (sidebar, then inset, then cards, then hover), just lifted.
+const DARK_LIFT =
+  "dark:[--sidebar:oklch(0.19_0_0)] dark:[--background:oklch(0.215_0_0)] dark:[--card:oklch(0.25_0_0)] dark:[--popover:oklch(0.25_0_0)] dark:[--muted:oklch(0.31_0_0)] dark:[--accent:oklch(0.31_0_0)] dark:[--secondary:oklch(0.31_0_0)] dark:[--sidebar-accent:oklch(0.31_0_0)]";
+
 export function HeroDemo() {
   return (
     // The persistent chrome frame, step 1 of the demo's entrance, revealed by
     // the hero's outer reveal one level up. The hairline around it belongs to
     // the hero's DemoFrame.
-    <div className="relative flex h-165 w-full overflow-hidden rounded-xl corner-round! bg-sidebar">
+    <div
+      className={`relative flex h-165 w-full overflow-hidden rounded-xl corner-round! bg-sidebar ${DARK_LIFT}`}
+    >
       {/* Inset-surface placeholder. The real white inset panel lives inside the
           lazy DashboardDemo, so without this it would pop in a beat after the
           chrome mounts. This copy of the panel's shape sits in the persistent

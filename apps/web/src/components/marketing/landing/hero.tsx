@@ -191,7 +191,7 @@ export function Hero() {
             on it. The frame covers the center, so only the halo shows. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -inset-x-64 -inset-y-32 [--glow:oklch(0.955_0_0)] dark:[--glow:oklch(0.3_0_0)] [background:radial-gradient(farthest-side,var(--glow)_40%,transparent)]"
+          className="pointer-events-none absolute -inset-x-64 -inset-y-32 [--glow:oklch(0.955_0_0)] dark:[--glow:oklch(0.24_0_0)] [background:radial-gradient(farthest-side,var(--glow)_40%,transparent)]"
         />
         <div className="relative">
           <DemoFrame>
