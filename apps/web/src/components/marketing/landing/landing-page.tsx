@@ -61,7 +61,7 @@ export function LandingPage() {
 			<Hero />
 			<Problems />
 			<Faq />
-			<div className="hidden sm:block sm:h-24" />
+			<div className="h-16 sm:h-24" />
 			<CompactCtaSection />
 		</div>
 	);
