@@ -1,5 +1,6 @@
 "use client";
 
+import { FigureReveal } from "./figure-reveal";
 import { FIGURES, type Section } from "./figures";
 
 // The figure shown for each benefit section. The other candidates stay in
@@ -17,5 +18,9 @@ export function Figure({ section }: { section: Section }) {
   const variant =
     variants.find((v) => v.id === CHOSEN[section]) ?? variants[0]!;
   const Component = variant.component;
-  return <Component />;
+  return (
+    <FigureReveal>
+      <Component />
+    </FigureReveal>
+  );
 }
