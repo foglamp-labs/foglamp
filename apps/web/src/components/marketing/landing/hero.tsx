@@ -185,12 +185,13 @@ export function Hero() {
         // A touch wider than the copy's max-w-7xl so the dashboard breathes.
         className="relative mx-auto mt-16 hidden w-full max-w-344 px-5 sm:px-8 md:block"
       >
-        {/* Dark mode only: a soft glow behind the frame lifts the page around
-            it, so the frame's dark sidebar sits on lighter ground instead of
-            sinking into the page. Hidden by the frame itself at its center. */}
+        {/* A soft stage behind the frame. In dark mode it lifts the page
+            around the frame so the dark sidebar sits on lighter ground; in
+            light mode it dims the page slightly so the frame reads as resting
+            on it. The frame covers the center, so only the halo shows. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -inset-x-40 -inset-y-32 hidden dark:block [background:radial-gradient(farthest-side,oklch(0.27_0_0),transparent)]"
+          className="pointer-events-none absolute -inset-x-64 -inset-y-32 [--glow:oklch(0.955_0_0)] dark:[--glow:oklch(0.3_0_0)] [background:radial-gradient(farthest-side,var(--glow)_40%,transparent)]"
         />
         <div className="relative">
           <DemoFrame>
