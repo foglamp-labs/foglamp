@@ -206,6 +206,32 @@ function groupRepeatedSiblings(
   return out;
 }
 
+export type TimelineReveal = "hold" | "play";
+
+/** How long the whole trace takes to grow in when `reveal` plays. */
+export const TIMELINE_REVEAL_SECONDS = 1.2;
+
+// The grow-in replays the trace: each bar starts at its span's offset and
+// takes its duration, both scaled so the whole trace fits the reveal window.
+// Bars grow at a constant rate, so it's a plain transition on scaleX with the
+// span's own timing; the tiny ones get a floor so they don't pop. Holding
+// keeps a bar at zero width until the reveal plays.
+function revealStyle(
+  reveal: TimelineReveal | undefined,
+  offsetFraction: number,
+  durationFraction: number,
+): CSSProperties | undefined {
+  if (!reveal) return undefined;
+  const seconds = Math.max(0.15, durationFraction * TIMELINE_REVEAL_SECONDS);
+  const delay = offsetFraction * TIMELINE_REVEAL_SECONDS;
+  return {
+    transformOrigin: "left",
+    transform: reveal === "play" ? "scaleX(1)" : "scaleX(0)",
+    transition:
+      reveal === "play" ? `transform ${seconds}s linear ${delay}s` : "none",
+  };
+}
+
 /**
  * The trace hero: a span waterfall on one shared time axis, topped by a time
  * ruler. A shared 3-column grid (`[11rem | track | 6.5rem]`) keeps the
@@ -223,6 +249,7 @@ export function TraceTimeline({
   expandedGroups: expandedGroupsProp,
   onToggleGroup,
   onNavChange,
+  reveal,
 }: {
   spans: TraceSpan[];
   selected: string | null;
@@ -241,6 +268,10 @@ export function TraceTimeline({
   /** Reports the keyboard-navigable rows whenever the visible rows change, so
    * the parent's ↑/↓ walk what's on screen instead of every span. */
   onNavChange?: (entries: TimelineNavEntry[]) => void;
+  /** Grow the bars in, in trace time (see revealStyle). "hold" keeps them at
+   * zero width; "play" runs the grow-in. Off by default; the landing figure
+   * sets it. */
+  reveal?: TimelineReveal;
 }) {
   const window = useMemo(() => computeWindow(spans), [spans]);
   const ordered = useMemo(() => orderSpans(spans), [spans]);
@@ -503,7 +534,10 @@ export function TraceTimeline({
                 </div>
               </div>
               <div className="relative h-5">
-                <div className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full">
+                <div
+                  className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full"
+                  style={revealStyle(reveal, 0, 1)}
+                >
                   <div className="h-full w-full rounded-xs bg-primary/50" />
                 </div>
               </div>
@@ -535,6 +569,7 @@ export function TraceTimeline({
                     // A folded run answers for its head span, so keyboard
                     // selection landing there highlights the group row.
                     selected={!row.expanded && selected === row.spans[0].spanId}
+                    reveal={reveal}
                   />
                 );
               }
@@ -725,7 +760,15 @@ export function TraceTimeline({
                         render={
                           <div
                             className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs"
-                            style={{ left: `${offset}%`, width: `${width}%` }}
+                            style={{
+                              left: `${offset}%`,
+                              width: `${width}%`,
+                              ...revealStyle(
+                                reveal,
+                                offsetMs / total,
+                                span.durationMs / total,
+                              ),
+                            }}
                           >
                             {/* Base track. Up to TTFT the bar renders as a
                                 faded "waiting" stretch, and the solid fill
@@ -857,12 +900,14 @@ function GroupedRow({
   total,
   onToggle,
   selected,
+  reveal,
 }: {
   row: GroupRow;
   window: { start: number; span: number };
   total: number;
   onToggle: () => void;
   selected?: boolean;
+  reveal?: TimelineReveal;
 }) {
   const { spans, depth, expanded } = row;
   const starts = spans.map((s) => toMs(s.startTime) - window.start);
@@ -921,7 +966,11 @@ function GroupedRow({
       <div className="relative h-5">
         <div
           className="absolute top-1/2 h-2 -translate-y-1/2 rounded-xs bg-muted-foreground/25"
-          style={{ left: `${offset}%`, width: `${width}%` }}
+          style={{
+            left: `${offset}%`,
+            width: `${width}%`,
+            ...revealStyle(reveal, first / total, durationMs / total),
+          }}
         >
           {/* One tick per call, positioned within the run's span. */}
           {spans.map((s, i) => (
