@@ -15,9 +15,16 @@ import { useState } from "react";
 import { DRAWER_BUTTON_CLASS } from "@/components/app/button-styles";
 import { navItem } from "@/components/app/nav";
 import { PageHeader } from "@/components/app/page-parts";
-import { RangeControl } from "@/components/app/range-picker";
+import {
+	isQuickPreset,
+	QUICK_PRESETS,
+	RangePicker,
+	RangePresetButton,
+} from "@/components/app/range-picker";
 import { formatModelName, ModelLogo } from "@/components/model-logo";
 import { resolvePreset } from "@/lib/range";
+
+import { Piece, useEntering } from "./piece";
 
 // The demo reuses the dashboard's real chrome (Toolbar, SearchInput,
 // FilterSelect, SortableHead, PaginationFooter, RangeControl…) directly, since
@@ -25,10 +32,37 @@ import { resolvePreset } from "@/lib/range";
 // are wired to routing (Link) or app context.
 
 /** The real RangeControl bound to local state — fully interactive, but the
- * mock data doesn't refetch, so it's effectively decorative. */
+ * mock data doesn't refetch, so it's effectively decorative. Laid out here
+ * rather than through RangeControl so each preset chip and the picker is a
+ * piece of the hero entrance (see piece.tsx) and lands on its own turn.
+ * Outside the entrance a piece renders in place, so the tabs and detail
+ * views that mount later look exactly like the real control. */
 export function DemoRange() {
 	const [range, setRange] = useState(() => resolvePreset("24h"));
-	return <RangeControl value={range} onChange={setRange} />;
+	// While the entrance runs, the row keeps 3D so each piece's lift reads.
+	const entering = useEntering();
+	return (
+		<div
+			className={cn("flex items-center gap-2", entering && "transform-3d")}
+		>
+			{QUICK_PRESETS.map((key) => (
+				<Piece key={key}>
+					<RangePresetButton
+						preset={key}
+						active={range.key === key}
+						onClick={() => setRange(resolvePreset(key))}
+					/>
+				</Piece>
+			))}
+			<Piece>
+				<RangePicker
+					value={range}
+					onChange={setRange}
+					compact={isQuickPreset(range)}
+				/>
+			</Piece>
+		</div>
+	);
 }
 
 /** List-page header — the real RouteHeader minus the range context: same

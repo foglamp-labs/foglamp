@@ -336,14 +336,16 @@ export function TracesTab() {
 
 	return (
 		<>
-			{/* Header, toolbar, rows, and footer are pieces of the hero entrance
-			    (see piece.tsx); outside it they are plain elements. */}
+			{/* Header, each filter, rows, and footer are pieces of the hero
+			    entrance (see piece.tsx); outside it they are plain elements. The
+			    clear button is not: it has its own entrance, and while hidden it
+			    renders nothing, so a wrapper would leave a stray gap. */}
 			<Piece>
 				<DemoListHeader href="/traces" title="Traces" />
 			</Piece>
 			<div className={cn("flex flex-col gap-4 mt-1", deep)}>
-				<Piece>
-					<Toolbar>
+				<Toolbar className={cn(deep)}>
+					<Piece>
 						<FilterSelect
 							value={agentFilter}
 							onChange={(v) => {
@@ -357,6 +359,8 @@ export function TracesTab() {
 							icon={IconGhost}
 							options={agentOptions}
 						/>
+					</Piece>
+					<Piece>
 						<FilterSelect
 							value={modelFilter}
 							onChange={setModelFilter}
@@ -364,6 +368,8 @@ export function TracesTab() {
 							icon={IconCpu}
 							options={modelOptions}
 						/>
+					</Piece>
+					<Piece>
 						<ToggleChip
 							active={errorsOnly}
 							onClick={() => setErrorsOnly((v) => !v)}
@@ -371,7 +377,9 @@ export function TracesTab() {
 							<IconAlertTriangle className="size-3.5" />
 							Errors only
 						</ToggleChip>
-						{showWorkflow && (
+					</Piece>
+					{showWorkflow && (
+						<Piece>
 							<FilterSelect
 								value={workflowFilter}
 								onChange={(v) => {
@@ -382,8 +390,10 @@ export function TracesTab() {
 								icon={IconSitemap}
 								options={workflowOptions}
 							/>
-						)}
-						{showCustomer && (
+						</Piece>
+					)}
+					{showCustomer && (
+						<Piece>
 							<FilterSelect
 								value={customerFilter}
 								onChange={(v) => {
@@ -394,8 +404,10 @@ export function TracesTab() {
 								icon={IconUser}
 								options={customerOptions}
 							/>
-						)}
-						{showMeta && (
+						</Piece>
+					)}
+					{showMeta && (
+						<Piece>
 							<FilterSelect
 								value={metaKeyFilter}
 								onChange={(v) => {
@@ -407,8 +419,10 @@ export function TracesTab() {
 								icon={IconTag}
 								options={metaKeyOptions}
 							/>
-						)}
-						{showMeta && metaKey && (
+						</Piece>
+					)}
+					{showMeta && metaKey && (
+						<Piece>
 							<FilterSelect
 								value={metaValueFilter}
 								onChange={setMetaValueFilter}
@@ -416,8 +430,10 @@ export function TracesTab() {
 								icon={IconTag}
 								options={metaValueOptions}
 							/>
-						)}
-						{showPrompt && (
+						</Piece>
+					)}
+					{showPrompt && (
+						<Piece>
 							<FilterSelect
 								value={promptFilter}
 								onChange={(v) => {
@@ -431,8 +447,10 @@ export function TracesTab() {
 								icon={IconFileHorizontal}
 								options={promptOptions}
 							/>
-						)}
-						{canAddFilter && (
+						</Piece>
+					)}
+					{canAddFilter && (
+						<Piece>
 							<AddFilterMenu
 								showWorkflow={showWorkflow}
 								showCustomer={showCustomer}
@@ -440,26 +458,26 @@ export function TracesTab() {
 								showPrompt={showPrompt}
 								onAdd={addFilter}
 							/>
-						)}
-						<ClearFiltersButton
-							show={hasFilters}
-							onClick={() => {
-								setAgentFilter("");
-								setModelFilter("");
-								setWorkflowFilter("");
-								setCustomerFilter("");
-								setMetaKeyFilter("");
-								setMetaValueFilter("");
-								setPromptFilter("");
-								setErrorsOnly(false);
-								setAdded(new Set());
-							}}
-						/>
-						<div className="ml-auto">
-							<DemoRange />
-						</div>
-					</Toolbar>
-				</Piece>
+						</Piece>
+					)}
+					<ClearFiltersButton
+						show={hasFilters}
+						onClick={() => {
+							setAgentFilter("");
+							setModelFilter("");
+							setWorkflowFilter("");
+							setCustomerFilter("");
+							setMetaKeyFilter("");
+							setMetaValueFilter("");
+							setPromptFilter("");
+							setErrorsOnly(false);
+							setAdded(new Set());
+						}}
+					/>
+					<div className={cn("ml-auto", deep)}>
+						<DemoRange />
+					</div>
+				</Toolbar>
 
 				{/* Single column with no gap so the pagination footer's top border
 				    sits flush against the table's last row. */}

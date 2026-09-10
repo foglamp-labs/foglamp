@@ -25,7 +25,44 @@ import {
 } from "@/lib/range";
 
 // One-click range presets surfaced as chips beside the calendar picker.
-const QUICK_PRESETS = ["24h", "3d", "7d"] as const;
+export const QUICK_PRESETS = ["24h", "3d", "7d"] as const;
+export type QuickPreset = (typeof QUICK_PRESETS)[number];
+
+/** True while one of the quick presets is the current range. */
+export function isQuickPreset(value: RangeValue) {
+  return (QUICK_PRESETS as readonly string[]).includes(value.key);
+}
+
+/** One quick-range chip. RangeControl lays them out; the landing demo lays
+ * them out itself so each can enter on its own. */
+export function RangePresetButton({
+  preset,
+  active,
+  onClick,
+}: {
+  preset: QuickPreset;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      variant={active ? "secondary" : "outline"}
+      aria-pressed={active}
+      className={cn(
+        // transition-[color,box-shadow] leaves background-color out of
+        // Button's transition-all, so the hover bg snaps instantly —
+        // intentional; the calendar trigger matches it.
+        "font-normal tabular-nums bg-card hover:bg-muted/50 aria-expanded:bg-muted/50 dark:hover:bg-muted dark:aria-expanded:bg-muted transition-[color,box-shadow] active:scale-100",
+        // Stay muted on hover (the outline variant lifts text to
+        // foreground); only the surface responds, like ToggleChip.
+        !active && "text-muted-foreground/50 hover:text-muted-foreground/50"
+      )}
+      onClick={onClick}
+    >
+      {preset}
+    </Button>
+  );
+}
 
 /** Quick-range chips + the calendar RangePicker. While a chip is active the
  * picker collapses to its icon — the label would only repeat the chip. */
@@ -36,33 +73,21 @@ export function RangeControl({
   value: RangeValue;
   onChange: (value: RangeValue) => void;
 }) {
-  const quickActive = (QUICK_PRESETS as readonly string[]).includes(value.key);
   return (
     <div className="flex items-center gap-2">
-      {QUICK_PRESETS.map((key) => {
-        const active = value.key === key;
-        return (
-          <Button
-            key={key}
-            variant={active ? "secondary" : "outline"}
-            aria-pressed={active}
-            className={cn(
-              // transition-[color,box-shadow] leaves background-color out of
-              // Button's transition-all, so the hover bg snaps instantly —
-              // intentional; the calendar trigger below matches it.
-              "font-normal tabular-nums bg-card hover:bg-muted/50 aria-expanded:bg-muted/50 dark:hover:bg-muted dark:aria-expanded:bg-muted transition-[color,box-shadow] active:scale-100",
-              // Stay muted on hover (the outline variant lifts text to
-              // foreground); only the surface responds, like ToggleChip.
-              !active &&
-                "text-muted-foreground/50 hover:text-muted-foreground/50"
-            )}
-            onClick={() => onChange(resolvePreset(key))}
-          >
-            {key}
-          </Button>
-        );
-      })}
-      <RangePicker value={value} onChange={onChange} compact={quickActive} />
+      {QUICK_PRESETS.map((key) => (
+        <RangePresetButton
+          key={key}
+          preset={key}
+          active={value.key === key}
+          onClick={() => onChange(resolvePreset(key))}
+        />
+      ))}
+      <RangePicker
+        value={value}
+        onChange={onChange}
+        compact={isQuickPreset(value)}
+      />
     </div>
   );
 }

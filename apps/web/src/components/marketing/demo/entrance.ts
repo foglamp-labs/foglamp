@@ -44,29 +44,58 @@ const PIECE_AFTER = 0.25;
 // is in place by then, and the hero copy is still finishing its rise when
 // the sidebar starts, so the two overlap a little.
 export const DROP_AT = {
-  inset: 0.7,
+  inset: 0.9,
   sidebar: 1,
-  content: 2,
+  content: 1.8,
 } as const;
 
-/** Motion props for the inset surface's drop, or nothing under reduced
- * motion. */
-export function dropIn(delay: number, reduce: boolean): MotionProps {
-  if (reduce) return {};
-  const variants: Variants = {
-    [LIFTED]: { opacity: 0, y: -DROP, z: LIFT },
+// How far into the inset surface's drop its colour starts to shift (see
+// dropIn). Until then the plate is still the chrome's colour, and it is
+// transparent at the start so nothing shows where it hangs above the frame.
+const SURFACE_TINT_AT = 0.3;
+
+/** The inset surface's drop, split across two layers because of how the
+ * surface appears. It does not simply fade in: in dark mode the surface is
+ * only three sRGB levels lighter than the chrome, and a translucent plate
+ * blended on the compositor lands on either side of a rounding boundary
+ * from frame to frame, which reads as the whole plate flickering while it
+ * appears. So the plate fades in (from nothing, so it does not show where
+ * it starts above the frame's top edge) while it is still the chrome's
+ * own colour, where the blend is exact, and once opaque it shifts colour
+ * to its own: an opaque plate rasterises to one exact colour per frame.
+ * The shadow does have to fade the whole way, so it sits on a layer of its
+ * own (`shadow`); a one-level wobble inside a soft shadow is invisible. The
+ * drop is one `transform` string rather than y and z, so the browser runs
+ * it off the main thread on the same clock as the fades. Both are nothing
+ * under reduced motion. */
+export function dropIn(
+  delay: number,
+  reduce: boolean
+): { surface: MotionProps; shadow: MotionProps } {
+  if (reduce) return { surface: {}, shadow: {} };
+  const transition = { duration: DURATION, ease: ENTRANCE_EASE, delay };
+  const split = { ...transition, times: [0, SURFACE_TINT_AT, 1] };
+  const surface: Variants = {
+    [LIFTED]: {
+      opacity: 0,
+      backgroundColor: "var(--sidebar)",
+      transform: `translateY(${-DROP}px) translateZ(${LIFT}px)`,
+    },
     [LANDED]: {
-      opacity: 1,
-      y: 0,
-      z: 0,
-      transition: {
-        duration: DURATION,
-        ease: ENTRANCE_EASE,
-        delay,
-      },
+      opacity: [0, 1, 1],
+      backgroundColor: ["var(--sidebar)", "var(--sidebar)", "var(--background)"],
+      transform: "translateY(0px) translateZ(0px)",
+      transition: { ...transition, opacity: split, backgroundColor: split },
     },
   };
-  return { initial: LIFTED, animate: LANDED, variants };
+  const shadow: Variants = {
+    [LIFTED]: { opacity: 0 },
+    [LANDED]: { opacity: 1, transition },
+  };
+  return {
+    surface: { initial: LIFTED, animate: LANDED, variants: surface },
+    shadow: { initial: LIFTED, animate: LANDED, variants: shadow },
+  };
 }
 
 /** Motion props for a wrapper whose pieces drop one after another from the

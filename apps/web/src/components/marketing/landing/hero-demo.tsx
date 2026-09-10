@@ -43,6 +43,7 @@ export function HeroDemo({
   onSettled: () => void;
 }) {
   const reduce = useReducedMotion() ?? false;
+  const drop = dropIn(DROP_AT.inset, reduce);
   return (
     // The persistent chrome frame, in place from the start. The hairline
     // around it belongs to the hero's DemoFrame.
@@ -66,18 +67,20 @@ export function HeroDemo({
         className="pointer-events-none absolute inset-0 flex transform-3d"
       >
         <div className="hidden w-56 shrink-0 md:block" />
-        {/* This placeholder carries the inset's shadow so it's painted with the
-            chrome from the very first frame, before the lazy DemoShell mounts.
-            Once mounted, the real inset re-casts the same shadow. It has to,
-            because that inset paints above the revealing sidebar, so its seam
-            shadow stays visible where this placeholder's (sitting one layer
-            below the sidebar) would be covered as the sidebar fades in. In dark
-            mode the brief overlap of the two identical shadows is imperceptible. */}
+        {/* The surface and its shadow. The real inset box in DemoShell is
+            transparent and sits at this exact rect, so this plate is the
+            surface the content lands on. How it appears is dropIn's story;
+            the shadow fades on a layer of its own. */}
         <motion.div
-          {...dropIn(DROP_AT.inset, reduce)}
+          {...drop.surface}
           style={{ willChange: "transform, opacity" }}
-          className="m-2 ml-0 flex-1 rounded-md squircle:rounded-xl corner-squircle bg-background shadow-(--custom-shadow) max-md:ml-2"
-        />
+          className="relative m-2 ml-0 flex-1 rounded-md squircle:rounded-xl corner-squircle bg-background backface-hidden max-md:ml-2"
+        >
+          <motion.div
+            {...drop.shadow}
+            className="absolute inset-0 rounded-md squircle:rounded-xl corner-squircle shadow-(--custom-shadow)"
+          />
+        </motion.div>
       </div>
       <DashboardDemo interactive={interactive} onSettled={onSettled} />
     </div>

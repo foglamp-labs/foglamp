@@ -111,8 +111,8 @@ const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 // touch, as if seen from above, and scaled past the viewport so it runs off
 // both sides (the hero clips the overflow). The nudge right keeps most of
 // the sidebar on screen while it lands. FLAT is the resting view.
-const TILT = { rotateX: 32, rotateZ: -8, scale: 1.25, x: 100 };
-const FLAT = { rotateX: 0, rotateZ: 0, scale: 1, x: 0 };
+const TILT = { rotateX: 8, rotateZ: -6, scale: 1.15, x: 40, y: 60 };
+const FLAT = { rotateX: 0, rotateZ: 0, scale: 1, x: 0, y: 0 };
 
 // A hairline frame around the product. The shadow lives on an overlay above
 // the content: an inset shadow paints under an element's children, and the
