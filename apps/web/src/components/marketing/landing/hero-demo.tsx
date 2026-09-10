@@ -31,11 +31,15 @@ const DARK_LIFT =
 
 export function HeroDemo({
   settled,
+  interactive,
   onSettled,
 }: {
   // True once every surface has dropped into place. Until then the frame
   // does not clip, so the surfaces can start above its top edge.
   settled: boolean;
+  // True once the frame has swung flat as well: only then does the demo
+  // let the user switch tabs.
+  interactive: boolean;
   onSettled: () => void;
 }) {
   const reduce = useReducedMotion() ?? false;
@@ -75,7 +79,7 @@ export function HeroDemo({
           className="m-2 ml-0 flex-1 rounded-md squircle:rounded-xl corner-squircle bg-background shadow-(--custom-shadow) max-md:ml-2"
         />
       </div>
-      <DashboardDemo onSettled={onSettled} />
+      <DashboardDemo interactive={interactive} onSettled={onSettled} />
     </div>
   );
 }

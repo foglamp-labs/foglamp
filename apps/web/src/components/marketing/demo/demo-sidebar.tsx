@@ -70,7 +70,7 @@ const HREF_TO_TAB: Record<string, DemoTab> = {
 };
 
 export function DemoSidebar() {
-  const { tab, setTab } = useDemo();
+  const { tab, setTab, interactive } = useDemo();
 
   // While the entrance runs, every box between this sidebar and its pieces
   // keeps 3D and does not clip, so each piece's lift reads (see piece.tsx).
@@ -116,11 +116,14 @@ export function DemoSidebar() {
                 <Piece as="li" key={item.href}>
                   <button
                     type="button"
+                    // Off until the hero's entrance has finished. The link
+                    // keeps its look; only the click and the hover are held.
+                    disabled={!interactive}
                     onClick={() => itemTab && setTab(itemTab)}
                     data-active={active}
                     className={cn(
                       BUTTON_BASE,
-                      "cursor-pointer hover:bg-sidebar-accent/40 hover:text-sidebar-accent-foreground",
+                      "cursor-pointer enabled:hover:bg-sidebar-accent/40 enabled:hover:text-sidebar-accent-foreground disabled:cursor-default",
                       "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground dark:data-[active=true]:bg-sidebar-accent/50"
                     )}
                   >

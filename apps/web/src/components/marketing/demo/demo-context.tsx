@@ -14,7 +14,11 @@ export type DetailView =
 
 type DemoContextValue = {
 	tab: DemoTab;
+	// Ignored until the demo is interactive (see DashboardDemo).
 	setTab: (tab: DemoTab) => void;
+	// False while the hero's entrance is still running: the nav shows its
+	// links but does not take a click.
+	interactive: boolean;
 	detail: DetailView;
 	openDetail: (detail: NonNullable<DetailView>) => void;
 	closeDetail: () => void;

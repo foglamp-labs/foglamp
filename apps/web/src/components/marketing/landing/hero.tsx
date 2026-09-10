@@ -140,6 +140,11 @@ export function Hero() {
   // swing flat. Reduced motion skips the tilt entirely.
   const [settled, setSettled] = useState(false);
   const flat = settled || reduce;
+  // True once the frame has finished swinging flat: the entrance is over
+  // and the demo takes input. Reduced motion never animates, so it is
+  // interactive from the start.
+  const [swung, setSwung] = useState(false);
+  const interactive = swung || reduce;
 
   // Motion props for a "blur up" reveal at a given delay, or nothing for
   // reduced-motion users, so the element simply renders in place.
@@ -225,10 +230,17 @@ export function Hero() {
           initial={reduce ? false : TILT}
           animate={flat ? FLAT : TILT}
           transition={{ duration: 1.7, ease: ENTRANCE_EASE }}
+          onAnimationComplete={() => {
+            if (flat) setSwung(true);
+          }}
           style={{ transformPerspective: 2400, transformOrigin: "50% 50%" }}
         >
           <DemoFrame clip={flat}>
-            <HeroDemo settled={flat} onSettled={() => setSettled(true)} />
+            <HeroDemo
+              settled={flat}
+              interactive={interactive}
+              onSettled={() => setSettled(true)}
+            />
           </DemoFrame>
         </motion.div>
       </div>

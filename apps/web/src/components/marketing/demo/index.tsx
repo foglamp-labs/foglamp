@@ -68,8 +68,14 @@ function DetailViewSwitch({ detail }: { detail: NonNullable<DetailView> }) {
 }
 
 export function DashboardDemo({
+	interactive = true,
 	onSettled,
 }: {
+	// False while the hero's entrance (the drops, then the swing flat) is
+	// still running. Until it flips, tab switches are ignored: a switch
+	// remounts the content's pieces, which would land out of step with the
+	// entrance. Detail views stay reachable.
+	interactive?: boolean;
 	// Fires once the last surface has dropped into place (see DemoShell).
 	onSettled?: () => void;
 } = {}) {
@@ -80,10 +86,16 @@ export function DashboardDemo({
 	const anchorRef = useRef<HTMLSpanElement>(null);
 
 	// Switching tabs always drops any open detail view — you land on the list.
+	// Not while the entrance runs, though.
 	const setTab = (next: DemoTab) => {
+		if (!interactive) return;
 		setDetail(null);
 		setTabState(next);
 	};
+	// The registered handler below outlives a render, so it reads the
+	// latest value through a ref rather than a stale closure.
+	const setTabRef = useRef(setTab);
+	setTabRef.current = setTab;
 
 	useEffect(
 		() =>
@@ -91,7 +103,7 @@ export function DashboardDemo({
 				const anchor = anchorRef.current;
 				// No box means the frame is display:none (small screens).
 				if (!anchor || anchor.getClientRects().length === 0) return false;
-				setTab(next);
+				setTabRef.current(next);
 				window.scrollTo({
 					top: window.scrollY + anchor.getBoundingClientRect().top - SCROLL_OFFSET,
 					behavior: "smooth",
@@ -106,6 +118,7 @@ export function DashboardDemo({
 			value={{
 				tab,
 				setTab,
+				interactive,
 				detail,
 				openDetail: (d) => setDetail(d),
 				closeDetail: () => setDetail(null),
