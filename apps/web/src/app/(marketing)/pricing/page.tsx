@@ -37,7 +37,7 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 
 import { JsonLd } from "@/components/marketing/json-ld";
-import { CtaSection } from "@/components/marketing/landing/cta";
+import { CompactCtaSection } from "@/components/marketing/landing/compact-cta";
 import { SITE_URL } from "@/lib/links";
 import { FeaturedBeam } from "./featured-beam";
 
@@ -309,7 +309,7 @@ function PlanCard({ plan }: { plan: Plan }) {
 
 export default function PricingPage() {
 	return (
-		<div className="flex flex-col gap-36 pb-42">
+		<div className="flex flex-col gap-36">
 			<JsonLd data={pricingJsonLd} />
 			<div className="mx-auto w-full max-w-7xl px-5 sm:px-8">
 				<div className="mt-32 max-w-2xl">
@@ -353,7 +353,7 @@ export default function PricingPage() {
 				</p>
 			</div>
 
-			<CtaSection />
+			<CompactCtaSection />
 		</div>
 	);
 }
