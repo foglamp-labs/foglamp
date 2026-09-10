@@ -72,9 +72,9 @@ export function DashboardDemo({
 	onSettled,
 }: {
 	// False while the hero's entrance (the drops, then the swing flat) is
-	// still running. Until it flips, tab switches are ignored: a switch
-	// remounts the content's pieces, which would land out of step with the
-	// entrance. Detail views stay reachable.
+	// still running. Until it flips, tab switches are ignored and the
+	// content takes no clicks: a switch or a detail view remounts the
+	// content's pieces, which would land out of step with the entrance.
 	interactive?: boolean;
 	// Fires once the last surface has dropped into place (see DemoShell).
 	onSettled?: () => void;
@@ -124,7 +124,11 @@ export function DashboardDemo({
 				closeDetail: () => setDetail(null),
 			}}
 		>
-			<DemoShell sidebar={<DemoSidebar />} onSettled={onSettled}>
+			<DemoShell
+				sidebar={<DemoSidebar />}
+				interactive={interactive}
+				onSettled={onSettled}
+			>
 				<span
 					ref={anchorRef}
 					aria-hidden

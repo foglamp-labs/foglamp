@@ -27,10 +27,14 @@ import { EntranceContext } from "./piece";
 export function DemoShell({
   sidebar,
   children,
+  interactive = true,
   onSettled,
 }: {
   sidebar: React.ReactNode;
   children: React.ReactNode;
+  // False while the hero's entrance runs. The content takes no clicks or
+  // hovers until it flips (the sidebar holds its own buttons).
+  interactive?: boolean;
   onSettled?: () => void;
 }) {
   const reduce = useReducedMotion() ?? false;
@@ -63,7 +67,8 @@ export function DemoShell({
         }}
         className={cn(
           "relative m-2 ml-0 flex min-w-0 flex-1 flex-col rounded-md squircle:rounded-xl corner-squircle max-md:ml-2",
-          entering ? "transform-3d" : "overflow-hidden"
+          entering ? "transform-3d" : "overflow-hidden",
+          !interactive && "pointer-events-none"
         )}
       >
         <div
