@@ -5,7 +5,9 @@ import { cn } from "@foglamp/ui/lib/utils";
 import { type MotionProps, motion, useReducedMotion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
+import { ENTRANCE_EASE } from "@/components/marketing/demo/entrance";
 import { OlwenLogo, OptionLogo } from "@/components/brand-logos";
 import { CopyPromptButton } from "./copy-prompt-button";
 import { HeroDemo } from "./hero-demo";
@@ -99,23 +101,45 @@ const TRUSTED: { label: string; node: React.ReactNode }[] = [
 ];
 
 // Entrance: the copy fades in while rising a touch and sharpening from a soft
-// blur, top to bottom. The dashboard's chrome and its glow are static; only
-// the content inside it follows (see DemoShell), then the AI SDK note.
+// blur, top to bottom. The dashboard's chrome and its glow are static; the
+// chrome starts tilted (TILT below), its surfaces drop in along that tilt
+// (see HeroDemo and DemoShell), and once the last one lands the frame swings
+// flat. Then the AI SDK note.
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+// The frame's pose while its surfaces drop in: leaned back and turned a
+// touch, as if seen from above, and scaled past the viewport so it runs off
+// both sides (the hero clips the overflow). The nudge right keeps most of
+// the sidebar on screen while it lands. FLAT is the resting view.
+const TILT = { rotateX: 32, rotateZ: -8, scale: 1.25, x: 100 };
+const FLAT = { rotateX: 0, rotateZ: 0, scale: 1, x: 0 };
 
 // A hairline frame around the product. The shadow lives on an overlay above
 // the content: an inset shadow paints under an element's children, and the
-// demo's opaque frame would cover the highlight ring entirely.
-function DemoFrame({ children }: { children: React.ReactNode }) {
+// demo's opaque frame would cover the highlight ring entirely. Clipping is
+// off while the demo's surfaces are still dropping in from above the frame.
+function DemoFrame({
+  clip,
+  children,
+}: {
+  clip: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="relative rounded-xl after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:shadow-(--custom-shadow-chrome)">
-      <div className="overflow-hidden rounded-xl">{children}</div>
+    <div className="relative transform-3d rounded-xl after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:shadow-(--custom-shadow-chrome)">
+      <div className={cn("transform-3d rounded-xl", clip && "overflow-hidden")}>
+        {children}
+      </div>
     </div>
   );
 }
 
 export function Hero() {
   const reduce = useReducedMotion() ?? false;
+  // True once the demo's last surface has dropped in and the frame can
+  // swing flat. Reduced motion skips the tilt entirely.
+  const [settled, setSettled] = useState(false);
+  const flat = settled || reduce;
 
   // Motion props for a "blur up" reveal at a given delay, or nothing for
   // reduced-motion users, so the element simply renders in place.
@@ -131,7 +155,7 @@ export function Hero() {
   return (
     // overflow-x-clip keeps the soft blur on the wide dashboard from ever
     // nudging a horizontal scrollbar during its entrance.
-    <section className="relative isolate w-full overflow-x-clip pt-28">
+    <section className="relative isolate w-full overflow-x-clip pt-10">
       {/* Copy: left-aligned, sharing the dashboard's max-w-7xl left edge. */}
       <div className="mx-auto flex max-w-7xl justify-between items-end px-5 sm:px-8">
         <div className="flex-col">
@@ -167,7 +191,7 @@ export function Hero() {
         </div>
 
         <motion.div
-          {...rise(1.4)}
+          {...rise(5)}
           className="hidden items-center gap-2 text-[13px] tracking-wide text-muted-foreground md:flex border-l pl-3"
         >
           Built for the
@@ -196,11 +220,17 @@ export function Hero() {
           aria-hidden
           className="pointer-events-none absolute -inset-x-64 -inset-y-32 [--glow:oklch(0.955_0_0)] dark:[--glow:oklch(0.24_0_0)] [background:radial-gradient(farthest-side,var(--glow)_40%,transparent)]"
         />
-        <div className="relative">
-          <DemoFrame>
-            <HeroDemo />
+        <motion.div
+          className="relative transform-3d"
+          initial={reduce ? false : TILT}
+          animate={flat ? FLAT : TILT}
+          transition={{ duration: 1.7, ease: ENTRANCE_EASE }}
+          style={{ transformPerspective: 2400, transformOrigin: "50% 50%" }}
+        >
+          <DemoFrame clip={flat}>
+            <HeroDemo settled={flat} onSettled={() => setSettled(true)} />
           </DemoFrame>
-        </div>
+        </motion.div>
       </div>
 
       {/* Small screens get a still of the same dashboard in the same frame.
@@ -212,7 +242,7 @@ export function Hero() {
         {...rise(0.6)}
         className="mt-12 w-[150%] pl-5 sm:pl-8 md:hidden"
       >
-        <DemoFrame>
+        <DemoFrame clip>
           <Image
             src="/demo-overview-dark.png"
             alt="The Foglamp overview dashboard"

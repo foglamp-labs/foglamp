@@ -67,8 +67,13 @@ function DetailViewSwitch({ detail }: { detail: NonNullable<DetailView> }) {
 	}
 }
 
-export function DashboardDemo() {
-	const [tab, setTabState] = useState<DemoTab>("overview");
+export function DashboardDemo({
+	onSettled,
+}: {
+	// Fires once the last surface has dropped into place (see DemoShell).
+	onSettled?: () => void;
+} = {}) {
+	const [tab, setTabState] = useState<DemoTab>("traces");
 	const [detail, setDetail] = useState<DetailView>(null);
 	// Sits at the top of the inset surface, the page's scroll target when a
 	// section asks the demo to show a tab.
@@ -106,7 +111,7 @@ export function DashboardDemo() {
 				closeDetail: () => setDetail(null),
 			}}
 		>
-			<DemoShell sidebar={<DemoSidebar />}>
+			<DemoShell sidebar={<DemoSidebar />} onSettled={onSettled}>
 				<span
 					ref={anchorRef}
 					aria-hidden

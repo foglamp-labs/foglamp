@@ -16,6 +16,7 @@ import { account, nav } from "@/components/app/nav";
 
 import { useDemo } from "./demo-context";
 import type { DemoTab } from "./mock-data";
+import { Piece, useEntering } from "./piece";
 
 // Same crossfade as the real app's NavIcon: outline → filled, stacked in one
 // grid cell so only glyph opacity tweens while the colored chip stays constant.
@@ -71,10 +72,15 @@ const HREF_TO_TAB: Record<string, DemoTab> = {
 export function DemoSidebar() {
   const { tab, setTab } = useDemo();
 
+  // While the entrance runs, every box between this sidebar and its pieces
+  // keeps 3D and does not clip, so each piece's lift reads (see piece.tsx).
+  const entering = useEntering();
+  const deep = entering && "transform-3d";
+
   return (
-    <div className="flex size-full flex-col text-sidebar-foreground">
+    <div className={cn("flex size-full flex-col text-sidebar-foreground", deep)}>
       {/* Project switcher (display-only) */}
-      <div className="flex flex-col gap-2 p-2 px-3.5 pb-1">
+      <Piece className="flex flex-col gap-2 p-2 px-3.5 pb-1">
         <button
           type="button"
           disabled
@@ -91,18 +97,23 @@ export function DemoSidebar() {
           </span>
           <IconChevronDown className="ml-auto size-3.5 opacity-25" />
         </button>
-      </div>
+      </Piece>
 
       {/* Scrollable nav body */}
-      <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto px-1">
+      <div
+        className={cn(
+          "no-scrollbar flex min-h-0 flex-1 flex-col gap-2 px-1",
+          entering ? "transform-3d" : "overflow-auto"
+        )}
+      >
         {/* Main nav — interactive */}
-        <div className="flex w-full flex-col p-2">
-          <ul className="flex w-full flex-col gap-0.75">
+        <div className={cn("flex w-full flex-col p-2", deep)}>
+          <ul className={cn("flex w-full flex-col gap-0.75", deep)}>
             {nav.map((item) => {
               const itemTab = HREF_TO_TAB[item.href];
               const active = tab === itemTab;
               return (
-                <li key={item.href}>
+                <Piece as="li" key={item.href}>
                   <button
                     type="button"
                     onClick={() => itemTab && setTab(itemTab)}
@@ -121,7 +132,7 @@ export function DemoSidebar() {
                     />
                     <span className="truncate">{item.label}</span>
                   </button>
-                </li>
+                </Piece>
               );
             })}
           </ul>
@@ -129,10 +140,10 @@ export function DemoSidebar() {
       </div>
 
       {/* Footer — display-only account row */}
-      <div className="flex flex-col gap-1 p-2 px-3 pb-3">
-        <ul className="flex w-full flex-col gap-0.75" aria-hidden>
+      <div className={cn("flex flex-col gap-1 p-2 px-3 pb-3", deep)}>
+        <ul className={cn("flex w-full flex-col gap-0.75", deep)} aria-hidden>
           {account.map((item) => (
-            <li key={item.href}>
+            <Piece as="li" key={item.href}>
               <div
                 className={cn(BUTTON_BASE, "pointer-events-none select-none")}
               >
@@ -144,11 +155,11 @@ export function DemoSidebar() {
                 />
                 <span className="truncate">{item.label}</span>
               </div>
-            </li>
+            </Piece>
           ))}
         </ul>
 
-        <div className={cn(BUTTON_BASE, "pointer-events-none select-none")}>
+        <Piece className={cn(BUTTON_BASE, "pointer-events-none select-none")}>
           <Avatar className="size-4">
             <AvatarImage src="/avatar.jpg" alt="Gustavo" />
             <AvatarFallback>G</AvatarFallback>
@@ -156,7 +167,7 @@ export function DemoSidebar() {
           <span className="flex flex-1 flex-col text-left ml-0.5">
             <span className="truncate">Gustavo</span>
           </span>
-        </div>
+        </Piece>
       </div>
     </div>
   );

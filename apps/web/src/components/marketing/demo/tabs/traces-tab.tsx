@@ -65,6 +65,17 @@ import {
 	promptVersionOf,
 	quintiles,
 } from "../mock-data";
+import { Piece, PieceRow, useEntering } from "../piece";
+
+// While the entrance runs, the table and its scroll container keep 3D and
+// do not clip so each row's lift reads, and the row lines move onto the
+// cells: under collapsed borders the table paints them, so they would show
+// before their row has landed. A transparent cell border keeps the row
+// heights the same as at rest; the visible line is an inset shadow.
+const ENTRANCE_TABLE =
+	"transform-3d [&_[data-slot=table-container]]:overflow-visible [&_[data-slot=table-container]]:transform-3d [&_table]:transform-3d [&_thead]:transform-3d [&_tbody]:transform-3d " +
+	"[&_table]:border-separate [&_table]:border-spacing-0 [&_th]:border-b [&_td]:border-b [&_th]:border-transparent [&_td]:border-transparent " +
+	"[&_th]:shadow-[inset_0_-1px_0_0] [&_td]:shadow-[inset_0_-1px_0_0] [&_th]:shadow-border/50 [&_td]:shadow-border/50 dark:[&_th]:shadow-border/40 dark:[&_td]:shadow-border/40 [&_tbody_tr:last-child_td]:shadow-none";
 
 // Quintiles drive the heat shade on the Duration and Cost cells.
 const COST_QUANTILES = quintiles(TRACE_ROWS.map((t) => t.costValue));
@@ -318,134 +329,150 @@ export function TracesTab() {
 		icon: MetaValueIcon,
 	}));
 
+	// While the entrance runs, every box between the content and its pieces
+	// keeps 3D and does not clip, so each piece's lift reads (see piece.tsx).
+	const entering = useEntering();
+	const deep = entering && "transform-3d";
+
 	return (
 		<>
-			<DemoListHeader href="/traces" title="Traces" />
-			<div className="flex flex-col gap-4 mt-1">
-				<Toolbar>
-					<FilterSelect
-						value={agentFilter}
-						onChange={(v) => {
-							setAgentFilter(v);
-							// Versions belong to one agent; a summoned prompt select
-							// doesn't carry over to the next.
-							setPromptFilter("");
-							removeFilter("prompt");
-						}}
-						allLabel="Any agent"
-						icon={IconGhost}
-						options={agentOptions}
-					/>
-					<FilterSelect
-						value={modelFilter}
-						onChange={setModelFilter}
-						allLabel="Any model"
-						icon={IconCpu}
-						options={modelOptions}
-					/>
-					<ToggleChip
-						active={errorsOnly}
-						onClick={() => setErrorsOnly((v) => !v)}
-					>
-						<IconAlertTriangle className="size-3.5" />
-						Errors only
-					</ToggleChip>
-					{showWorkflow && (
+			{/* Header, toolbar, rows, and footer are pieces of the hero entrance
+			    (see piece.tsx); outside it they are plain elements. */}
+			<Piece>
+				<DemoListHeader href="/traces" title="Traces" />
+			</Piece>
+			<div className={cn("flex flex-col gap-4 mt-1", deep)}>
+				<Piece>
+					<Toolbar>
 						<FilterSelect
-							value={workflowFilter}
+							value={agentFilter}
 							onChange={(v) => {
-								setWorkflowFilter(v);
-								if (!v) removeFilter("workflow");
+								setAgentFilter(v);
+								// Versions belong to one agent; a summoned prompt select
+								// doesn't carry over to the next.
+								setPromptFilter("");
+								removeFilter("prompt");
 							}}
-							allLabel="Any workflow"
-							icon={IconSitemap}
-							options={workflowOptions}
+							allLabel="Any agent"
+							icon={IconGhost}
+							options={agentOptions}
 						/>
-					)}
-					{showCustomer && (
 						<FilterSelect
-							value={customerFilter}
-							onChange={(v) => {
-								setCustomerFilter(v);
-								if (!v) removeFilter("customer");
-							}}
-							allLabel="Any customer"
-							icon={IconUser}
-							options={customerOptions}
+							value={modelFilter}
+							onChange={setModelFilter}
+							allLabel="Any model"
+							icon={IconCpu}
+							options={modelOptions}
 						/>
-					)}
-					{showMeta && (
-						<FilterSelect
-							value={metaKeyFilter}
-							onChange={(v) => {
-								setMetaKeyFilter(v);
+						<ToggleChip
+							active={errorsOnly}
+							onClick={() => setErrorsOnly((v) => !v)}
+						>
+							<IconAlertTriangle className="size-3.5" />
+							Errors only
+						</ToggleChip>
+						{showWorkflow && (
+							<FilterSelect
+								value={workflowFilter}
+								onChange={(v) => {
+									setWorkflowFilter(v);
+									if (!v) removeFilter("workflow");
+								}}
+								allLabel="Any workflow"
+								icon={IconSitemap}
+								options={workflowOptions}
+							/>
+						)}
+						{showCustomer && (
+							<FilterSelect
+								value={customerFilter}
+								onChange={(v) => {
+									setCustomerFilter(v);
+									if (!v) removeFilter("customer");
+								}}
+								allLabel="Any customer"
+								icon={IconUser}
+								options={customerOptions}
+							/>
+						)}
+						{showMeta && (
+							<FilterSelect
+								value={metaKeyFilter}
+								onChange={(v) => {
+									setMetaKeyFilter(v);
+									setMetaValueFilter("");
+									if (!v) removeFilter("meta");
+								}}
+								allLabel="Any metadata"
+								icon={IconTag}
+								options={metaKeyOptions}
+							/>
+						)}
+						{showMeta && metaKey && (
+							<FilterSelect
+								value={metaValueFilter}
+								onChange={setMetaValueFilter}
+								allLabel={`Any ${metaKey}`}
+								icon={IconTag}
+								options={metaValueOptions}
+							/>
+						)}
+						{showPrompt && (
+							<FilterSelect
+								value={promptFilter}
+								onChange={(v) => {
+									// A version belongs to one agent: picking it without an
+									// agent filter narrows to that agent as well.
+									setPromptFilter(v);
+									if (v && !agentFilter) setAgentFilter(promptAgentOf(v));
+									if (!v) removeFilter("prompt");
+								}}
+								allLabel="Any prompt version"
+								icon={IconFileHorizontal}
+								options={promptOptions}
+							/>
+						)}
+						{canAddFilter && (
+							<AddFilterMenu
+								showWorkflow={showWorkflow}
+								showCustomer={showCustomer}
+								showMeta={showMeta}
+								showPrompt={showPrompt}
+								onAdd={addFilter}
+							/>
+						)}
+						<ClearFiltersButton
+							show={hasFilters}
+							onClick={() => {
+								setAgentFilter("");
+								setModelFilter("");
+								setWorkflowFilter("");
+								setCustomerFilter("");
+								setMetaKeyFilter("");
 								setMetaValueFilter("");
-								if (!v) removeFilter("meta");
+								setPromptFilter("");
+								setErrorsOnly(false);
+								setAdded(new Set());
 							}}
-							allLabel="Any metadata"
-							icon={IconTag}
-							options={metaKeyOptions}
 						/>
-					)}
-					{showMeta && metaKey && (
-						<FilterSelect
-							value={metaValueFilter}
-							onChange={setMetaValueFilter}
-							allLabel={`Any ${metaKey}`}
-							icon={IconTag}
-							options={metaValueOptions}
-						/>
-					)}
-					{showPrompt && (
-						<FilterSelect
-							value={promptFilter}
-							onChange={(v) => {
-								// A version belongs to one agent: picking it without an
-								// agent filter narrows to that agent as well.
-								setPromptFilter(v);
-								if (v && !agentFilter) setAgentFilter(promptAgentOf(v));
-								if (!v) removeFilter("prompt");
-							}}
-							allLabel="Any prompt version"
-							icon={IconFileHorizontal}
-							options={promptOptions}
-						/>
-					)}
-					{canAddFilter && (
-						<AddFilterMenu
-							showWorkflow={showWorkflow}
-							showCustomer={showCustomer}
-							showMeta={showMeta}
-							showPrompt={showPrompt}
-							onAdd={addFilter}
-						/>
-					)}
-					<ClearFiltersButton
-						show={hasFilters}
-						onClick={() => {
-							setAgentFilter("");
-							setModelFilter("");
-							setWorkflowFilter("");
-							setCustomerFilter("");
-							setMetaKeyFilter("");
-							setMetaValueFilter("");
-							setPromptFilter("");
-							setErrorsOnly(false);
-							setAdded(new Set());
-						}}
-					/>
-					<div className="ml-auto">
-						<DemoRange />
-					</div>
-				</Toolbar>
+						<div className="ml-auto">
+							<DemoRange />
+						</div>
+					</Toolbar>
+				</Piece>
 
 				{/* Single column with no gap so the pagination footer's top border
 				    sits flush against the table's last row. */}
-				<div className="flex flex-col -mt-2">
+				<div
+					className={cn(
+						"flex flex-col -mt-2",
+						entering && ENTRANCE_TABLE
+					)}
+				>
 					<TooltipProvider delay={150}>
 						<Table className="table-fixed min-w-5xl">
 							<TableHeader>
-								<TableRow>
+								<PieceRow>
 									<TableHead>Trace</TableHead>
 									{metaKey && (
 										<TableHead className="w-40">
@@ -500,11 +527,11 @@ export function TracesTab() {
 									>
 										When
 									</SortableHead>
-								</TableRow>
+								</PieceRow>
 							</TableHeader>
 							<TableBody>
 								{rows.map((t) => (
-									<TableRow
+									<PieceRow
 										key={t.traceId}
 										interactive
 										onClick={() => openDetail({ type: "trace", id: t.traceId })}
@@ -660,22 +687,24 @@ export function TracesTab() {
 										<TableCell className="text-right text-muted-foreground pr-6">
 											{t.when}
 										</TableCell>
-									</TableRow>
+									</PieceRow>
 								))}
 							</TableBody>
 						</Table>
 					</TooltipProvider>
 
 					{rows.length > 0 && (
-						<PaginationFooter
-							page={0}
-							pageSize={pageSize}
-							total={rows.length}
-							shown={rows.length}
-							noun={["trace", "traces"]}
-							onPageChange={() => {}}
-							onPageSizeChange={setPageSize}
-						/>
+						<Piece>
+							<PaginationFooter
+								page={0}
+								pageSize={pageSize}
+								total={rows.length}
+								shown={rows.length}
+								noun={["trace", "traces"]}
+								onPageChange={() => {}}
+								onPageSizeChange={setPageSize}
+							/>
+						</Piece>
 					)}
 				</div>
 			</div>
