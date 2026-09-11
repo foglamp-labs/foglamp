@@ -64,6 +64,23 @@ const SUGGESTIONS = [
 const PANEL_WIDTH = 354;
 const MIN_PANEL_WIDTH = 320;
 const MAX_PANEL_WIDTH = 640;
+// Dragging past a bound doesn't stop dead: the panel rubber-bands a little
+// past it with diminishing returns, then springs back on release. This caps
+// how far past the bound it can stretch.
+const MAX_PANEL_STRETCH = 48;
+
+// Rubber-band curve: maps how far the pointer is past a bound to how far the
+// panel actually stretches. Starts at half the pointer's speed and asymptotes
+// at MAX_PANEL_STRETCH, so the further you pull the harder it resists.
+function rubberBand(excess: number) {
+  const sign = Math.sign(excess);
+  const distance = Math.abs(excess);
+  return (
+    sign *
+    MAX_PANEL_STRETCH *
+    (1 - Math.exp(-distance / (MAX_PANEL_STRETCH * 2)))
+  );
+}
 
 // Geometry of the notch carved into the inset's bottom-right corner. The SVG
 // is anchored so that x = w and y = h land exactly on the centerline of the
@@ -227,6 +244,11 @@ export function FoggyWidget({
   // 1:1 instead of easing toward it.
   const [panelWidth, setPanelWidth] = useState(PANEL_WIDTH);
   const [resizing, setResizing] = useState(false);
+  // How far past a bound the panel is currently rubber-banded (signed: past
+  // the max is positive, past the min negative). Only ever non-zero mid-drag;
+  // resetting it on release is what makes the panel spring back to the bound.
+  const [stretch, setStretch] = useState(0);
+  const displayWidth = panelWidth + stretch;
   // Tell toolbars the width this panel is animating toward, so they can lift
   // their controls into the header before the row actually overflows.
   const asideRef = useReportLayoutReserve(open ? panelWidth : 0);
@@ -241,15 +263,16 @@ export function FoggyWidget({
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
     function onMove(ev: PointerEvent) {
-      setPanelWidth(
-        Math.min(
-          MAX_PANEL_WIDTH,
-          Math.max(MIN_PANEL_WIDTH, startWidth + (startX - ev.clientX))
-        )
-      );
+      const raw = startWidth + (startX - ev.clientX);
+      const clamped = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, raw));
+      setPanelWidth(clamped);
+      // Anything past the bound becomes stretch rather than being dropped,
+      // so hitting the limit reads as resistance instead of a hard stop.
+      setStretch(rubberBand(raw - clamped));
     }
     function onUp() {
       setResizing(false);
+      setStretch(0);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       window.removeEventListener("pointermove", onMove);
@@ -441,7 +464,7 @@ export function FoggyWidget({
       // Flat on the canvas (bg-sidebar) to the right of the inset; animating the
       // width makes the flex-1 inset shrink/grow smoothly to make room.
       initial={false}
-      animate={{ width: open ? panelWidth : 0 }}
+      animate={{ width: open ? displayWidth : 0 }}
       transition={
         resizing
           ? { duration: 0 }
@@ -467,10 +490,18 @@ export function FoggyWidget({
           className="absolute inset-y-0 -left-2 z-20 w-4 cursor-col-resize"
         />
       )}
-      {/* Fixed-width inner so content doesn't reflow while the panel animates. */}
-      <div
+      {/* Fixed-width inner so content doesn't reflow while the panel opens or
+          closes. It only animates with the rubber-band stretch, so the content
+          visibly springs back alongside the panel instead of snapping. */}
+      <motion.div
         className="flex h-full flex-col py-2 pr-2"
-        style={{ width: panelWidth }}
+        initial={false}
+        animate={{ width: displayWidth }}
+        transition={
+          resizing
+            ? { duration: 0 }
+            : { duration: 0.25, ease: [0.32, 0.72, 0, 1] }
+        }
       >
         <div className="flex items-center justify-end gap-2 px-2 pb-2 pt-1">
           <div className="flex items-center gap-1">
@@ -715,7 +746,7 @@ export function FoggyWidget({
             </Button>
           )}
         </form>
-      </div>
+      </motion.div>
     </motion.aside>
   );
 }
