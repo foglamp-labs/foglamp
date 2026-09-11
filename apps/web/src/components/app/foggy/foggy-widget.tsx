@@ -67,7 +67,7 @@ const MAX_PANEL_WIDTH = 640;
 // Dragging past a bound doesn't stop dead: the panel rubber-bands a little
 // past it with diminishing returns, then springs back on release. This caps
 // how far past the bound it can stretch.
-const MAX_PANEL_STRETCH = 48;
+const MAX_PANEL_STRETCH = 28;
 
 // Rubber-band curve: maps how far the pointer is past a bound to how far the
 // panel actually stretches. Starts at half the pointer's speed and asymptotes
