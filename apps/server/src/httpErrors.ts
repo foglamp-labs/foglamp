@@ -1,6 +1,8 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 
+import { GITHUB_ISSUES_URL } from "./links";
+
 // Fallback error surface for the API. Every route already returns flat
 // `{ error: string }` bodies on failure; unmatched paths and uncaught throws
 // used to fall through to Hono's plain-text defaults ("404 Not Found"), which
@@ -37,7 +39,7 @@ export function errorResponse(err: Error, c: Context): Response {
     {
       error: "Internal server error",
       code: "internal_error",
-      hint: "Retry the request; if it keeps failing, report it at https://github.com/foglamp-labs/foglamp/issues.",
+      hint: `Retry the request; if it keeps failing, report it at ${GITHUB_ISSUES_URL}.`,
     },
     500,
   );

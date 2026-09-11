@@ -19,6 +19,7 @@ import { env } from "@foglamp/env/server";
 import type { AppEnv } from "./evlog";
 import { checkFoggyRateLimit } from "./foggyRateLimit";
 import { buildFoggyTools, untrusted } from "./foggyTools";
+import { GITHUB_URL } from "./links";
 
 // Foggy is enabled only when a Google key is configured.
 export const google = env.GOOGLE_GENERATIVE_AI_API_KEY
@@ -127,6 +128,7 @@ function systemPrompt(
     "You answer two kinds of questions:",
     "1. About THIS project's data — use the data tools (getProjectSummary, listTraces, getTrace, getTraceIO, breakdownByModel, getModelPricing, getTimeseries, getCostTimeseriesByModel, listAgents, listWorkflows, listCustomers, listSessions, getSession, listEvals, getEvalScores, listAlerts, getAlertHistory). They are already scoped to the current project.",
     `2. About how Foglamp works (SDK usage, the data model, concepts, self-hosting) — use the searchDocs tool and cite ${env.FOGGY_DOCS_URL}.`,
+    `Foglamp is open source at ${GITHUB_URL} (the GitHub org is foglamp-labs). Use this exact URL for the repo or issues; never guess another path.`,
     "",
     "Guidelines:",
     "- Be concise and concrete. Prefer real numbers from tools over guessing; if you lack data, say so and offer to fetch it.",
