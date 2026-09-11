@@ -22,7 +22,6 @@ const PRODUCT: FooterColumn = {
 const RESOURCES: FooterColumn = {
   heading: "Resources",
   links: [
-    { label: "How it works", href: "/how-it-works" },
     { label: "Docs", href: DOCS_ORIGIN, external: true },
     {
       label: "Quickstart",
