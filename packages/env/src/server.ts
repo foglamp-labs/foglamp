@@ -126,6 +126,13 @@ const serverSchema = {
     .string()
     .optional()
     .transform((v) => v === "true" || v === "1"),
+  // Refuse new accounts on every method (password, magic link, Google);
+  // existing users still sign in. The hosted deployment sets this while it
+  // winds down. Self-hosts leave it unset.
+  AUTH_DISABLE_SIGNUP: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
 
   // --- Platform admin (hosted-operator dashboard) ---
   // Comma-separated emails allowed to see platform-wide stats. Unset (the

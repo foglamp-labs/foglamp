@@ -52,6 +52,7 @@ import { Spinner } from "@foglamp/ui/components/spinner";
 
 import { NoProject } from "@/components/app/page-parts";
 import { QuotaCard } from "@/components/app/quota-card";
+import { SunsetCard } from "@/components/app/sunset-card";
 
 import { FoglampHUD } from "foglamp/hud";
 
@@ -337,6 +338,7 @@ function ShellBody({ children }: { children: React.ReactNode }) {
         </SidebarContent>
 
         <SidebarFooter>
+          <SunsetCard />
           <QuotaCard />
           <SidebarMenu>
             {account.map((item) => {

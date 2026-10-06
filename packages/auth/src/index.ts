@@ -113,6 +113,7 @@ export function createAuth() {
     plugins.push(
       magicLink({
         expiresIn: 60 * 15,
+        disableSignUp: env.AUTH_DISABLE_SIGNUP,
         sendMagicLink: async ({ email, url }) => {
           await sendMagicLinkEmail({ to: email, url });
         },
@@ -212,6 +213,7 @@ export function createAuth() {
     ),
     emailAndPassword: {
       enabled: methods.emailPassword,
+      disableSignUp: env.AUTH_DISABLE_SIGNUP,
       // Without RESEND_API_KEY the sender logs the reset URL instead of
       // emailing it, which is the local-dev / self-host path.
       sendResetPassword: async ({ user, url }) => {
@@ -224,6 +226,7 @@ export function createAuth() {
           google: {
             clientId: env.GOOGLE_CLIENT_ID as string,
             clientSecret: env.GOOGLE_CLIENT_SECRET as string,
+            disableSignUp: env.AUTH_DISABLE_SIGNUP,
           },
         }
       : undefined,
